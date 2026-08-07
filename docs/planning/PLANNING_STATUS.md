@@ -25,3 +25,4 @@
 | Implementation Dependency Audit | Complete | No implementation unit qualifies for independent authorization under current sequence and blockers |
 | IMP-001 eligibility path analysis | Complete | Shortest governed path identified; no implementation authorization granted |
 | Phase 5 Document 2 source review | Complete for IMP-001 readiness | GAR-006/008/013/014 dispositioned for IMP-001; no implementation authorization |
+| IMP-001 readiness review | Not Ready | CARD-IMP-001 and card-level validation evidence required before eligibility |
