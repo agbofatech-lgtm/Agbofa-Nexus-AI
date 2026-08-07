@@ -1,0 +1,56 @@
+{
+  "target": "IMP-002",
+  "readiness": "PASS",
+  "gates": [
+    {
+      "gate": "Baseline evidence certificate",
+      "status": "PASS",
+      "evidence": "READINESS-BASELINE-001"
+    },
+    {
+      "gate": "CARD-IMP-002 exists",
+      "status": "PASS",
+      "evidence": "implementation-cards/drafts/CARD-IMP-002.md"
+    },
+    {
+      "gate": "IMP-001 dependency closed",
+      "status": "PASS",
+      "evidence": "docs/implementation/imp-001/CLOSURE_RECORD.md"
+    },
+    {
+      "gate": "Registry dependencies",
+      "status": "PASS",
+      "evidence": "all referenced registry IDs resolve"
+    },
+    {
+      "gate": "GAR-008 disposition",
+      "status": "PASS",
+      "evidence": "docs/readiness/fast-track/IMP_002_GAR_DISPOSITION.md"
+    },
+    {
+      "gate": "GAR-009 disposition",
+      "status": "PASS",
+      "evidence": "docs/readiness/fast-track/IMP_002_GAR_DISPOSITION.md"
+    },
+    {
+      "gate": "GAR-016 disposition",
+      "status": "PASS",
+      "evidence": "docs/readiness/fast-track/IMP_002_GAR_DISPOSITION.md"
+    },
+    {
+      "gate": "Unauthorized scope check",
+      "status": "PASS",
+      "evidence": "CARD-IMP-002 authorization section"
+    },
+    {
+      "gate": "Dependency validation",
+      "status": "PASS",
+      "evidence": "implementation-dependency-validation-report.md"
+    },
+    {
+      "gate": "Governance validation",
+      "status": "PASS",
+      "evidence": "governance-validation-report.md"
+    }
+  ]
+}
