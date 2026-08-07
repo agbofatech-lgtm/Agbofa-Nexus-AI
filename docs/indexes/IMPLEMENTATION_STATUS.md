@@ -6,3 +6,4 @@
 | Implementation Unit | Type | Source Reference | Dependencies | Current Stage | Tests | Documentation Updated | Drift Check | Commit | Status |
 |---|---|---|---|---|---|---|---|---|---|
 | Documentation repository scaffold | Repository governance | User-approved operating mode | None | Initialized | Not applicable | Yes | Pending/committed | Pass | Complete |
+| Enterprise Engineering Constitution | Repository governance | User-provided strengthened AI implementation rules | Existing governance scaffold | Initialized | Not applicable | Yes | Pending | Pass | Complete |

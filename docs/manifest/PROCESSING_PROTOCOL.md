@@ -274,3 +274,30 @@ The final certification must confirm that:
 - No workflows were changed.
 - Documentation improvements were editorial, organizational, navigational, or formatting-related only.
 
+---
+
+## 14. Strengthened Enterprise AI Engineering Rules
+
+The following rules are mandatory for all AI-assisted documentation, planning, and implementation work:
+
+### 14.1 Never Guess Rule
+
+If information is missing, ambiguous, or contradictory, stop. Do not invent services, APIs, databases, workflows, UI, AI agents, infrastructure, security policy, events, prompts, or ADR decisions. Record the issue, explain the ambiguity, recommend possible resolutions, and wait for approval.
+
+### 14.2 Repository Memory Rule
+
+The repository is the permanent memory. Conversation memory is temporary. Before beginning another task, update the relevant manifest, index, traceability, implementation status, and architecture drift files.
+
+### 14.3 Zero Placeholder Policy
+
+Do not generate TODOs, coming-soon sections, dummy data, placeholder APIs, fake databases, temporary logic, stubbed business rules, fake AI behavior, or mock security behavior unless explicitly instructed.
+
+### 14.4 Enterprise Quality Gate
+
+No feature or phase is complete until builds, linting, type checks, tests, documentation synchronization, traceability, ADR verification, security review, and architecture drift checks are complete or an explicit approved exception is recorded.
+
+### 14.5 Documentation Synchronization Rule
+
+Code is never complete until applicable architecture, API, database, event, deployment, changelog, manifest, traceability, implementation status, and index documentation is synchronized.
+
+For the full governance document, see `docs/governance/ENGINEERING_CONSTITUTION.md`.

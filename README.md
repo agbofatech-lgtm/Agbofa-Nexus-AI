@@ -120,3 +120,24 @@ No production code may be generated from assumptions. Every implementation must 
 - `IMPLEMENTATION_STATUS.md`
 - `ARCHITECTURE_DRIFT_REGISTER.md`
 
+## Strengthened Governance Rules
+
+All AI-assisted engineering work is governed by:
+
+```text
+docs/governance/ENGINEERING_CONSTITUTION.md
+```
+
+Mandatory additions include:
+
+- Never Guess Rule
+- Repository Memory Rule
+- Coding Constitution
+- Zero Placeholder Policy
+- Enterprise Quality Gate
+- AI Governance Requirements
+- Documentation Synchronization Rule
+- Incremental Delivery Rule
+- Git Workflow
+- Final Certification Rule
+
