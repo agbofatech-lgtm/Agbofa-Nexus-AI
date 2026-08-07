@@ -780,7 +780,7 @@
       "consumers": [
         "SVC-093"
       ],
-      "status": "Extracted from Batch 3 — Pending Review Approval",
+      "status": "Batch 3 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 23",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:164511-164745",
       "related_adrs": [],
@@ -801,7 +801,7 @@
         "SVC-020",
         "SVC-054"
       ],
-      "status": "Extracted from Batch 3 — Pending Review Approval",
+      "status": "Batch 3 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 24",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:169198-169414",
       "related_adrs": [],
@@ -823,7 +823,7 @@
         "SVC-057",
         "SVC-065"
       ],
-      "status": "Extracted from Batch 3 — Pending Review Approval",
+      "status": "Batch 3 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 25",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:175619-175865",
       "related_adrs": [],
@@ -844,7 +844,7 @@
         "SVC-057",
         "SVC-065"
       ],
-      "status": "Extracted from Batch 3 — Pending Review Approval",
+      "status": "Batch 3 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 26",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:185149-185361",
       "related_adrs": [],
@@ -866,7 +866,7 @@
         "SVC-054",
         "SVC-138"
       ],
-      "status": "Extracted from Batch 3 — Pending Review Approval",
+      "status": "Batch 3 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 27",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:189242-191268",
       "related_adrs": [],
@@ -887,7 +887,7 @@
         "SVC-075",
         "SVC-134"
       ],
-      "status": "Extracted from Batch 3 — Pending Review Approval",
+      "status": "Batch 3 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 28",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:192295-195274",
       "related_adrs": [],
@@ -908,7 +908,7 @@
         "SVC-135",
         "SVC-138"
       ],
-      "status": "Extracted from Batch 3 — Pending Review Approval",
+      "status": "Batch 3 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 29",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:196040-196052",
       "related_adrs": [],
@@ -929,7 +929,7 @@
         "SVC-145",
         "SVC-146"
       ],
-      "status": "Extracted from Batch 3 — Pending Review Approval",
+      "status": "Batch 3 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 30",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:200085-201323",
       "related_adrs": [],
@@ -949,7 +949,7 @@
       "consumers": [
         "SVC-147"
       ],
-      "status": "Extracted from Batch 3 — Pending Review Approval",
+      "status": "Batch 3 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 30",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:202045-202057",
       "related_adrs": [],

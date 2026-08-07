@@ -1,6 +1,6 @@
 {
   "source_files": 1,
-  "extracted_files": 30,
+  "extracted_files": 36,
   "checksums_recorded": 1,
   "errors": [],
   "source_paths": [
@@ -36,6 +36,12 @@
     "extracted/text/batch-3/Volume-27.txt",
     "extracted/text/batch-3/Volume-28.txt",
     "extracted/text/batch-3/Volume-29.txt",
-    "extracted/text/batch-3/Volume-30.txt"
+    "extracted/text/batch-3/Volume-30.txt",
+    "extracted/text/batch-4/Phase-5-Detected-Documents.txt",
+    "extracted/text/batch-4/Volume-31.txt",
+    "extracted/text/batch-4/Volume-32.txt",
+    "extracted/text/batch-4/Volume-37.txt",
+    "extracted/text/batch-4/Volumes-33-34.txt",
+    "extracted/text/batch-4/Volumes-35-36.txt"
   ]
 }

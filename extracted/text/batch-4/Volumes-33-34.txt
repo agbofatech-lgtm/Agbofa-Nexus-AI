@@ -1,0 +1,3869 @@
+VOLUME 33–34: FRONTEND IMPLEMENTATION SPECIFICATION
+
+
+
+Next.js Enterprise Application — AI Newsroom Operating System
+
+
+
+Document Reference: AGBA-NEXUS-VOL33-34-IMPL-1.0
+
+Status: Implementation-Ready — Production Specification
+
+Phase: 4 — Frontend Production Engineering
+
+Approved Baseline: Volumes 1–32 (Immutable)
+
+Purpose: Complete Frontend Implementation Blueprint
+
+Quality Level: US$50M Enterprise Platform Standard
+
+
+
+---
+
+
+
+FRONTEND DECISION RECORDS (FDR)
+
+
+
+FDR-FE-001: Next.js 15 App Router as Primary Framework
+
+
+
+Decision: Next.js 15 with App Router for all frontend applications. Server Components by
+default, Client Components only when necessary for interactivity.
+
+Rationale: App Router provides nested layouts, streaming SSR, React Server Components, and
+built-in performance optimizations. Server-first architecture reduces client-side JavaScript and
+improves initial load performance.
+
+Alternatives: Remix (rejected — smaller ecosystem); Vite + React Router (rejected — lacks SSR
+streaming); Next.js Pages Router (rejected — legacy, no RSC support).
+
+Trade-offs: Learning curve for RSC mental model, but significant performance and DX benefits.
+
+
+
+FDR-FE-002: Tailwind CSS + Design Tokens for Styling
+
+
+
+Decision: Tailwind CSS with CSS custom properties (design tokens) for the component library.
+Glassmorphism aesthetic with dark mode as default, light mode optional.
+
+Rationale: Tailwind provides utility-first consistency across 100+ components. Design tokens
+enable future white-label theming. Glassmorphism conveys the AI-native, data-rich aesthetic
+appropriate for an AI operating system.
+
+Alternatives: CSS Modules (rejected — less consistent at scale); styled-components (rejected —
+runtime overhead); MUI/Ant Design (rejected — not distinctive enough).
+
+Trade-offs: Learning curve for Tailwind, but unmatched consistency at scale.
+
+
+
+FDR-FE-003: Zustand + TanStack Query for State Management
+
+
+
+Decision: Zustand for client-side state (UI state, user preferences), TanStack Query for server
+state (API data, caching, real-time updates).
+
+Rationale: Zustand is minimal, TypeScript-first, and performs well. TanStack Query handles
+caching, background refetch, optimistic updates, and real-time synchronization out of the box.
+
+Alternatives: Redux Toolkit (rejected — too verbose); Jotai (rejected — less mature ecosystem);
+Apollo Client (rejected — GraphQL-only).
+
+Trade-offs: Two libraries instead of one, but each is best-in-class for its domain.
+
+
+
+FDR-FE-004: TipTap as Rich Text Editor
+
+Decision: TipTap (ProseMirror-based) for all rich text editing, with custom AI collaboration
+extensions.
+
+Rationale: TipTap is extensible, headless, and TypeScript-first. Custom extensions enable AI-
+assisted editing (suggestions, fact overlays, source attributions) that are impossible with off-the-
+shelf editors.
+
+Alternatives: Slate.js (rejected — less active development); Quill (rejected — limited
+extensibility); Lexical (rejected — less mature).
+
+Trade-offs: Custom extension development, but essential for AI editorial experience.
+
+
+
+---
+
+
+
+PART I — FRONTEND VISION
+
+
+
+1.1 Design Philosophy
+
+
+
+```
+
+AGBOFA NEXUS AI — DESIGN PHILOSOPHY:
+
+
+
+┌─────────────────────────────────────────────────────────────────────────────
+┐
+
+│           THE NEWSROOM AS AN OPERATING SYSTEM                           │
+
+├
+─────────────────────────────────────────────────────────────────────────────
+┤
+
+│                                              │
+
+│ CORE PRINCIPLES:                                       │
+
+│                                              │
+
+│ 1. COMMAND THE CHAOS                                            │
+
+│   News is inherently chaotic. The interface must bring order through                │
+
+│   clear hierarchy, powerful search, and intelligent information density.            │
+
+│                                             │
+
+│ 2. AI AS CO-PILOT, NOT AUTOPILOT                                    │
+
+│   Every AI action is visible, explainable, and overridable. Humans              │
+
+│   maintain sovereignty. The interface makes AI collaboration feel               │
+
+│   natural, not mysterious.                             │
+
+│                                             │
+
+│ 3. SPEED IS A FEATURE                                   │
+
+│   Breaking news doesn't wait. Keyboard shortcuts, command palette,                          │
+
+│   instant search, and sub-100ms interactions are not optional.              │
+
+│                                             │
+
+│ 4. INFORMATION, NOT DECORATION                                          │
+
+│   Every pixel serves understanding. Glassmorphism provides depth                    │
+
+│   without distraction. Color conveys meaning, not decoration.                   │
+
+│                                             │
+
+│ 5. TRUST THROUGH TRANSPARENCY                                           │
+
+│   AI decisions are traced to sources. Confidence scores are visible.            │
+
+│   Provenance chains are one click away. The interface builds trust.             │
+
+│                                             │
+
+│ 6. ADAPTIVE TO CONTEXT                                      │
+
+│   Breaking news mode is different from investigative research mode.                     │
+
+│   The interface adapts its density, notifications, and workflow             │
+
+│   to the user's current task.                          │
+
+│                                             │
+
+└─────────────────────────────────────────────────────────────────────────────
+┘
+
+```
+
+
+
+1.2 Visual Identity — Glassmorphism + Data Density
+
+
+
+```yaml
+
+visual_identity:
+
+ aesthetic: "Glassmorphism meets Bloomberg Terminal"
+
+
+
+ glassmorphism:
+
+      background_blur: "12px"
+
+      background_opacity: "0.15 - 0.25"
+
+      border: "1px solid rgba(255, 255, 255, 0.1)"
+
+      border_radius: "12px"
+
+      box_shadow: "0 8px 32px rgba(0, 0, 0, 0.3)"
+
+
+
+ data_density:
+
+      typography_scale: "Compact (11px-14px body, 10px metadata)"
+
+      line_height: "1.3"
+
+      table_density: "High (40px row height)"
+
+      card_spacing: "12px gap"
+
+
+
+ color_system:
+
+      background:
+
+       primary: "#0A0A0F"     # Deep charcoal black
+
+ secondary: "#12121A"       # Slightly lighter
+
+ tertiary: "#1A1A24"      # Surface color
+
+ glass: "rgba(18, 18, 26, 0.7)" # Glass panels
+
+
+
+accent:
+
+ primary: "#6C5CE7"       # Electric violet — AI actions
+
+ secondary: "#00CEC9"       # Teal — Data/Insights
+
+ tertiary: "#FD79A8"      # Pink — Breaking/Urgent
+
+ success: "#00B894"       # Green — Published/Verified
+
+ warning: "#FDCB6E"        # Amber — Attention needed
+
+ error: "#E17055"      # Coral — Errors/Blocked
+
+
+
+text:
+
+ primary: "#F5F5FA"
+
+ secondary: "#A0A0B0"
+
+ tertiary: "#6B6B7B"
+
+ inverse: "#0A0A0F"
+
+
+
+semantic:
+
+ truth_verified: "#00B894"
+
+ truth_disputed: "#FDCB6E"
+
+ truth_false: "#E17055"
+
+ ai_confidence_high: "#6C5CE7"
+
+ ai_confidence_medium: "#FDCB6E"
+
+ ai_confidence_low: "#E17055"
+
+ breaking_news: "#FD79A8"
+
+      live: "#FF7675"
+
+      scheduled: "#74B9FF"
+
+      published: "#00B894"
+
+```
+
+
+
+1.3 Information Architecture
+
+
+
+```
+
+AGBOFA NEXUS AI — APPLICATION MAP:
+
+
+
+┌─────────────────────────────────────────────────────────────────────────────
+┐
+
+│                APPLICATION SHELL                      │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ GLOBAL TOP BAR                                    ││
+
+│ │ [Logo] [Tenant Selector] ─── [Global Search] ─── [Quick Actions] ─── [Profile]│
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│ ┌──────────┐ ┌────────────────────────────────────────────────────────────┐ │
+
+│ │ SIDEBAR │ │              MAIN CONTENT AREA                 ││
+
+│ │        ││                                 ││
+
+│ │ Dashboard│ │ ┌──────────────────────────────────────────────────────┐ │ │
+
+│ │ ──────── │ │ │ PAGE HEADER (Breadcrumbs + Actions)                │ ││
+
+│ │ NEWSROOM │ │ └──────────────────────────────────────────────────────┘ │ │
+
+│ │ Discovery│ │ ┌──────────────────────────────────────────────────────┐ │ │
+
+│ │ Stories │ │ │                               │ ││
+
+│ │ Sources │ │ │ PAGE CONTENT                            │ ││
+
+│ │ Breaking │ │ │ (Nested Layouts, Parallel Routes)          │ ││
+
+│ │ ──────── │ │ │                                │ ││
+
+│ │ VERIFY │ │ └──────────────────────────────────────────────────────┘ │ │
+
+│ │ Truth │ │                                   ││
+
+│ │ Claims │ │ ┌──────────────────────────────────────────────────────┐ │ │
+
+│ │ Evidence │ │ │ AI ASSISTANT PANEL (Collapsible Right Sidebar)    │ ││
+
+│ │ ──────── │ │ │ • Agent activity • Suggestions • Context         │ ││
+
+│ │ CREATE │ │ └──────────────────────────────────────────────────────┘ │ │
+
+│ │ Factory │ │                                  ││
+
+│ │ Headlines│ │                                  ││
+
+│ │ Media │ │                                    ││
+
+│ │ ──────── │ │                                     ││
+
+│ │ PUBLISH │ │                                   ││
+
+│ │ Schedule │ │                                  ││
+
+│ │ Platforms│ │                                  ││
+
+│ │ ──────── │ │                                     ││
+
+│ │ ANALYZE │ │                                    ││
+
+│ │ Analytics│ │                                  ││
+
+│ │ Audience │ │                                   ││
+
+│ │ Revenue │ │                                   ││
+
+│ │ ──────── │ │                                     ││
+
+│ │ ADMIN │ │                                     ││
+
+│ │ Settings │ │                                 ││
+
+│ │ Team    ││                                   ││
+
+│ │ Billing │ │                                 ││
+
+│ └──────────┘ └────────────────────────────────────────────────────────────┘ │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ STATUS BAR                                      ││
+
+│ │ [Breaking: 3] [Publishing: 12] [AI Active: 8 agents] [Platform Health] │ │
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+└─────────────────────────────────────────────────────────────────────────────
+┘
+
+```
+
+
+
+---
+
+
+
+PART II — APPLICATION ARCHITECTURE
+
+
+
+2.1 Next.js Application Structure
+
+
+
+```
+
+agbofa-nexus-frontend/
+
+│
+
+├── .github/
+
+│ └── workflows/
+
+│     ├── ci.yml
+
+│     └── visual-regression.yml
+
+│
+
+├── apps/
+
+│ ├── newsroom/                     # Main AI Newsroom Application
+
+│ │ ├── app/                  # Next.js App Router
+
+│ │ │ ├── (auth)/              # Auth Route Group
+
+│ │ │ │ ├── login/
+
+│ │ │ │ │ └── page.tsx
+
+│ │ │ │ ├── mfa/
+
+│ │ │ │ │ └── page.tsx
+
+│ │ │ │ └── layout.tsx         # Auth-specific layout
+
+│ │ │ │
+
+│ │ │ ├── (dashboard)/            # Main App Route Group
+
+│ │ │ │ ├── layout.tsx          # Shell layout (sidebar + topbar)
+
+│ │ │ │ ├── page.tsx            # Dashboard home
+
+│ │ │ │ │
+
+│ │ │ │ ├── discovery/           # Content Origination
+
+│ │ │ │ │ ├── page.tsx           # Discovery overview
+
+│ │ │ │ │ ├── sources/
+
+│ │ │ │ │ │ ├── page.tsx         # Source management
+
+│ │ │ │ │ │ └── [sourceId]/
+
+│ │ │ │ │ │      └── page.tsx # Source detail
+
+│ │ │ │ │ ├── stories/
+
+│ │ │ │ │ │ ├── page.tsx         # Story queue
+
+│ │ │ │ │ │ └── [storyId]/
+
+│ │ │ │ │ │      └── page.tsx # Story detail
+
+│ │ │ │ │ └── breaking/
+
+│ │ │ │ │      └── page.tsx     # Breaking news console
+
+│ │ │ │ │
+
+│ │ │ │ ├── verify/             # Truth Engine
+
+│ │ │ │ │ ├── page.tsx           # Verification overview
+
+│ │ │ │ │ ├── claims/
+
+│ │ │ │ │ │ └── [claimId]/
+
+│ │ │ │ │ │      └── page.tsx
+
+│ │ │ │ │ └── evidence/
+
+│ │ │ │ │     └── page.tsx
+
+│ │ │ │ │
+
+│ │ │ │ ├── create/             # Content Factory
+
+│ │ │ │ │ ├── page.tsx           # Factory overview
+
+│ │ │ │ │ ├── editor/
+
+│ │ │ │ │ │ └── [articleId]/
+
+│ │ │ │ │ │      └── page.tsx # Article editor
+
+│ │ │ │ │ ├── headlines/
+
+│ │ │ │ │ │ └── page.tsx
+
+│ │ │ │ │ └── media/
+
+│ │ │ │ │     └── page.tsx
+
+│ │ │ │ │
+
+│ │ │ │ ├── publish/             # Distribution
+
+│ │ │ │ │ ├── page.tsx
+
+│ │ │ │ │ ├── schedule/
+
+│ │ │ │ │ │ └── page.tsx
+
+│ │ │ │ │ └── platforms/
+
+│ │ │ │ │     └── page.tsx
+
+│ │ │ │ │
+
+│ │ │ │ ├── analyze/           # Analytics
+
+│ │ │ │ │ ├── page.tsx
+
+│ │ │ │ │ ├── audience/
+
+│ │ │ │ │ │ └── page.tsx
+
+│ │ │ │ │ └── revenue/
+
+│ │ │ │ │     └── page.tsx
+
+│ │ │ │ │
+
+│ │ │ │ └── admin/            # Administration
+
+│ │ │ │     ├── page.tsx
+
+│ │ │ │     ├── team/
+
+│ │ │ │     │ └── page.tsx
+
+│ │ │ │     └── settings/
+
+│ │ │ │       └── page.tsx
+
+│ │ │ │
+
+│ │ │ ├── api/               # API Routes (if needed)
+
+│ │ │ ├── layout.tsx           # Root layout
+
+│ │ │ ├── page.tsx             # Landing page
+
+│ │ │ ├── loading.tsx          # Root loading
+
+│ │ │ ├── error.tsx           # Root error boundary
+
+│ │ │ ├── not-found.tsx          # 404 page
+
+│ │ │ └── globals.css         # Global styles + Tailwind
+
+│ │ │
+
+│ │ ├── components/              # App-specific components
+
+│ │ │ ├── shell/
+
+│ │ │ │ ├── sidebar.tsx
+
+│ │ │ │ ├── topbar.tsx
+
+│ │ │ │ ├── status-bar.tsx
+
+│ │ │ │ └── command-palette.tsx
+
+│ │ │ ├── dashboard/
+
+│ │ │ ├── discovery/
+
+│ │ │ ├── verify/
+
+│ │ │ ├── create/
+
+│ │ │ └── publish/
+
+│ │ │
+
+│ │ ├── hooks/                 # App-specific hooks
+
+│ │ ├── stores/                # Zustand stores
+
+│ │ ├── lib/                 # App utilities
+
+│ │ ├── public/                # Static assets
+
+│ │ ├── next.config.ts
+
+│ │ ├── tailwind.config.ts
+
+│ │ ├── tsconfig.json
+
+│ │ └── package.json
+
+│ │
+
+│ └── reader/                 # Public Reader Application
+
+│     └── app/
+
+│       └── ...
+
+│
+
+├── packages/                   # Shared Packages (Turborepo)
+
+│ ├── ui/                    # Design System / Component Library
+
+│ │ ├── src/
+
+│ │ │ ├── components/
+
+│ │ │ │ ├── button/
+
+│ │ │ │ ├── card/
+
+│ │ │ │ ├── table/
+
+│ │ │ │ ├── form/
+
+│ │ │ │ ├── dialog/
+
+│ │ │ │ ├── navigation/
+
+│ │ │ │ ├── feedback/
+
+│ │ │ │ ├── data-display/
+
+│ │ │ │ └── ai/
+
+│ │ │ ├── hooks/
+
+│ │ │ ├── utils/
+
+│ │ │ ├── styles/
+
+│ │ │ └── tokens/
+
+│ │ ├── tailwind.config.ts
+
+│ │ └── package.json
+
+│ │
+
+│ ├── api-client/            # Generated API Client
+
+│ │ ├── src/
+
+│ │ │ ├── gen/               # Generated from protobuf
+
+│ │ │ └── hooks/             # TanStack Query hooks
+
+│ │ └── package.json
+
+│ │
+
+│ ├── config/                # Shared Configuration
+
+│ │ ├── eslint/
+
+│ │ ├── typescript/
+
+│ │ └── prettier/
+
+│ │
+
+│ └── utils/               # Shared Utilities
+
+│     ├── src/
+
+│     │ ├── auth/
+
+│     │ ├── format/
+
+│     │ ├── validation/
+
+│     │ └── testing/
+
+│     └── package.json
+
+│
+
+├── tools/                  # Development Tools
+
+│ ├── storybook/
+
+│ ├── visual-regression/
+
+│ └── generators/
+
+│
+
+├── turbo.json                # Turborepo configuration
+
+├── pnpm-workspace.yaml
+
+├── package.json
+
+└── README.md
+
+```
+
+
+
+2.2 Route Architecture
+
+
+
+```typescript
+
+// apps/newsroom/app/(dashboard)/layout.tsx
+
+// Shell Layout — wraps all authenticated dashboard pages
+
+
+
+export default function DashboardLayout({
+
+ children,
+
+}: {
+
+ children: React.ReactNode;
+
+}) {
+
+ return (
+
+   <div className="flex h-screen bg-background-primary">
+
+       {/* Sidebar — server component by default */}
+
+       <Sidebar />
+
+
+
+       <div className="flex flex-1 flex-col overflow-hidden">
+
+        {/* Top Bar — server component */}
+
+        <TopBar />
+
+
+
+        {/* Main Content Area — with AI Assistant Panel */}
+
+        <div className="flex flex-1 overflow-hidden">
+
+         <main className="flex-1 overflow-y-auto">
+
+          {/* Nested layouts render here */}
+
+          {children}
+
+         </main>
+
+
+
+         {/* AI Assistant Panel — collapsible, client component */}
+
+         <AIAssistantPanel />
+
+          </div>
+
+
+
+          {/* Status Bar — server component with polling */}
+
+          <StatusBar />
+
+         </div>
+
+
+
+         {/* Command Palette — global, client component */}
+
+         <CommandPalette />
+
+      </div>
+
+    );
+
+}
+
+```
+
+
+
+2.3 Middleware Strategy
+
+
+
+```typescript
+
+// apps/newsroom/middleware.ts
+
+import { NextResponse } from 'next/server';
+
+import type { NextRequest } from 'next/server';
+
+
+
+export function middleware(request: NextRequest) {
+
+    const { pathname } = request.nextUrl;
+
+
+
+    // Auth routes — redirect to dashboard if authenticated
+
+    if (pathname.startsWith('/login') || pathname.startsWith('/mfa')) {
+
+      const token = request.cookies.get('access_token');
+
+        if (token) {
+
+            return NextResponse.redirect(new URL('/dashboard', request.url));
+
+        }
+
+        return NextResponse.next();
+
+    }
+
+
+
+    // Protected routes — redirect to login if not authenticated
+
+    if (!pathname.startsWith('/_next') && !pathname.startsWith('/api')) {
+
+        const token = request.cookies.get('access_token');
+
+        if (!token) {
+
+            return NextResponse.redirect(new URL('/login', request.url));
+
+        }
+
+
+
+        // Validate token expiry
+
+        // Add tenant context header for backend routing
+
+        const requestHeaders = new Headers(request.headers);
+
+        requestHeaders.set('x-tenant-id', extractTenantFromToken(token.value));
+
+
+
+        return NextResponse.next({
+
+            request: { headers: requestHeaders },
+
+        });
+
+    }
+
+
+
+    return NextResponse.next();
+
+}
+
+export const config = {
+
+ matcher: ['/((?!_next/static|_next/image|favicon.ico|public).*)'],
+
+};
+
+```
+
+
+
+---
+
+
+
+PART III — DESIGN SYSTEM
+
+
+
+3.1 Design Tokens
+
+
+
+```typescript
+
+// packages/ui/src/tokens/colors.ts
+
+export const colors = {
+
+ // Background
+
+ bg: {
+
+      primary: '#0A0A0F',
+
+      secondary: '#12121A',
+
+      tertiary: '#1A1A24',
+
+      glass: 'rgba(18, 18, 26, 0.7)',
+
+      glassHover: 'rgba(18, 18, 26, 0.85)',
+
+      elevated: '#1E1E2A',
+
+ },
+
+
+
+ // Accent Colors
+
+ accent: {
+
+ primary: '#6C5CE7',        // Electric Violet — AI
+
+ primaryHover: '#7C6CF7',
+
+ secondary: '#00CEC9', // Teal — Data
+
+ tertiary: '#FD79A8',       // Pink — Breaking/Urgent
+
+ success: '#00B894',
+
+ warning: '#FDCB6E',
+
+ error: '#E17055',
+
+ info: '#74B9FF',
+
+},
+
+
+
+// Text
+
+text: {
+
+ primary: '#F5F5FA',
+
+ secondary: '#A0A0B0',
+
+ tertiary: '#6B6B7B',
+
+ inverse: '#0A0A0F',
+
+ link: '#6C5CE7',
+
+},
+
+
+
+// Semantic
+
+semantic: {
+
+ truth: {
+
+     verified: '#00B894',
+
+     mostlyTrue: '#55EFC4',
+
+     halfTrue: '#FDCB6E',
+
+     mostlyFalse: '#E17055',
+
+     false: '#FF7675',
+
+     unverifiable: '#B2BEC3',
+
+ },
+
+ ai: {
+
+     confidenceHigh: '#6C5CE7',
+
+     confidenceMedium: '#FDCB6E',
+
+     confidenceLow: '#E17055',
+
+     generating: '#74B9FF',
+
+     error: '#FF7675',
+
+ },
+
+ story: {
+
+     breaking: '#FD79A8',
+
+     developing: '#FDCB6E',
+
+     active: '#00CEC9',
+
+     published: '#00B894',
+
+     archived: '#6B6B7B',
+
+ },
+
+},
+
+
+
+// Borders
+
+border: {
+
+ default: 'rgba(255, 255, 255, 0.06)',
+
+ strong: 'rgba(255, 255, 255, 0.1)',
+
+ accent: 'rgba(108, 92, 231, 0.3)',
+
+ focus: '#6C5CE7',
+
+},
+
+} as const;
+
+```
+
+
+
+```typescript
+
+// packages/ui/src/tokens/typography.ts
+
+export const typography = {
+
+ fontFamily: {
+
+      sans: ['Inter', 'system-ui', 'sans-serif'],
+
+      mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+
+      display: ['Inter', 'system-ui', 'sans-serif'],
+
+ },
+
+
+
+ fontSize: {
+
+      // Compact scale for data density
+
+      xs: ['0.625rem', { lineHeight: '0.875rem' }], // 10px — metadata, badges
+
+      sm: ['0.75rem', { lineHeight: '1rem' }],          // 12px — secondary text
+
+      base: ['0.8125rem', { lineHeight: '1.25rem' }], // 13px — body text
+
+      lg: ['0.875rem', { lineHeight: '1.375rem' }],       // 14px — emphasized body
+
+      xl: ['1rem', { lineHeight: '1.5rem' }],          // 16px — subtitles
+
+      '2xl': ['1.125rem', { lineHeight: '1.75rem' }], // 18px — section headers
+
+      '3xl': ['1.25rem', { lineHeight: '1.75rem' }], // 20px — card titles
+
+      '4xl': ['1.5rem', { lineHeight: '2rem' }],       // 24px — page titles
+
+      '5xl': ['2rem', { lineHeight: '2.5rem' }],       // 32px — hero
+
+ },
+
+
+
+ fontWeight: {
+
+      normal: '400',
+
+      medium: '500',
+
+      semibold: '600',
+
+      bold: '700',
+
+ },
+
+} as const;
+
+```
+
+
+
+```typescript
+
+// packages/ui/src/tokens/spacing.ts
+
+export const spacing = {
+
+ // 4px grid system
+
+ 0: '0',
+
+ 1: '0.25rem', // 4px
+
+ 2: '0.5rem', // 8px
+
+ 3: '0.75rem', // 12px
+
+ 4: '1rem',          // 16px
+
+ 5: '1.25rem', // 20px
+
+ 6: '1.5rem', // 24px
+
+ 8: '2rem',          // 32px
+
+ 10: '2.5rem', // 40px
+
+ 12: '3rem',         // 48px
+
+ 16: '4rem',         // 64px
+
+} as const;
+
+
+
+export const glass = {
+
+ borderRadius: {
+
+      sm: '6px',
+
+      md: '8px',
+
+      lg: '12px',
+
+      xl: '16px',
+
+      full: '9999px',
+
+ },
+
+
+
+ blur: {
+
+      sm: '4px',
+
+      md: '8px',
+
+      lg: '12px',
+
+      xl: '20px',
+
+ },
+
+
+
+ shadow: {
+
+      sm: '0 2px 8px rgba(0, 0, 0, 0.2)',
+
+      md: '0 4px 16px rgba(0, 0, 0, 0.3)',
+
+      lg: '0 8px 32px rgba(0, 0, 0, 0.4)',
+
+      xl: '0 16px 48px rgba(0, 0, 0, 0.5)',
+
+ },
+
+} as const;
+
+```
+
+
+
+3.2 Tailwind Configuration
+
+```typescript
+
+// packages/ui/tailwind.config.ts
+
+import type { Config } from 'tailwindcss';
+
+import { colors, typography, spacing, glass } from './src/tokens';
+
+
+
+const config: Config = {
+
+ darkMode: 'class', // Dark mode by default
+
+ content: [
+
+  './src/**/*.{js,ts,jsx,tsx,mdx}',
+
+  '../../apps/*/src/**/*.{js,ts,jsx,tsx,mdx}',
+
+ ],
+
+ theme: {
+
+  extend: {
+
+      colors: {
+
+       ...colors,
+
+      },
+
+      fontFamily: typography.fontFamily,
+
+      fontSize: typography.fontSize,
+
+      fontWeight: typography.fontWeight,
+
+      spacing: spacing,
+
+      borderRadius: glass.borderRadius,
+
+      backdropBlur: glass.blur,
+
+      boxShadow: glass.shadow,
+
+
+
+      // Custom utilities
+
+      glass: {
+
+      DEFAULT: 'bg-glass backdrop-blur-md border border-border-default rounded-lg',
+
+      strong: 'bg-glassHover backdrop-blur-lg border border-border-strong rounded-lg',
+
+     },
+
+
+
+     animation: {
+
+      'fade-in': 'fadeIn 0.2s ease-out',
+
+      'slide-up': 'slideUp 0.3s ease-out',
+
+      'pulse-ai': 'pulseAI 2s ease-in-out infinite',
+
+     },
+
+
+
+     keyframes: {
+
+      fadeIn: {
+
+          '0%': { opacity: '0' },
+
+          '100%': { opacity: '1' },
+
+      },
+
+      slideUp: {
+
+          '0%': { transform: 'translateY(8px)', opacity: '0' },
+
+          '100%': { transform: 'translateY(0)', opacity: '1' },
+
+      },
+
+      pulseAI: {
+
+          '0%, 100%': { opacity: '1' },
+
+          '50%': { opacity: '0.5' },
+
+      },
+
+     },
+
+ },
+
+},
+
+ plugins: [],
+
+};
+
+
+
+export default config;
+
+```
+
+
+
+---
+
+
+
+PART IV — CORE COMPONENT LIBRARY
+
+
+
+4.1 Component Architecture
+
+
+
+```
+
+packages/ui/src/components/
+
+│
+
+├── primitives/           # Atomic components
+
+│ ├── button/
+
+│ │ ├── button.tsx
+
+│ │ ├── button.test.tsx
+
+│ │ ├── button.stories.tsx
+
+│ │ └── index.ts
+
+│ ├── input/
+
+│ ├── badge/
+
+│ ├── avatar/
+
+│ ├── icon/
+
+│ └── spinner/
+
+│
+
+├── composites/            # Composite components
+
+│ ├── card/
+
+│ │ ├── card.tsx
+
+│ │ ├── card-header.tsx
+
+│ │ ├── card-content.tsx
+
+│ │ └── card-footer.tsx
+
+│ ├── dialog/
+
+│ ├── drawer/
+
+│ ├── table/
+
+│ ├── form/
+
+│ └── navigation/
+
+│
+
+├── ai/               # AI-specific components
+
+│ ├── agent-status/
+
+│ ├── confidence-indicator/
+
+│ ├── fact-overlay/
+
+│ ├── hallucination-warning/
+
+│ ├── provenance-chain/
+
+│ ├── prompt-preview/
+
+│ └── token-usage/
+
+│
+
+├── data-display/          # Data visualization
+
+│ ├── chart/
+
+│ ├── timeline/
+
+│ ├── story-graph-viz/
+
+│ ├── metric-card/
+
+│ └── heatmap/
+
+│
+
+├── editor/                 # Rich text editing
+
+│ ├── rich-text-editor/
+
+│ ├── ai-suggestion-overlay/
+
+│ ├── fact-highlight/
+
+│ └── source-citation/
+
+│
+
+└── feedback/               # User feedback
+
+      ├── toast/
+
+      ├── alert/
+
+      ├── confirm-dialog/
+
+      ├── skeleton/
+
+      └── empty-state/
+
+```
+
+
+
+4.2 Key Component Specifications
+
+
+
+```typescript
+
+// packages/ui/src/components/ai/confidence-indicator.tsx
+
+/**
+
+* ConfidenceIndicator — Displays AI confidence level with visual encoding.
+
+*
+
+* States:
+
+* - high (>=85%): Electric violet ring + check icon
+
+* - medium (60-84%): Amber ring + warning icon
+
+* - low (<60%): Coral ring + alert icon
+
+* - pending: Pulsing animation
+
+*
+
+* Variants:
+
+* - compact: Icon only (for tables, lists)
+
+* - full: Icon + percentage + label (for detail views)
+
+* - breakdown: Shows dimensional scores
+
+*/
+
+interface ConfidenceIndicatorProps {
+
+    score: number;
+
+    variant: 'compact' | 'full' | 'breakdown';
+
+    dimensionalScores?: DimensionalScores;
+
+    size?: 'sm' | 'md' | 'lg';
+
+}
+
+
+
+// Usage in table cell:
+
+<ConfidenceIndicator score={story.confidence} variant="compact" size="sm" />
+
+
+
+// Usage in detail view:
+
+<ConfidenceIndicator
+
+    score={story.confidence}
+
+    variant="breakdown"
+
+ dimensionalScores={story.dimensionalScores}
+
+ size="lg"
+
+/>
+
+```
+
+
+
+```typescript
+
+// packages/ui/src/components/ai/provenance-chain.tsx
+
+/**
+
+* ProvenanceChain — Visualizes the evidence and verification chain for a claim.
+
+*
+
+* Displays:
+
+* - Source → Claim → Evidence → Verification path
+
+* - Inline confidence indicators at each step
+
+* - Expandable evidence details
+
+* - Cryptographic hash verification status
+
+*
+
+* Interactive features:
+
+* - Click source to navigate to source detail
+
+* - Click evidence to view full evidence
+
+* - Hover for detailed confidence breakdown
+
+*/
+
+interface ProvenanceChainProps {
+
+ claimId: string;
+
+ chain: ProvenanceNode[];
+
+ onNavigateToSource: (sourceId: string) => void;
+
+ onViewEvidence: (evidenceId: string) => void;
+
+}
+
+```
+
+
+
+```typescript
+
+// packages/ui/src/components/editor/ai-suggestion-overlay.tsx
+
+/**
+
+* AISuggestionOverlay — Shows AI-generated suggestions inline in the editor.
+
+*
+
+* Features:
+
+* - Inline diff view (original vs AI suggestion)
+
+* - Accept/Reject buttons per suggestion
+
+* - Confidence indicator per suggestion
+
+* - Keyboard shortcuts (Cmd+Shift+A to cycle suggestions)
+
+* - Batch accept/reject
+
+*
+
+* States:
+
+* - pending: Suggestion visible, awaiting action
+
+* - accepted: Green highlight, fades after 2s
+
+* - rejected: Removed from view
+
+*/
+
+interface AISuggestionOverlayProps {
+
+    suggestions: AISuggestion[];
+
+    onAccept: (suggestionId: string) => void;
+
+    onReject: (suggestionId: string) => void;
+
+    onAcceptAll: () => void;
+
+    onRejectAll: () => void;
+
+}
+
+```
+
+
+
+4.3 Command Palette Component
+
+
+
+```typescript
+
+// apps/newsroom/components/shell/command-palette.tsx
+
+/**
+
+* CommandPalette — Global command palette (Cmd+K).
+
+*
+
+* Capabilities:
+
+* - Navigate to any page
+
+* - Search stories, sources, claims
+
+* - Execute AI commands ("Generate headline for story X")
+
+* - Quick actions (publish, archive, assign)
+
+* - Recent items
+
+*
+
+* Implementation:
+
+* - cmdk library for accessibility
+
+* - Fuse.js for fuzzy search
+
+* - Virtualized results for performance
+
+*/
+
+'use client';
+
+
+
+import { Command } from 'cmdk';
+
+import { useRouter } from 'next/navigation';
+
+export function CommandPalette() {
+
+    const router = useRouter();
+
+
+
+    return (
+
+     <Command.Dialog>
+
+         <Command.Input placeholder="Search stories, sources, or run a command..." />
+
+         <Command.List>
+
+          <Command.Group heading="Navigation">
+
+           <Command.Item onSelect={() => router.push('/discovery')}>
+
+            Discovery
+
+           </Command.Item>
+
+           {/* ... */}
+
+          </Command.Group>
+
+          <Command.Group heading="Recent Stories">
+
+           {/* Virtualized story list */}
+
+          </Command.Group>
+
+          <Command.Group heading="AI Commands">
+
+           <Command.Item onSelect={() => executeAICommand('generate-headline')}>
+
+            Generate headline for current story
+
+           </Command.Item>
+
+          </Command.Group>
+
+         </Command.List>
+
+     </Command.Dialog>
+
+    );
+
+}
+
+```
+
+
+
+---
+
+
+
+PART V — STATE MANAGEMENT
+
+
+
+5.1 State Architecture
+
+
+
+```typescript
+
+// apps/newsroom/stores/index.ts
+
+// Zustand stores organized by domain
+
+
+
+// UI State Store
+
+interface UIState {
+
+    sidebarCollapsed: boolean;
+
+    aiPanelOpen: boolean;
+
+    aiPanelWidth: number;
+
+    commandPaletteOpen: boolean;
+
+    theme: 'dark' | 'light';
+
+
+
+    toggleSidebar: () => void;
+
+    toggleAIPanel: () => void;
+
+    setCommandPaletteOpen: (open: boolean) => void;
+
+}
+
+
+
+// User Preferences Store
+
+interface UserPreferences {
+
+    defaultView: 'compact' | 'comfortable';
+
+    notifications: NotificationPreferences;
+
+    keyboardShortcuts: Record<string, string>;
+
+    pinnedStories: string[];
+
+}
+
+
+
+// Newsroom State Store
+
+interface NewsroomState {
+
+    activeStoryId: string | null;
+
+    breakingNewsCount: number;
+
+    publishingQueueCount: number;
+
+    activeAgents: AgentStatus[];
+
+
+
+    setActiveStory: (storyId: string) => void;
+
+    updateBreakingNewsCount: (count: number) => void;
+
+    updateAgentStatus: (agents: AgentStatus[]) => void;
+
+}
+
+```
+
+
+
+5.2 Server State with TanStack Query
+
+
+
+```typescript
+
+// packages/api-client/src/hooks/use-stories.ts
+
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+import { storyApi } from '../gen/story-api';
+
+// Query keys factory
+
+export const storyKeys = {
+
+    all: ['stories'] as const,
+
+    lists: () => [...storyKeys.all, 'list'] as const,
+
+    list: (filters: StoryFilters) => [...storyKeys.lists(), filters] as const,
+
+    details: () => [...storyKeys.all, 'detail'] as const,
+
+    detail: (id: string) => [...storyKeys.details(), id] as const,
+
+};
+
+
+
+// Story list with pagination and filters
+
+export function useStories(filters: StoryFilters) {
+
+    return useQuery({
+
+     queryKey: storyKeys.list(filters),
+
+     queryFn: () => storyApi.listStories(filters),
+
+     staleTime: 30_000, // 30 seconds
+
+     placeholderData: keepPreviousData,
+
+    });
+
+}
+
+
+
+// Story detail with real-time updates
+
+export function useStory(storyId: string) {
+
+    const queryClient = useQueryClient();
+
+
+
+    return useQuery({
+
+     queryKey: storyKeys.detail(storyId),
+
+     queryFn: () => storyApi.getStory(storyId),
+
+
+
+     // Subscribe to real-time updates via SSE
+
+     onSuccess: () => {
+
+          const eventSource = new EventSource(`/api/stories/${storyId}/stream`);
+
+          eventSource.onmessage = (event) => {
+
+           const update = JSON.parse(event.data);
+
+           queryClient.setQueryData(storyKeys.detail(storyId), update);
+
+          };
+
+     },
+
+    });
+
+}
+
+
+
+// Optimistic update for story approval
+
+export function useApproveStory() {
+
+    const queryClient = useQueryClient();
+
+
+
+    return useMutation({
+
+     mutationFn: (storyId: string) => storyApi.approveStory(storyId),
+
+
+
+     onMutate: async (storyId) => {
+
+          await queryClient.cancelQueries({ queryKey: storyKeys.detail(storyId) });
+
+          const previous = queryClient.getQueryData(storyKeys.detail(storyId));
+
+
+
+          // Optimistic update
+
+          queryClient.setQueryData(storyKeys.detail(storyId), (old: any) => ({
+
+           ...old,
+
+           editorialStatus: 'APPROVED',
+
+          }));
+
+
+
+          return { previous };
+
+      },
+
+
+
+      onError: (err, storyId, context) => {
+
+          // Rollback on error
+
+          queryClient.setQueryData(storyKeys.detail(storyId), context?.previous);
+
+          toast.error('Failed to approve story');
+
+      },
+
+
+
+      onSettled: (storyId) => {
+
+          queryClient.invalidateQueries({ queryKey: storyKeys.detail(storyId) });
+
+      },
+
+    });
+
+}
+
+```
+
+
+
+---
+
+
+
+PART VI — AUTHENTICATION & SECURITY
+
+
+
+6.1 Authentication Flow
+
+```typescript
+
+// packages/utils/src/auth/client.ts
+
+import { jwtDecode } from 'jwt-decode';
+
+
+
+interface TokenManager {
+
+    getAccessToken: () => string | null;
+
+    getRefreshToken: () => string | null;
+
+    setTokens: (access: string, refresh: string) => void;
+
+    clearTokens: () => void;
+
+    isAuthenticated: () => boolean;
+
+    refreshAccessToken: () => Promise<string>;
+
+}
+
+
+
+export const tokenManager: TokenManager = {
+
+    getAccessToken: () => {
+
+     if (typeof window === 'undefined') return null;
+
+     return localStorage.getItem('access_token');
+
+    },
+
+
+
+    getRefreshToken: () => {
+
+     return localStorage.getItem('refresh_token');
+
+    },
+
+
+
+    setTokens: (access: string, refresh: string) => {
+
+     localStorage.setItem('access_token', access);
+
+     localStorage.setItem('refresh_token', refresh);
+
+},
+
+
+
+clearTokens: () => {
+
+ localStorage.removeItem('access_token');
+
+ localStorage.removeItem('refresh_token');
+
+ window.location.href = '/login';
+
+},
+
+
+
+isAuthenticated: () => {
+
+ const token = tokenManager.getAccessToken();
+
+ if (!token) return false;
+
+
+
+ try {
+
+     const decoded = jwtDecode<{ exp: number }>(token);
+
+     return decoded.exp * 1000 > Date.now();
+
+ } catch {
+
+     return false;
+
+ }
+
+},
+
+
+
+refreshAccessToken: async () => {
+
+ const refresh = tokenManager.getRefreshToken();
+
+ if (!refresh) throw new Error('No refresh token');
+
+
+
+ const response = await fetch('/api/auth/refresh', {
+
+     method: 'POST',
+
+          headers: { 'Content-Type': 'application/json' },
+
+          body: JSON.stringify({ refresh_token: refresh }),
+
+      });
+
+
+
+      if (!response.ok) {
+
+          tokenManager.clearTokens();
+
+          throw new Error('Token refresh failed');
+
+      }
+
+
+
+      const { access_token, refresh_token } = await response.json();
+
+      tokenManager.setTokens(access_token, refresh_token);
+
+      return access_token;
+
+ },
+
+};
+
+```
+
+
+
+6.2 API Client with Auto-Refresh
+
+
+
+```typescript
+
+// packages/api-client/src/client.ts
+
+import { tokenManager } from '@agbofa/utils/auth';
+
+
+
+const apiClient: typeof fetch = async (input, init) => {
+
+ // Get current token
+
+ let token = tokenManager.getAccessToken();
+
+ // Add auth header
+
+ const headers = new Headers(init?.headers);
+
+ if (token) {
+
+      headers.set('Authorization', `Bearer ${token}`);
+
+ }
+
+
+
+ let response = await fetch(input, { ...init, headers });
+
+
+
+ // Auto-refresh on 401
+
+ if (response.status === 401 && token) {
+
+      try {
+
+          token = await tokenManager.refreshAccessToken();
+
+          headers.set('Authorization', `Bearer ${token}`);
+
+          response = await fetch(input, { ...init, headers });
+
+      } catch {
+
+          tokenManager.clearTokens();
+
+      }
+
+ }
+
+
+
+ return response;
+
+};
+
+```
+
+
+
+---
+
+
+
+PART VII — OFFLINE & PWA
+
+7.1 Service Worker Strategy
+
+
+
+```typescript
+
+// apps/newsroom/service-worker.ts
+
+/// <reference lib="webworker" />
+
+
+
+import { clientsClaim } from 'workbox-core';
+
+import { precacheAndRoute } from 'workbox-precaching';
+
+import { registerRoute } from 'workbox-routing';
+
+import { StaleWhileRevalidate, CacheFirst, NetworkFirst } from 'workbox-strategies';
+
+
+
+declare const self: ServiceWorkerGlobalScope;
+
+
+
+clientsClaim();
+
+
+
+// Precache app shell
+
+precacheAndRoute(self.__WB_MANIFEST);
+
+
+
+// API calls — Network first, fallback to cache
+
+registerRoute(
+
+ ({ url }) => url.pathname.startsWith('/api/'),
+
+ new NetworkFirst({
+
+  cacheName: 'api-cache',
+
+  networkTimeoutSeconds: 5,
+
+ })
+
+);
+
+
+
+// Static assets — Cache first
+
+registerRoute(
+
+ ({ request }) => request.destination === 'image' || request.destination === 'font',
+
+ new CacheFirst({ cacheName: 'static-assets' })
+
+);
+
+
+
+// Pages — Stale while revalidate
+
+registerRoute(
+
+ ({ request }) => request.mode === 'navigate',
+
+ new StaleWhileRevalidate({ cacheName: 'pages' })
+
+);
+
+
+
+// Background sync for offline actions
+
+self.addEventListener('sync', (event) => {
+
+ if (event.tag === 'sync-pending-actions') {
+
+      event.waitUntil(syncPendingActions());
+
+ }
+
+});
+
+
+
+async function syncPendingActions() {
+
+ const db = await openDB();
+
+ const pendingActions = await db.getAll('pendingActions');
+
+
+
+ for (const action of pendingActions) {
+
+        try {
+
+            await fetch(action.url, {
+
+             method: action.method,
+
+             headers: action.headers,
+
+             body: action.body,
+
+            });
+
+            await db.delete('pendingActions', action.id);
+
+        } catch (error) {
+
+            console.error('Sync failed for action:', action.id, error);
+
+        }
+
+    }
+
+}
+
+```
+
+
+
+7.2 Offline Storage with IndexedDB
+
+
+
+```typescript
+
+// packages/utils/src/offline/db.ts
+
+import { openDB, DBSchema } from 'idb';
+
+
+
+interface NewsroomDB extends DBSchema {
+
+    stories: {
+
+        key: string;
+
+        value: Story;
+
+        indexes: { 'by-status': string; 'by-updated': Date };
+
+    };
+
+    sources: {
+
+     key: string;
+
+     value: Source;
+
+    };
+
+    drafts: {
+
+     key: string;
+
+     value: ArticleDraft;
+
+     indexes: { 'by-updated': Date };
+
+    };
+
+    pendingActions: {
+
+     key: string;
+
+     value: PendingAction;
+
+     indexes: { 'by-created': Date };
+
+    };
+
+}
+
+
+
+export const db = await openDB<NewsroomDB>('agbofa-newsroom', 1, {
+
+    upgrade(db) {
+
+     // Stories store
+
+     const storyStore = db.createObjectStore('stories', { keyPath: 'storyId' });
+
+     storyStore.createIndex('by-status', 'status');
+
+     storyStore.createIndex('by-updated', 'updatedAt');
+
+
+
+     // Sources store
+
+     db.createObjectStore('sources', { keyPath: 'sourceId' });
+
+      // Drafts store
+
+      const draftStore = db.createObjectStore('drafts', { keyPath: 'draftId' });
+
+      draftStore.createIndex('by-updated', 'updatedAt');
+
+
+
+      // Offline action queue
+
+      const actionStore = db.createObjectStore('pendingActions', {
+
+       keyPath: 'id',
+
+       autoIncrement: true
+
+      });
+
+      actionStore.createIndex('by-created', 'createdAt');
+
+ },
+
+});
+
+```
+
+
+
+---
+
+
+
+PART VIII — NEWSROOM WORKSPACE
+
+
+
+8.1 Breaking News Console
+
+
+
+```typescript
+
+// apps/newsroom/app/(dashboard)/discovery/breaking/page.tsx
+
+/**
+
+* Breaking News Console — Real-time dashboard for breaking news events.
+
+*
+
+* Features:
+
+* - Live story feed with velocity indicators
+
+* - Source confirmation grid
+
+* - Quick verification panel
+
+* - One-click publish to all platforms
+
+* - Agent activity monitor
+
+* - Audio alerts for critical events
+
+*/
+
+export default function BreakingNewsPage() {
+
+ return (
+
+  <div className="flex h-full flex-col space-y-4 p-6">
+
+     {/* Header */}
+
+     <PageHeader
+
+      title="Breaking News Console"
+
+      description="Real-time monitoring and rapid response"
+
+      actions={
+
+          <>
+
+          <Button variant="outline" size="sm">
+
+           Configure Alerts
+
+          </Button>
+
+          <Button variant="accent" size="sm">
+
+           <ZapIcon className="mr-2 h-4 w-4" />
+
+           Enable Auto-Publish
+
+          </Button>
+
+          </>
+
+      }
+
+     />
+
+{/* Main Grid */}
+
+<div className="grid flex-1 grid-cols-3 gap-4">
+
+ {/* Live Story Feed */}
+
+ <Card className="col-span-2 glass">
+
+  <CardHeader>
+
+   <CardTitle>Live Story Feed</CardTitle>
+
+   <Badge variant="breaking">3 Active</Badge>
+
+  </CardHeader>
+
+  <CardContent>
+
+   <BreakingStoryList stories={breakingStories} />
+
+  </CardContent>
+
+ </Card>
+
+
+
+ {/* Source Confirmation Grid */}
+
+ <Card className="glass">
+
+  <CardHeader>
+
+   <CardTitle>Source Confirmation</CardTitle>
+
+  </CardHeader>
+
+  <CardContent>
+
+   <SourceConfirmationGrid sources={activeSources} />
+
+  </CardContent>
+
+ </Card>
+
+
+
+ {/* Verification Panel */}
+
+ <Card className="col-span-2 glass">
+
+           <CardHeader>
+
+            <CardTitle>Rapid Verification</CardTitle>
+
+           </CardHeader>
+
+           <CardContent>
+
+            <VerificationPanel story={selectedStory} />
+
+           </CardContent>
+
+          </Card>
+
+
+
+          {/* Agent Activity */}
+
+          <Card className="glass">
+
+           <CardHeader>
+
+            <CardTitle>AI Agents Active</CardTitle>
+
+           </CardHeader>
+
+           <CardContent>
+
+            <AgentActivityList agents={activeAgents} />
+
+           </CardContent>
+
+          </Card>
+
+         </div>
+
+      </div>
+
+    );
+
+}
+
+```
+
+
+
+8.2 Article Editor with AI Assistance
+
+
+
+```typescript
+
+// apps/newsroom/app/(dashboard)/create/editor/[articleId]/page.tsx
+
+/**
+
+* Article Editor — Rich text editor with AI collaboration.
+
+*
+
+* Features:
+
+* - TipTap rich text editor
+
+* - Inline AI suggestions (accept/reject)
+
+* - Fact overlay (highlights verified facts)
+
+* - Source citation panel
+
+* - Confidence indicators per paragraph
+
+* - Version history sidebar
+
+* - Real-time collaboration cursors
+
+*/
+
+export default function ArticleEditorPage({ params }: { params: { articleId: string } }) {
+
+ const { data: article, isLoading } = useStory(params.articleId);
+
+ const editor = useEditor({
+
+    extensions: [
+
+       StarterKit,
+
+       AISuggestionExtension,
+
+       FactHighlightExtension,
+
+       SourceCitationExtension,
+
+    ],
+
+    content: article?.content,
+
+ });
+
+
+
+ if (isLoading) return <EditorSkeleton />;
+
+return (
+
+ <div className="flex h-full">
+
+  {/* Editor Area */}
+
+  <div className="flex-1 overflow-y-auto p-8">
+
+   <div className="mx-auto max-w-3xl">
+
+    {/* Article Header */}
+
+    <ArticleHeader article={article} />
+
+
+
+    {/* Editor */}
+
+    <EditorContent editor={editor} className="prose prose-invert max-w-none" />
+
+   </div>
+
+  </div>
+
+
+
+  {/* Right Sidebar */}
+
+  <div className="w-80 border-l border-border-default p-4">
+
+   {/* AI Suggestions */}
+
+   <AISuggestionsPanel articleId={params.articleId} editor={editor} />
+
+
+
+   {/* Fact Check Panel */}
+
+   <FactCheckPanel articleId={params.articleId} />
+
+
+
+   {/* Version History */}
+
+   <VersionHistoryPanel articleId={params.articleId} />
+
+
+
+   {/* Confidence Scores */}
+
+          <ConfidenceBreakdownPanel articleId={params.articleId} />
+
+         </div>
+
+      </div>
+
+    );
+
+}
+
+```
+
+
+
+---
+
+
+
+PART IX — AI WORKSPACE
+
+
+
+9.1 AI Orchestrator Console
+
+
+
+```typescript
+
+// apps/newsroom/app/(dashboard)/admin/ai-orchestrator/page.tsx
+
+/**
+
+* AI Orchestrator Console — Monitor and manage all AI agents.
+
+*
+
+* Features:
+
+* - Live agent activity graph (DAG visualization)
+
+* - Agent status dashboard (CPU, memory, queue depth)
+
+* - Workflow execution monitor
+
+* - Token usage and cost dashboard
+
+* - Prompt library browser
+
+* - Agent configuration panel
+
+* - Retry/failover controls
+
+*/
+
+export default function AIOrchestratorPage() {
+
+ return (
+
+  <div className="flex h-full flex-col space-y-4 p-6">
+
+     <PageHeader
+
+      title="AI Orchestrator"
+
+      description="Monitor and manage AI agents and workflows"
+
+     />
+
+
+
+     <div className="grid flex-1 grid-cols-4 gap-4">
+
+      {/* Agent Status Grid */}
+
+      <Card className="col-span-2 glass">
+
+          <CardHeader>
+
+          <CardTitle>Active Agents</CardTitle>
+
+          </CardHeader>
+
+          <CardContent>
+
+          <AgentGrid agents={agents} />
+
+          </CardContent>
+
+      </Card>
+
+
+
+      {/* Workflow DAG */}
+
+      <Card className="col-span-2 glass">
+
+          <CardHeader>
+
+          <CardTitle>Live Workflow Graph</CardTitle>
+
+          </CardHeader>
+
+          <CardContent>
+
+  <WorkflowDAGVisualization workflow={currentWorkflow} />
+
+ </CardContent>
+
+</Card>
+
+
+
+{/* Token Usage */}
+
+<Card className="glass">
+
+ <CardHeader>
+
+  <CardTitle>Token Usage (24h)</CardTitle>
+
+ </CardHeader>
+
+ <CardContent>
+
+  <TokenUsageChart />
+
+ </CardContent>
+
+</Card>
+
+
+
+{/* Cost Dashboard */}
+
+<Card className="glass">
+
+ <CardHeader>
+
+  <CardTitle>Cost Dashboard</CardTitle>
+
+ </CardHeader>
+
+ <CardContent>
+
+  <CostBreakdown />
+
+ </CardContent>
+
+</Card>
+
+
+
+{/* Agent Logs */}
+
+<Card className="col-span-2 glass">
+
+           <CardHeader>
+
+            <CardTitle>Agent Activity Log</CardTitle>
+
+           </CardHeader>
+
+           <CardContent>
+
+            <AgentLogStream />
+
+           </CardContent>
+
+          </Card>
+
+         </div>
+
+      </div>
+
+    );
+
+}
+
+```
+
+
+
+---
+
+
+
+PART X — FRONTEND PERFORMANCE
+
+
+
+10.1 Performance Strategy
+
+
+
+```typescript
+
+// next.config.ts
+
+import type { NextConfig } from 'next';
+
+
+
+const nextConfig: NextConfig = {
+
+    // React strict mode
+
+    reactStrictMode: true,
+
+// Image optimization
+
+images: {
+
+ formats: ['image/avif', 'image/webp'],
+
+ deviceSizes: [640, 750, 828, 1080, 1200, 1920],
+
+ imageSizes: [16, 32, 48, 64, 96, 128, 256],
+
+},
+
+
+
+// Bundle optimization
+
+experimental: {
+
+ optimizePackageImports: [
+
+     '@agbofa/ui',
+
+     'lucide-react',
+
+     '@tanstack/react-query',
+
+     'recharts',
+
+ ],
+
+ turbo: {
+
+     rules: {
+
+      '*.svg': {
+
+          loaders: ['@svgr/webpack'],
+
+      },
+
+     },
+
+ },
+
+},
+
+
+
+// Headers for security and caching
+
+async headers() {
+
+ return [
+
+     {
+
+         source: '/:path*',
+
+         headers: [
+
+          { key: 'X-DNS-Prefetch-Control', value: 'on' },
+
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+
+          { key: 'X-Frame-Options', value: 'DENY' },
+
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+
+         ],
+
+     },
+
+     {
+
+         source: '/_next/static/:path*',
+
+         headers: [
+
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+
+         ],
+
+     },
+
+ ];
+
+},
+
+
+
+// Webpack optimization
+
+webpack: (config, { isServer }) => {
+
+ // Optimize bundle splitting
+
+ config.optimization.splitChunks = {
+
+     chunks: 'all',
+
+       maxInitialRequests: 25,
+
+       minSize: 20000,
+
+       cacheGroups: {
+
+           vendor: {
+
+            test: /[\\/]node_modules[\\/]/,
+
+            name(module: any) {
+
+                const packageName = module.context.match(
+
+                 /[\\/]node_modules[\\/](.*?)([\\/]|$)/
+
+                )[1];
+
+                return `vendor.${packageName.replace('@', '')}`;
+
+            },
+
+           },
+
+       },
+
+      };
+
+
+
+      return config;
+
+ },
+
+};
+
+
+
+export default nextConfig;
+
+```
+
+
+
+10.2 Web Vitals Monitoring
+
+
+
+```typescript
+
+// apps/newsroom/lib/analytics.ts
+
+import { onCLS, onFCP, onLCP, onTTFB, onINP } from 'web-vitals';
+
+
+
+export function reportWebVitals(metric: any) {
+
+    // Send to analytics
+
+    if (process.env.NEXT_PUBLIC_ANALYTICS_ENDPOINT) {
+
+        fetch(process.env.NEXT_PUBLIC_ANALYTICS_ENDPOINT, {
+
+         method: 'POST',
+
+         headers: { 'Content-Type': 'application/json' },
+
+         body: JSON.stringify({
+
+              name: metric.name,
+
+              value: metric.value,
+
+              rating: metric.rating,
+
+              delta: metric.delta,
+
+              id: metric.id,
+
+              page: window.location.pathname,
+
+              timestamp: Date.now(),
+
+         }),
+
+        });
+
+    }
+
+}
+
+
+
+// Register in layout
+
+export function WebVitals() {
+
+    React.useEffect(() => {
+
+        onCLS(reportWebVitals);
+
+        onFCP(reportWebVitals);
+
+      onLCP(reportWebVitals);
+
+      onTTFB(reportWebVitals);
+
+      onINP(reportWebVitals);
+
+    }, []);
+
+
+
+    return null;
+
+}
+
+```
+
+
+
+---
+
+
+
+PART XI — ACCESSIBILITY
+
+
+
+11.1 Accessibility Standards
+
+
+
+```yaml
+
+accessibility_standards:
+
+    target: WCAG 2.2 Level AA
+
+
+
+    keyboard_navigation:
+
+      - All interactive elements focusable
+
+      - Logical tab order
+
+      - Visible focus indicators (2px solid accent-primary ring)
+
+      - Skip-to-content link
+
+      - Keyboard shortcuts documented (Cmd+K for command palette)
+
+ screen_readers:
+
+      - All images have alt text
+
+      - ARIA labels on interactive elements
+
+      - Live regions for dynamic content updates
+
+      - Status messages for async operations
+
+      - Semantic HTML structure
+
+
+
+ color_contrast:
+
+      - Text: 4.5:1 minimum (7:1 for small text)
+
+      - UI components: 3:1 minimum
+
+      - Focus indicators: 3:1 minimum
+
+      - Charts: Patterns + colors for differentiation
+
+
+
+ motion:
+
+      - Respect prefers-reduced-motion
+
+      - Animations disabled when requested
+
+      - No auto-playing video/audio
+
+      - Scroll behavior respects user settings
+
+
+
+ responsive:
+
+      - Touch targets: 44x44px minimum
+
+      - Pinch-to-zoom supported
+
+      - Content readable at 200% zoom
+
+      - Horizontal scroll prevented at 320px width
+
+```
+
+---
+
+
+
+PART XII — FRONTEND SECURITY
+
+
+
+12.1 Security Headers & CSP
+
+
+
+```typescript
+
+// middleware.ts — Content Security Policy
+
+const cspHeader = `
+
+    default-src 'self';
+
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.agbofa.com;
+
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+
+    img-src 'self' https: data: blob:;
+
+    font-src 'self' https://fonts.gstatic.com;
+
+    connect-src 'self' https://api.agbofa.com wss://ws.agbofa.com;
+
+    frame-src 'none';
+
+    object-src 'none';
+
+    base-uri 'self';
+
+    form-action 'self';
+
+    frame-ancestors 'none';
+
+    upgrade-insecure-requests;
+
+`
+
+    .replace(/\s{2,}/g, ' ')
+
+    .trim();
+
+
+
+export function middleware(request: NextRequest) {
+
+    const response = NextResponse.next();
+
+    response.headers.set('Content-Security-Policy', cspHeader);
+
+    response.headers.set('X-Content-Type-Options', 'nosniff');
+
+    response.headers.set('X-Frame-Options', 'DENY');
+
+    response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+
+    return response;
+
+}
+
+```
+
+
+
+---
+
+
+
+PART XIII — TESTING
+
+
+
+13.1 Testing Architecture
+
+
+
+```yaml
+
+testing_strategy:
+
+    unit_tests:
+
+      tool: Vitest
+
+      coverage_target: ">85%"
+
+      scope:
+
+       - Component rendering
+
+       - Hook behavior
+
+       - Utility functions
+
+       - State management logic
+
+component_tests:
+
+ tool: Playwright Component Testing
+
+ scope:
+
+  - User interactions
+
+  - Keyboard navigation
+
+  - Accessibility
+
+  - Visual states
+
+
+
+integration_tests:
+
+ tool: Playwright
+
+ scope:
+
+  - Page navigation flows
+
+  - Form submissions
+
+  - API integration
+
+  - Real-time updates
+
+
+
+e2e_tests:
+
+ tool: Playwright
+
+ scope:
+
+  - Complete newsroom workflows
+
+  - Breaking news pipeline
+
+  - Editorial approval flow
+
+  - Correction workflow
+
+
+
+visual_regression:
+
+ tool: Chromatic / Percy
+
+      scope:
+
+       - Component visual states
+
+       - Responsive breakpoints
+
+       - Dark/light themes
+
+
+
+ accessibility_tests:
+
+      tool: axe-core + Playwright
+
+      scope:
+
+       - WCAG 2.2 AA compliance
+
+       - Keyboard navigation
+
+       - Screen reader compatibility
+
+```
+
+
+
+13.2 Example Test
+
+
+
+```typescript
+
+// apps/newsroom/__tests__/e2e/breaking-news-workflow.spec.ts
+
+import { test, expect } from '@playwright/test';
+
+
+
+test.describe('Breaking News Workflow', () => {
+
+ test('complete breaking news pipeline', async ({ page }) => {
+
+      // Login
+
+      await page.goto('/login');
+
+      await page.fill('[name="email"]', 'editor@agbofa.com');
+
+      await page.fill('[name="password"]', 'test-password');
+
+      await page.click('button[type="submit"]');
+
+  await expect(page).toHaveURL('/dashboard');
+
+
+
+  // Navigate to Discovery
+
+  await page.click('[data-testid="nav-discovery"]');
+
+  await expect(page).toHaveURL('/discovery');
+
+
+
+  // Ingest breaking news
+
+  await page.click('[data-testid="ingest-breaking"]');
+
+  await page.fill('[data-testid="source-url"]', 'https://reuters.com/breaking/123');
+
+  await page.click('[data-testid="submit-ingest"]');
+
+
+
+  // Wait for story detection
+
+  await expect(page.locator('[data-testid="story-detected"]')).toBeVisible({ timeout: 30000 });
+
+
+
+  // Verify story
+
+  await page.click('[data-testid="verify-story"]');
+
+  await expect(page.locator('[data-testid="verification-complete"]')).toBeVisible({ timeout:
+60000 });
+
+
+
+  // Generate content
+
+  await page.click('[data-testid="generate-content"]');
+
+  await expect(page.locator('[data-testid="content-generated"]')).toBeVisible({ timeout:
+120000 });
+
+
+
+  // Review and approve
+
+  await page.click('[data-testid="review-article"]');
+
+  await expect(page.locator('[data-testid="article-editor"]')).toBeVisible();
+
+      await page.click('[data-testid="approve-article"]');
+
+
+
+      // Verify publication
+
+  await expect(page.locator('[data-testid="publication-complete"]')).toBeVisible({ timeout:
+60000 });
+
+
+
+      // Check status bar
+
+      await expect(page.locator('[data-testid="breaking-count"]')).toContainText('1');
+
+ });
+
+});
+
+```
+
+
+
+---
+
+
+
+PART XIV — FRONTEND OBSERVABILITY
+
+
+
+14.1 Error Boundary & Monitoring
+
+
+
+```typescript
+
+// apps/newsroom/components/error-boundary.tsx
+
+'use client';
+
+
+
+import * as Sentry from '@sentry/nextjs';
+
+
+
+interface ErrorBoundaryProps {
+
+ children: React.ReactNode;
+
+    fallback?: React.ReactNode;
+
+    section?: string;
+
+}
+
+
+
+export function ErrorBoundary({ children, fallback, section }: ErrorBoundaryProps) {
+
+    return (
+
+      <Sentry.ErrorBoundary
+
+         fallback={({ error, resetError }) => (
+
+          fallback || (
+
+              <div className="flex flex-col items-center justify-center p-8 glass rounded-lg">
+
+               <AlertTriangleIcon className="h-12 w-12 text-accent-error mb-4" />
+
+               <h2 className="text-xl font-semibold mb-2">Something went wrong</h2>
+
+               <p className="text-text-secondary mb-4">
+
+                {section ? `Error in ${section}` : 'An unexpected error occurred'}
+
+               </p>
+
+               <Button onClick={resetError}>Try Again</Button>
+
+              </div>
+
+          )
+
+         )}
+
+      >
+
+         {children}
+
+      </Sentry.ErrorBoundary>
+
+    );
+
+}
+
+```
+
+---
+
+
+
+PART XV — ENTERPRISE REFERENCE
+
+
+
+15.1 Complete Route Catalogue
+
+
+
+```yaml
+
+routes:
+
+ authentication:
+
+  - /login
+
+  - /mfa
+
+  - /forgot-password
+
+  - /reset-password
+
+
+
+ dashboard:
+
+  - /dashboard                      # Main dashboard
+
+
+
+ discovery:
+
+  - /discovery                     # Discovery overview
+
+  - /discovery/sources                # Source management
+
+  - /discovery/sources/[sourceId]          # Source detail
+
+  - /discovery/stories               # Story queue
+
+  - /discovery/stories/[storyId]         # Story detail
+
+  - /discovery/breaking                # Breaking news console
+
+
+
+ verify:
+
+ - /verify                      # Verification overview
+
+ - /verify/claims                  # Claims management
+
+ - /verify/claims/[claimId]            # Claim detail
+
+ - /verify/evidence                 # Evidence management
+
+ - /verify/evidence/[evidenceId]           # Evidence detail
+
+
+
+create:
+
+ - /create                      # Factory overview
+
+ - /create/editor/[articleId]          # Article editor
+
+ - /create/headlines                 # Headline management
+
+ - /create/media                    # Media library
+
+
+
+publish:
+
+ - /publish                      # Distribution overview
+
+ - /publish/schedule                 # Publishing calendar
+
+ - /publish/platforms                 # Platform management
+
+
+
+analyze:
+
+ - /analyze                      # Analytics overview
+
+ - /analyze/audience                  # Audience insights
+
+ - /analyze/revenue                  # Revenue analytics
+
+
+
+admin:
+
+ - /admin                        # Administration
+
+ - /admin/team                      # Team management
+
+ - /admin/settings                  # Platform settings
+
+      - /admin/billing                   # Billing management
+
+      - /admin/ai-orchestrator                # AI orchestration
+
+```
+
+
+
+15.2 Implementation Checklist
+
+
+
+```yaml
+
+implementation_checklist:
+
+ phase_1_foundation:
+
+      - [ ] Monorepo setup with Turborepo
+
+      - [ ] Design system package with tokens
+
+      - [ ] Core component library (primitives)
+
+      - [ ] API client generation from protobuf
+
+      - [ ] Authentication flow (login, MFA, refresh)
+
+      - [ ] Application shell (sidebar, topbar, status bar)
+
+      - [ ] Command palette
+
+      - [ ] Dark theme implementation
+
+
+
+ phase_2_newsroom:
+
+      - [ ] Dashboard page
+
+      - [ ] Discovery workspace
+
+      - [ ] Story detail page
+
+      - [ ] Breaking news console
+
+      - [ ] Source management
+
+      - [ ] Global search
+
+phase_3_verification:
+
+ - [ ] Truth Engine workspace
+
+ - [ ] Claims management
+
+ - [ ] Evidence viewer
+
+ - [ ] Confidence indicator components
+
+ - [ ] Provenance chain visualization
+
+
+
+phase_4_content:
+
+ - [ ] Article editor with TipTap
+
+ - [ ] AI suggestion overlay
+
+ - [ ] Fact highlight extension
+
+ - [ ] Headline management
+
+ - [ ] Media library
+
+ - [ ] Content factory overview
+
+
+
+phase_5_distribution:
+
+ - [ ] Publishing dashboard
+
+ - [ ] Scheduling calendar
+
+ - [ ] Platform management
+
+ - [ ] Publication status tracking
+
+
+
+phase_6_analytics:
+
+ - [ ] Analytics dashboard
+
+ - [ ] Audience insights
+
+ - [ ] Revenue analytics
+
+ - [ ] AI performance dashboard
+
+      - [ ] Token usage monitoring
+
+
+
+ phase_7_admin:
+
+      - [ ] Team management
+
+      - [ ] Platform settings
+
+      - [ ] Billing management
+
+      - [ ] AI orchestrator console
+
+
+
+ phase_8_quality:
+
+      - [ ] Accessibility audit (WCAG 2.2 AA)
+
+      - [ ] Performance audit (Web Vitals)
+
+      - [ ] Visual regression tests
+
+      - [ ] E2E test suite complete
+
+      - [ ] PWA implementation
+
+      - [ ] Offline support
+
+```
+
+
+
+---
+
+
+
+EXECUTIVE SUMMARY
+
+
+
+Volumes 33–34 deliver the complete, production-ready specification for the Agbofa Nexus AI
+frontend — an AI newsroom operating system built with Next.js 15, React 19, TypeScript, and
+Tailwind CSS. The specification provides every component, route, state management pattern,
+security control, and performance optimization needed to build a world-class enterprise
+application.
+
+Key Deliverables:
+
+
+
+· Design System: Glassmorphism aesthetic with comprehensive design tokens (colors,
+typography, spacing, shadows)
+
+· Component Library: 100+ components organized into primitives, composites, AI-specific, data
+display, editor, and feedback categories
+
+· Application Architecture: Next.js App Router with route groups, nested layouts, middleware,
+and Turborepo monorepo
+
+· State Management: Zustand for client state, TanStack Query for server state with optimistic
+updates and real-time sync
+
+· Rich Text Editor: TipTap with custom AI collaboration extensions (suggestions, fact overlays,
+source citations)
+
+· Offline Support: Service workers, IndexedDB storage, background sync for offline newsroom
+operation
+
+· Accessibility: WCAG 2.2 AA compliance with keyboard navigation, screen reader support, and
+motion preferences
+
+· Performance: Code splitting, streaming SSR, image optimization, Web Vitals monitoring
+
+· Security: CSP headers, JWT auto-refresh, CSRF protection, secure storage
+
+· Testing: Vitest, Playwright, and visual regression with complete E2E workflow tests
+
+
+
+The Agbofa Nexus AI frontend is fully specified and ready for implementation.
+
+
+
+---
+
+
+
+END OF VOLUMES 33–34
+
+
+
+Date: 2026-08-07
+
+Version: 1.0.0 — Implementation-Ready
+
+Next Phase: Code Generation & Production Implementation
+

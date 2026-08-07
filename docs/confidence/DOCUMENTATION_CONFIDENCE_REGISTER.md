@@ -25,23 +25,23 @@
 | V18 | High | Derived text high; OCR JSON not supplied | High | Approved for indexing only | No | Batch 2 locked; architecture reconciliation deferred |
 | V19 | High | Derived text high; OCR JSON not supplied | High | Approved for indexing only | No | Batch 2 locked; architecture reconciliation deferred |
 | V20 | High | Derived text high; OCR JSON not supplied | High | Approved for indexing only | No | Batch 2 locked; architecture reconciliation deferred |
-| V21 | High | Derived text high; OCR JSON not supplied | High | Review complete — awaiting approval | No | Batch 3 recommendations produced; implementation deferred |
-| V22 | High | Derived text high; OCR JSON not supplied | High | Review complete — awaiting approval | No | Batch 3 recommendations produced; implementation deferred |
-| V23 | High | Derived text high; OCR JSON not supplied | High | Review complete — awaiting approval | No | Batch 3 recommendations produced; implementation deferred |
-| V24 | High | Derived text high; OCR JSON not supplied | High | Review complete — awaiting approval | No | Batch 3 recommendations produced; implementation deferred |
-| V25 | High | Derived text high; OCR JSON not supplied | Medium | Review complete — awaiting approval | No | Main + supplement; publication handling pending |
-| V26 | High | Derived text high; OCR JSON not supplied | High | Review complete — awaiting approval | No | Batch 3 recommendations produced; implementation deferred |
-| V27 | High | Derived text high; OCR JSON not supplied | High | Review complete — awaiting approval | No | Batch 3 recommendations produced; implementation deferred |
-| V28 | High | Derived text high; OCR JSON not supplied | High | Review complete — awaiting approval | No | Batch 3 recommendations produced; implementation deferred |
-| V29 | High | Derived text high; OCR JSON not supplied | High | Review complete — awaiting approval | No | Batch 3 recommendations produced; implementation deferred |
-| V30 | High | Derived text high; OCR JSON not supplied | High | Review complete — awaiting approval | No | Batch 3 recommendations produced; implementation deferred |
-| V31 | Pending | Pending | Pending | Pending review | No | Awaiting Batch 4 review |
-| V32 | Pending | Pending | Pending | Pending review | No | Awaiting Batch 4 review |
-| V33 | Pending | Pending | Pending | Pending review | No | Awaiting Batch 4 review |
-| V34 | Pending | Pending | Pending | Pending review | No | Awaiting Batch 4 review |
-| V35 | Pending | Pending | Pending | Pending review | No | Awaiting Batch 4 review |
-| V36 | Pending | Pending | Pending | Pending review | No | Awaiting Batch 4 review |
-| V37 | Pending | Pending | Pending | Pending review | No | Awaiting Batch 4 review |
-| Phase 5 Doc 1 | Medium | Derived text medium; OCR JSON not supplied | Medium | Pending Batch 4/Phase 5 review | No | Detected in uploaded text |
+| V21 | High | Derived text high; OCR JSON not supplied | High | Approved for indexing only | No | Batch 3 locked; implementation deferred |
+| V22 | High | Derived text high; OCR JSON not supplied | High | Approved for indexing only | No | Batch 3 locked; implementation deferred |
+| V23 | High | Derived text high; OCR JSON not supplied | High | Approved for indexing only | No | Batch 3 locked; implementation deferred |
+| V24 | High | Derived text high; OCR JSON not supplied | High | Approved for indexing only | No | Batch 3 locked; implementation deferred |
+| V25 | High | Derived text high; OCR JSON not supplied | Medium | Approved for indexing only | No | Main + supplement; publication handling pending |
+| V26 | High | Derived text high; OCR JSON not supplied | High | Approved for indexing only | No | Batch 3 locked; implementation deferred |
+| V27 | High | Derived text high; OCR JSON not supplied | High | Approved for indexing only | No | Batch 3 locked; implementation deferred |
+| V28 | High | Derived text high; OCR JSON not supplied | High | Approved for indexing only | No | Batch 3 locked; implementation deferred |
+| V29 | High | Derived text high; OCR JSON not supplied | High | Approved for indexing only | No | Batch 3 locked; implementation deferred |
+| V30 | High | Derived text high; OCR JSON not supplied | High | Approved for indexing only | No | Batch 3 locked; implementation deferred |
+| V31 | High | Derived text high; OCR JSON not supplied | Medium | Review complete — awaiting approval | No | Batch 4 recommendations produced; implementation deferred |
+| V32 | High | Derived text high; OCR JSON not supplied | Medium | Review complete — awaiting approval | No | Batch 4 recommendations produced; implementation deferred |
+| V33 | High | Derived text high; OCR JSON not supplied | Medium | Review complete — awaiting approval | No | Batch 4 recommendations produced; implementation deferred |
+| V34 | High | Derived text high; OCR JSON not supplied | Medium | Review complete — awaiting approval | No | Batch 4 recommendations produced; implementation deferred |
+| V35 | High | Derived text high; OCR JSON not supplied | Medium | Review complete — awaiting approval | No | Batch 4 recommendations produced; implementation deferred |
+| V36 | High | Derived text high; OCR JSON not supplied | Medium | Review complete — awaiting approval | No | Batch 4 recommendations produced; implementation deferred |
+| V37 | High | Derived text high; OCR JSON not supplied | Medium | Review complete — awaiting approval | No | Batch 4 recommendations produced; implementation deferred |
+| Phase 5 Doc 1 | Medium | Derived text medium; OCR JSON not supplied | Medium | Review complete — awaiting approval | No | Detected and reviewed; implementation deferred |
 | Phase 5 Doc 2 | Low | Unknown | Low | Source verification pending | No | Referenced but standalone content not clearly detected |
-| Phase 5 Doc 3 | Medium | Derived text medium; OCR JSON not supplied | Medium | Pending Batch 4/Phase 5 review | No | Detected in uploaded text |
+| Phase 5 Doc 3 | Medium | Derived text medium; OCR JSON not supplied | Medium | Review complete — awaiting approval | No | Detected and reviewed; implementation deferred |
