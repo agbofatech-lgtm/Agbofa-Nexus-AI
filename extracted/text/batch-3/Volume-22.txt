@@ -1,0 +1,4077 @@
+VOLUME 22: REPOSITORY FOUNDATION, MONOREPO ARCHITECTURE & PROJECT SCAFFOLDING
+
+
+
+Document Reference: AGBA-NEXUS-VOL22-CODE-1.0
+
+Status: Code Generation Ready
+
+Phase: 3 — AI-Assisted Code Generation & Platform Implementation
+
+Approved Baseline: Volumes 1–21 (Immutable)
+
+Purpose: Enterprise Repository Foundation
+
+Quality Level: US$50M Enterprise Platform Standard
+
+
+
+---
+
+
+
+REPOSITORY DECISION RECORDS (RDR)
+
+
+
+RDR-001: Monorepo with Domain-Based Structure
+
+
+
+Decision: Single monorepo containing all services, shared libraries, infrastructure, AI modules,
+and documentation. Domains organized by bounded context from Volumes 11-19.
+
+Why: 60+ microservices require extensive code sharing. Monorepo enables atomic refactoring,
+consistent versioning, simplified dependency management, and unified CI/CD. Domain-based
+structure maps directly to architecture.
+
+Alternatives: Polyrepo (rejected — coordination overhead for 60+ repos); Hybrid with separate
+library repos (rejected — versioning hell with rapid AI development).
+
+Trade-offs: Larger clone size (mitigated by sparse checkout), but significant gains in developer
+velocity and consistency.
+
+
+
+RDR-002: Go Workspaces + Python Monorepo Tools
+
+
+
+Decision: Go workspaces (go.work) for Go services, Pants build system for Python monorepo
+management, pnpm workspaces for frontend/Node.js packages.
+
+Why: Each language ecosystem has different monorepo tooling maturity. Go workspaces are
+native and stable. Pants provides Python monorepo support at scale. pnpm is the standard for
+Node.js monorepos.
+
+Alternatives: Bazel (rejected — too complex for initial phases, may adopt later); Nx (rejected —
+JavaScript-centric, Go/Python support limited).
+
+Trade-offs: Three build tools instead of one, but each is best-in-class for its ecosystem.
+
+
+
+RDR-003: Contract-First with Centralized API Definitions
+
+
+
+Decision: All API definitions (Protobuf, OpenAPI, JSON Schema, AsyncAPI) live in /api/ at
+repository root. Code generation produces language-specific clients. Breaking changes detected
+in CI.
+
+Why: APIs are the contracts between services. Centralized definitions ensure consistency,
+enable parallel development, and provide single source of truth for code generation.
+
+Alternatives: API definitions in each service (rejected — scattered, inconsistent, hard to
+discover).
+
+Trade-offs: Requires discipline to update central definitions first, but eliminates integration
+surprises.
+
+
+
+RDR-004: Template-Based Service Scaffolding
+
+
+
+Decision: Every service created from standardized templates using cookiecutter (Python) and
+custom Go templates. Templates enforce Clean Architecture, observability, and security
+patterns.
+
+Why: 60+ services must be consistent. Templates eliminate boilerplate decisions and ensure
+every service follows standards from Volume 21.
+
+Alternatives: Manual service creation (rejected — inconsistent, error-prone at scale).
+
+Trade-offs: Template maintenance overhead, but essential for consistency across 60+ services.
+
+---
+
+
+
+PART I — REPOSITORY VISION
+
+
+
+1.1 Repository Philosophy
+
+
+
+```
+
+AGBOFA NEXUS AI — REPOSITORY PHILOSOPHY:
+
+
+
+┌─────────────────────────────────────────────────────────────────────────────
+┐
+
+│                CORE REPOSITORY TENETS                       │
+
+├
+─────────────────────────────────────────────────────────────────────────────
+┤
+
+│                                              │
+
+│ 1. SINGLE SOURCE OF TRUTH                                       │
+
+│     Everything needed to build, test, deploy, and operate the platform lives │
+
+│     in this repository. No external documentation, no tribal knowledge.         │
+
+│                                              │
+
+│ 2. SELF-SERVICE DEVELOPER EXPERIENCE                                │
+
+│     New engineers are productive in <30 minutes. `make dev-up` starts the           │
+
+│     entire platform locally. Every service has a README.                │
+
+│                                              │
+
+│ 3. CONSISTENCY THROUGH AUTOMATION                                           │
+
+│     Linting, formatting, testing, and security scanning are automated and       │
+
+│     enforced. Manual style discussions are eliminated.              │
+
+│                                                │
+
+│ 4. CONTRACTS DRIVE DEVELOPMENT                                       │
+
+│     APIs are defined before implementation. Code is generated from contracts. │
+
+│     Breaking changes are caught in CI, not in production.                │
+
+│                                                │
+
+│ 5. AI-FIRST CODE GENERATION                                    │
+
+│     The repository is structured for AI coding agents. Clear conventions,        │
+
+│     comprehensive templates, and explicit rules enable high-quality AI output. │
+
+│                                                │
+
+│ 6. PROGRESSIVE DISCLOSURE                                      │
+
+│     Top-level structure is simple. Complexity is revealed as you descend.            │
+
+│     New contributors understand the big picture before the details.          │
+
+│                                                │
+
+│ 7. INFRASTRUCTURE AS CODE                                       │
+
+│     Every infrastructure resource is defined in Terraform. Every deployment │
+
+│     is defined in Kubernetes manifests. Nothing is created manually.             │
+
+│                                                │
+
+│ 8. OBSERVABILITY BY DEFAULT                                    │
+
+│     Every service template includes metrics, tracing, and logging. It is     │
+
+│     harder to create an unobservable service than an observable one.                 │
+
+│                                                │
+
+└─────────────────────────────────────────────────────────────────────────────
+┘
+
+```
+
+
+
+1.2 Monorepo Strategy
+
+```yaml
+
+monorepo_strategy:
+
+ organization: Domain-based with shared infrastructure
+
+
+
+ boundaries:
+
+  api/: API contracts (single source of truth)
+
+  services/: Business logic services (by bounded context)
+
+  libs/: Shared libraries (cross-cutting concerns)
+
+  ai/: AI models, prompts, datasets
+
+  infrastructure/: IaC, Kubernetes, Terraform
+
+  docs/: Documentation, ADRs
+
+  tests/: E2E, integration, performance tests
+
+  tools/: Developer tooling, scripts
+
+
+
+ dependency_flow:
+
+  direction: |
+
+   services/ ──depends on──         libs/
+
+   services/ ──depends on──         api/ (generated code)
+
+   ai/ ──depends on──       libs/
+
+   infrastructure/ ──independent── (references service images)
+
+   tests/ ──depends on──       services/ (integration tests)
+
+
+
+  rule: |
+
+   Services CAN depend on shared libraries
+
+   Services CANNOT depend on other services
+
+       Services communicate ONLY via APIs and events
+
+       Libraries CANNOT depend on services
+
+
+
+ ownership:
+
+      model: CODEOWNERS per domain directory
+
+      example: |
+
+       /services/truth-engine/ @agbofa/truth-engine-team
+
+       /services/content-factory/ @agbofa/content-factory-team
+
+       /libs/go/          @agbofa/platform-team
+
+       /infrastructure/     @agbofa/platform-team
+
+```
+
+
+
+1.3 Development Principles
+
+
+
+```yaml
+
+development_principles:
+
+ onboarding:
+
+      time_to_productivity: <30 minutes
+
+      single_command_startup: "make dev-up"
+
+      comprehensive_readme: Every directory
+
+
+
+ consistency:
+
+      automated_enforcement: Linting, formatting, testing in CI
+
+      template_based_creation: All new services from templates
+
+      naming_conventions: Strict, documented, enforced
+
+ quality:
+
+      test_coverage_minimum: 80%
+
+      linting_zero_warnings: Required for merge
+
+      security_scan_clean: No CRITICAL/HIGH vulnerabilities
+
+
+
+ velocity:
+
+      fast_builds: Incremental builds, caching
+
+      parallel_execution: Independent services build in parallel
+
+      local_first: Everything runs locally
+
+
+
+ ai_compatibility:
+
+      structured_directories: Predictable locations
+
+      explicit_conventions: Documented in .cursorrules
+
+      comprehensive_templates: AI agents use templates
+
+      contract_definitions: Machine-readable API specs
+
+```
+
+
+
+---
+
+
+
+PART II — COMPLETE MONOREPO STRUCTURE
+
+
+
+2.1 Full Directory Tree
+
+
+
+```
+
+agbofa-nexus-ai/                       # Repository Root
+
+│
+
+├── .github/                   # GitHub Configuration
+
+│ ├── workflows/                  # CI/CD Pipeline Definitions
+
+│ │ ├── ci-pull-request.yml          # PR: lint, test, security scan
+
+│ │ ├── ci-merge-main.yml             # Merge: build, test, deploy-staging
+
+│ │ ├── cd-staging.yml             # Continuous Deployment to Staging
+
+│ │ ├── cd-production.yml             # Continuous Deployment to Production
+
+│ │ ├── security-scan-scheduled.yml        # Scheduled Security Scanning
+
+│ │ ├── dependency-update.yml             # Automated Dependency Updates
+
+│ │ └── release.yml              # Release Pipeline
+
+│ ├── ISSUE_TEMPLATE/                 # Issue Templates
+
+│ │ ├── bug_report.md
+
+│ │ ├── feature_request.md
+
+│ │ └── ai_generation_task.md          # AI Coding Agent Task Template
+
+│ ├── CODEOWNERS                      # Required Reviewers per Domain
+
+│ ├── PULL_REQUEST_TEMPLATE.md                # Standard PR Template
+
+│ ├── dependabot.yml                 # Dependency Update Configuration
+
+│ └── labels.yml               # Issue/PR Label Definitions
+
+│
+
+├── api/                      # API Contracts (Single Source of Truth)
+
+│ ├── protobuf/                  # gRPC Service Definitions
+
+│ │ ├── buf.yaml                 # Buf Configuration
+
+│ │ ├── buf.gen.yaml               # Code Generation Configuration
+
+│ │ ├── buf.lock                # Dependency Lock
+
+│ │ ├── common/                    # Shared Proto Types
+
+│ │ │ └── v1/
+
+│ │ │    ├── common.proto             # Common messages (Pagination, IDs)
+
+│ │ │    ├── error.proto           # Error types
+
+│ │ │    └── tenant.proto          # Tenant context
+
+│ │ ├── foundation/                # Volume 11: Foundation
+
+│ │ │ └── v1/
+
+│ │ │    ├── tenant_identity.proto
+
+│ │ │    └── configuration.proto
+
+│ │ ├── content_origination/           # Volume 12: Content Origination
+
+│ │ │ └── v1/
+
+│ │ │    ├── ingestion.proto
+
+│ │ │    ├── story_detection.proto
+
+│ │ │    └── source_management.proto
+
+│ │ ├── truth_engine/               # Volume 13: Truth Engine
+
+│ │ │ └── v1/
+
+│ │ │    ├── verification.proto
+
+│ │ │    ├── source_trust.proto
+
+│ │ │    ├── cross_validation.proto
+
+│ │ │    ├── confidence.proto
+
+│ │ │    └── misinformation.proto
+
+│ │ ├── content_factory/             # Volume 14/15: Content Factory
+
+│ │ │ └── v1/
+
+│ │ │    ├── article_generation.proto
+
+│ │ │    ├── headline_generation.proto
+
+│ │ │    ├── multimedia_generation.proto
+
+│ │ │    ├── platform_adaptation.proto
+
+│ │ │     ├── seo_generation.proto
+
+│ │ │     └── translation.proto
+
+│ │ ├── compliance/                  # Volume 16: Compliance
+
+│ │ │ └── v1/
+
+│ │ │     ├── rights_management.proto
+
+│ │ │     ├── plagiarism_detection.proto
+
+│ │ │     ├── legal_review.proto
+
+│ │ │     ├── privacy_protection.proto
+
+│ │ │     └── ai_safety.proto
+
+│ │ ├── distribution/               # Volume 17: Distribution
+
+│ │ │ └── v1/
+
+│ │ │     ├── orchestrator.proto
+
+│ │ │     ├── scheduler.proto
+
+│ │ │     └── connector.proto
+
+│ │ └── analytics/                # Volume 18/19: Analytics
+
+│ │     └── v1/
+
+│ │       ├── metrics.proto
+
+│ │       ├── audience.proto
+
+│ │       ├── recommendations.proto
+
+│ │       └── optimization.proto
+
+│ ├── openapi/                     # REST API Definitions
+
+│ │ ├── public-api.yaml              # External-facing API
+
+│ │ └── internal-api.yaml            # Internal admin API
+
+│ ├── asyncapi/                    # Async API (Kafka Events)
+
+│ │ └── events.yaml                # All Kafka topic definitions
+
+│ ├── json-schema/               # JSON Schema Definitions
+
+│ │ └── events/               # Event payload schemas
+
+│ └── gen/                 # Generated Code (DO NOT EDIT)
+
+│     ├── go/              # Generated Go clients
+
+│     └── python/             # Generated Python clients
+
+│
+
+├── services/                 # Microservices (by Bounded Context)
+
+│ ├── foundation/               # Volume 11: Foundation Services
+
+│ │ ├── tenant-identity/          # Tenant & Identity Service
+
+│ │ │ ├── cmd/
+
+│ │ │ │ ├── server/             # gRPC server entry point
+
+│ │ │ │ └── worker/            # Background worker entry point
+
+│ │ │ ├── internal/
+
+│ │ │ │ ├── domain/              # Domain models, aggregates
+
+│ │ │ │ ├── application/          # Use cases, services
+
+│ │ │ │ ├── infrastructure/        # Database, messaging, external APIs
+
+│ │ │ │ └── interfaces/         # gRPC handlers, event consumers
+
+│ │ │ ├── migrations/            # Database migrations
+
+│ │ │ ├── Dockerfile
+
+│ │ │ ├── go.mod
+
+│ │ │ ├── go.sum
+
+│ │ │ └── README.md
+
+│ │ ├── configuration/            # Global Configuration Service
+
+│ │ └── api-gateway/            # API Gateway Configuration
+
+│ │
+
+│ ├── content-origination/          # Volume 12
+
+│ │ ├── ingestion-service/
+
+│ │ ├── story-detection-service/
+
+│ │ └── source-manager/
+
+│ │
+
+│ ├── truth-engine/             # Volume 13
+
+│ │ ├── source-verifier/
+
+│ │ ├── claim-verifier/
+
+│ │ ├── cross-validator/
+
+│ │ ├── confidence-engine/
+
+│ │ ├── misinformation-detector/
+
+│ │ └── fact-checker/
+
+│ │
+
+│ ├── content-factory/             # Volume 14/15
+
+│ │ ├── article-generator/
+
+│ │ ├── headline-generator/
+
+│ │ ├── multimedia-generator/
+
+│ │ ├── platform-adapter/
+
+│ │ ├── seo-engine/
+
+│ │ ├── translation-service/
+
+│ │ └── brand-voice-service/
+
+│ │
+
+│ ├── compliance/               # Volume 16
+
+│ │ ├── rights-manager/
+
+│ │ ├── plagiarism-detector/
+
+│ │ ├── legal-review-service/
+
+│ │ ├── privacy-protector/
+
+│ │ ├── ai-safety-reviewer/
+
+│ │ └── compliance-scorer/
+
+│ │
+
+│ ├── distribution/                # Volume 17
+
+│ │ ├── orchestrator/
+
+│ │ ├── scheduler/
+
+│ │ ├── adaptation-engine/
+
+│ │ └── connectors/
+
+│ │     ├── twitter-connector/
+
+│ │     ├── facebook-connector/
+
+│ │     ├── instagram-connector/
+
+│ │     ├── linkedin-connector/
+
+│ │     ├── youtube-connector/
+
+│ │     ├── tiktok-connector/
+
+│ │     ├── web-cms-connector/
+
+│ │     ├── email-connector/
+
+│ │     ├── rss-connector/
+
+│ │     └── connector-sdk/          # SDK for building new connectors
+
+│ │
+
+│ └── analytics/                 # Volume 18/19
+
+│     ├── real-time-processor/
+
+│     ├── batch-analyzer/
+
+│     ├── audience-profiler/
+
+│   ├── recommendation-engine/
+
+│   └── optimization-feedback/
+
+│
+
+├── libs/                  # Shared Libraries
+
+│ ├── go/                   # Go Shared Libraries
+
+│ │ ├── go.work                  # Go workspace definition
+
+│ │ ├── pkg/
+
+│ │ │ ├── events/                # Kafka Event Types & Schemas
+
+│ │ │ │ ├── types.go              # All event type constants
+
+│ │ │ │ ├── producer.go             # Standardized producer
+
+│ │ │ │ └── consumer.go             # Standardized consumer
+
+│ │ │ ├── auth/                  # Authentication & Authorization
+
+│ │ │ │ ├── jwt.go               # JWT validation
+
+│ │ │ │ ├── spiffe.go             # SPIFFE helpers
+
+│ │ │ │ └── middleware.go            # gRPC auth interceptors
+
+│ │ │ ├── observability/            # Observability SDK
+
+│ │ │ │ ├── metrics.go             # Prometheus metrics
+
+│ │ │ │ ├── tracing.go             # OpenTelemetry tracing
+
+│ │ │ │ ├── logging.go             # Structured logging
+
+│ │ │ │ └── health.go             # Health check handlers
+
+│ │ │ ├── resilience/             # Resilience Patterns
+
+│ │ │ │ ├── circuit_breaker.go
+
+│ │ │ │ ├── retry.go
+
+│ │ │ │ ├── rate_limiter.go
+
+│ │ │ │ └── bulkhead.go
+
+│ │ │ ├── database/             # Database Utilities
+
+│ │ │ │ ├── postgres.go           # PostgreSQL connection pool
+
+│ │ │ │ ├── migrations.go          # Migration runner
+
+│ │ │ │ └── transaction.go       # Transaction helpers
+
+│ │ │ ├── tenant/              # Tenant Context
+
+│ │ │ │ └── context.go          # Tenant context propagation
+
+│ │ │ ├── errors/             # Error Handling
+
+│ │ │ │ ├── codes.go            # Error codes
+
+│ │ │ │ └── grpc.go           # gRPC error mapping
+
+│ │ │ ├── config/             # Configuration
+
+│ │ │ │ └── loader.go          # Config loading from env/Vault
+
+│ │ │ ├── featureflags/          # Feature Flags
+
+│ │ │ │ └── flags.go          # Feature flag client
+
+│ │ │ ├── llm/               # LLM Gateway Client
+
+│ │ │ │ ├── client.go          # Gateway client
+
+│ │ │ │ └── models.go           # Model definitions
+
+│ │ │ ├── cache/              # Caching Utilities
+
+│ │ │ │ └── redis.go          # Redis client helpers
+
+│ │ │ ├── storage/             # Object Storage
+
+│ │ │ │ └── s3.go            # S3/MinIO client
+
+│ │ │ ├── media/               # Media Processing
+
+│ │ │ │ └── processor.go         # Image/video processing
+
+│ │ │ ├── validation/           # Input Validation
+
+│ │ │ │ └── validator.go        # Validation helpers
+
+│ │ │ └── testutil/          # Testing Utilities
+
+│ │ │      ├── fixtures.go         # Test fixtures
+
+│ │ │      ├── mocks.go             # Mock generators
+
+│ │ │      └── containers.go        # Testcontainers helpers
+
+│ │ └── go.mod
+
+│ │
+
+│ ├── python/                    # Python Shared Libraries
+
+│ │ ├── pyproject.toml               # Python project config
+
+│ │ ├── pants.toml                 # Pants build config
+
+│ │ └── agbofa/
+
+│ │     ├── __init__.py
+
+│ │     ├── events/              # Kafka Events
+
+│ │     ├── llm/                # LLM Gateway Client
+
+│ │     ├── nlp/                # NLP Utilities
+
+│ │     ├── observability/          # Observability
+
+│ │     ├── models/               # ML Model Interfaces
+
+│ │     ├── prompts/               # Prompt Template Engine
+
+│ │     ├── storage/              # Object Storage
+
+│ │     └── testing/            # Test Utilities
+
+│ │
+
+│ └── node/                    # Node.js/TypeScript Shared Libraries
+
+│     ├── package.json
+
+│     ├── pnpm-workspace.yaml
+
+│     └── packages/
+
+│       ├── ui/                # Shared UI Components
+
+│       ├── utils/             # Shared Utilities
+
+│       └── api-client/       # Generated API Client
+
+│
+
+├── ai/                   # AI Models & Resources
+
+│ ├── prompts/                 # Prompt Templates (Versioned)
+
+│ │ ├── article-generation/
+
+│ │ │ ├── v1.0.0/
+
+│ │ │ └── v1.1.0/
+
+│ │ ├── headline-generation/
+
+│ │ ├── verification/
+
+│ │ ├── multimedia/
+
+│ │ ├── translation/
+
+│ │ └── README.md                # Prompt versioning guide
+
+│ ├── models/                  # Fine-Tuned Models
+
+│ │ ├── fine-tuning/
+
+│ │ │ ├── scripts/
+
+│ │ │ └── configs/
+
+│ │ └── evaluation/
+
+│ │     ├── benchmarks/
+
+│ │     └── results/
+
+│ └── datasets/               # Training & Evaluation Data
+
+│     ├── training/
+
+│     └── evaluation/
+
+│
+
+├── infrastructure/             # Infrastructure as Code
+
+│ ├── terraform/                # Terraform Configurations
+
+│ │ ├── environments/
+
+│ │ │ ├── production/
+
+│ │ │ │ ├── main.tf
+
+│ │ │ │ ├── variables.tf
+
+│ │ │ │ ├── outputs.tf
+
+│ │ │ │ └── terraform.tfvars       # Encrypted (git-crypt)
+
+│ │ │ ├── staging/
+
+│ │ │ └── development/
+
+│ │ └── modules/                # Reusable Terraform Modules
+
+│ │    ├── eks/            # Kubernetes cluster
+
+│ │    ├── rds/            # PostgreSQL
+
+│ │    ├── msk/                # Kafka
+
+│ │    ├── elasticache/          # Redis
+
+│ │    ├── neo4j/              # Neo4j (EC2-based)
+
+│ │    ├── s3/             # Object storage
+
+│ │    └── networking/           # VPC, subnets
+
+│ │
+
+│ ├── kubernetes/                # Kubernetes Manifests (Flux CD)
+
+│ │ ├── base/                  # Base configurations
+
+│ │ │ ├── namespaces/
+
+│ │ │ ├── rbac/
+
+│ │ │ ├── network-policies/
+
+│ │ │ ├── istio/
+
+│ │ │ └── cert-manager/
+
+│ │ └── overlays/              # Environment-specific overlays
+
+│ │     ├── production/
+
+│ │     ├── staging/
+
+│ │     └── development/
+
+│ │
+
+│ ├── helm/                     # Helm Charts
+
+│ │ └── charts/
+
+│ │     ├── agbofa-service/         # Generic service chart
+
+│ │     └── agbofa-worker/         # Generic worker chart
+
+│ │
+
+│ └── docker/                  # Docker Configurations
+
+│     ├── Dockerfile.go           # Go service base image
+
+│     ├── Dockerfile.python          # Python service base image
+
+│     └── docker-compose.yml         # Local development
+
+│
+
+├── docs/                      # Documentation
+
+│ ├── architecture/               # Architecture Documentation
+
+│ │ ├── adr/                   # Architecture Decision Records
+
+│ │ │ ├── 0001-use-monorepo.md
+
+│ │ │ ├── 0002-trunk-based-dev.md
+
+│ │ │ └── template.md
+
+│ │ ├── diagrams/                 # Architecture Diagrams
+
+│ │ └── overview.md
+
+│ ├── api/                     # API Documentation (Generated)
+
+│ ├── runbooks/                   # Operational Runbooks
+
+│ │ ├── deployment.md
+
+│ │ ├── incident-response.md
+
+│ │ └── disaster-recovery.md
+
+│ └── guides/                  # Developer Guides
+
+│   ├── getting-started.md
+
+│   ├── contributing.md
+
+│   ├── ai-development.md
+
+│   └── service-template-guide.md
+
+│
+
+├── tests/                   # Cross-Service Tests
+
+│ ├── integration/                 # Integration Tests
+
+│ │ ├── content-pipeline/              # End-to-end content pipeline
+
+│ │ └── distribution-pipeline/         # End-to-end distribution
+
+│ ├── contract/                   # Contract Tests (Pact)
+
+│ ├── performance/                   # Performance Tests (k6)
+
+│ │ ├── scenarios/
+
+│ │ └── results/
+
+│ ├── chaos/                     # Chaos Engineering
+
+│ └── fixtures/                # Shared Test Fixtures
+
+│
+
+├── tools/                   # Development Tools
+
+│ ├── dev-environment/                  # Local Development Environment
+
+│ │ ├── docker-compose.yml               # Full local stack
+
+│ │ ├── docker-compose.minimal.yml            # Minimal stack
+
+│ │ └── seed-data/                # Test data seeding
+
+│ ├── scripts/                   # Utility Scripts
+
+│ │ ├── setup.sh                # Initial setup
+
+│ │ ├── generate-service.sh          # Service scaffolding
+
+│ │ └── deploy.sh              # Deployment helper
+
+│ ├── templates/                 # Service Templates
+
+│ │ ├── go-service/              # Go microservice template
+
+│ │ ├── python-service/            # Python AI service template
+
+│ │ └── connector/              # Platform connector template
+
+│ └── config/                 # Tool Configurations
+
+│    ├── .golangci.yml           # Go linter
+
+│    ├── pyproject.toml           # Python config
+
+│    ├── .eslintrc.js         # JavaScript/TypeScript linter
+
+│    └── .prettierrc          # Code formatter
+
+│
+
+├── .cursorrules                # AI Coding Agent Rules
+
+├── .gitignore
+
+├── .gitattributes
+
+├── .editorconfig
+
+├── .pre-commit-config.yaml            # Pre-commit hooks
+
+├── .sops.yaml                 # SOPS encryption config
+
+├── .git-crypt/               # Encrypted files
+
+├── Makefile                   # Top-level build orchestration
+
+├── Taskfile.yml                # Task runner (cross-platform)
+
+├── buf.work.yaml                 # Buf workspace
+
+├── go.work                    # Go workspace (generated)
+
+├── README.md                      # Repository overview
+
+├── LICENSE
+
+├── CHANGELOG.md
+
+├── SECURITY.md
+
+├── CONTRIBUTING.md
+
+└── CODE_OF_CONDUCT.md
+
+```
+
+
+
+2.2 Key Directory Explanations
+
+
+
+```yaml
+
+directory_explanations:
+
+ api/:
+
+      purpose: "Single source of truth for all API contracts"
+
+      contents: "Protobuf, OpenAPI, AsyncAPI, JSON Schema"
+
+      generation: "Code generated to api/gen/ via CI"
+
+      consumers: "All services, SDKs, documentation"
+
+
+
+ services/:
+
+      purpose: "Business logic microservices"
+
+      organization: "By bounded context (matching Volumes 11-19)"
+
+      independence: "Each service independently buildable and deployable"
+
+      template: "Created from tools/templates/"
+
+
+
+ libs/:
+
+      purpose: "Shared code across services"
+
+      go/: "Go shared libraries (events, auth, observability, etc.)"
+
+ python/: "Python shared libraries (LLM, NLP, prompts, etc.)"
+
+ node/: "Node.js/TypeScript shared packages (UI, utils, API client)"
+
+ rule: "Libraries have NO business logic; pure infrastructure concerns"
+
+
+
+ai/:
+
+ purpose: "AI-specific resources, versioned separately from code"
+
+ prompts/: "Prompt templates with semantic versioning"
+
+ models/: "Fine-tuning scripts and evaluation results"
+
+ datasets/: "Training and evaluation datasets (sampled/synthetic)"
+
+
+
+infrastructure/:
+
+ purpose: "Everything needed to deploy and operate"
+
+ terraform/: "Cloud infrastructure (EKS, RDS, MSK, etc.)"
+
+ kubernetes/: "Kubernetes manifests (Flux CD GitOps)"
+
+ helm/: "Helm charts for standardized deployments"
+
+
+
+docs/:
+
+ purpose: "All project documentation"
+
+ adr/: "Architecture Decision Records (immutable history)"
+
+ runbooks/: "Operational procedures"
+
+ guides/: "Developer onboarding and contribution guides"
+
+
+
+tests/:
+
+ purpose: "Cross-service tests that don't belong to any single service"
+
+ integration/: "End-to-end workflow tests"
+
+ contract/: "Pact contract tests between services"
+
+      performance/: "k6 load testing scenarios"
+
+
+
+ tools/:
+
+      purpose: "Developer productivity tools"
+
+      dev-environment/: "Docker Compose for local development"
+
+      scripts/: "Automation scripts"
+
+      templates/: "Service scaffolding templates (cookiecutter)"
+
+```
+
+
+
+---
+
+
+
+PART III — WORKSPACE CONFIGURATION
+
+
+
+3.1 Go Workspace Configuration
+
+
+
+```go
+
+// go.work — Go Workspace Definition
+
+// Auto-generated by: make workspace-sync
+
+// DO NOT EDIT MANUALLY
+
+
+
+go 1.22.0
+
+
+
+toolchain go1.22.5
+
+
+
+use (
+
+      // Foundation Services
+
+./services/foundation/tenant-identity
+
+./services/foundation/configuration
+
+
+
+// Content Origination
+
+./services/content-origination/ingestion-service
+
+./services/content-origination/story-detection-service
+
+./services/content-origination/source-manager
+
+
+
+// Truth Engine
+
+./services/truth-engine/source-verifier
+
+./services/truth-engine/claim-verifier
+
+./services/truth-engine/cross-validator
+
+./services/truth-engine/confidence-engine
+
+./services/truth-engine/misinformation-detector
+
+
+
+// Content Factory
+
+./services/content-factory/article-generator
+
+./services/content-factory/headline-generator
+
+./services/content-factory/platform-adapter
+
+./services/content-factory/seo-engine
+
+
+
+// Compliance
+
+./services/compliance/rights-manager
+
+./services/compliance/plagiarism-detector
+
+./services/compliance/legal-review-service
+
+./services/compliance/privacy-protector
+
+      // Distribution
+
+      ./services/distribution/orchestrator
+
+      ./services/distribution/scheduler
+
+      ./services/distribution/adaptation-engine
+
+
+
+      // Analytics
+
+      ./services/analytics/real-time-processor
+
+      ./services/analytics/audience-profiler
+
+
+
+      // Shared Libraries
+
+      ./libs/go
+
+)
+
+```
+
+
+
+3.2 Python Workspace Configuration
+
+
+
+```toml
+
+# pants.toml — Python Monorepo Build Configuration
+
+[GLOBAL]
+
+pants_version = "2.22.0"
+
+
+
+[source]
+
+root_patterns = [
+
+      "/services/content-factory/article-generator",
+
+      "/services/content-factory/multimedia-generator",
+
+    "/services/truth-engine/misinformation-detector",
+
+    "/services/compliance/plagiarism-detector",
+
+    "/services/analytics/batch-analyzer",
+
+    "/libs/python",
+
+]
+
+
+
+[python]
+
+interpreter_constraints = [">=3.12,<3.13"]
+
+enable_resolves = true
+
+default_resolve = "python-default"
+
+
+
+[python.resolves]
+
+python-default = "3rdparty/python/default_lock.txt"
+
+
+
+[python-infer]
+
+unowned_dependency_behavior = "error"
+
+
+
+# Dependency management
+
+[tool.pants.backend_packages]
+
+value = [
+
+    "pants.backend.python",
+
+    "pants.backend.python.lint.ruff",
+
+    "pants.backend.python.lint.black",
+
+    "pants.backend.python.typecheck.mypy",
+
+    "pants.backend.docker",
+
+]
+
+```
+
+
+
+```toml
+
+# pyproject.toml — Python Shared Library Configuration
+
+[tool.poetry]
+
+name = "agbofa-nexus-python"
+
+version = "1.0.0"
+
+description = "Agbofa Nexus AI — Python Shared Libraries"
+
+authors = ["Agbofa Technologies <engineering@agbofa.com>"]
+
+
+
+[tool.poetry.dependencies]
+
+python = "^3.12"
+
+grpcio = "^1.64"
+
+protobuf = "^5.27"
+
+opentelemetry-api = "^1.25"
+
+opentelemetry-sdk = "^1.25"
+
+opentelemetry-exporter-otlp = "^1.25"
+
+structlog = "^24.2"
+
+pydantic = "^2.8"
+
+httpx = "^0.27"
+
+aiokafka = "^0.10"
+
+redis = "^5.0"
+
+boto3 = "^1.34"
+
+
+
+[tool.poetry.group.dev.dependencies]
+
+pytest = "^8.2"
+
+pytest-asyncio = "^0.23"
+
+pytest-cov = "^5.0"
+
+ruff = "^0.5"
+
+black = "^24.4"
+
+mypy = "^1.10"
+
+
+
+[build-system]
+
+requires = ["poetry-core"]
+
+build-backend = "poetry.core.masonry.api"
+
+```
+
+
+
+3.3 Node.js Workspace Configuration
+
+
+
+```yaml
+
+# pnpm-workspace.yaml
+
+packages:
+
+    - "libs/node/packages/*"
+
+    - "frontend/*"
+
+```
+
+
+
+```json
+
+// libs/node/package.json
+
+{
+
+    "name": "@agbofa/nexus",
+
+    "version": "1.0.0",
+
+    "private": true,
+
+    "scripts": {
+
+        "build": "pnpm -r build",
+
+        "test": "pnpm -r test",
+
+        "lint": "pnpm -r lint"
+
+    },
+
+    "devDependencies": {
+
+        "typescript": "^5.5",
+
+        "eslint": "^9.6",
+
+        "prettier": "^3.3"
+
+    }
+
+}
+
+```
+
+
+
+---
+
+
+
+PART IV — SHARED ENGINEERING LIBRARIES
+
+
+
+4.1 Go Shared Library Design
+
+
+
+```go
+
+// libs/go/pkg/events/types.go
+
+// Package events defines all Kafka event types and provides standardized
+
+// producer/consumer implementations used by all services.
+
+package events
+
+
+
+// EventType represents a unique event type identifier
+
+type EventType string
+
+
+
+const (
+
+  // Foundation Events
+
+  EventTenantProvisioned EventType = "foundation.tenant.provisioned"
+
+  EventUserCreated         EventType = "foundation.user.created"
+
+  EventUserAuthenticated EventType = "foundation.user.authenticated"
+
+
+
+  // Content Origination Events
+
+  EventStoryDetected        EventType = "content_origination.story.detected"
+
+  EventSourceUpdated          EventType = "content_origination.source.updated"
+
+
+
+  // Truth Engine Events
+
+  EventClaimVerified       EventType = "truth_engine.claim.verified"
+
+  EventConfidenceCalculated EventType = "truth_engine.confidence.calculated"
+
+  EventStoryVerified       EventType = "truth_engine.story.verified"
+
+  EventMisinfoDetected        EventType = "truth_engine.misinfo.detected"
+
+
+
+  // Content Factory Events
+
+  EventArticleGenerated      EventType = "content_factory.article.generated"
+
+  EventContentPackaged        EventType = "content_factory.content.packaged"
+
+  EventTranslationCompleted EventType = "content_factory.translation.completed"
+
+
+
+  // Compliance Events
+
+  EventComplianceChecked EventType = "compliance.checked"
+
+  EventRightsViolation      EventType = "compliance.rights.violation"
+
+    // Distribution Events
+
+    EventPublicationQueued EventType = "distribution.publication.queued"
+
+    EventPublicationCompleted EventType = "distribution.publication.completed"
+
+    EventPublicationFailed EventType = "distribution.publication.failed"
+
+
+
+    // Analytics Events
+
+    EventMetricsCollected    EventType = "analytics.metrics.collected"
+
+    EventOptimizationSignal EventType = "analytics.optimization.signal"
+
+)
+
+
+
+// Event is the base interface for all domain events
+
+type Event interface {
+
+    EventType() EventType
+
+    EventID() string
+
+    Timestamp() time.Time
+
+    TenantID() string
+
+}
+
+
+
+// BaseEvent provides common event fields
+
+type BaseEvent struct {
+
+    ID     string `json:"event_id"`
+
+    Type    EventType `json:"event_type"`
+
+    Timestamp time.Time `json:"timestamp"`
+
+    TenantID string `json:"tenant_id"`
+
+}
+
+```
+
+
+
+```go
+
+// libs/go/pkg/events/producer.go
+
+package events
+
+
+
+import (
+
+      "context"
+
+      "encoding/json"
+
+      "fmt"
+
+
+
+      "github.com/IBM/sarama"
+
+      "go.opentelemetry.io/otel"
+
+)
+
+
+
+// Producer provides standardized Kafka event publishing
+
+type Producer struct {
+
+      client sarama.SyncProducer
+
+      tracer trace.Tracer
+
+      metrics *ProducerMetrics
+
+}
+
+
+
+// ProducerConfig configures the event producer
+
+type ProducerConfig struct {
+
+      Brokers     []string
+
+      ClientID    string
+
+    Acks         sarama.RequiredAcks // WaitForAll for critical events
+
+    EnableTracing bool
+
+}
+
+
+
+// NewProducer creates a new standardized event producer
+
+func NewProducer(config ProducerConfig) (*Producer, error) {
+
+    saramaConfig := sarama.NewConfig()
+
+    saramaConfig.Producer.RequiredAcks = config.Acks
+
+    saramaConfig.Producer.Return.Successes = true
+
+    saramaConfig.Producer.Idempotent = true
+
+    saramaConfig.Producer.Compression = sarama.CompressionSnappy
+
+    saramaConfig.ClientID = config.ClientID
+
+
+
+    client, err := sarama.NewSyncProducer(config.Brokers, saramaConfig)
+
+    if err != nil {
+
+        return nil, fmt.Errorf("create kafka producer: %w", err)
+
+    }
+
+
+
+    return &Producer{
+
+        client: client,
+
+        tracer: otel.Tracer("events/producer"),
+
+        metrics: NewProducerMetrics(),
+
+    }, nil
+
+}
+
+
+
+// Publish publishes an event to Kafka with tracing and metrics
+
+func (p *Producer) Publish(ctx context.Context, event Event) error {
+
+  ctx, span := p.tracer.Start(ctx, "events.Publish")
+
+  defer span.End()
+
+
+
+  // Serialize event
+
+  payload, err := json.Marshal(event)
+
+  if err != nil {
+
+      return fmt.Errorf("marshal event: %w", err)
+
+  }
+
+
+
+  // Determine topic from event type
+
+  topic := p.eventTypeToTopic(event.EventType())
+
+
+
+  // Build Kafka message
+
+  msg := &sarama.ProducerMessage{
+
+      Topic: topic,
+
+      Key: sarama.StringEncoder(event.EventID()),
+
+      Value: sarama.ByteEncoder(payload),
+
+      Headers: []sarama.RecordHeader{
+
+           {Key: []byte("event_type"), Value: []byte(event.EventType())},
+
+           {Key: []byte("tenant_id"), Value: []byte(event.TenantID())},
+
+      },
+
+  }
+
+
+
+  // Inject tracing headers
+
+  otel.GetTextMapPropagator().Inject(ctx, NewKafkaHeaderCarrier(&msg.Headers))
+
+      // Publish
+
+      partition, offset, err := p.client.SendMessage(msg)
+
+      if err != nil {
+
+          p.metrics.RecordError(event.EventType())
+
+          return fmt.Errorf("publish event: %w", err)
+
+      }
+
+
+
+      span.SetAttributes(
+
+          attribute.String("kafka.topic", topic),
+
+          attribute.Int64("kafka.partition", int64(partition)),
+
+          attribute.Int64("kafka.offset", offset),
+
+      )
+
+
+
+      p.metrics.RecordSuccess(event.EventType())
+
+      return nil
+
+}
+
+```
+
+
+
+4.2 Python Shared Library Design
+
+
+
+```python
+
+# libs/python/agbofa/llm/client.py
+
+"""
+
+LLM Gateway Client — Standardized interface for all LLM interactions.
+
+All services use this client to interact with LLMs. It provides:
+
+- Model routing (cost-optimized tiering)
+
+- Automatic retries with exponential backoff
+
+- Response caching
+
+- Token usage tracking
+
+- Prompt template rendering
+
+"""
+
+
+
+from dataclasses import dataclass
+
+from typing import Optional, Any
+
+import structlog
+
+
+
+logger = structlog.get_logger(__name__)
+
+
+
+
+@dataclass
+
+class LLMRequest:
+
+  """Standardized LLM request."""
+
+  prompt: str
+
+  model: str = "claude-3-sonnet"
+
+  temperature: float = 0.4
+
+  max_tokens: int = 4000
+
+  response_format: Optional[str] = None # "json" for structured output
+
+  cache_ttl: int = 3600 # Cache duration in seconds
+
+@dataclass
+
+class LLMResponse:
+
+  """Standardized LLM response."""
+
+  text: str
+
+  model: str
+
+  tokens_used: int
+
+  cost_usd: float
+
+  cached: bool = False
+
+  latency_ms: float = 0.0
+
+
+
+
+class LLMClient:
+
+  """
+
+  Standardized LLM client for all Agbofa services.
+
+
+
+  Usage:
+
+    client = LLMClient(default_model="claude-3-sonnet")
+
+    response = await client.generate(LLMRequest(
+
+         prompt="Generate a headline for...",
+
+         temperature=0.4,
+
+    ))
+
+  """
+
+
+
+  def __init__(self, default_model: str = "claude-3-sonnet"):
+
+    self.default_model = default_model
+
+    self._cache = {} # In-memory cache (use Redis in production)
+
+  self._token_tracker = TokenTracker()
+
+
+
+async def generate(self, request: LLMRequest) -> LLMResponse:
+
+  """
+
+  Generate LLM response with automatic retries and caching.
+
+  """
+
+  # Check cache
+
+  if request.cache_ttl > 0:
+
+    cache_key = self._cache_key(request)
+
+    if cache_key in self._cache:
+
+        logger.debug("llm_cache_hit", model=request.model)
+
+        return self._cache[cache_key]
+
+
+
+  # Route to appropriate model
+
+  model = request.model or self.default_model
+
+
+
+  # Generate with retries
+
+  for attempt in range(3):
+
+    try:
+
+        response = await self._call_llm(model, request)
+
+
+
+        # Track token usage
+
+        self._token_tracker.record(response.tokens_used, response.cost_usd)
+
+
+
+        # Cache response
+
+        if request.cache_ttl > 0:
+
+          self._cache[cache_key] = response
+
+
+
+      logger.info(
+
+          "llm_generated",
+
+          model=model,
+
+          tokens=response.tokens_used,
+
+          cost=response.cost_usd,
+
+          latency_ms=response.latency_ms,
+
+      )
+
+
+
+      return response
+
+
+
+    except Exception as e:
+
+      logger.warning(
+
+          "llm_retry",
+
+          model=model,
+
+          attempt=attempt + 1,
+
+          error=str(e),
+
+      )
+
+      if attempt == 2:
+
+          raise
+
+      await asyncio.sleep(2 ** attempt)
+
+
+
+async def _call_llm(self, model: str, request: LLMRequest) -> LLMResponse:
+
+  """Internal LLM call — routes to appropriate provider."""
+
+  # Implementation routes to Claude, GPT, etc. via gateway
+
+      ...
+
+```
+
+
+
+---
+
+
+
+PART V — SERVICE TEMPLATES
+
+
+
+5.1 Go Service Template
+
+
+
+```
+
+tools/templates/go-service/
+
+│
+
+├── cookiecutter.json                  # Template variables
+
+│ {
+
+│     "service_name": "my-service",
+
+│     "domain": "foundation",
+
+│     "description": "Service description",
+
+│     "go_module_path": "github.com/agbofa/nexus-ai"
+
+│ }
+
+│
+
+├── {{cookiecutter.service_name}}/
+
+│ ├── cmd/
+
+│ │ ├── server/
+
+│ │ │ └── main.go                   # gRPC server entry point
+
+│ │ └── worker/
+
+│ │         └── main.go            # Background worker entry point
+
+│ │
+
+│ ├── internal/
+
+│ │ ├── domain/
+
+│ │ │ ├── model.go          # Domain aggregates & entities
+
+│ │ │ ├── repository.go      # Repository interfaces
+
+│ │ │ ├── service.go       # Domain services
+
+│ │ │ └── events.go       # Domain events
+
+│ │ │
+
+│ │ ├── application/
+
+│ │ │ ├── usecase.go        # Use case implementations
+
+│ │ │ ├── dto.go          # Data Transfer Objects
+
+│ │ │ └── ports.go        # Port interfaces
+
+│ │ │
+
+│ │ ├── infrastructure/
+
+│ │ │ ├── persistence/
+
+│ │ │ │ ├── postgres.go      # PostgreSQL implementation
+
+│ │ │ │ └── migrations/     # Database migrations
+
+│ │ │ ├── messaging/
+
+│ │ │ │ ├── producer.go       # Kafka producer
+
+│ │ │ │ └── consumer.go      # Kafka consumer
+
+│ │ │ └── config/
+
+│ │ │     └── config.go   # Configuration loading
+
+│ │ │
+
+│ │ └── interfaces/
+
+│ │     ├── grpc/
+
+│ │        │ └── handler.go       # gRPC service implementation
+
+│ │        └── events/
+
+│ │          └── consumer.go       # Event consumer handlers
+
+│ │
+
+│ ├── test/
+
+│ │ ├── unit/                   # Unit tests
+
+│ │ ├── integration/               # Integration tests
+
+│ │ └── fixtures/               # Test fixtures
+
+│ │
+
+│ ├── docs/
+
+│ │ └── README.md                   # Service documentation
+
+│ │
+
+│ ├── Dockerfile                 # Multi-stage build
+
+│ ├── .env.example                 # Environment variables template
+
+│ ├── go.mod
+
+│ ├── go.sum
+
+│ ├── Makefile                   # Service-specific commands
+
+│ └── README.md
+
+│
+
+└── hooks/
+
+      ├── pre_gen_project.py           # Validation before generation
+
+      └── post_gen_project.py         # Setup after generation
+
+```
+
+
+
+5.2 Go Service Main Entry Point Template
+
+```go
+
+// cmd/server/main.go — Service Entry Point Template
+
+package main
+
+
+
+import (
+
+    "context"
+
+    "fmt"
+
+    "net"
+
+    "os"
+
+    "os/signal"
+
+    "syscall"
+
+
+
+    "go.uber.org/fx"
+
+    "google.golang.org/grpc"
+
+    "google.golang.org/grpc/health/grpc_health_v1"
+
+
+
+    "github.com/agbofa/nexus-ai/libs/go/pkg/observability"
+
+    "github.com/agbofa/nexus-ai/libs/go/pkg/config"
+
+)
+
+
+
+func main() {
+
+    // Load configuration
+
+    cfg, err := config.Load[ServiceConfig]()
+
+    if err != nil {
+
+      fmt.Fprintf(os.Stderr, "failed to load config: %v\n", err)
+
+     os.Exit(1)
+
+}
+
+
+
+// Initialize observability
+
+shutdown, err := observability.Initialize(observability.Config{
+
+     ServiceName: cfg.ServiceName,
+
+     ServiceVersion: cfg.ServiceVersion,
+
+     Environment: cfg.Environment,
+
+     OTLPEndpoint: cfg.OTLPEndpoint,
+
+})
+
+if err != nil {
+
+     fmt.Fprintf(os.Stderr, "failed to initialize observability: %v\n", err)
+
+     os.Exit(1)
+
+}
+
+defer shutdown()
+
+
+
+// Build dependency graph
+
+app := fx.New(
+
+     fx.Supply(cfg),
+
+     fx.Provide(
+
+       NewPostgresConnection,
+
+       NewKafkaProducer,
+
+       NewKafkaConsumer,
+
+       NewRepository,
+
+       NewDomainService,
+
+       NewApplicationService,
+
+           NewGRPCHandler,
+
+           NewHealthChecker,
+
+      ),
+
+      fx.Invoke(RegisterGRPCServer),
+
+      fx.Invoke(StartKafkaConsumer),
+
+  )
+
+
+
+  // Start application
+
+  ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+
+  defer cancel()
+
+
+
+  if err := app.Start(ctx); err != nil {
+
+      fmt.Fprintf(os.Stderr, "failed to start application: %v\n", err)
+
+      os.Exit(1)
+
+  }
+
+
+
+  // Wait for shutdown signal
+
+  <-ctx.Done()
+
+
+
+  // Graceful shutdown
+
+  shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(),
+30*time.Second)
+
+  defer shutdownCancel()
+
+
+
+  if err := app.Stop(shutdownCtx); err != nil {
+
+      fmt.Fprintf(os.Stderr, "failed to stop application: %v\n", err)
+
+          os.Exit(1)
+
+      }
+
+}
+
+```
+
+
+
+5.3 Python Service Template
+
+
+
+```
+
+tools/templates/python-service/
+
+│
+
+├── cookiecutter.json
+
+├── {{cookiecutter.service_name}}/
+
+│ ├── src/
+
+│ │ └── {{cookiecutter.package_name}}/
+
+│ │          ├── __init__.py
+
+│ │          ├── main.py           # Service entry point
+
+│ │          ├── domain/
+
+│ │          │ ├── __init__.py
+
+│ │          │ ├── models.py        # Pydantic models
+
+│ │          │ └── services.py     # Domain services
+
+│ │          ├── application/
+
+│ │          │ ├── __init__.py
+
+│ │          │ └── usecases.py      # Use case implementations
+
+│ │          ├── infrastructure/
+
+│ │          │ ├── __init__.py
+
+│ │     │ ├── llm_client.py           # LLM integration
+
+│ │     │ └── database.py            # Database integration
+
+│ │     └── interfaces/
+
+│ │       ├── __init__.py
+
+│ │       ├── grpc_server.py          # gRPC server
+
+│ │       └── event_consumer.py         # Kafka consumer
+
+│ ├── tests/
+
+│ │ ├── __init__.py
+
+│ │ ├── conftest.py                  # Shared fixtures
+
+│ │ ├── unit/
+
+│ │ └── integration/
+
+│ ├── Dockerfile
+
+│ ├── pyproject.toml
+
+│ ├── README.md
+
+│ └── .env.example
+
+```
+
+
+
+---
+
+
+
+PART VI — BUILD SYSTEM
+
+
+
+6.1 Build Orchestration (Makefile)
+
+
+
+```makefile
+
+# Makefile — Top-level build orchestration
+
+# Usage: make [target]
+
+
+
+SHELL := /bin/bash
+
+.DEFAULT_GOAL := help
+
+
+
+# Configuration
+
+DOCKER_REGISTRY ?= 123456789.dkr.ecr.us-east-1.amazonaws.com
+
+IMAGE_TAG ?= $(shell git rev-parse --short HEAD)
+
+GO_SERVICES := $(shell find services -name "go.mod" -not -path "*/libs/*" | xargs dirname)
+
+PYTHON_SERVICES := $(shell find services -name "pyproject.toml" | xargs dirname)
+
+
+
+# Colors for output
+
+GREEN := $(shell tput -Txterm setaf 2)
+
+YELLOW := $(shell tput -Txterm setaf 3)
+
+WHITE := $(shell tput -Txterm setaf 7)
+
+RESET := $(shell tput -Txterm sgr0)
+
+
+
+.PHONY: help
+
+help: ## Show this help message
+
+       @echo '${YELLOW}Agbofa Nexus AI — Build System${RESET}'
+
+       @echo ''
+
+        @awk 'BEGIN {FS = ":.*##"; printf "Usage: make ${GREEN}<target>${RESET}\n"} /^[a-zA-
+Z_-]+:.*?##/ { printf " ${GREEN}%-25s${RESET} %s\n", $$1, $$2 } /^##@/ { printf
+"\n${WHITE}%s${RESET}\n", substr($$0, 5) }' $(MAKEFILE_LIST)
+
+
+
+##@ Development
+
+.PHONY: dev-up
+
+dev-up: ## Start local development environment
+
+       docker compose -f tools/dev-environment/docker-compose.yml up -d
+
+       @echo "${GREEN}Development environment started.${RESET}"
+
+       @echo "PostgreSQL: localhost:5432"
+
+       @echo "Neo4j: localhost:7474 (browser), localhost:7687 (bolt)"
+
+       @echo "MongoDB: localhost:27017"
+
+       @echo "Redis: localhost:6379"
+
+       @echo "Kafka: localhost:9092"
+
+       @echo "MinIO: localhost:9000 (API), localhost:9001 (console)"
+
+       @echo "Jaeger: localhost:16686"
+
+
+
+.PHONY: dev-down
+
+dev-down: ## Stop local development environment
+
+       docker compose -f tools/dev-environment/docker-compose.yml down
+
+
+
+.PHONY: dev-seed
+
+dev-seed: ## Seed local databases with test data
+
+       @bash tools/dev-environment/seed-data/seed.sh
+
+
+
+##@ Build
+
+
+
+.PHONY: build-all
+
+build-all: build-go build-python ## Build all services
+
+
+
+.PHONY: build-go
+
+build-go: ## Build all Go services
+
+        @for service in $(GO_SERVICES); do \
+
+                echo "Building $$service..."; \
+
+                cd $$service && go build -o /dev/null ./cmd/... || exit 1; \
+
+                cd - > /dev/null; \
+
+        done
+
+        @echo "${GREEN}All Go services built successfully.${RESET}"
+
+
+
+.PHONY: build-python
+
+build-python: ## Check all Python services
+
+        @for service in $(PYTHON_SERVICES); do \
+
+                echo "Checking $$service..."; \
+
+                cd $$service && python -m compileall src/ || exit 1; \
+
+                cd - > /dev/null; \
+
+        done
+
+        @echo "${GREEN}All Python services validated.${RESET}"
+
+
+
+##@ Test
+
+
+
+.PHONY: test
+
+test: test-unit test-integration ## Run all tests
+
+
+
+.PHONY: test-unit
+
+test-unit: ## Run unit tests for all services
+
+        @echo "Running Go unit tests..."
+
+        @go test -short -count=1 ./services/...
+
+        @echo "Running Python unit tests..."
+
+        @cd libs/python && python -m pytest tests/ -x -q
+
+        @echo "${GREEN}Unit tests passed.${RESET}"
+
+
+
+.PHONY: test-integration
+
+test-integration: ## Run integration tests
+
+        @echo "Running integration tests..."
+
+        @go test -tags=integration -count=1 ./tests/integration/...
+
+        @echo "${GREEN}Integration tests passed.${RESET}"
+
+
+
+##@ Code Quality
+
+
+
+.PHONY: lint
+
+lint: ## Run all linters
+
+        @echo "Linting Go..."
+
+        @golangci-lint run ./...
+
+        @echo "Linting Python..."
+
+        @ruff check services/ libs/python/
+
+        @echo "Linting Protobuf..."
+
+        @buf lint
+
+        @echo "${GREEN}Linting passed.${RESET}"
+
+
+
+.PHONY: fmt
+
+fmt: ## Format all code
+
+        @echo "Formatting Go..."
+
+        @gofumpt -w .
+
+       @echo "Formatting Python..."
+
+       @black services/ libs/python/
+
+       @echo "${GREEN}Formatting complete.${RESET}"
+
+
+
+##@ API Generation
+
+
+
+.PHONY: api-gen
+
+api-gen: ## Generate code from API definitions
+
+       @buf generate
+
+       @echo "${GREEN}API code generated.${RESET}"
+
+
+
+##@ Docker
+
+
+
+.PHONY: docker-build
+
+docker-build: ## Build all Docker images
+
+       @for service in $(GO_SERVICES); do \
+
+              name=$$(echo $$service | sed 's|services/||' | sed 's|/|-|g'); \
+
+              echo "Building $$name..."; \
+
+             docker build -t $(DOCKER_REGISTRY)/$$name:$(IMAGE_TAG) -f
+$$service/Dockerfile .; \
+
+       done
+
+       @echo "${GREEN}Docker images built.${RESET}"
+
+
+
+.PHONY: docker-push
+
+docker-push: ## Push all Docker images
+
+       @for service in $(GO_SERVICES); do \
+
+              name=$$(echo $$service | sed 's|services/||' | sed 's|/|-|g'); \
+
+              docker push $(DOCKER_REGISTRY)/$$name:$(IMAGE_TAG); \
+
+       done
+
+       @echo "${GREEN}Docker images pushed.${RESET}"
+
+
+
+##@ Infrastructure
+
+
+
+.PHONY: tf-plan
+
+tf-plan: ## Run Terraform plan
+
+       cd infrastructure/terraform/environments/$(ENV) && terraform plan
+
+
+
+.PHONY: tf-apply
+
+tf-apply: ## Run Terraform apply
+
+       cd infrastructure/terraform/environments/$(ENV) && terraform apply
+
+
+
+##@ Workspace
+
+
+
+.PHONY: workspace-sync
+
+workspace-sync: ## Sync Go workspace with all service modules
+
+       @echo "Generating go.work..."
+
+       @echo "go 1.22.0" > go.work
+
+       @echo "" >> go.work
+
+       @echo "toolchain go1.22.5" >> go.work
+
+       @echo "" >> go.work
+
+       @echo "use (" >> go.work
+
+       @echo " ./libs/go" >> go.work
+
+        @find services -name "go.mod" -not -path "*/libs/*" | sed 's|/go.mod||' | sed 's|^|
+./|' >> go.work
+
+          @echo ")" >> go.work
+
+          @echo "${GREEN}go.work generated.${RESET}"
+
+
+
+##@ Service Scaffolding
+
+
+
+.PHONY: new-go-service
+
+new-go-service: ## Create new Go service from template
+
+          @read -p "Service name (kebab-case): " NAME; \
+
+       read -p "Domain (foundation/content-origination/truth-engine/content-
+factory/compliance/distribution/analytics): " DOMAIN; \
+
+          cookiecutter tools/templates/go-service --output-dir services/$$DOMAIN --no-input \
+
+                 service_name=$$NAME domain=$$DOMAIN
+
+          @echo "${GREEN}Service $$NAME created in services/$$DOMAIN/$$NAME${RESET}"
+
+```
+
+
+
+6.2 Build Dependency Graph
+
+
+
+```
+
+BUILD DEPENDENCY GRAPH:
+
+
+
+api/protobuf/*.proto        # API Definitions
+
+      │
+
+      ▼
+
+api/gen/go/             # Generated Go clients
+
+api/gen/python/            # Generated Python clients
+
+    │
+
+    ▼
+
+libs/go/               # Go shared libraries
+
+libs/python/             # Python shared libraries
+
+    │
+
+    ▼
+
+services/*/             # All microservices
+
+    │
+
+    ├──         unit tests
+
+    ├──         integration tests
+
+    └──        Docker images
+
+           │
+
+           ▼
+
+    infrastructure/          # Deployment manifests
+
+           │
+
+           ▼
+
+    staging deployment
+
+           │
+
+           ▼
+
+    production deployment
+
+
+
+BUILD ORDER:
+
+1. Generate API code (make api-gen)
+
+2. Build shared libraries
+
+3. Build services in dependency order:
+
+ a. Foundation (no dependencies)
+
+  b. Content Origination (depends on foundation)
+
+  c. Truth Engine (depends on foundation)
+
+  d. Content Factory (depends on truth engine)
+
+  e. Compliance (depends on content factory)
+
+  f. Distribution (depends on compliance)
+
+  g. Analytics (depends on distribution)
+
+```
+
+
+
+---
+
+
+
+PART VII — ENVIRONMENT MANAGEMENT
+
+
+
+7.1 Environment Configuration Strategy
+
+
+
+```yaml
+
+environment_strategy:
+
+ hierarchy:
+
+      base:
+
+       source: tools/config/base.yaml
+
+       description: Default values for all environments
+
+
+
+      environment_overrides:
+
+       development:
+
+        source: tools/config/development.yaml
+
+        description: Local development overrides
+
+       staging:
+
+   source: infrastructure/kubernetes/overlays/staging/config.yaml
+
+   description: Staging environment
+
+  production:
+
+   source: infrastructure/kubernetes/overlays/production/config.yaml
+
+   description: Production environment (encrypted)
+
+
+
+configuration_sources:
+
+ priority_order:
+
+  1. Command-line flags (highest priority)
+
+  2. Environment variables
+
+  3. Configuration files (environment-specific)
+
+  4. HashiCorp Vault (secrets only)
+
+  5. Default values in code (lowest priority)
+
+
+
+secret_management:
+
+ development: .env files (git-ignored)
+
+ staging: HashiCorp Vault (dev instance)
+
+ production: HashiCorp Vault (HA Enterprise)
+
+
+
+ encryption:
+
+  at_rest: SOPS + AWS KMS
+
+  in_transit: TLS 1.3
+
+
+
+ rotation_policy:
+
+  database_credentials: 30 days
+
+  api_keys: 90 days
+
+       tls_certificates: 365 days
+
+       signing_keys: 180 days
+
+
+
+ feature_flags:
+
+      provider: LaunchDarkly (or open-source alternative)
+
+      environments:
+
+       development: All flags on
+
+       staging: Test flags
+
+       production: Gradual rollout
+
+
+
+      flag_types:
+
+       release: Control feature rollout
+
+       experiment: A/B testing
+
+       operational: Kill switch for features
+
+       permission: Entitlement flags
+
+```
+
+
+
+7.2 Environment Variables Template
+
+
+
+```bash
+
+# .env.example — Template for all services
+
+# Copy to .env and fill in values (DO NOT COMMIT .env)
+
+
+
+# Service Identity
+
+SERVICE_NAME=tenant-identity
+
+SERVICE_VERSION=1.0.0
+
+ENVIRONMENT=development # development | staging | production
+
+LOG_LEVEL=debug        # debug | info | warn | error
+
+
+
+# gRPC Server
+
+GRPC_PORT=9090
+
+GRPC_REFLECTION=true      # Enable in development only
+
+
+
+# PostgreSQL
+
+DATABASE_HOST=localhost
+
+DATABASE_PORT=5432
+
+DATABASE_NAME=agbofa_nexus
+
+DATABASE_USER=nexus
+
+DATABASE_PASSWORD=change_me_in_production
+
+DATABASE_SSLMODE=disable # require in production
+
+
+
+# Kafka
+
+KAFKA_BROKERS=localhost:9092
+
+KAFKA_CLIENT_ID=tenant-identity
+
+KAFKA_CONSUMER_GROUP=tenant-identity-group
+
+
+
+# Redis
+
+REDIS_HOST=localhost
+
+REDIS_PORT=6379
+
+REDIS_PASSWORD=
+
+
+
+# MinIO / S3
+
+STORAGE_ENDPOINT=localhost:9000
+
+STORAGE_ACCESS_KEY=minioadmin
+
+STORAGE_SECRET_KEY=minioadmin
+
+STORAGE_BUCKET=agbofa-nexus
+
+STORAGE_USE_SSL=false
+
+
+
+# Observability
+
+OTEL_EXPORTER_OTLP_ENDPOINT=localhost:4317
+
+OTEL_SERVICE_NAME=tenant-identity
+
+
+
+# LLM Gateway
+
+LLM_GATEWAY_ENDPOINT=localhost:8080
+
+LLM_GATEWAY_API_KEY=development_key
+
+
+
+# Vault
+
+VAULT_ADDR=http://localhost:8200
+
+VAULT_TOKEN=development_token
+
+
+
+# Feature Flags
+
+LAUNCHDARKLY_SDK_KEY=development_key
+
+```
+
+
+
+---
+
+
+
+PART VIII — LOCAL DEVELOPMENT PLATFORM
+
+8.1 Docker Compose Configuration
+
+
+
+```yaml
+
+# tools/dev-environment/docker-compose.yml
+
+# Full local development environment
+
+version: "3.9"
+
+
+
+services:
+
+ # PostgreSQL with pgvector extension
+
+ postgres:
+
+  image: pgvector/pgvector:pg16
+
+  container_name: agbofa-postgres
+
+  environment:
+
+   POSTGRES_DB: agbofa_nexus
+
+   POSTGRES_USER: nexus
+
+   POSTGRES_PASSWORD: nexus_dev
+
+  ports:
+
+   - "5432:5432"
+
+  volumes:
+
+   - postgres_data:/var/lib/postgresql/data
+
+   - ./init-scripts:/docker-entrypoint-initdb.d
+
+  healthcheck:
+
+   test: ["CMD-SHELL", "pg_isready -U nexus"]
+
+   interval: 5s
+
+   timeout: 5s
+
+   retries: 5
+
+# Neo4j Enterprise
+
+neo4j:
+
+ image: neo4j:5-enterprise
+
+ container_name: agbofa-neo4j
+
+ environment:
+
+  NEO4J_AUTH: neo4j/nexus_dev
+
+  NEO4J_ACCEPT_LICENSE_AGREEMENT: "yes"
+
+ ports:
+
+  - "7474:7474" # Browser
+
+  - "7687:7687" # Bolt
+
+ volumes:
+
+  - neo4j_data:/data
+
+ healthcheck:
+
+  test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "nexus_dev", "RETURN 1"]
+
+  interval: 10s
+
+  timeout: 10s
+
+  retries: 5
+
+
+
+# MongoDB
+
+mongodb:
+
+ image: mongo:7
+
+ container_name: agbofa-mongodb
+
+ environment:
+
+  MONGO_INITDB_ROOT_USERNAME: nexus
+
+  MONGO_INITDB_ROOT_PASSWORD: nexus_dev
+
+ ports:
+
+  - "27017:27017"
+
+ volumes:
+
+  - mongodb_data:/data/db
+
+
+
+# Redis
+
+redis:
+
+ image: redis:7-alpine
+
+ container_name: agbofa-redis
+
+ ports:
+
+  - "6379:6379"
+
+ command: redis-server --appendonly yes
+
+ volumes:
+
+  - redis_data:/data
+
+
+
+# Kafka (KRaft mode — no ZooKeeper)
+
+kafka:
+
+ image: confluentinc/cp-kafka:7.7.0
+
+ container_name: agbofa-kafka
+
+ environment:
+
+  KAFKA_NODE_ID: 1
+
+   KAFKA_LISTENER_SECURITY_PROTOCOL_MAP:
+"CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+
+  KAFKA_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
+
+  KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://localhost:9092"
+
+  KAFKA_CONTROLLER_QUORUM_VOTERS: "1@localhost:9093"
+
+  KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+
+  KAFKA_PROCESS_ROLES: "broker,controller"
+
+  KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+
+ ports:
+
+  - "9092:9092"
+
+ volumes:
+
+  - kafka_data:/var/lib/kafka/data
+
+
+
+# MinIO (S3-compatible object storage)
+
+minio:
+
+ image: minio/minio:latest
+
+ container_name: agbofa-minio
+
+ command: server /data --console-address ":9001"
+
+ environment:
+
+  MINIO_ROOT_USER: minioadmin
+
+  MINIO_ROOT_PASSWORD: minioadmin
+
+ ports:
+
+  - "9000:9000" # API
+
+  - "9001:9001" # Console
+
+ volumes:
+
+  - minio_data:/data
+
+
+
+# OpenTelemetry Collector
+
+otel-collector:
+
+ image: otel/opentelemetry-collector-contrib:latest
+
+ container_name: agbofa-otel
+
+ command: ["--config=/etc/otel-collector-config.yaml"]
+
+ volumes:
+
+  - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+
+ ports:
+
+  - "4317:4317" # OTLP gRPC
+
+  - "4318:4318" # OTLP HTTP
+
+  - "8888:8888" # Metrics
+
+
+
+# Jaeger (Tracing)
+
+jaeger:
+
+ image: jaegertracing/all-in-one:latest
+
+ container_name: agbofa-jaeger
+
+ environment:
+
+  COLLECTOR_OTLP_ENABLED: "true"
+
+ ports:
+
+  - "16686:16686" # UI
+
+  - "16685:16685" # gRPC Query
+
+
+
+# Prometheus
+
+prometheus:
+
+ image: prom/prometheus:latest
+
+ container_name: agbofa-prometheus
+
+ volumes:
+
+  - ./prometheus.yml:/etc/prometheus/prometheus.yml
+
+ ports:
+
+  - "9090:9090"
+
+
+
+# Grafana
+
+grafana:
+
+ image: grafana/grafana:latest
+
+ container_name: agbofa-grafana
+
+ environment:
+
+  GF_SECURITY_ADMIN_PASSWORD: admin
+
+ ports:
+
+  - "3000:3000"
+
+ volumes:
+
+  - grafana_data:/var/lib/grafana
+
+
+
+# Vault (Secrets Management)
+
+vault:
+
+ image: hashicorp/vault:latest
+
+ container_name: agbofa-vault
+
+ environment:
+
+  VAULT_DEV_ROOT_TOKEN_ID: development_token
+
+ ports:
+
+  - "8200:8200"
+
+ cap_add:
+
+  - IPC_LOCK
+
+
+
+volumes:
+
+postgres_data:
+
+ neo4j_data:
+
+ mongodb_data:
+
+ redis_data:
+
+ kafka_data:
+
+ minio_data:
+
+ grafana_data:
+
+```
+
+
+
+8.2 Startup Sequence
+
+
+
+```yaml
+
+startup_sequence:
+
+ order:
+
+      1_databases:
+
+       services:
+
+        - postgres
+
+        - neo4j
+
+        - mongodb
+
+        - redis
+
+       health_check_timeout: 60s
+
+
+
+      2_messaging:
+
+       services:
+
+        - kafka
+
+       health_check_timeout: 30s
+
+       depends_on: [1_databases]
+
+      3_storage:
+
+       services:
+
+        - minio
+
+       health_check_timeout: 15s
+
+
+
+      4_security:
+
+       services:
+
+        - vault
+
+       health_check_timeout: 15s
+
+
+
+      5_observability:
+
+       services:
+
+        - otel-collector
+
+        - jaeger
+
+        - prometheus
+
+        - grafana
+
+       health_check_timeout: 30s
+
+
+
+      all_healthy:
+
+       description: "All services healthy — ready for development"
+
+       command: "make dev-seed # Optional: seed test data"
+
+```
+
+
+
+---
+
+PART IX — DEVELOPER TOOLING
+
+
+
+9.1 VS Code Configuration
+
+
+
+```json
+
+// .vscode/settings.json
+
+{
+
+    "go.useLanguageServer": true,
+
+    "go.lintTool": "golangci-lint",
+
+    "go.lintOnSave": "workspace",
+
+    "go.formatTool": "gofumpt",
+
+    "go.testFlags": ["-v", "-count=1"],
+
+    "go.coverOnSave": true,
+
+
+
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+
+    "python.linting.enabled": true,
+
+    "python.linting.ruffEnabled": true,
+
+    "python.formatting.provider": "black",
+
+    "python.testing.pytestEnabled": true,
+
+
+
+    "editor.formatOnSave": true,
+
+    "editor.codeActionsOnSave": {
+
+     "source.organizeImports": "explicit",
+
+     "source.fixAll": "explicit"
+
+    },
+
+    "files.exclude": {
+
+        "**/.git": true,
+
+        "**/node_modules": true,
+
+        "**/__pycache__": true
+
+    },
+
+
+
+    "[proto3]": {
+
+        "editor.formatOnSave": true,
+
+        "editor.defaultFormatter": "bufbuild.vscode-buf"
+
+    }
+
+}
+
+```
+
+
+
+9.2 Pre-commit Hooks
+
+
+
+```yaml
+
+# .pre-commit-config.yaml
+
+repos:
+
+    - repo: https://github.com/pre-commit/pre-commit-hooks
+
+        rev: v4.6.0
+
+        hooks:
+
+         - id: trailing-whitespace
+
+         - id: end-of-file-fixer
+
+         - id: check-yaml
+
+         - id: check-json
+
+         - id: check-merge-conflict
+
+  - id: detect-private-key
+
+  - id: detect-aws-credentials
+
+
+
+- repo: https://github.com/golangci/golangci-lint
+
+ rev: v1.59.0
+
+ hooks:
+
+  - id: golangci-lint
+
+   args: [--fast]
+
+
+
+- repo: https://github.com/astral-sh/ruff-pre-commit
+
+ rev: v0.5.0
+
+ hooks:
+
+  - id: ruff
+
+   args: [--fix]
+
+  - id: ruff-format
+
+
+
+- repo: https://github.com/bufbuild/buf
+
+ rev: v1.34.0
+
+ hooks:
+
+  - id: buf-lint
+
+  - id: buf-breaking
+
+   args: [--against, ".git#branch=main"]
+
+
+
+- repo: https://github.com/zricethezav/gitleaks
+
+ rev: v8.18.0
+
+ hooks:
+
+       - id: gitleaks
+
+```
+
+
+
+---
+
+
+
+PART X — REPOSITORY STANDARDS
+
+
+
+10.1 Naming Conventions
+
+
+
+```yaml
+
+naming_conventions:
+
+ directories:
+
+      services: kebab-case (tenant-identity, story-detection)
+
+      packages: lowercase, single-word preferred
+
+      domains: kebab-case matching Volume names
+
+
+
+ files:
+
+      go: snake_case (user_service.go, claim_verifier.go)
+
+      python: snake_case (user_service.py, claim_verifier.py)
+
+      protobuf: snake_case (tenant_identity.proto)
+
+      kubernetes: kebab-case (deployment.yaml, service-account.yaml)
+
+      terraform: snake_case (main.tf, variables.tf)
+
+
+
+ go_packages:
+
+      format: lowercase, no underscores
+
+      examples: "tenantidentity" (not "tenant_identity")
+
+ protobuf_packages:
+
+      format: domain.v1
+
+      examples: "truth_engine.v1", "content_factory.v1"
+
+
+
+ kafka_topics:
+
+      format: domain.resource.action
+
+      examples: "truth_engine.claim.verified", "distribution.publication.completed"
+
+
+
+ docker_images:
+
+      format: registry/domain-service:tag
+
+      examples: "ecr.aws/truth-engine-claim-verifier:v1.2.3"
+
+
+
+ branches:
+
+      feature: feature/TICKET-123-short-description
+
+      bugfix: fix/TICKET-456-short-description
+
+      hotfix: hotfix/TICKET-789-critical-fix
+
+      release: release/v1.2.0
+
+
+
+ commits:
+
+      format: "type(scope): description"
+
+      types: feat, fix, refactor, test, docs, chore, perf, security, ai
+
+      examples: "feat(truth-engine): add cross-source validation"
+
+```
+
+
+
+---
+
+PART XI — CODE GENERATION READINESS
+
+
+
+11.1 AI Coding Agent Integration
+
+
+
+```yaml
+
+ai_coding_agent_readiness:
+
+ .cursorrules: |
+
+  # Agbofa Nexus AI — Coding Standards for AI Agents
+
+  # Reference: Volume 21 (Coding Standards) and Volume 22 (Repository Foundation)
+
+
+
+  ## Project Context
+
+  You are building the Agbofa Nexus AI platform — an autonomous AI media company.
+
+  Reference Volumes 1-21 for complete specifications.
+
+
+
+  ## Repository Structure
+
+  - `api/`: API contracts (protobuf) — ALWAYS check before implementing
+
+  - `services/{domain}/{service}/`: Microservices
+
+  - `libs/go/pkg/`: Shared Go libraries — USE THESE, don't reinvent
+
+  - `libs/python/agbofa/`: Shared Python libraries — USE THESE
+
+
+
+  ## Service Structure (Go)
+
+  Every Go service follows Clean Architecture:
+
+  - `internal/domain/`: Business logic, NO external dependencies
+
+  - `internal/application/`: Use cases, orchestrates domain
+
+  - `internal/infrastructure/`: Database, messaging, external APIs
+
+ - `internal/interfaces/`: gRPC handlers
+
+
+
+ ## Critical Rules
+
+ 1. NEVER generate code that contradicts API contracts in api/
+
+ 2. ALWAYS use shared libraries from libs/
+
+ 3. NEVER hardcode credentials or secrets
+
+ 4. ALWAYS include error wrapping with context
+
+ 5. ALWAYS include structured logging
+
+ 6. ALWAYS include OpenTelemetry spans for external calls
+
+ 7. NEVER generate code without tests
+
+
+
+ ## When Implementing a Service
+
+ 1. Read the API contract in api/protobuf/{domain}/v1/
+
+ 2. Read the Volume specification for business rules
+
+ 3. Use `tools/templates/go-service/` as starting point
+
+ 4. Implement domain layer first, then application, then infrastructure
+
+ 5. Write tests alongside implementation
+
+
+
+generation_checkpoints:
+
+ checkpoint_1_api_contract:
+
+  description: "API contracts defined and reviewed"
+
+  validation: "buf lint passes, no breaking changes"
+
+
+
+ checkpoint_2_domain_model:
+
+  description: "Domain models and interfaces defined"
+
+  validation: "Compiles, unit tests pass"
+
+      checkpoint_3_application_logic:
+
+       description: "Use cases and application services"
+
+       validation: "Integration tests pass with mocks"
+
+
+
+      checkpoint_4_infrastructure:
+
+       description: "Database, messaging, external APIs"
+
+       validation: "Integration tests pass with real dependencies"
+
+
+
+      checkpoint_5_service_integration:
+
+       description: "Full service integration"
+
+       validation: "End-to-end tests pass"
+
+
+
+      checkpoint_6_review:
+
+       description: "Human code review"
+
+       validation: "PR approved, all CI checks pass"
+
+```
+
+
+
+---
+
+
+
+PART XII — FOUNDATION DECISION RECORDS
+
+
+
+```markdown
+
+## RDR-001: Monorepo with Domain-Based Structure
+
+**Decision:** Single monorepo with bounded context organization
+
+**Rationale:** 60+ services, shared code, atomic refactoring
+
+**Trade-offs:** Clone size vs. development velocity
+
+
+
+## RDR-002: Go Workspaces + Pants + pnpm
+
+**Decision:** Three build tools, each best-in-class for ecosystem
+
+**Rationale:** Go workspaces native, Pants for Python scale, pnpm standard
+
+**Trade-offs:** Three tools vs. one, but optimal per ecosystem
+
+
+
+## RDR-003: Contract-First API Development
+
+**Decision:** Centralized API definitions, code generation
+
+**Rationale:** Single source of truth, parallel development
+
+**Trade-offs:** Upfront API design vs. iteration speed
+
+
+
+## RDR-004: Template-Based Service Scaffolding
+
+**Decision:** Cookiecutter templates for all services
+
+**Rationale:** Consistency across 60+ services
+
+**Trade-offs:** Template maintenance vs. consistency gains
+
+
+
+## RDR-005: Docker Compose for Local Development
+
+**Decision:** Full local environment via Docker Compose
+
+**Rationale:** Identical dependencies to production
+
+**Trade-offs:** Resource usage vs. environment fidelity
+
+
+
+## RDR-006: Trunk-Based Development
+
+**Decision:** Short-lived branches, continuous integration
+
+**Rationale:** Rapid AI-assisted development
+
+**Trade-offs:** Branch discipline vs. merge conflict reduction
+
+```
+
+
+
+---
+
+
+
+PART XIII — EXECUTIVE SUMMARY
+
+
+
+13.1 Repository Foundation Summary
+
+
+
+The Agbofa Nexus AI repository foundation provides:
+
+
+
+1. Complete Monorepo Structure: 60+ services organized by bounded context with clear
+dependency boundaries
+
+2. API-First Development: Centralized Protobuf definitions as single source of truth
+
+3. Shared Libraries: Reusable Go, Python, and Node.js libraries for cross-cutting concerns
+
+4. Service Templates: Cookie-cutter templates enforcing Clean Architecture and standards
+
+5. Local Development: One-command startup (make dev-up) for full platform
+
+6. Build System: Orchestrated builds with dependency ordering and caching
+
+7. AI-Ready: Structured for AI coding agents with explicit rules and conventions
+
+8. Security by Default: Secrets management, pre-commit scanning, signed images
+
+
+
+13.2 Next Steps
+
+
+
+With the repository foundation established, implementation proceeds in dependency order:
+
+
+
+· Volume 23: Foundation Services (Tenant Identity, Configuration)
+
+· Volume 24: Content Origination Services
+
+· Volume 25: Truth Engine Services
+
+· ...continuing through all bounded contexts
+
+
+
+13.3 Readiness Certification
+
+
+
+```
+
+REPOSITORY FOUNDATION:              COMPLETE AND READY FOR CODE GENERATION
+
+
+
+This certifies that:
+
+1. Repository structure is fully defined
+
+2. Build system is operational
+
+3. Development environment is configured
+
+4. Shared libraries are specified
+
+5. Service templates are ready
+
+6. Coding standards are documented
+
+7. AI agent rules are established
+
+8. CI/CD pipelines are defined
+
+
+
+PHASE 3 — CODE GENERATION: READY TO BEGIN
+
+NEXT: Volume 23 — Foundation Services Implementation
+
+
+
+Date: 2026-08-07
+
+```
+
+
+
+---
+
+END OF VOLUME 22
+
+
+
+Phase 3 — AI-Assisted Code Generation: Repository Foundation Complete
+

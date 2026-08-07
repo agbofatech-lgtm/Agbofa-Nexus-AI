@@ -1,0 +1,5789 @@
+VOLUME 27: STORY GRAPH & KNOWLEDGE INTELLIGENCE CODE SPECIFICATION
+
+
+
+Document Reference: AGBA-NEXUS-VOL27-CODE-1.0
+
+Status: Implementation-Ready — Production Specification
+
+Phase: 3 — Production Engineering Specifications
+
+Approved Baseline: Volumes 1–26 (Immutable)
+
+Purpose: Canonical Story Management, Knowledge Graph & Cross-Story Intelligence
+
+Quality Level: US$50M Enterprise Platform Standard
+
+
+
+---
+
+
+
+SERVICE DECISION RECORDS (SDR)
+
+SDR-STG-001: Neo4j as Primary Story Graph Database
+
+
+
+Decision: Use Neo4j Enterprise 5.x as the primary Story Graph database with causal clustering
+for high availability. PostgreSQL stores operational metadata; MongoDB stores full content
+snapshots.
+
+Rationale: Neo4j's native graph engine is purpose-built for relationship-heavy workloads like
+story evolution, entity linking, and provenance tracking. Graph traversals that would require
+complex SQL joins are expressed naturally in Cypher. Causal clustering provides the write
+consistency required for editorial workflows.
+
+Alternatives: PostgreSQL with recursive CTEs (rejected — performance degrades beyond 3-hop
+traversals); Amazon Neptune (rejected — vendor lock-in, higher cost); ArangoDB (rejected —
+smaller ecosystem).
+
+Trade-offs: Additional operational complexity managing Neo4j alongside PostgreSQL/MongoDB,
+but graph query performance is 10-100x better for story relationship queries.
+
+
+
+SDR-STG-002: Event-Sourced Story Versioning
+
+
+
+Decision: Every story mutation is recorded as an immutable event in Kafka, with materialized
+views in Neo4j and PostgreSQL. Story versions are derived from event replay, not direct
+mutation.
+
+Rationale: Event sourcing provides complete audit trail, enables time-travel queries, supports
+conflict resolution, and allows rebuilding any historical state. Essential for editorial provenance.
+
+Alternatives: Traditional CRUD with version columns (rejected — no event history, harder
+conflict resolution); Git-like branching model (rejected — overcomplicated for editorial
+workflows).
+
+Trade-offs: Increased storage for event log, but essential for editorial integrity and regulatory
+compliance.
+
+
+
+SDR-STG-003: pgvector for Embedding Storage with Neo4j for Graph Traversal
+
+Decision: Store document and entity embeddings in PostgreSQL with pgvector for ANN
+similarity search. Store graph relationships in Neo4j. Combine both via a hybrid search service.
+
+Rationale: pgvector provides production-grade vector search within existing PostgreSQL
+infrastructure. Neo4j handles graph-specific queries. Hybrid approach leverages each database's
+strengths.
+
+Alternatives: Neo4j with graph embeddings only (rejected — vector search less mature);
+dedicated vector DB like Pinecone (rejected — additional infrastructure).
+
+Trade-offs: Two systems to query for hybrid search, but each optimized for its domain.
+
+
+
+SDR-STG-004: CQRS for Story Read/Write Separation
+
+
+
+Decision: Implement Command Query Responsibility Segregation (CQRS) for stories. Commands
+(create, update, merge) write through the domain model and publish events. Queries read from
+optimized materialized views.
+
+Rationale: Story graph queries are complex and read-heavy. CQRS allows optimizing reads
+independently from writes, scaling read replicas, and building specialized query models.
+
+Alternatives: Single model for reads and writes (rejected — query performance suffers under
+write load).
+
+Trade-offs: Eventual consistency between write and read models, but acceptable for story
+content (seconds of lag).
+
+
+
+---
+
+
+
+PART I — STORY GRAPH FOUNDATION
+
+
+
+1.1 Story Graph Philosophy
+
+
+
+```
+
+STORY GRAPH — PHILOSOPHY & PRINCIPLES:
+
+┌─────────────────────────────────────────────────────────────────────────────
+┐
+
+│           THE STORY GRAPH IS THE SINGLE SOURCE OF                           │
+
+│              EDITORIAL TRUTH FOR THE PLATFORM                           │
+
+├
+─────────────────────────────────────────────────────────────────────────────
+┤
+
+│                                              │
+
+│ CORE PRINCIPLES:                                        │
+
+│                                              │
+
+│ 1. ONE CANONICAL STORY PER REAL-WORLD EVENT                                         │
+
+│   Every real-world event has exactly one canonical story in the graph.                  │
+
+│   Multiple perspectives are story variants, not separate stories.               │
+
+│                                              │
+
+│ 2. STORIES EVOLVE, NOT DUPLICATE                                    │
+
+│   New information merges into existing stories. The graph grows richer                      │
+
+│   over time, not more cluttered.                            │
+
+│                                              │
+
+│ 3. EVERYTHING IS CONNECTED                                      │
+
+│   Stories link to entities, claims, evidence, sources, topics, and each             │
+
+│   other. The graph reveals relationships invisible to linear text.          │
+
+│                                              │
+
+│ 4. PROVENANCE IS IMMUTABLE                                      │
+
+│   Every change is recorded. Every claim traces to its source. Every                 │
+
+│   editorial decision is documented. The graph IS the audit trail.               │
+
+│                                              │
+
+│ 5. THE GRAPH LEARNS                                          │
+
+│     Entity knowledge accumulates. Relationship patterns emerge. The graph         │
+
+│     becomes smarter as it grows, powering better AI recommendations.          │
+
+│                                                │
+
+│ 6. TEMPORAL AWARENESS                                             │
+
+│     The graph understands time. It knows what was known when. It can          │
+
+│     reconstruct any historical state.                        │
+
+│                                                │
+
+└─────────────────────────────────────────────────────────────────────────────
+┘
+
+```
+
+
+
+1.2 Position in Platform Architecture
+
+
+
+```
+
+AGBOFA NEXUS AI — STORY GRAPH POSITION:
+
+
+
+┌─────────────────────────────────────────────────────────────────────────────
+┐
+
+│                STORY GRAPH — CENTRAL HUB                              │
+
+├
+─────────────────────────────────────────────────────────────────────────────
+┤
+
+│                                                │
+
+│             ┌─────────────────┐                              │
+
+│             │ CONTENT         │                        │
+
+│             │ ORIGINATION │──           Creates initial stories           │
+
+│         │ (Vol 24)   │                       │
+
+│         └────────┬────────┘                                │
+
+│              │                           │
+
+│         ┌────────▼────────┐                                │
+
+│         │ TRUTH      │                       │
+
+│         │ ENGINE      │──      Adds claims, evidence, confidence │
+
+│         │ (Vol 25)   │                       │
+
+│         └────────┬────────┘                                │
+
+│              │                           │
+
+│ ┌──────────────────────────▼──────────────────────────────────────────┐ │
+
+│ │         STORY GRAPH (Vol 27)                       │ │
+
+│ │                                     │ │
+
+│ │ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────────┐ │ │
+
+│ │ │ STORY │ │ ENTITY │ │ KNOWLEDGE│ │ VERSION │ │ SEARCH │ │ │
+
+│ │ │ LIFECYCLE│ │ GRAPH │ │ GRAPH │ │ ENGINE │ │ ENGINE │ │ │
+
+│ │ └──────────┘ └──────────┘ └──────────┘ └──────────┘ └────────────┘ │ │
+
+│ │                                     │ │
+
+│ │ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────────────────┐ │ │
+
+│ │ │ DUPLICATE│ │ SIMILARITY│ │ STORY │ │         AI MEMORY     ││ │
+
+│ │ │ DETECTOR │ │ ENGINE │ │ MEMORY │ │ (RAG + Context)             ││ │
+
+│ │ └──────────┘ └──────────┘ └──────────┘ └──────────────────────────┘ │ │
+
+│ └───────────────────────────────────────────────────────────────────────┘ │
+
+│              │                           │
+
+│         ┌────────▼────────┐                                │
+
+│         │ CONTENT        │                       │
+
+│         │ FACTORY        │──   Reads stories for generation    │
+
+│               │ (Vol 26)    │                      │
+
+│               └────────┬────────┘                              │
+
+│                       │                        │
+
+│               ┌────────▼────────┐                              │
+
+│               │ DISTRIBUTION │                         │
+
+│               │ ENGINE      │──      Reads published stories       │
+
+│               │ (Vol 17)    │                      │
+
+│               └─────────────────┘                          │
+
+└─────────────────────────────────────────────────────────────────────────────
+┘
+
+```
+
+
+
+1.3 Service Inventory
+
+
+
+```yaml
+
+story_graph_services:
+
+ story_lifecycle_engine:
+
+      id: SVC-STG-LIF
+
+      runtime: Golang 1.22+
+
+      port: 9401
+
+      description: "Story CRUD, state machine, merge/split/branch operations"
+
+
+
+ entity_graph_service:
+
+      id: SVC-STG-ENT
+
+      runtime: Golang + Python (NLP)
+
+      port: 9402
+
+ description: "Entity extraction, resolution, linking, knowledge accumulation"
+
+
+
+knowledge_graph_service:
+
+ id: SVC-STG-KNG
+
+ runtime: Golang
+
+ port: 9403
+
+ description: "Knowledge enrichment, relationship inference, topic clustering"
+
+
+
+version_engine:
+
+ id: SVC-STG-VER
+
+ runtime: Golang
+
+ port: 9404
+
+ description: "Event-sourced versioning, diff generation, merge conflict resolution"
+
+
+
+duplicate_detector:
+
+ id: SVC-STG-DUP
+
+ runtime: Golang + Python (ML)
+
+ port: 9405
+
+ description: "Story deduplication, near-duplicate detection, cross-language matching"
+
+
+
+similarity_engine:
+
+ id: SVC-STG-SIM
+
+ runtime: Python (ML)
+
+ port: 9406
+
+ description: "Semantic similarity, embedding generation, vector search"
+
+ search_engine:
+
+      id: SVC-STG-SRC
+
+      runtime: Golang
+
+      port: 9407
+
+      description: "Hybrid graph+vector search, semantic search, entity search"
+
+
+
+ story_memory:
+
+      id: SVC-STG-MEM
+
+      runtime: Golang + Python
+
+      port: 9408
+
+      description: "Working memory, long-term memory, RAG context assembly, AI memory API"
+
+
+
+ graph_query_api:
+
+      id: SVC-STG-QRY
+
+      runtime: Golang
+
+      port: 9409
+
+      description: "Unified GraphQL and gRPC query interface for all graph consumers"
+
+```
+
+
+
+1.4 Canonical Story Model
+
+
+
+```go
+
+// services/story-graph/story-lifecycle-engine/internal/domain/model.go
+
+package domain
+
+
+
+// CanonicalStory is the single source of truth for a real-world event
+
+type CanonicalStory struct {
+
+  // Identity
+
+  StoryID         uuid.UUID      `json:"story_id"`
+
+  TenantID         uuid.UUID       `json:"tenant_id"`
+
+  CanonicalURL string             `json:"canonical_url"`
+
+
+
+  // Core Content
+
+  Headline         string      `json:"headline"`
+
+  Summary           string       `json:"summary"`
+
+  LeadParagraph string             `json:"lead_paragraph"`
+
+
+
+  // Classification
+
+  Category         StoryCategory `json:"category"`
+
+  Subcategory       string       `json:"subcategory,omitempty"`
+
+  Archetype        StoryArchetype `json:"archetype"`
+
+  Priority       StoryPriority `json:"priority"`
+
+
+
+  // Lifecycle
+
+  State          StoryState     `json:"state"`
+
+  Version         int64        `json:"version"`
+
+  TruthState       string       `json:"truth_state"`    // From Truth Engine
+
+  ConfidenceScore float64           `json:"confidence_score"`
+
+
+
+  // Scope
+
+  GeographicScope GeographicScope `json:"geographic_scope"`
+
+  Language         string       `json:"language"`
+
+    Audience       []string    `json:"audience,omitempty"`
+
+
+
+    // Relationships (IDs only — full graph in Neo4j)
+
+    ParentStoryID *uuid.UUID        `json:"parent_story_id,omitempty"`
+
+    MergedFromIDs []uuid.UUID         `json:"merged_from_ids,omitempty"`
+
+    RelatedStoryIDs []uuid.UUID      `json:"related_story_ids,omitempty"`
+
+
+
+    // Temporal
+
+    FirstDetectedAt time.Time       `json:"first_detected_at"`
+
+    FirstPublishedAt *time.Time     `json:"first_published_at,omitempty"`
+
+    LastUpdatedAt time.Time         `json:"last_updated_at"`
+
+    CreatedAt      time.Time     `json:"created_at"`
+
+    ArchivedAt     *time.Time     `json:"archived_at,omitempty"`
+
+
+
+    // Editorial
+
+    CreatedBy      string      `json:"created_by"`      // "AI_AGENT" or "USER_ID"
+
+    LastModifiedBy string        `json:"last_modified_by"`
+
+    EditorialStatus EditorialStatus `json:"editorial_status"`
+
+    ReviewCount      int        `json:"review_count"`
+
+
+
+    // Event Sourcing
+
+    EventStreamID string         `json:"event_stream_id"`
+
+    EventVersion int64          `json:"event_version"`
+
+}
+
+
+
+type StoryState string
+
+const (
+
+    StoryStateDiscovered StoryState = "DISCOVERED"
+
+    StoryStateCandidate     StoryState = "CANDIDATE"
+
+    StoryStateVerified     StoryState = "VERIFIED"
+
+    StoryStateDeveloping StoryState = "DEVELOPING"
+
+    StoryStateActive      StoryState = "ACTIVE"
+
+    StoryStateBreaking      StoryState = "BREAKING"
+
+    StoryStateUpdating      StoryState = "UPDATING"
+
+    StoryStateCorrecting StoryState = "CORRECTING"
+
+    StoryStateClosed       StoryState = "CLOSED"
+
+    StoryStateArchived      StoryState = "ARCHIVED"
+
+    StoryStateRetracted     StoryState = "RETRACTED"
+
+)
+
+
+
+type StoryCategory string
+
+const (
+
+    CategoryPolitics      StoryCategory = "POLITICS"
+
+    CategoryBusiness       StoryCategory = "BUSINESS"
+
+    CategoryTechnology       StoryCategory = "TECHNOLOGY"
+
+    CategoryScience        StoryCategory = "SCIENCE"
+
+    CategoryHealth        StoryCategory = "HEALTH"
+
+    CategorySports        StoryCategory = "SPORTS"
+
+    CategoryEntertainment StoryCategory = "ENTERTAINMENT"
+
+    CategoryWorld         StoryCategory = "WORLD"
+
+    CategoryLocal         StoryCategory = "LOCAL"
+
+    CategoryInvestigative StoryCategory = "INVESTIGATIVE"
+
+    CategoryOpinion         StoryCategory = "OPINION"
+
+)
+
+
+
+type StoryArchetype string
+
+const (
+
+    ArchetypeBreakingNews StoryArchetype = "BREAKING_NEWS"
+
+    ArchetypeDevelopingStory StoryArchetype = "DEVELOPING_STORY"
+
+    ArchetypeFeatureAnalysis StoryArchetype = "FEATURE_ANALYSIS"
+
+    ArchetypeExplainer       StoryArchetype = "EXPLAINER"
+
+    ArchetypeInvestigative StoryArchetype = "INVESTIGATIVE"
+
+    ArchetypeProfile        StoryArchetype = "PROFILE"
+
+    ArchetypeLiveBlog        StoryArchetype = "LIVE_BLOG"
+
+)
+
+
+
+type StoryPriority string
+
+const (
+
+    PriorityCritical StoryPriority = "CRITICAL"
+
+    PriorityHigh   StoryPriority = "HIGH"
+
+    PriorityMedium StoryPriority = "MEDIUM"
+
+    PriorityLow     StoryPriority = "LOW"
+
+)
+
+
+
+type EditorialStatus string
+
+const (
+
+    EditorialStatusDraft      EditorialStatus = "DRAFT"
+
+    EditorialStatusInReview     EditorialStatus = "IN_REVIEW"
+
+      EditorialStatusApproved       EditorialStatus = "APPROVED"
+
+      EditorialStatusPublished EditorialStatus = "PUBLISHED"
+
+      EditorialStatusCorrected EditorialStatus = "CORRECTED"
+
+      EditorialStatusRetracted EditorialStatus = "RETRACTED"
+
+)
+
+```
+
+
+
+---
+
+
+
+PART II — GRAPH DATA MODEL
+
+
+
+2.1 Neo4j Graph Schema
+
+
+
+```cypher
+
+// ============================================================================
+
+// NODE DEFINITIONS
+
+// ============================================================================
+
+
+
+// Story Node — The canonical representation of a real-world event
+
+CREATE (s:Story {
+
+      story_id: 'uuid',
+
+      tenant_id: 'uuid',
+
+      headline: 'Story headline',
+
+      summary: 'Story summary',
+
+      state: 'ACTIVE',
+
+      priority: 'HIGH',
+
+     category: 'POLITICS',
+
+     archetype: 'FEATURE_ANALYSIS',
+
+     version: 1,
+
+     confidence_score: 85.5,
+
+     language: 'en',
+
+     geographic_scope: 'NATIONAL',
+
+     first_detected_at: datetime('2026-08-07T10:00:00Z'),
+
+     first_published_at: datetime('2026-08-07T10:30:00Z'),
+
+     last_updated_at: datetime('2026-08-07T14:00:00Z'),
+
+     created_at: datetime('2026-08-07T10:00:00Z'),
+
+     source_count: 12,
+
+     claim_count: 25,
+
+     evidence_count: 45
+
+})
+
+
+
+// Event Node — A real-world occurrence
+
+CREATE (e:Event {
+
+     event_id: 'uuid',
+
+     event_type: 'ELECTION | DISASTER | ANNOUNCEMENT | INCIDENT | ...',
+
+     name: 'Event name',
+
+     description: 'Event description',
+
+     occurrence_time: datetime('2026-08-07T09:00:00Z'),
+
+     location: point({latitude: 38.9072, longitude: -77.0369}),
+
+     location_name: 'Washington, D.C.',
+
+     magnitude: 8.5, // Significance score 0-10
+
+     created_at: datetime()
+
+})
+
+
+
+// Entity Node — Person, Organization, Location, etc.
+
+CREATE (e:Entity {
+
+     entity_id: 'uuid',
+
+     tenant_id: 'uuid',
+
+     name: 'Entity display name',
+
+     canonical_name: 'entity-canonical-name', // Normalized for dedup
+
+     entity_type: 'PERSON | ORGANIZATION | LOCATION | EVENT | CONCEPT | PRODUCT',
+
+     wikidata_id: 'Q12345',
+
+     description: 'Entity description',
+
+     prominence_score: 85.0, // 0-100
+
+     aliases: ['alias1', 'alias2'],
+
+     created_at: datetime(),
+
+     updated_at: datetime()
+
+})
+
+
+
+// Claim Node — A verifiable statement
+
+CREATE (c:Claim {
+
+     claim_id: 'uuid',
+
+     claim_text: 'The full text of the claim',
+
+     claim_type: ['FACTUAL', 'NUMERICAL'],
+
+     verdict: 'TRUE | MOSTLY_TRUE | HALF_TRUE | MOSTLY_FALSE | FALSE | UNVERIFIABLE',
+
+     confidence: 0.92,
+
+     extracted_from: 'source_id',
+
+     created_at: datetime()
+
+})
+
+
+
+// Evidence Node — Supporting or contradicting evidence
+
+CREATE (ev:Evidence {
+
+     evidence_id: 'uuid',
+
+  evidence_type: 'DOCUMENT | IMAGE | VIDEO | AUDIO | API_RESPONSE |
+EXPERT_CITATION',
+
+     content_hash: 'sha256-hash',
+
+     url: 'https://source.url/evidence',
+
+     supports_claim: true,
+
+     reliability_score: 0.85,
+
+     retrieved_at: datetime(),
+
+     expires_at: datetime()
+
+})
+
+
+
+// Source Node — Origin of information
+
+CREATE (src:Source {
+
+     source_id: 'uuid',
+
+     tenant_id: 'uuid',
+
+     name: 'Source name',
+
+     source_type: 'NEWS_WIRE | GOVERNMENT | NEWSPAPER | BROADCAST | DIGITAL_NATIVE',
+
+     url: 'https://source.url',
+
+     trust_score: 85.0,
+
+     authority_level: 'HIGH',
+
+     country: 'US',
+
+     language: 'en'
+
+})
+
+
+
+// Article Node — Published content derived from story
+
+CREATE (a:Article {
+
+     article_id: 'uuid',
+
+     story_id: 'uuid',
+
+     headline: 'Article headline',
+
+     content_type: 'LONG_FORM | BREAKING | EXPLAINER',
+
+     platform: 'WEB | TWITTER | FACEBOOK',
+
+     language: 'en',
+
+     published_at: datetime(),
+
+     version: 1
+
+})
+
+
+
+// Topic Node — Thematic classification
+
+CREATE (t:Topic {
+
+     topic_id: 'uuid',
+
+     name: 'Topic name',
+
+     category: 'Topic category',
+
+     keywords: ['keyword1', 'keyword2'],
+
+     created_at: datetime()
+
+})
+
+
+
+// Timeline Node — Chronological event in story
+
+CREATE (tl:TimelineEvent {
+
+     timeline_id: 'uuid',
+
+     story_id: 'uuid',
+
+     event_time: datetime(),
+
+     description: 'What happened',
+
+     importance: 'MAJOR | MINOR | CONTEXTUAL',
+
+     created_at: datetime()
+
+})
+
+
+
+// StoryVersion Node — Immutable version snapshot
+
+CREATE (sv:StoryVersion {
+
+     version_id: 'uuid',
+
+     story_id: 'uuid',
+
+     version: 42,
+
+     change_type: 'UPDATE | CORRECTION | MERGE | SPLIT',
+
+     change_description: 'What changed',
+
+     changed_by: 'USER_ID | AI_AGENT',
+
+     snapshot: 'JSON snapshot of full story at this version',
+
+     created_at: datetime()
+
+})
+
+
+
+// ============================================================================
+
+// RELATIONSHIP DEFINITIONS
+
+// ============================================================================
+
+
+
+// Story relationships
+
+(:Story)-[:COVERS_EVENT]->(:Event)
+
+(:Story)-[:SOURCED_FROM {relevance: 0.9, first_reported: true}]->(:Source)
+
+(:Story)-[:CONTAINS_CLAIM]->(:Claim)
+
+(:Story)-[:INVOLVES_ENTITY {role: 'SUBJECT | PARTICIPANT | LOCATION | MENTION'}]->(:Entity)
+
+(:Story)-[:BELONGS_TO_TOPIC {relevance: 0.85}]->(:Topic)
+
+(:Story)-[:HAS_TIMELINE]->(:TimelineEvent)
+
+(:Story)-[:HAS_VERSION]->(:StoryVersion)
+
+
+
+// Story evolution
+
+(:Story)-[:EVOLVED_FROM {reason: 'UPDATE', timestamp: datetime()}]->(:Story)
+
+(:Story)-[:MERGED_INTO {timestamp: datetime()}]->(:Story)
+
+(:Story)-[:SPLIT_FROM {timestamp: datetime()}]->(:Story)
+
+(:Story)-[:SUPERSEDES {timestamp: datetime()}]->(:Story)
+
+(:Story)-[:BRANCHED_FROM {timestamp: datetime(), reason: 'PERSPECTIVE'}]->(:Story)
+
+
+
+// Story relationships
+
+(:Story)-[:RELATED_TO {similarity: 0.78, relationship_type: 'SAME_TOPIC | SAME_EVENT |
+SAME_ENTITY | FOLLOW_UP | BACKGROUND'}]->(:Story)
+
+(:Story)-[:PRECEDES {time_gap_minutes: 120}]->(:Story)
+
+(:Story)-[:CONTINUES]->(:Story)
+
+
+
+// Claim relationships
+
+(:Claim)-[:SUPPORTED_BY {confidence: 0.9}]->(:Evidence)
+
+(:Claim)-[:CONTRADICTED_BY {confidence: 0.8}]->(:Evidence)
+
+(:Claim)-[:EXTRACTED_FROM]->(:Source)
+
+(:Claim)-[:ABOUT_ENTITY]->(:Entity)
+
+(:Claim)-[:CORROBORATED_BY {strength: 0.85}]->(:Claim)
+
+(:Claim)-[:CONTRADICTS {strength: 0.75}]->(:Claim)
+
+(:Claim)-[:DERIVED_FROM]->(:Claim)
+
+
+
+// Entity relationships
+
+(:Entity)-[:SAME_AS {confidence: 0.95, method: 'WIKIDATA_MATCH'}]->(:Entity)
+
+(:Entity)-[:PART_OF]->(:Entity)
+
+(:Entity)-[:LOCATED_IN]->(:Entity)
+
+(:Entity)-[:WORKS_FOR {role: 'CEO', since: date('2020-01-01')}]->(:Entity)
+
+(:Entity)-[:RELATED_TO {relationship_type: 'COMPETITOR | PARTNER | SUBSIDIARY'}]->(:Entity)
+
+(:Entity)-[:MENTIONED_IN {frequency: 15, first_mention: datetime()}]->(:Story)
+
+
+
+// Article relationships
+
+(:Article)-[:DERIVED_FROM]->(:Story)
+
+(:Article)-[:PUBLISHED_ON {published_at: datetime()}]->(:Source)
+
+(:Article)-[:TRANSLATED_TO {language: 'es'}]->(:Article)
+
+
+
+// ============================================================================
+
+// INDEXES
+
+// ============================================================================
+
+
+
+// Node indexes
+
+CREATE INDEX story_id_idx FOR (s:Story) ON (s.story_id);
+
+CREATE INDEX story_state_idx FOR (s:Story) ON (s.state);
+
+CREATE INDEX story_category_idx FOR (s:Story) ON (s.category);
+
+CREATE INDEX story_priority_idx FOR (s:Story) ON (s.priority);
+
+CREATE INDEX story_created_idx FOR (s:Story) ON (s.created_at);
+
+CREATE INDEX entity_id_idx FOR (e:Entity) ON (e.entity_id);
+
+CREATE INDEX entity_canonical_idx FOR (e:Entity) ON (e.canonical_name);
+
+CREATE INDEX entity_type_idx FOR (e:Entity) ON (e.entity_type);
+
+CREATE INDEX entity_prominence_idx FOR (e:Entity) ON (e.prominence_score);
+
+
+
+CREATE INDEX claim_id_idx FOR (c:Claim) ON (c.claim_id);
+
+CREATE INDEX claim_verdict_idx FOR (c:Claim) ON (c.verdict);
+
+CREATE INDEX claim_confidence_idx FOR (c:Claim) ON (c.confidence);
+
+
+
+CREATE INDEX evidence_id_idx FOR (ev:Evidence) ON (ev.evidence_id);
+
+CREATE INDEX source_id_idx FOR (src:Source) ON (src.source_id);
+
+CREATE INDEX source_trust_idx FOR (src:Source) ON (src.trust_score);
+
+CREATE INDEX article_id_idx FOR (a:Article) ON (a.article_id);
+
+
+
+// Full-text indexes
+
+CREATE FULLTEXT INDEX story_text_idx FOR (s:Story) ON EACH [s.headline, s.summary];
+
+CREATE FULLTEXT INDEX entity_text_idx FOR (e:Entity) ON EACH [e.name, e.description];
+
+CREATE FULLTEXT INDEX claim_text_idx FOR (c:Claim) ON EACH [c.claim_text];
+
+
+
+// Composite indexes
+
+CREATE INDEX story_state_priority FOR (s:Story) ON (s.state, s.priority, s.created_at);
+
+CREATE INDEX entity_type_prominence FOR (e:Entity) ON (e.entity_type, e.prominence_score);
+
+
+
+// ============================================================================
+
+// CONSTRAINTS
+
+// ============================================================================
+
+CREATE CONSTRAINT story_id_unique IF NOT EXISTS FOR (s:Story) REQUIRE s.story_id IS
+UNIQUE;
+
+CREATE CONSTRAINT entity_id_unique IF NOT EXISTS FOR (e:Entity) REQUIRE e.entity_id IS
+UNIQUE;
+
+CREATE CONSTRAINT claim_id_unique IF NOT EXISTS FOR (c:Claim) REQUIRE c.claim_id IS
+UNIQUE;
+
+CREATE CONSTRAINT evidence_id_unique IF NOT EXISTS FOR (ev:Evidence) REQUIRE
+ev.evidence_id IS UNIQUE;
+
+CREATE CONSTRAINT source_id_unique IF NOT EXISTS FOR (src:Source) REQUIRE src.source_id
+IS UNIQUE;
+
+CREATE CONSTRAINT article_id_unique IF NOT EXISTS FOR (a:Article) REQUIRE a.article_id IS
+UNIQUE;
+
+CREATE CONSTRAINT version_id_unique IF NOT EXISTS FOR (sv:StoryVersion) REQUIRE
+sv.version_id IS UNIQUE;
+
+```
+
+
+
+2.2 Graph Relationship Diagram
+
+
+
+```
+
+STORY GRAPH — CORE RELATIONSHIPS:
+
+
+
+           ┌──────────┐
+
+           │ EVENT │
+
+           └────┬─────┘
+
+             │ COVERS_EVENT
+
+           ┌────▼─────┐
+
+       ┌─────┤ STORY ├─────┐
+
+       │   └────┬─────┘      │
+
+      │          │         │
+
+┌─────────▼──┐ ┌───▼────┐ ┌───▼──────────┐
+
+│ EVOLVED │ │CONTAINS│ │ INVOLVES_              │
+
+│ _FROM          │ │_CLAIM │ │ ENTITY       │
+
+└─────┬──────┘ └───┬────┘ └───┬───────────┘
+
+  │           │           │
+
+┌─────▼──────┐ ┌───▼────┐ ┌───▼───────────┐
+
+│ STORY │ │ CLAIM │ │ ENTITY            │
+
+│ (Parent) │ └───┬────┘ └───┬───────────┘
+
+└────────────┘             │       │
+
+          ┌─────▼──────┐ │
+
+          │ SUPPORTED │ │
+
+          │ _BY          │ │
+
+          └─────┬──────┘ │
+
+             │       │
+
+          ┌─────▼──────┐ │
+
+          │ EVIDENCE │ │
+
+          └────────────┘ │
+
+                     │
+
+      ┌─────────────────▼──────┐
+
+      │     SAME_AS                │
+
+      │ (Entity Resolution) │
+
+      └─────────────────┬──────┘
+
+                     │
+
+      ┌─────────────────▼──────┐
+
+      │      ENTITY            │
+
+           │ (Canonical)   │
+
+           └────────────────────────┘
+
+
+
+
+STORY EVOLUTION:
+
+
+
+      Story v1 ──EVOLVED_FROM──     Story v2 ──EVOLVED_FROM──   Story v3
+
+       │             │            │
+
+       │          Story v2a ──BRANCHED_FROM      │
+
+       │             │            │
+
+       └──────────────────────────┼──────────────────────────┘
+
+                    │
+
+                 Story v4 ──MERGED_INTO──     Story v2
+
+                 Story v4 ──MERGED_INTO──     Story v3
+
+```
+
+
+
+---
+
+
+
+PART III — STORY LIFECYCLE ENGINE
+
+
+
+Service ID: SVC-STG-LIF
+
+Runtime: Golang 1.22+
+
+gRPC Port: 9401
+
+
+
+3.1 Story State Machine
+
+```go
+
+// services/story-graph/story-lifecycle-engine/internal/domain/state_machine.go
+
+package domain
+
+
+
+// StoryStateMachine manages the complete story lifecycle
+
+type StoryStateMachine struct {
+
+    story   *CanonicalStory
+
+    currentState StoryState
+
+    transitions map[StoryState]map[StoryEvent]StoryState
+
+    eventStore EventStore
+
+}
+
+
+
+type StoryEvent string
+
+const (
+
+    EventStoryDetected        StoryEvent = "STORY_DETECTED"
+
+    EventCandidateAccepted StoryEvent = "CANDIDATE_ACCEPTED"
+
+    EventCandidateRejected StoryEvent = "CANDIDATE_REJECTED"
+
+    EventVerificationPassed StoryEvent = "VERIFICATION_PASSED"
+
+    EventVerificationFailed StoryEvent = "VERIFICATION_FAILED"
+
+    EventBreakingDeclared StoryEvent = "BREAKING_DECLARED"
+
+    EventNewInformationAdded StoryEvent = "NEW_INFORMATION_ADDED"
+
+    EventUpdatePublished       StoryEvent = "UPDATE_PUBLISHED"
+
+    EventCorrectionIssued StoryEvent = "CORRECTION_ISSUED"
+
+    EventStoryClosed      StoryEvent = "STORY_CLOSED"
+
+    EventStoryReopened         StoryEvent = "STORY_REOPENED"
+
+    EventStoryArchived        StoryEvent = "STORY_ARCHIVED"
+
+    EventStoryRetracted         StoryEvent = "STORY_RETRACTED"
+
+    EventDuplicateDetected StoryEvent = "DUPLICATE_DETECTED"
+
+    EventMergeProposed           StoryEvent = "MERGE_PROPOSED"
+
+    EventMergeCompleted           StoryEvent = "MERGE_COMPLETED"
+
+    EventSplitRequested         StoryEvent = "SPLIT_REQUESTED"
+
+    EventSplitCompleted         StoryEvent = "SPLIT_COMPLETED"
+
+)
+
+
+
+func NewStoryStateMachine(story *CanonicalStory, eventStore EventStore) *StoryStateMachine
+{
+
+    sm := &StoryStateMachine{
+
+        story:      story,
+
+        currentState: story.State,
+
+        eventStore: eventStore,
+
+    }
+
+
+
+    sm.transitions = map[StoryState]map[StoryEvent]StoryState{
+
+        StoryStateDiscovered: {
+
+             EventCandidateAccepted: StoryStateCandidate,
+
+             EventDuplicateDetected: StoryStateDiscovered, // Will be merged
+
+             EventBreakingDeclared: StoryStateBreaking,
+
+        },
+
+        StoryStateCandidate: {
+
+             EventCandidateRejected: StoryStateClosed,
+
+             EventVerificationPassed: StoryStateVerified,
+
+        },
+
+StoryStateVerified: {
+
+     EventNewInformationAdded: StoryStateDeveloping,
+
+     EventBreakingDeclared: StoryStateBreaking,
+
+     EventStoryClosed:      StoryStateClosed,
+
+},
+
+StoryStateDeveloping: {
+
+     EventVerificationPassed: StoryStateVerified,
+
+     EventUpdatePublished:    StoryStateActive,
+
+     EventStoryClosed:      StoryStateClosed,
+
+},
+
+StoryStateActive: {
+
+     EventNewInformationAdded: StoryStateDeveloping,
+
+     EventCorrectionIssued: StoryStateCorrecting,
+
+     EventStoryClosed:      StoryStateClosed,
+
+     EventStoryArchived:     StoryStateArchived,
+
+},
+
+StoryStateBreaking: {
+
+     EventNewInformationAdded: StoryStateDeveloping,
+
+     EventUpdatePublished:    StoryStateActive,
+
+     EventCorrectionIssued: StoryStateCorrecting,
+
+},
+
+StoryStateCorrecting: {
+
+     EventUpdatePublished:    StoryStateActive,
+
+     EventStoryRetracted:    StoryStateRetracted,
+
+},
+
+StoryStateClosed: {
+
+             EventStoryReopened:    StoryStateDeveloping,
+
+             EventStoryArchived:   StoryStateArchived,
+
+        },
+
+        StoryStateArchived: {
+
+             EventStoryReopened:    StoryStateDeveloping,
+
+        },
+
+        StoryStateRetracted: {
+
+             // Terminal state
+
+        },
+
+    }
+
+
+
+    return sm
+
+}
+
+
+
+func (sm *StoryStateMachine) Transition(event StoryEvent, metadata map[string]interface{})
+error {
+
+    validEvents, exists := sm.transitions[sm.currentState]
+
+    if !exists {
+
+        return fmt.Errorf("no transitions from state: %s", sm.currentState)
+
+    }
+
+
+
+    nextState, valid := validEvents[event]
+
+    if !valid {
+
+        return fmt.Errorf("invalid transition: %s -[%s]-> ?", sm.currentState, event)
+
+    }
+
+      // Record event
+
+      domainEvent := NewStoryDomainEvent(
+
+          sm.story.StoryID,
+
+          event,
+
+          sm.currentState,
+
+          nextState,
+
+          metadata,
+
+      )
+
+
+
+  if err := sm.eventStore.Append(sm.story.EventStreamID, domainEvent,
+sm.story.EventVersion); err != nil {
+
+          return fmt.Errorf("append event: %w", err)
+
+      }
+
+
+
+      // Update state
+
+      sm.currentState = nextState
+
+      sm.story.State = nextState
+
+      sm.story.EventVersion++
+
+      sm.story.LastUpdatedAt = time.Now()
+
+      sm.story.Version++
+
+
+
+      return nil
+
+}
+
+```
+
+
+
+3.2 Story Merge Engine
+
+```go
+
+// services/story-graph/story-lifecycle-engine/internal/domain/merge.go
+
+package domain
+
+
+
+// StoryMergeEngine handles merging duplicate or related stories
+
+type StoryMergeEngine struct {
+
+    neo4jClient neo4j.Driver
+
+    eventStore    EventStore
+
+    similarityEngine SimilarityEngineClient
+
+    editorialQueue EditorialQueueClient
+
+}
+
+
+
+type MergeRequest struct {
+
+    SourceStoryID uuid.UUID        `json:"source_story_id"` // Story being merged
+
+    TargetStoryID uuid.UUID       `json:"target_story_id"` // Story receiving merge
+
+    MergeStrategy MergeStrategy `json:"merge_strategy"`
+
+    Reason       string      `json:"reason"`
+
+    RequestedBy     string     `json:"requested_by"`
+
+}
+
+
+
+type MergeStrategy string
+
+const (
+
+    MergeStrategyAbsorb MergeStrategy = "ABSORB"          // Source absorbed into target
+
+    MergeStrategyCombine MergeStrategy = "COMBINE" // Both combined into new story
+
+    MergeStrategySupersede MergeStrategy = "SUPERSEDE" // Source supersedes target
+
+)
+
+
+
+type MergeResult struct {
+
+    MergeID        uuid.UUID       `json:"merge_id"`
+
+    SourceStoryID uuid.UUID            `json:"source_story_id"`
+
+    TargetStoryID uuid.UUID            `json:"target_story_id"`
+
+    ResultStoryID uuid.UUID            `json:"result_story_id"`
+
+    Strategy      MergeStrategy `json:"strategy"`
+
+    ChangesApplied []MergeChange `json:"changes_applied"`
+
+    ConflictsFound []MergeConflict `json:"conflicts_found"`
+
+    Status       MergeStatus       `json:"status"`
+
+    CompletedAt       time.Time        `json:"completed_at"`
+
+}
+
+
+
+type MergeChange struct {
+
+  ChangeType string          `json:"change_type"` // ADD_CLAIM, UPDATE_HEADLINE,
+ADD_SOURCE, etc.
+
+    Description string      `json:"description"`
+
+    BeforeValue interface{} `json:"before_value"`
+
+    AfterValue interface{} `json:"after_value"`
+
+}
+
+
+
+type MergeConflict struct {
+
+    ConflictType string `json:"conflict_type"`
+
+    Field      string `json:"field"`
+
+    SourceValue interface{} `json:"source_value"`
+
+    TargetValue interface{} `json:"target_value"`
+
+    Resolution string `json:"resolution"` // KEEP_SOURCE, KEEP_TARGET, MANUAL
+
+}
+
+
+
+// ExecuteMerge performs a story merge operation
+
+func (sme *StoryMergeEngine) ExecuteMerge(
+
+    ctx context.Context,
+
+    request *MergeRequest,
+
+) (*MergeResult, error) {
+
+
+
+    // 1. Load both stories with all relationships
+
+    sourceStory, err := sme.loadFullStory(ctx, request.SourceStoryID)
+
+    if err != nil {
+
+        return nil, fmt.Errorf("load source story: %w", err)
+
+    }
+
+
+
+    targetStory, err := sme.loadFullStory(ctx, request.TargetStoryID)
+
+    if err != nil {
+
+        return nil, fmt.Errorf("load target story: %w", err)
+
+    }
+
+
+
+    // 2. Validate merge is appropriate
+
+    if err := sme.validateMerge(sourceStory, targetStory); err != nil {
+
+        return nil, fmt.Errorf("merge validation: %w", err)
+
+    }
+
+  // 3. Calculate similarity and detect conflicts
+
+  similarity := await sme.similarityEngine.CalculateSimilarity(ctx, sourceStory, targetStory)
+
+  conflicts := sme.detectConflicts(sourceStory, targetStory)
+
+
+
+  result := &MergeResult{
+
+       MergeID:      uuid.NewV7(),
+
+       SourceStoryID: request.SourceStoryID,
+
+       TargetStoryID: request.TargetStoryID,
+
+       Strategy:    request.MergeStrategy,
+
+       ConflictsFound: conflicts,
+
+       Status:     MergeStatusInProgress,
+
+  }
+
+
+
+  // 4. If conflicts exist and strategy is COMBINE, escalate to human
+
+  if len(conflicts) > 0 && request.MergeStrategy == MergeStrategyCombine {
+
+       return sme.escalateToHumanReview(ctx, result, sourceStory, targetStory, conflicts)
+
+  }
+
+
+
+  // 5. Execute merge in Neo4j transaction
+
+  session := sme.neo4jClient.NewSession(ctx, neo4j.SessionConfig{
+
+       AccessMode: neo4j.AccessModeWrite,
+
+  })
+
+  defer session.Close(ctx)
+
+
+
+  changes, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (interface{},
+error) {
+
+    return sme.executeMergeTransaction(ctx, tx, sourceStory, targetStory,
+request.MergeStrategy, conflicts)
+
+  })
+
+  if err != nil {
+
+       result.Status = MergeStatusFailed
+
+       return result, fmt.Errorf("execute merge transaction: %w", err)
+
+  }
+
+
+
+  result.ChangesApplied = changes.([]MergeChange)
+
+
+
+  // 6. Determine result story
+
+  switch request.MergeStrategy {
+
+  case MergeStrategyAbsorb:
+
+       result.ResultStoryID = request.TargetStoryID
+
+  case MergeStrategySupersede:
+
+       result.ResultStoryID = request.SourceStoryID
+
+  case MergeStrategyCombine:
+
+       result.ResultStoryID = request.TargetStoryID // Updated target
+
+  }
+
+
+
+  // 7. Record merge events
+
+  sme.recordMergeEvents(ctx, result)
+
+
+
+  // 8. Update source story state
+
+  sme.closeSourceStory(ctx, request.SourceStoryID, request.TargetStoryID)
+
+    result.Status = MergeStatusCompleted
+
+    result.CompletedAt = time.Now()
+
+
+
+    return result, nil
+
+}
+
+
+
+func (sme *StoryMergeEngine) executeMergeTransaction(
+
+    ctx context.Context,
+
+    tx neo4j.ManagedTransaction,
+
+    source *CanonicalStory,
+
+    target *CanonicalStory,
+
+    strategy MergeStrategy,
+
+    conflicts []MergeConflict,
+
+) ([]MergeChange, error) {
+
+
+
+    changes := []MergeChange{}
+
+
+
+    // 1. Move all claims from source to target
+
+    result, err := tx.Run(ctx, `
+
+      MATCH (source:Story {story_id: $sourceId})
+
+      MATCH (source)-[:CONTAINS_CLAIM]->(claim:Claim)
+
+      MATCH (target:Story {story_id: $targetId})
+
+     CREATE (target)-[:CONTAINS_CLAIM {merged_from: $sourceId, merged_at: datetime()}]-
+>(claim)
+
+      RETURN count(claim) as claim_count
+
+    `, map[string]interface{}{
+
+     "sourceId": source.StoryID.String(),
+
+     "targetId": target.StoryID.String(),
+
+})
+
+
+
+if err == nil && result.Next() {
+
+     count := result.Record().Values[0].(int64)
+
+     changes = append(changes, MergeChange{
+
+          ChangeType: "MOVE_CLAIMS",
+
+          Description: fmt.Sprintf("Moved %d claims from source to target", count),
+
+     })
+
+}
+
+
+
+// 2. Link all sources from source story to target
+
+result, err = tx.Run(ctx, `
+
+     MATCH (source:Story {story_id: $sourceId})-[r:SOURCED_FROM]->(src:Source)
+
+     MATCH (target:Story {story_id: $targetId})
+
+     CREATE (target)-[:SOURCED_FROM {
+
+          relevance: r.relevance,
+
+          merged_from: $sourceId
+
+     }]->(src)
+
+     RETURN count(src) as source_count
+
+`, map[string]interface{}{
+
+     "sourceId": source.StoryID.String(),
+
+     "targetId": target.StoryID.String(),
+
+})
+
+if err == nil && result.Next() {
+
+     count := result.Record().Values[0].(int64)
+
+     changes = append(changes, MergeChange{
+
+          ChangeType: "LINK_SOURCES",
+
+          Description: fmt.Sprintf("Linked %d sources to target story", count),
+
+     })
+
+}
+
+
+
+// 3. Link all entities
+
+result, err = tx.Run(ctx, `
+
+     MATCH (source:Story {story_id: $sourceId})-[r:INVOLVES_ENTITY]->(e:Entity)
+
+     MATCH (target:Story {story_id: $targetId})
+
+     MERGE (target)-[:INVOLVES_ENTITY {
+
+          role: r.role,
+
+          merged_from: $sourceId
+
+     }]->(e)
+
+     RETURN count(e) as entity_count
+
+`, map[string]interface{}{
+
+     "sourceId": source.StoryID.String(),
+
+     "targetId": target.StoryID.String(),
+
+})
+
+
+
+if err == nil && result.Next() {
+
+     count := result.Record().Values[0].(int64)
+
+     changes = append(changes, MergeChange{
+
+          ChangeType: "LINK_ENTITIES",
+
+          Description: fmt.Sprintf("Linked %d entities to target story", count),
+
+     })
+
+}
+
+
+
+// 4. Create MERGED_INTO relationship
+
+_, err = tx.Run(ctx, `
+
+     MATCH (source:Story {story_id: $sourceId})
+
+     MATCH (target:Story {story_id: $targetId})
+
+     CREATE (source)-[:MERGED_INTO {
+
+          strategy: $strategy,
+
+          merged_at: datetime()
+
+     }]->(target)
+
+     SET source.state = 'CLOSED',
+
+          source.last_updated_at = datetime()
+
+     SET target.source_count = target.source_count + source.source_count,
+
+          target.claim_count = target.claim_count + source.claim_count,
+
+          target.last_updated_at = datetime(),
+
+          target.version = target.version + 1
+
+`, map[string]interface{}{
+
+     "sourceId": source.StoryID.String(),
+
+     "targetId": target.StoryID.String(),
+
+     "strategy": string(strategy),
+
+})
+
+
+
+if err != nil {
+
+     return nil, fmt.Errorf("create merge relationship: %w", err)
+
+    }
+
+
+
+    changes = append(changes, MergeChange{
+
+         ChangeType: "MERGE_RELATIONSHIP",
+
+         Description: "Created MERGED_INTO relationship and updated story states",
+
+    })
+
+
+
+    return changes, nil
+
+}
+
+
+
+func (sme *StoryMergeEngine) detectConflicts(
+
+    source *CanonicalStory,
+
+    target *CanonicalStory,
+
+) []MergeConflict {
+
+    conflicts := []MergeConflict{}
+
+
+
+    // Headline conflict (different headlines for same event)
+
+    if source.Headline != target.Headline &&
+
+         sme.headlinesAreSubstantiallyDifferent(source.Headline, target.Headline) {
+
+         conflicts = append(conflicts, MergeConflict{
+
+              ConflictType: "HEADLINE",
+
+              Field:   "headline",
+
+              SourceValue: source.Headline,
+
+              TargetValue: target.Headline,
+
+              Resolution: "KEEP_TARGET", // Default: keep more established story's headline
+
+         })
+
+    }
+
+
+
+    // Category conflict
+
+    if source.Category != target.Category {
+
+        conflicts = append(conflicts, MergeConflict{
+
+             ConflictType: "CATEGORY",
+
+             Field:    "category",
+
+             SourceValue: source.Category,
+
+             TargetValue: target.Category,
+
+             Resolution: "MANUAL",
+
+        })
+
+    }
+
+
+
+    // Priority conflict
+
+    if source.Priority != target.Priority {
+
+        conflicts = append(conflicts, MergeConflict{
+
+             ConflictType: "PRIORITY",
+
+             Field:    "priority",
+
+             SourceValue: source.Priority,
+
+             TargetValue: target.Priority,
+
+             Resolution: "KEEP_HIGHEST",
+
+        })
+
+    }
+
+
+
+    return conflicts
+
+}
+
+```
+
+
+
+3.3 Story Branching
+
+
+
+```go
+
+// services/story-graph/story-lifecycle-engine/internal/domain/branch.go
+
+package domain
+
+
+
+// StoryBranchEngine handles creating story branches for different perspectives
+
+type StoryBranchEngine struct {
+
+      neo4jClient neo4j.Driver
+
+      eventStore EventStore
+
+}
+
+
+
+type BranchRequest struct {
+
+      ParentStoryID uuid.UUID        `json:"parent_story_id"`
+
+      BranchReason BranchReason `json:"branch_reason"`
+
+      Description string         `json:"description"`
+
+      RequestedBy string          `json:"requested_by"`
+
+}
+
+
+
+type BranchReason string
+
+const (
+
+      BranchReasonPerspective BranchReason = "DIFFERENT_PERSPECTIVE"
+
+      BranchReasonLocalization BranchReason = "LOCALIZATION"
+
+      BranchReasonUpdate         BranchReason = "SIGNIFICANT_UPDATE"
+
+    BranchReasonCorrection BranchReason = "CORRECTION_BRANCH"
+
+)
+
+
+
+// CreateBranch creates a new story branch from a parent story
+
+func (sbe *StoryBranchEngine) CreateBranch(
+
+    ctx context.Context,
+
+    request *BranchRequest,
+
+) (*CanonicalStory, error) {
+
+
+
+    // Load parent story
+
+    parentStory, err := sbe.loadFullStory(ctx, request.ParentStoryID)
+
+    if err != nil {
+
+        return nil, fmt.Errorf("load parent story: %w", err)
+
+    }
+
+
+
+    // Create branch story (copy of parent)
+
+    branchStory := sbe.copyStory(parentStory)
+
+    branchStory.StoryID = uuid.NewV7()
+
+    branchStory.ParentStoryID = &parentStory.StoryID
+
+    branchStory.State = StoryStateDeveloping
+
+    branchStory.Version = 1
+
+    branchStory.EventVersion = 0
+
+    branchStory.CreatedAt = time.Now()
+
+    branchStory.LastUpdatedAt = time.Now()
+
+    branchStory.CreatedBy = request.RequestedBy
+
+// Create in Neo4j
+
+session := sbe.neo4jClient.NewSession(ctx, neo4j.SessionConfig{
+
+     AccessMode: neo4j.AccessModeWrite,
+
+})
+
+defer session.Close(ctx)
+
+
+
+_, err = session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+
+     // Create branch story node
+
+     _, err := tx.Run(ctx, `
+
+       CREATE (branch:Story {
+
+            story_id: $branchId,
+
+            tenant_id: $tenantId,
+
+            headline: $headline,
+
+            summary: $summary,
+
+            state: $state,
+
+            priority: $priority,
+
+            category: $category,
+
+            version: 1,
+
+            created_at: datetime(),
+
+            last_updated_at: datetime()
+
+       })
+
+       WITH branch
+
+       MATCH (parent:Story {story_id: $parentId})
+
+       CREATE (branch)-[:BRANCHED_FROM {
+
+            reason: $reason,
+
+            description: $description,
+
+       branched_at: datetime()
+
+     }]->(parent)
+
+     RETURN branch
+
+`, map[string]interface{}{
+
+     "branchId": branchStory.StoryID.String(),
+
+     "tenantId": branchStory.TenantID.String(),
+
+     "headline": branchStory.Headline,
+
+     "summary":      branchStory.Summary,
+
+     "state":     string(branchStory.State),
+
+     "priority": string(branchStory.Priority),
+
+     "category": string(branchStory.Category),
+
+     "parentId": parentStory.StoryID.String(),
+
+     "reason":      string(request.BranchReason),
+
+     "description": request.Description,
+
+})
+
+if err != nil {
+
+     return nil, fmt.Errorf("create branch node: %w", err)
+
+}
+
+
+
+// Copy claims from parent
+
+_, err = tx.Run(ctx, `
+
+     MATCH (parent:Story {story_id: $parentId})-[:CONTAINS_CLAIM]->(claim:Claim)
+
+     MATCH (branch:Story {story_id: $branchId})
+
+     CREATE (branch)-[:CONTAINS_CLAIM {inherited: true}]->(claim)
+
+`, map[string]interface{}{
+
+     "parentId": parentStory.StoryID.String(),
+
+          "branchId": branchStory.StoryID.String(),
+
+     })
+
+
+
+     // Copy entities
+
+     _, err = tx.Run(ctx, `
+
+          MATCH (parent:Story {story_id: $parentId})-[r:INVOLVES_ENTITY]->(entity:Entity)
+
+          MATCH (branch:Story {story_id: $branchId})
+
+          CREATE (branch)-[:INVOLVES_ENTITY {role: r.role, inherited: true}]->(entity)
+
+     `, map[string]interface{}{
+
+          "parentId": parentStory.StoryID.String(),
+
+          "branchId": branchStory.StoryID.String(),
+
+     })
+
+
+
+     return nil, err
+
+})
+
+
+
+if err != nil {
+
+     return nil, fmt.Errorf("execute branch transaction: %w", err)
+
+}
+
+
+
+// Record event
+
+sbe.eventStore.Append(branchStory.EventStreamID, NewStoryDomainEvent(
+
+     branchStory.StoryID,
+
+     EventSplitRequested,
+
+     "",
+
+     string(branchStory.State),
+
+        map[string]interface{}{
+
+              "parent_story_id": parentStory.StoryID,
+
+              "branch_reason": request.BranchReason,
+
+        },
+
+      ), 0)
+
+
+
+      return branchStory, nil
+
+}
+
+```
+
+
+
+---
+
+
+
+PART IV — KNOWLEDGE INTELLIGENCE
+
+
+
+Service ID: SVC-STG-KNG
+
+Runtime: Golang + Python (NLP)
+
+gRPC Port: 9403
+
+
+
+4.1 Knowledge Extraction & Enrichment
+
+
+
+```python
+
+# services/story-graph/knowledge-graph-service/src/knowledge/extractor.py
+
+"""
+
+Knowledge Extraction & Enrichment Engine.
+
+Extracts entities, relationships, and topics from stories to enrich the graph.
+
+"""
+
+class KnowledgeExtractionEngine:
+
+  """Extracts structured knowledge from story content."""
+
+
+
+  def __init__(self, nlp_models: Dict[str, Any], neo4j_driver, embedding_model):
+
+    self.ner_model = nlp_models["named_entity_recognition"]
+
+    self.relation_model = nlp_models["relation_extraction"]
+
+    self.entity_linker = nlp_models["entity_linking"]
+
+    self.topic_model = nlp_models["topic_modeling"]
+
+    self.neo4j = neo4j_driver
+
+    self.embedding_model = embedding_model
+
+
+
+  async def extract_and_enrich(
+
+    self,
+
+    story: CanonicalStory,
+
+    content: str,
+
+  ) -> KnowledgeExtractionResult:
+
+    """
+
+    Extract entities, relationships, and topics from story content
+
+    and enrich the knowledge graph.
+
+    """
+
+
+
+    result = KnowledgeExtractionResult(story_id=story.story_id)
+
+
+
+    # 1. Named Entity Recognition
+
+    entities = await self.ner_model.extract(content)
+
+# 2. Entity Linking — resolve to canonical entities
+
+resolved_entities = []
+
+for entity in entities:
+
+    canonical = await self.entity_linker.resolve(
+
+        entity.name,
+
+        entity.entity_type,
+
+        context=content[:500],
+
+    )
+
+    resolved_entities.append(canonical)
+
+
+
+# 3. Relationship Extraction
+
+relationships = await self.relation_model.extract_triples(
+
+    content, entities=resolved_entities
+
+)
+
+
+
+# 4. Topic Detection
+
+topics = await self.topic_model.detect(content)
+
+
+
+# 5. Update Neo4j Knowledge Graph
+
+async with self.neo4j.session() as session:
+
+    await session.execute_write(
+
+        self._update_graph,
+
+        story.story_id,
+
+        resolved_entities,
+
+        relationships,
+
+             topics,
+
+       )
+
+
+
+     # 6. Generate embeddings
+
+     entity_embeddings = await self._generate_entity_embeddings(resolved_entities)
+
+     story_embedding = await self.embedding_model.embed(content[:2000])
+
+
+
+     result.entities_extracted = len(resolved_entities)
+
+     result.relationships_extracted = len(relationships)
+
+     result.topics_detected = len(topics)
+
+     result.story_embedding = story_embedding
+
+
+
+     return result
+
+
+
+async def _update_graph(
+
+     self,
+
+     tx,
+
+     story_id: str,
+
+     entities: List[ResolvedEntity],
+
+     relationships: List[ExtractedRelationship],
+
+     topics: List[Topic],
+
+):
+
+     """Update Neo4j with extracted knowledge."""
+
+
+
+     # Merge entities (create if not exists, update if exists)
+
+     for entity in entities:
+
+await tx.run("""
+
+  MERGE (e:Entity {canonical_name: $canonical_name})
+
+  ON CREATE SET
+
+     e.entity_id = $entity_id,
+
+     e.name = $name,
+
+     e.entity_type = $entity_type,
+
+     e.wikidata_id = $wikidata_id,
+
+     e.description = $description,
+
+     e.prominence_score = $prominence_score,
+
+     e.created_at = datetime()
+
+  ON MATCH SET
+
+     e.prominence_score = CASE
+
+         WHEN e.prominence_score < $prominence_score
+
+         THEN $prominence_score
+
+         ELSE e.prominence_score
+
+     END,
+
+     e.updated_at = datetime()
+
+  WITH e
+
+  MATCH (s:Story {story_id: $story_id})
+
+  MERGE (s)-[:INVOLVES_ENTITY {role: $role}]->(e)
+
+""", {
+
+  "entity_id": entity.entity_id,
+
+  "canonical_name": entity.canonical_name,
+
+  "name": entity.name,
+
+  "entity_type": entity.entity_type,
+
+  "wikidata_id": entity.wikidata_id or "",
+
+       "description": entity.description or "",
+
+       "prominence_score": entity.prominence_score,
+
+       "story_id": story_id,
+
+       "role": entity.role_in_story or "MENTION",
+
+  })
+
+
+
+# Create relationships between entities
+
+for rel in relationships:
+
+  await tx.run("""
+
+       MATCH (e1:Entity {canonical_name: $subject})
+
+       MATCH (e2:Entity {canonical_name: $object})
+
+       MERGE (e1)-[r:RELATED_TO {relationship_type: $rel_type}]->(e2)
+
+       ON CREATE SET r.created_at = datetime(), r.confidence = $confidence
+
+       ON MATCH SET r.confidence = CASE
+
+         WHEN r.confidence < $confidence THEN $confidence
+
+         ELSE r.confidence
+
+       END
+
+  """, {
+
+       "subject": rel.subject_canonical_name,
+
+       "object": rel.object_canonical_name,
+
+       "rel_type": rel.relationship_type,
+
+       "confidence": rel.confidence,
+
+  })
+
+
+
+# Link topics
+
+for topic in topics:
+
+          await tx.run("""
+
+               MERGE (t:Topic {name: $topic_name})
+
+        ON CREATE SET t.topic_id = $topic_id, t.keywords = $keywords, t.created_at =
+datetime()
+
+               WITH t
+
+               MATCH (s:Story {story_id: $story_id})
+
+               MERGE (s)-[:BELONGS_TO_TOPIC {relevance: $relevance}]->(t)
+
+          """, {
+
+               "topic_id": str(uuid.uuid4()),
+
+               "topic_name": topic.name,
+
+               "keywords": topic.keywords,
+
+               "story_id": story_id,
+
+               "relevance": topic.relevance,
+
+          })
+
+```
+
+
+
+4.2 Entity Resolution
+
+
+
+```python
+
+class EntityResolutionEngine:
+
+      """Resolves entity mentions to canonical entities."""
+
+
+
+      def __init__(self, neo4j_driver, wikidata_client, embedding_model):
+
+        self.neo4j = neo4j_driver
+
+        self.wikidata = wikidata_client
+
+        self.embedding_model = embedding_model
+
+async def resolve(
+
+  self,
+
+  name: str,
+
+  entity_type: str,
+
+  context: Optional[str] = None,
+
+) -> ResolvedEntity:
+
+  """
+
+  Resolve an entity mention to its canonical form.
+
+  Uses: 1) Exact match in graph, 2) Wikidata lookup, 3) Embedding similarity
+
+  """
+
+
+
+  # 1. Try exact match in existing graph
+
+  async with self.neo4j.session() as session:
+
+    result = await session.run("""
+
+          MATCH (e:Entity)
+
+          WHERE e.canonical_name = $name OR $name IN e.aliases
+
+          RETURN e
+
+          LIMIT 1
+
+    """, {"name": name.lower().strip()})
+
+
+
+    record = await result.single()
+
+    if record:
+
+          entity = record["e"]
+
+          return ResolvedEntity(
+
+            entity_id=entity["entity_id"],
+
+        canonical_name=entity["canonical_name"],
+
+        name=entity["name"],
+
+        entity_type=entity["entity_type"],
+
+        resolution_method="GRAPH_EXACT_MATCH",
+
+        confidence=1.0,
+
+    )
+
+
+
+# 2. Try Wikidata lookup
+
+wikidata_result = await self.wikidata.search(name, entity_type)
+
+if wikidata_result and wikidata_result.confidence > 0.9:
+
+  # Check if Wikidata entity already in graph
+
+  async with self.neo4j.session() as session:
+
+    result = await session.run("""
+
+        MATCH (e:Entity {wikidata_id: $wikidata_id})
+
+        RETURN e
+
+        LIMIT 1
+
+    """, {"wikidata_id": wikidata_result.wikidata_id})
+
+
+
+    record = await result.single()
+
+    if record:
+
+        entity = record["e"]
+
+        return ResolvedEntity(
+
+          entity_id=entity["entity_id"],
+
+          canonical_name=entity["canonical_name"],
+
+          name=entity["name"],
+
+          entity_type=entity["entity_type"],
+
+                resolution_method="WIKIDATA_GRAPH_MATCH",
+
+                confidence=wikidata_result.confidence,
+
+            )
+
+
+
+      # Create new entity from Wikidata
+
+      return ResolvedEntity(
+
+          entity_id=str(uuid.uuid4()),
+
+          canonical_name=wikidata_result.canonical_name,
+
+          name=name,
+
+          entity_type=entity_type,
+
+          wikidata_id=wikidata_result.wikidata_id,
+
+          description=wikidata_result.description,
+
+          resolution_method="WIKIDATA_NEW",
+
+          confidence=wikidata_result.confidence,
+
+      )
+
+
+
+    # 3. Try embedding similarity
+
+    name_embedding = await self.embedding_model.embed(name)
+
+    similar_entities = await self._find_similar_entities(name_embedding, entity_type,
+threshold=0.85)
+
+
+
+    if similar_entities:
+
+      best_match = similar_entities[0]
+
+      return ResolvedEntity(
+
+          entity_id=best_match["entity_id"],
+
+          canonical_name=best_match["canonical_name"],
+
+                name=name,
+
+                entity_type=entity_type,
+
+                resolution_method="EMBEDDING_SIMILARITY",
+
+                confidence=best_match["similarity"],
+
+            )
+
+
+
+        # 4. Create new entity
+
+        return ResolvedEntity(
+
+            entity_id=str(uuid.uuid4()),
+
+            canonical_name=name.lower().strip().replace(" ", "-"),
+
+            name=name,
+
+            entity_type=entity_type,
+
+            resolution_method="NEW_ENTITY",
+
+            confidence=0.7,
+
+        )
+
+```
+
+
+
+4.3 Knowledge Freshness
+
+
+
+```go
+
+// services/story-graph/knowledge-graph-service/internal/domain/freshness.go
+
+package domain
+
+
+
+// KnowledgeFreshnessManager tracks and manages knowledge staleness
+
+type KnowledgeFreshnessManager struct {
+
+      neo4jClient neo4j.Driver
+
+    config     FreshnessConfig
+
+}
+
+
+
+type FreshnessConfig struct {
+
+    EntityStalenessDays int `json:"entity_staleness_days"` // 90 days
+
+    RelationshipStalenessDays int `json:"relationship_staleness_days"` // 180 days
+
+    ClaimStalenessDays        int `json:"claim_staleness_days"`    // 365 days
+
+    RecheckHighProminenceDays int `json:"recheck_high_prominence_days"` // 30 days
+
+}
+
+
+
+type FreshnessReport struct {
+
+    TotalEntities       int        `json:"total_entities"`
+
+    StaleEntities       int          `json:"stale_entities"`
+
+    StaleRelationships int              `json:"stale_relationships"`
+
+    EntitiesNeedingRefresh []EntityRefresh `json:"entities_needing_refresh"`
+
+    GeneratedAt          time.Time        `json:"generated_at"`
+
+}
+
+
+
+type EntityRefresh struct {
+
+    EntityID        string `json:"entity_id"`
+
+    CanonicalName string `json:"canonical_name"`
+
+    LastUpdatedAt time.Time `json:"last_updated_at"`
+
+    ProminenceScore float64 `json:"prominence_score"`
+
+    StalenessDays int         `json:"staleness_days"`
+
+    Priority     string `json:"priority"` // HIGH, MEDIUM, LOW
+
+}
+
+// AnalyzeFreshness analyzes knowledge graph staleness
+
+func (kfm *KnowledgeFreshnessManager) AnalyzeFreshness(
+
+  ctx context.Context,
+
+  tenantID uuid.UUID,
+
+) (*FreshnessReport, error) {
+
+
+
+  report := &FreshnessReport{
+
+      GeneratedAt: time.Now(),
+
+  }
+
+
+
+  session := kfm.neo4jClient.NewSession(ctx, neo4j.SessionConfig{})
+
+  defer session.Close(ctx)
+
+
+
+  // Find stale entities
+
+  result, err := session.Run(ctx, `
+
+      MATCH (e:Entity {tenant_id: $tenantId})
+
+      WHERE e.updated_at < datetime() - duration({days: $stalenessDays})
+
+      OPTIONAL MATCH (e)<-[r:INVOLVES_ENTITY]-(s:Story)
+
+      RETURN e.entity_id as entity_id,
+
+         e.canonical_name as canonical_name,
+
+         e.updated_at as last_updated,
+
+         e.prominence_score as prominence,
+
+         count(r) as mention_count,
+
+         duration.between(e.updated_at, datetime()).days as staleness_days
+
+      ORDER BY e.prominence_score DESC, mention_count DESC
+
+     LIMIT 100
+
+`, map[string]interface{}{
+
+     "tenantId":     tenantID.String(),
+
+     "stalenessDays": kfm.config.EntityStalenessDays,
+
+})
+
+
+
+if err != nil {
+
+     return nil, fmt.Errorf("query stale entities: %w", err)
+
+}
+
+
+
+for result.Next() {
+
+     record := result.Record()
+
+     stalenessDays := int(record.Values[5].(int64))
+
+
+
+     priority := "LOW"
+
+     prominence := record.Values[3].(float64)
+
+     mentionCount := int(record.Values[4].(int64))
+
+
+
+     if prominence > 80 && stalenessDays > kfm.config.RecheckHighProminenceDays {
+
+         priority = "HIGH"
+
+     } else if mentionCount > 10 && stalenessDays > 60 {
+
+         priority = "MEDIUM"
+
+     }
+
+
+
+     report.EntitiesNeedingRefresh = append(report.EntitiesNeedingRefresh, EntityRefresh{
+
+         EntityID:    record.Values[0].(string),
+
+               CanonicalName: record.Values[1].(string),
+
+               LastUpdatedAt: record.Values[2].(time.Time),
+
+               ProminenceScore: prominence,
+
+               StalenessDays: stalenessDays,
+
+               Priority:   priority,
+
+          })
+
+      }
+
+
+
+      report.TotalEntities = len(report.EntitiesNeedingRefresh)
+
+
+
+      return report, nil
+
+}
+
+```
+
+
+
+---
+
+
+
+PART V — STORY VERSIONING
+
+
+
+Service ID: SVC-STG-VER
+
+Runtime: Golang 1.22+
+
+gRPC Port: 9404
+
+
+
+5.1 Event-Sourced Versioning
+
+
+
+```go
+
+// services/story-graph/version-engine/internal/domain/versioning.go
+
+package domain
+
+
+
+// VersionEngine provides event-sourced story versioning
+
+type VersionEngine struct {
+
+    eventStore EventStore
+
+    snapshotStore SnapshotStore
+
+    diffEngine *DiffEngine
+
+}
+
+
+
+// StoryEvent represents an immutable event in the story's lifecycle
+
+type StoryEvent struct {
+
+    EventID     uuid.UUID      `json:"event_id"`
+
+    StreamID     string      `json:"stream_id"`
+
+    EventVersion int64        `json:"event_version"`
+
+    EventType StoryEventType `json:"event_type"`
+
+    StoryID    uuid.UUID      `json:"story_id"`
+
+    Data       json.RawMessage `json:"data"`
+
+    Metadata     json.RawMessage `json:"metadata"`
+
+    OccurredAt time.Time        `json:"occurred_at"`
+
+    ActorID     string      `json:"actor_id"`
+
+}
+
+
+
+type StoryEventType string
+
+const (
+
+    EventTypeStoryCreated        StoryEventType = "STORY_CREATED"
+
+    EventTypeHeadlineChanged StoryEventType = "HEADLINE_CHANGED"
+
+    EventTypeSummaryChanged        StoryEventType = "SUMMARY_CHANGED"
+
+    EventTypeClaimAdded         StoryEventType = "CLAIM_ADDED"
+
+    EventTypeClaimRemoved        StoryEventType = "CLAIM_REMOVED"
+
+    EventTypeSourceAdded        StoryEventType = "SOURCE_ADDED"
+
+    EventTypeEntityLinked     StoryEventType = "ENTITY_LINKED"
+
+    EventTypeStateChanged       StoryEventType = "STATE_CHANGED"
+
+    EventTypePriorityChanged StoryEventType = "PRIORITY_CHANGED"
+
+    EventTypeStoryMerged        StoryEventType = "STORY_MERGED"
+
+    EventTypeStorySplit      StoryEventType = "STORY_SPLIT"
+
+    EventTypeCorrectionApplied StoryEventType = "CORRECTION_APPLIED"
+
+    EventTypeConfidenceUpdated StoryEventType = "CONFIDENCE_UPDATED"
+
+)
+
+
+
+// AppendEvent appends a new event to the story's event stream
+
+func (ve *VersionEngine) AppendEvent(
+
+    ctx context.Context,
+
+    streamID string,
+
+    expectedVersion int64,
+
+    eventType StoryEventType,
+
+    storyID uuid.UUID,
+
+    data interface{},
+
+    actorID string,
+
+) (*StoryEvent, error) {
+
+
+
+    dataJSON, _ := json.Marshal(data)
+
+    event := &StoryEvent{
+
+        EventID:     uuid.NewV7(),
+
+        StreamID:     streamID,
+
+        EventVersion: expectedVersion + 1,
+
+        EventType: eventType,
+
+        StoryID:    storyID,
+
+        Data:       dataJSON,
+
+        Metadata:     json.RawMessage(fmt.Sprintf(`{"actor_id":"%s"}`, actorID)),
+
+        OccurredAt: time.Now(),
+
+        ActorID:     actorID,
+
+    }
+
+
+
+    // Append with optimistic concurrency check
+
+    if err := ve.eventStore.Append(ctx, streamID, event, expectedVersion); err != nil {
+
+        return nil, fmt.Errorf("append event (version conflict): %w", err)
+
+    }
+
+
+
+    // Every N events, create a snapshot for faster replay
+
+    if event.EventVersion%10 == 0 {
+
+        ve.createSnapshot(ctx, streamID, event.EventVersion)
+
+    }
+
+
+
+    return event, nil
+
+}
+
+
+
+// RebuildStory rebuilds story state from events
+
+func (ve *VersionEngine) RebuildStory(
+
+  ctx context.Context,
+
+  streamID string,
+
+  targetVersion *int64,
+
+) (*CanonicalStory, error) {
+
+
+
+  // Try to load from latest snapshot first
+
+  var story *CanonicalStory
+
+  var fromVersion int64
+
+
+
+  snapshot, err := ve.snapshotStore.LoadLatest(ctx, streamID)
+
+  if err == nil && snapshot != nil {
+
+      story = snapshot.State
+
+      fromVersion = snapshot.Version
+
+  } else {
+
+      story = &CanonicalStory{} // Empty initial state
+
+      fromVersion = 0
+
+  }
+
+
+
+  // Load events from after the snapshot
+
+  events, err := ve.eventStore.Load(ctx, streamID, fromVersion+1, targetVersion)
+
+  if err != nil {
+
+      return nil, fmt.Errorf("load events: %w", err)
+
+  }
+
+
+
+  // Apply events to rebuild state
+
+    for _, event := range events {
+
+        ve.applyEvent(story, event)
+
+    }
+
+
+
+    story.EventVersion = fromVersion + int64(len(events))
+
+
+
+    return story, nil
+
+}
+
+
+
+// applyEvent applies a single event to story state
+
+func (ve *VersionEngine) applyEvent(story *CanonicalStory, event *StoryEvent) {
+
+    switch event.EventType {
+
+    case EventTypeStoryCreated:
+
+        json.Unmarshal(event.Data, story)
+
+
+
+    case EventTypeHeadlineChanged:
+
+        var data struct {
+
+            OldHeadline string `json:"old_headline"`
+
+            NewHeadline string `json:"new_headline"`
+
+        }
+
+        json.Unmarshal(event.Data, &data)
+
+        story.Headline = data.NewHeadline
+
+
+
+    case EventTypeClaimAdded:
+
+        story.ClaimCount++
+
+    case EventTypeStateChanged:
+
+        var data struct {
+
+            OldState string `json:"old_state"`
+
+            NewState string `json:"new_state"`
+
+        }
+
+        json.Unmarshal(event.Data, &data)
+
+        story.State = StoryState(data.NewState)
+
+
+
+    case EventTypeStoryMerged:
+
+        var data struct {
+
+            MergedStoryID string `json:"merged_story_id"`
+
+        }
+
+        json.Unmarshal(event.Data, &data)
+
+        mergedID, _ := uuid.Parse(data.MergedStoryID)
+
+        story.MergedFromIDs = append(story.MergedFromIDs, mergedID)
+
+
+
+    // ... other event types
+
+    }
+
+
+
+    story.EventVersion = event.EventVersion
+
+    story.LastUpdatedAt = event.OccurredAt
+
+    story.Version++
+
+}
+
+
+
+// GenerateDiff generates a diff between two story versions
+
+func (ve *VersionEngine) GenerateDiff(
+
+      ctx context.Context,
+
+      streamID string,
+
+      fromVersion int64,
+
+      toVersion int64,
+
+) (*StoryDiff, error) {
+
+
+
+      fromStory, err := ve.RebuildStory(ctx, streamID, &fromVersion)
+
+      if err != nil {
+
+          return nil, fmt.Errorf("rebuild from version: %w", err)
+
+      }
+
+
+
+      toStory, err := ve.RebuildStory(ctx, streamID, &toVersion)
+
+      if err != nil {
+
+          return nil, fmt.Errorf("rebuild to version: %w", err)
+
+      }
+
+
+
+      return ve.diffEngine.Compare(fromStory, toStory), nil
+
+}
+
+```
+
+
+
+---
+
+
+
+PART VI — DUPLICATE & SIMILARITY ENGINE
+
+
+
+Service ID: SVC-STG-DUP / SVC-STG-SIM
+
+Runtime: Golang + Python (ML)
+
+gRPC Port: 9405 / 9406
+
+
+
+6.1 Multi-Strategy Duplicate Detection
+
+
+
+```go
+
+// services/story-graph/duplicate-detector/internal/domain/detector.go
+
+package domain
+
+
+
+// DuplicateDetector identifies duplicate stories using multiple strategies
+
+type DuplicateDetector struct {
+
+    vectorDB      *pgvector.Client
+
+    neo4jClient    neo4j.Driver
+
+    similarityEngine SimilarityEngineClient
+
+    thresholds     DuplicateThresholds
+
+}
+
+
+
+type DuplicateThresholds struct {
+
+    ExactHashMatch       float64 `json:"exact_hash_match"`       // 1.0
+
+    NearExactSimHash      int     `json:"near_exact_simhash"`   // Hamming distance <= 3
+
+    SemanticHigh        float64 `json:"semantic_high"`       // 0.92
+
+    SemanticMedium        float64 `json:"semantic_medium"`        // 0.85
+
+    EntityOverlapHigh    float64 `json:"entity_overlap_high"`   // 0.80
+
+    CrossLingualThreshold float64 `json:"cross_lingual_threshold"` // 0.80
+
+}
+
+
+
+type DuplicateResult struct {
+
+    SourceStoryID uuid.UUID          `json:"source_story_id"`
+
+    IsDuplicate    bool         `json:"is_duplicate"`
+
+    DuplicateType DuplicateType `json:"duplicate_type"`
+
+    MatchedStoryID *uuid.UUID          `json:"matched_story_id,omitempty"`
+
+    SimilarityScore float64       `json:"similarity_score,omitempty"`
+
+    MatchDetails    []MatchDetail `json:"match_details,omitempty"`
+
+    RecommendedAction string           `json:"recommended_action"` // MERGE, REVIEW, IGNORE
+
+}
+
+
+
+type DuplicateType string
+
+const (
+
+    DuplicateTypeNone           DuplicateType = "NONE"
+
+    DuplicateTypeExact        DuplicateType = "EXACT"
+
+    DuplicateTypeNearExact        DuplicateType = "NEAR_EXACT"
+
+    DuplicateTypeSemantic        DuplicateType = "SEMANTIC"
+
+    DuplicateTypeEntityBased DuplicateType = "ENTITY_BASED"
+
+    DuplicateTypeCrossLingual DuplicateType = "CROSS_LINGUAL"
+
+)
+
+
+
+// DetectDuplicates performs multi-tier duplicate detection
+
+func (dd *DuplicateDetector) DetectDuplicates(
+
+    ctx context.Context,
+
+    story *CanonicalStory,
+
+) (*DuplicateResult, error) {
+
+
+
+    result := &DuplicateResult{
+
+    SourceStoryID: story.StoryID,
+
+    IsDuplicate: false,
+
+}
+
+
+
+// Tier 1: Exact content hash match
+
+if match, err := dd.checkExactHash(ctx, story); err == nil && match != nil {
+
+    return &DuplicateResult{
+
+       SourceStoryID:     story.StoryID,
+
+       IsDuplicate:     true,
+
+       DuplicateType:     DuplicateTypeExact,
+
+       MatchedStoryID:     &match.StoryID,
+
+       SimilarityScore: 1.0,
+
+       RecommendedAction: "MERGE",
+
+    }, nil
+
+}
+
+
+
+// Tier 2: Near-exact SimHash match
+
+if match, err := dd.checkSimHash(ctx, story); err == nil && match != nil {
+
+    return &DuplicateResult{
+
+       SourceStoryID:     story.StoryID,
+
+       IsDuplicate:     true,
+
+       DuplicateType:     DuplicateTypeNearExact,
+
+       MatchedStoryID:     &match.StoryID,
+
+       SimilarityScore: match.Similarity,
+
+       RecommendedAction: "MERGE",
+
+    }, nil
+
+}
+
+
+
+// Tier 3: Semantic vector similarity
+
+similarDocs, err := dd.vectorDB.FindSimilar(ctx,
+
+    story.Embedding,
+
+    dd.thresholds.SemanticMedium,
+
+    10,
+
+)
+
+if err != nil {
+
+    return nil, fmt.Errorf("vector similarity search: %w", err)
+
+}
+
+
+
+for _, match := range similarDocs {
+
+    if match.Similarity >= dd.thresholds.SemanticHigh {
+
+        result.IsDuplicate = true
+
+        result.DuplicateType = DuplicateTypeSemantic
+
+        result.MatchedStoryID = &match.StoryID
+
+        result.SimilarityScore = match.Similarity
+
+        result.RecommendedAction = "MERGE"
+
+        return result, nil
+
+    }
+
+
+
+    if match.Similarity >= dd.thresholds.SemanticMedium {
+
+        // Check entity overlap for confirmation
+
+        entityOverlap := await dd.calculateEntityOverlap(ctx, story.StoryID, match.StoryID)
+
+        if entityOverlap >= dd.thresholds.EntityOverlapHigh {
+
+                result.IsDuplicate = true
+
+                result.DuplicateType = DuplicateTypeEntityBased
+
+                result.MatchedStoryID = &match.StoryID
+
+                result.SimilarityScore = match.Similarity
+
+                result.RecommendedAction = "REVIEW"
+
+                return result, nil
+
+            }
+
+        }
+
+    }
+
+
+
+    // Tier 4: Cross-lingual matching (for stories in different languages)
+
+    if story.Language != "en" {
+
+        translatedMatch := await dd.checkCrossLingual(ctx, story)
+
+        if translatedMatch != nil {
+
+            result.IsDuplicate = true
+
+            result.DuplicateType = DuplicateTypeCrossLingual
+
+            result.MatchedStoryID = &translatedMatch.StoryID
+
+            result.SimilarityScore = translatedMatch.Similarity
+
+            result.RecommendedAction = "REVIEW"
+
+            return result, nil
+
+        }
+
+    }
+
+
+
+    return result, nil
+
+}
+
+// calculateEntityOverlap calculates Jaccard similarity of entities between two stories
+
+func (dd *DuplicateDetector) calculateEntityOverlap(
+
+  ctx context.Context,
+
+  storyID1 uuid.UUID,
+
+  storyID2 uuid.UUID,
+
+) (float64, error) {
+
+
+
+  session := dd.neo4jClient.NewSession(ctx, neo4j.SessionConfig{})
+
+  defer session.Close(ctx)
+
+
+
+  result, err := session.Run(ctx, `
+
+       MATCH (s1:Story {story_id: $id1})-[:INVOLVES_ENTITY]->(e:Entity)
+
+       WITH collect(DISTINCT e.canonical_name) as entities1
+
+       MATCH (s2:Story {story_id: $id2})-[:INVOLVES_ENTITY]->(e:Entity)
+
+       WITH entities1, collect(DISTINCT e.canonical_name) as entities2
+
+       RETURN
+
+         size(entities1) as count1,
+
+         size(entities2) as count2,
+
+         size([e IN entities1 WHERE e IN entities2]) as overlap
+
+  `, map[string]interface{}{
+
+       "id1": storyID1.String(),
+
+       "id2": storyID2.String(),
+
+  })
+
+
+
+  if err != nil || !result.Next() {
+
+       return 0, err
+
+      }
+
+
+
+      record := result.Record()
+
+      count1 := float64(record.Values[0].(int64))
+
+      count2 := float64(record.Values[1].(int64))
+
+      overlap := float64(record.Values[2].(int64))
+
+
+
+      if count1+count2-overlap == 0 {
+
+          return 0, nil
+
+      }
+
+
+
+      // Jaccard similarity
+
+      return overlap / (count1 + count2 - overlap), nil
+
+}
+
+```
+
+
+
+---
+
+
+
+PART VII — GRAPH SEARCH
+
+
+
+Service ID: SVC-STG-SRC
+
+Runtime: Golang
+
+gRPC Port: 9407
+
+
+
+7.1 Hybrid Search Engine
+
+```go
+
+// services/story-graph/search-engine/internal/domain/search.go
+
+package domain
+
+
+
+// SearchEngine provides hybrid graph + vector search
+
+type SearchEngine struct {
+
+    neo4jClient neo4j.Driver
+
+    vectorDB      *pgvector.Client
+
+    embeddingModel EmbeddingModel
+
+}
+
+
+
+type SearchRequest struct {
+
+    Query        string        `json:"query"`
+
+    SearchType         SearchType       `json:"search_type"`
+
+    Filters    SearchFilters        `json:"filters,omitempty"`
+
+    Limit      int           `json:"limit"`
+
+    Offset       int         `json:"offset"`
+
+    IncludeEntities bool            `json:"include_entities"`
+
+}
+
+
+
+type SearchType string
+
+const (
+
+    SearchTypeSemantic SearchType = "SEMANTIC"
+
+    SearchTypeGraph         SearchType = "GRAPH"
+
+    SearchTypeHybrid        SearchType = "HYBRID"
+
+    SearchTypeEntity       SearchType = "ENTITY"
+
+    SearchTypeTimeline SearchType = "TIMELINE"
+
+)
+
+
+
+type SearchFilters struct {
+
+    StoryState     []string `json:"story_state,omitempty"`
+
+    Category       []string `json:"category,omitempty"`
+
+    DateFrom        *time.Time `json:"date_from,omitempty"`
+
+    DateTo        *time.Time `json:"date_to,omitempty"`
+
+    Entities     []string `json:"entities,omitempty"`
+
+    Language       string `json:"language,omitempty"`
+
+    MinConfidence *float64 `json:"min_confidence,omitempty"`
+
+}
+
+
+
+type SearchResult struct {
+
+    Stories      []StoryHit       `json:"stories"`
+
+    Entities     []EntityHit      `json:"entities,omitempty"`
+
+    TotalCount int               `json:"total_count"`
+
+    SearchType SearchType              `json:"search_type"`
+
+    QueryTime       time.Duration       `json:"query_time_ms"`
+
+}
+
+
+
+type StoryHit struct {
+
+    StoryID       uuid.UUID `json:"story_id"`
+
+    Headline       string      `json:"headline"`
+
+    Summary         string      `json:"summary"`
+
+    Score        float64 `json:"score"`
+
+    MatchType       string   `json:"match_type"` // VECTOR, GRAPH, HYBRID
+
+    HighlightedText string `json:"highlighted_text,omitempty"`
+
+}
+
+
+
+// Search performs hybrid search across graph and vector stores
+
+func (se *SearchEngine) Search(
+
+    ctx context.Context,
+
+    request *SearchRequest,
+
+) (*SearchResult, error) {
+
+
+
+    startTime := time.Now()
+
+    result := &SearchResult{
+
+        SearchType: request.SearchType,
+
+    }
+
+
+
+    switch request.SearchType {
+
+    case SearchTypeSemantic:
+
+        return se.semanticSearch(ctx, request)
+
+    case SearchTypeGraph:
+
+        return se.graphSearch(ctx, request)
+
+    case SearchTypeHybrid:
+
+        return se.hybridSearch(ctx, request)
+
+    case SearchTypeEntity:
+
+        return se.entitySearch(ctx, request)
+
+    case SearchTypeTimeline:
+
+        return se.timelineSearch(ctx, request)
+
+    default:
+
+        return se.hybridSearch(ctx, request)
+
+    }
+
+
+
+    result.QueryTime = time.Since(startTime)
+
+    return result, nil
+
+}
+
+
+
+// hybridSearch combines vector similarity with graph relevance
+
+func (se *SearchEngine) hybridSearch(
+
+    ctx context.Context,
+
+    request *SearchRequest,
+
+) (*SearchResult, error) {
+
+
+
+    result := &SearchResult{SearchType: SearchTypeHybrid}
+
+
+
+    // 1. Generate query embedding
+
+    queryEmbedding, err := se.embeddingModel.Embed(ctx, request.Query)
+
+    if err != nil {
+
+        return nil, fmt.Errorf("generate query embedding: %w", err)
+
+    }
+
+
+
+    // 2. Vector search for candidate stories
+
+    candidates, err := se.vectorDB.FindSimilar(ctx, queryEmbedding, 0.5, request.Limit*3)
+
+    if err != nil {
+
+        return nil, fmt.Errorf("vector search: %w", err)
+
+}
+
+
+
+// 3. Graph-enhanced reranking using Neo4j
+
+storyIDs := make([]string, len(candidates))
+
+for i, c := range candidates {
+
+    storyIDs[i] = c.StoryID.String()
+
+}
+
+
+
+session := se.neo4jClient.NewSession(ctx, neo4j.SessionConfig{})
+
+defer session.Close(ctx)
+
+
+
+graphResult, err := session.Run(ctx, `
+
+    UNWIND $storyIds as sid
+
+    MATCH (s:Story {story_id: sid})
+
+    WHERE s.tenant_id = $tenantId
+
+    OPTIONAL MATCH (s)-[:BELONGS_TO_TOPIC]->(t:Topic)
+
+    OPTIONAL MATCH (s)-[:INVOLVES_ENTITY]->(e:Entity)
+
+    OPTIONAL MATCH (s)-[:SOURCED_FROM]->(src:Source)
+
+    WITH s,
+
+       count(DISTINCT t) as topic_count,
+
+       count(DISTINCT e) as entity_count,
+
+       collect(DISTINCT src.name)[..5] as source_names,
+
+       // Graph relevance: more connections = more established story
+
+       (topic_count * 0.3 + entity_count * 0.2 +
+
+       size(source_names) * 0.3 + s.source_count * 0.2) as graph_score
+
+    RETURN s.story_id as story_id,
+
+         s.headline as headline,
+
+         s.summary as summary,
+
+         graph_score
+
+     ORDER BY graph_score DESC
+
+     LIMIT $limit
+
+`, map[string]interface{}{
+
+     "storyIds": storyIDs,
+
+     "tenantId": request.Filters.TenantID,
+
+     "limit": request.Limit,
+
+})
+
+
+
+if err != nil {
+
+     return nil, fmt.Errorf("graph reranking: %w", err)
+
+}
+
+
+
+// 4. Combine vector and graph scores
+
+for graphResult.Next() {
+
+     record := graphResult.Record()
+
+
+
+     // Find corresponding vector score
+
+     vectorScore := 0.0
+
+     storyID := record.Values[0].(string)
+
+     for _, c := range candidates {
+
+       if c.StoryID.String() == storyID {
+
+         vectorScore = c.Similarity
+
+         break
+
+               }
+
+          }
+
+
+
+          graphScore := record.Values[3].(float64)
+
+
+
+          // Hybrid score: 60% vector, 40% graph
+
+          hybridScore := vectorScore*0.6 + graphScore*0.4
+
+
+
+          result.Stories = append(result.Stories, StoryHit{
+
+               StoryID: uuid.MustParse(storyID),
+
+               Headline: record.Values[1].(string),
+
+               Summary: record.Values[2].(string),
+
+               Score:   hybridScore,
+
+               MatchType: "HYBRID",
+
+          })
+
+      }
+
+
+
+      return result, nil
+
+}
+
+```
+
+
+
+7.2 Graph Traversal Queries
+
+
+
+```cypher
+
+// Key graph traversal patterns
+
+// Find all stories related to an entity
+
+MATCH (e:Entity {canonical_name: $entityName})<-[:INVOLVES_ENTITY]-(s:Story)
+
+WHERE s.tenant_id = $tenantId
+
+RETURN s.story_id, s.headline, s.state, s.priority
+
+ORDER BY s.created_at DESC
+
+LIMIT 50
+
+
+
+// Find story evolution chain
+
+MATCH path = (s:Story {story_id: $storyId})-[:EVOLVED_FROM*]->(ancestor:Story)
+
+RETURN [node in nodes(path) | {
+
+  story_id: node.story_id,
+
+  headline: node.headline,
+
+  version: node.version,
+
+  state: node.state
+
+}] as evolution_chain
+
+ORDER BY length(path) DESC
+
+LIMIT 1
+
+
+
+// Find related stories through shared entities
+
+MATCH (s:Story {story_id: $storyId})-[:INVOLVES_ENTITY]->(e:Entity)<-[:INVOLVES_ENTITY]-
+(related:Story)
+
+WHERE related.story_id <> $storyId
+
+WITH related, count(DISTINCT e) as shared_entities
+
+RETURN related.story_id, related.headline, shared_entities
+
+ORDER BY shared_entities DESC
+
+LIMIT 20
+
+// Find stories with similar topics
+
+MATCH (s:Story {story_id: $storyId})-[:BELONGS_TO_TOPIC]->(t:Topic)<-[:BELONGS_TO_TOPIC]-
+(similar:Story)
+
+WHERE similar.story_id <> $storyId
+
+WITH similar, collect(DISTINCT t.name) as shared_topics
+
+RETURN similar.story_id, similar.headline, shared_topics, size(shared_topics) as topic_overlap
+
+ORDER BY topic_overlap DESC
+
+LIMIT 20
+
+
+
+// Timeline reconstruction for a story
+
+MATCH (s:Story {story_id: $storyId})-[:HAS_TIMELINE]->(tl:TimelineEvent)
+
+RETURN tl.event_time, tl.description, tl.importance
+
+ORDER BY tl.event_time ASC
+
+
+
+// Entity knowledge graph (2-hop neighborhood)
+
+MATCH (e:Entity {canonical_name: $entityName})-[r]-(connected)
+
+WHERE type(r) IN ['RELATED_TO', 'PART_OF', 'LOCATED_IN', 'WORKS_FOR']
+
+OPTIONAL MATCH (connected)-[r2]-(connected2)
+
+WHERE type(r2) IN ['RELATED_TO', 'PART_OF', 'LOCATED_IN', 'WORKS_FOR']
+
+RETURN e, r, connected, r2, connected2
+
+LIMIT 100
+
+```
+
+
+
+---
+
+PART VIII — STORY MEMORY
+
+
+
+Service ID: SVC-STG-MEM
+
+Runtime: Golang + Python
+
+gRPC Port: 9408
+
+
+
+8.1 AI Memory System
+
+
+
+```go
+
+// services/story-graph/story-memory/internal/domain/memory.go
+
+package domain
+
+
+
+// StoryMemory provides AI agents with contextual memory
+
+type StoryMemory struct {
+
+    neo4jClient neo4j.Driver
+
+    vectorDB    *pgvector.Client
+
+    embeddingModel EmbeddingModel
+
+    memoryConfig MemoryConfig
+
+}
+
+
+
+type MemoryConfig struct {
+
+    WorkingMemorySize     int      `json:"working_memory_size"`    // 50 items
+
+    LongTermMemoryTTL       time.Duration `json:"long_term_memory_ttl"` // 90 days
+
+    ContextWindowTokens int         `json:"context_window_tokens"` // 100000
+
+    RelevanceThreshold float64      `json:"relevance_threshold"` // 0.5
+
+    MaxEntitiesPerContext int      `json:"max_entities_per_context"` // 20
+
+}
+
+
+
+type MemoryContext struct {
+
+    StoryID       uuid.UUID       `json:"story_id"`
+
+    CurrentStory *StorySummary          `json:"current_story"`
+
+    RelatedStories []StorySummary       `json:"related_stories"`
+
+    KeyEntities     []EntitySummary `json:"key_entities"`
+
+    RecentEvents []TimelineEvent `json:"recent_events"`
+
+    KnowledgeGraph *GraphContext           `json:"knowledge_graph,omitempty"`
+
+    AssembledAt       time.Time       `json:"assembled_at"`
+
+}
+
+
+
+type StorySummary struct {
+
+    StoryID    uuid.UUID `json:"story_id"`
+
+    Headline string `json:"headline"`
+
+    Summary       string `json:"summary"`
+
+    State     string `json:"state"`
+
+    Relevance float64 `json:"relevance"`
+
+}
+
+
+
+// AssembleContext builds the AI context for a story
+
+func (sm *StoryMemory) AssembleContext(
+
+    ctx context.Context,
+
+    storyID uuid.UUID,
+
+    query string,
+
+    maxTokens int,
+
+) (*MemoryContext, error) {
+
+
+
+  memory := &MemoryContext{
+
+      StoryID:      storyID,
+
+      AssembledAt: time.Now(),
+
+  }
+
+
+
+  session := sm.neo4jClient.NewSession(ctx, neo4j.SessionConfig{})
+
+  defer session.Close(ctx)
+
+
+
+  // 1. Load current story with full details
+
+  currentStory, err := sm.loadStorySummary(ctx, session, storyID)
+
+  if err != nil {
+
+      return nil, fmt.Errorf("load current story: %w", err)
+
+  }
+
+  memory.CurrentStory = currentStory
+
+
+
+  // 2. Find related stories through entities and topics
+
+  relatedStories, err := sm.findRelatedStories(ctx, session, storyID, 10)
+
+  if err != nil {
+
+      return nil, fmt.Errorf("find related stories: %w", err)
+
+  }
+
+  memory.RelatedStories = relatedStories
+
+
+
+  // 3. Extract key entities
+
+  entities, err := sm.extractKeyEntities(ctx, session, storyID,
+sm.memoryConfig.MaxEntitiesPerContext)
+
+    if err != nil {
+
+        return nil, fmt.Errorf("extract entities: %w", err)
+
+    }
+
+    memory.KeyEntities = entities
+
+
+
+    // 4. Load recent timeline events
+
+    timeline, err := sm.loadTimeline(ctx, session, storyID, 20)
+
+    if err != nil {
+
+        return nil, fmt.Errorf("load timeline: %w", err)
+
+    }
+
+    memory.RecentEvents = timeline
+
+
+
+    // 5. Build knowledge graph context (compressed)
+
+    kgContext, err := sm.buildGraphContext(ctx, session, storyID, entities)
+
+    if err == nil {
+
+        memory.KnowledgeGraph = kgContext
+
+    }
+
+
+
+    return memory, nil
+
+}
+
+
+
+// AssembleRAGContext builds retrieval-augmented generation context
+
+func (sm *StoryMemory) AssembleRAGContext(
+
+    ctx context.Context,
+
+  query string,
+
+  storyID *uuid.UUID,
+
+  maxTokens int,
+
+) (*RAGContext, error) {
+
+
+
+  rag := &RAGContext{
+
+      Query:        query,
+
+      AssembledAt: time.Now(),
+
+  }
+
+
+
+  // 1. Generate query embedding
+
+  queryEmbedding, err := sm.embeddingModel.Embed(ctx, query)
+
+  if err != nil {
+
+      return nil, fmt.Errorf("generate query embedding: %w", err)
+
+  }
+
+
+
+  // 2. Vector search for relevant stories
+
+  filters := map[string]interface{}{}
+
+  if storyID != nil {
+
+      // If story-specific, boost that story's entities
+
+      filters["related_to_story"] = storyID.String()
+
+  }
+
+
+
+  relevantStories, err := sm.vectorDB.FindSimilar(ctx, queryEmbedding, 0.6, 20)
+
+  if err != nil {
+
+      return nil, fmt.Errorf("vector search: %w", err)
+
+}
+
+
+
+// 3. Load full story details
+
+for _, match := range relevantStories {
+
+    story, err := sm.loadStorySummary(ctx, nil, match.StoryID)
+
+    if err != nil {
+
+         continue
+
+    }
+
+    story.Relevance = match.Similarity
+
+    rag.RetrievedStories = append(rag.RetrievedStories, *story)
+
+}
+
+
+
+// 4. Extract relevant entities
+
+entityEmbeddings, _ := sm.vectorDB.FindSimilarEntities(ctx, queryEmbedding, 0.5, 10)
+
+for _, entity := range entityEmbeddings {
+
+    rag.RelevantEntities = append(rag.RelevantEntities, EntitySummary{
+
+         EntityID:     entity.EntityID,
+
+         CanonicalName: entity.CanonicalName,
+
+         EntityType:    entity.EntityType,
+
+         Relevance:     entity.Similarity,
+
+    })
+
+}
+
+
+
+// 5. Assemble context text (token-budgeted)
+
+rag.ContextText = sm.assembleContextText(rag, maxTokens)
+
+rag.TokenCount = sm.estimateTokens(rag.ContextText)
+
+    return rag, nil
+
+}
+
+
+
+// assembleContextText builds a token-budgeted context string for LLM input
+
+func (sm *StoryMemory) assembleContextText(rag *RAGContext, maxTokens int) string {
+
+    var parts []string
+
+    tokenBudget := maxTokens
+
+
+
+    // Add retrieved stories (most relevant first)
+
+    parts = append(parts, "RELEVANT STORIES:")
+
+    for _, story := range rag.RetrievedStories {
+
+        text := fmt.Sprintf("- [%s] %s: %s",
+
+            story.State, story.Headline, truncateText(story.Summary, 200))
+
+
+
+        tokenEstimate := sm.estimateTokens(text)
+
+        if tokenBudget-tokenEstimate < 500 {
+
+            break // Reserve 500 tokens for entities and instructions
+
+        }
+
+
+
+        parts = append(parts, text)
+
+        tokenBudget -= tokenEstimate
+
+    }
+
+
+
+    // Add relevant entities
+
+    parts = append(parts, "\nKEY ENTITIES:")
+
+      for _, entity := range rag.RelevantEntities {
+
+          text := fmt.Sprintf("- %s (%s)", entity.CanonicalName, entity.EntityType)
+
+          parts = append(parts, text)
+
+      }
+
+
+
+      return strings.Join(parts, "\n")
+
+}
+
+```
+
+
+
+---
+
+
+
+PART IX — AI INTEGRATION
+
+
+
+9.1 Integration Interfaces
+
+
+
+```go
+
+// services/story-graph/graph-query-api/internal/interfaces/ai_integration.go
+
+package interfaces
+
+
+
+// AIIntegrationService provides graph access for AI agents
+
+type AIIntegrationService struct {
+
+      storyMemory *domain.StoryMemory
+
+      searchEngine *domain.SearchEngine
+
+      knowledgeGraph *domain.KnowledgeGraph
+
+}
+
+// GetAgentContext assembles context for AI agent operations
+
+func (ais *AIIntegrationService) GetAgentContext(
+
+  ctx context.Context,
+
+  request *AgentContextRequest,
+
+) (*AgentContext, error) {
+
+
+
+  context := &AgentContext{
+
+      AgentID:      request.AgentID,
+
+      AgentType: request.AgentType,
+
+      GeneratedAt: time.Now(),
+
+  }
+
+
+
+  switch request.AgentType {
+
+  case "CONTENT_WRITER":
+
+      // Content writer needs: story, related stories, entities, quotes
+
+      memory, err := ais.storyMemory.AssembleContext(
+
+          ctx, request.StoryID, request.Query, 50000,
+
+      )
+
+      if err != nil {
+
+          return nil, fmt.Errorf("assemble memory: %w", err)
+
+      }
+
+      context.StoryContext = memory
+
+
+
+  case "FACT_CHECKER":
+
+      // Fact checker needs: claims, evidence, sources
+
+      evidence, err := ais.knowledgeGraph.GetEvidenceGraph(ctx, request.StoryID)
+
+      if err != nil {
+
+          return nil, fmt.Errorf("get evidence: %w", err)
+
+      }
+
+      context.EvidenceGraph = evidence
+
+
+
+  case "EDITORIAL_ASSISTANT":
+
+      // Editor needs: story history, related stories, confidence scores
+
+      history, err := ais.knowledgeGraph.GetStoryHistory(ctx, request.StoryID)
+
+      if err != nil {
+
+          return nil, fmt.Errorf("get history: %w", err)
+
+      }
+
+      context.StoryHistory = history
+
+
+
+  case "DISTRIBUTION_AGENT":
+
+      // Distribution needs: story, platforms, social variants
+
+    context.StorySummary = await ais.knowledgeGraph.GetStorySummary(ctx,
+request.StoryID)
+
+
+
+  case "ANALYTICS_AGENT":
+
+      // Analytics needs: story performance, entity trends
+
+      trends, err := ais.knowledgeGraph.GetEntityTrends(ctx, request.StoryID)
+
+      if err != nil {
+
+          return nil, fmt.Errorf("get trends: %w", err)
+
+      }
+
+      context.EntityTrends = trends
+
+  }
+
+      return context, nil
+
+}
+
+
+
+// RAGRetrieval performs retrieval-augmented generation lookup
+
+func (ais *AIIntegrationService) RAGRetrieval(
+
+      ctx context.Context,
+
+      request *RAGRetrievalRequest,
+
+) (*RAGRetrievalResponse, error) {
+
+
+
+      ragContext, err := ais.storyMemory.AssembleRAGContext(
+
+          ctx, request.Query, request.StoryID, request.MaxTokens,
+
+      )
+
+      if err != nil {
+
+          return nil, fmt.Errorf("assemble RAG context: %w", err)
+
+      }
+
+
+
+      return &RAGRetrievalResponse{
+
+          Context:      ragContext.ContextText,
+
+          Sources:      ragContext.GetSourceReferences(),
+
+          TokenCount: ragContext.TokenCount,
+
+          RetrievedAt: time.Now(),
+
+      }, nil
+
+}
+
+```
+
+---
+
+
+
+PART X — APIS
+
+
+
+10.1 gRPC Service Definition
+
+
+
+```protobuf
+
+// api/protobuf/story_graph/v1/story_graph.proto
+
+syntax = "proto3";
+
+package story_graph.v1;
+
+
+
+service StoryGraphService {
+
+  // Story Lifecycle
+
+  rpc CreateStory(CreateStoryRequest) returns (Story);
+
+  rpc GetStory(GetStoryRequest) returns (Story);
+
+  rpc UpdateStory(UpdateStoryRequest) returns (Story);
+
+  rpc MergeStories(MergeStoriesRequest) returns (MergeResult);
+
+  rpc SplitStory(SplitStoryRequest) returns (Story);
+
+  rpc BranchStory(BranchStoryRequest) returns (Story);
+
+  rpc ArchiveStory(ArchiveStoryRequest) returns (Story);
+
+
+
+  // Entity Management
+
+  rpc ResolveEntity(ResolveEntityRequest) returns (Entity);
+
+  rpc GetEntity(GetEntityRequest) returns (Entity);
+
+  rpc GetEntityRelationships(GetEntityRelationshipsRequest) returns (EntityRelationships);
+
+    // Knowledge Graph
+
+    rpc ExtractKnowledge(ExtractKnowledgeRequest) returns (KnowledgeExtractionResult);
+
+    rpc GetKnowledgeGraph(GetKnowledgeGraphRequest) returns (KnowledgeGraph);
+
+
+
+    // Versioning
+
+    rpc GetStoryVersion(GetStoryVersionRequest) returns (StoryVersion);
+
+    rpc ListStoryVersions(ListStoryVersionsRequest) returns (stream StoryVersion);
+
+    rpc GetStoryDiff(GetStoryDiffRequest) returns (StoryDiff);
+
+    rpc RollbackStory(RollbackStoryRequest) returns (Story);
+
+
+
+    // Search
+
+    rpc Search(SearchRequest) returns (SearchResponse);
+
+    rpc SemanticSearch(SemanticSearchRequest) returns (SearchResponse);
+
+    rpc EntitySearch(EntitySearchRequest) returns (SearchResponse);
+
+    rpc TimelineSearch(TimelineSearchRequest) returns (SearchResponse);
+
+
+
+    // AI Memory
+
+    rpc AssembleContext(AssembleContextRequest) returns (MemoryContext);
+
+    rpc RAGRetrieval(RAGRetrievalRequest) returns (RAGRetrievalResponse);
+
+
+
+    // Duplicate Detection
+
+    rpc DetectDuplicates(DetectDuplicatesRequest) returns (DuplicateResult);
+
+    rpc FindSimilarStories(FindSimilarStoriesRequest) returns (stream SimilarStory);
+
+}
+
+
+
+message Story {
+
+      string story_id = 1;
+
+      string tenant_id = 2;
+
+      string headline = 3;
+
+      string summary = 4;
+
+      string state = 5;
+
+      string priority = 6;
+
+      string category = 7;
+
+      string archetype = 8;
+
+      int64 version = 9;
+
+      double confidence_score = 10;
+
+      string language = 11;
+
+      repeated string merged_from_ids = 12;
+
+      repeated string related_story_ids = 13;
+
+      int64 source_count = 14;
+
+      int64 claim_count = 15;
+
+      string created_at = 16;
+
+      string updated_at = 17;
+
+}
+
+```
+
+
+
+10.2 Kafka Event Topics
+
+
+
+```yaml
+
+topics:
+
+    story_graph.story.created:
+
+      partitions: 12
+
+ replication_factor: 3
+
+ retention_ms: 2592000000
+
+
+
+story_graph.story.updated:
+
+ partitions: 12
+
+ replication_factor: 3
+
+ retention_ms: 2592000000
+
+
+
+story_graph.story.merged:
+
+ partitions: 6
+
+ replication_factor: 3
+
+ retention_ms: 2592000000
+
+
+
+story_graph.story.split:
+
+ partitions: 6
+
+ replication_factor: 3
+
+ retention_ms: 2592000000
+
+
+
+story_graph.story.archived:
+
+ partitions: 6
+
+ replication_factor: 3
+
+ retention_ms: 2592000000
+
+
+
+story_graph.story.versioned:
+
+ partitions: 12
+
+ replication_factor: 3
+
+ retention_ms: 2592000000
+
+
+
+story_graph.entity.discovered:
+
+ partitions: 6
+
+ replication_factor: 3
+
+ retention_ms: 2592000000
+
+
+
+story_graph.entity.linked:
+
+ partitions: 6
+
+ replication_factor: 3
+
+ retention_ms: 2592000000
+
+
+
+story_graph.knowledge.enriched:
+
+ partitions: 6
+
+ replication_factor: 3
+
+ retention_ms: 2592000000
+
+
+
+story_graph.relationship.added:
+
+ partitions: 6
+
+ replication_factor: 3
+
+ retention_ms: 2592000000
+
+
+
+story_graph.embedding.generated:
+
+ partitions: 6
+
+ replication_factor: 3
+
+ retention_ms: 604800000
+
+```
+
+
+
+---
+
+
+
+PART XI — DATABASES
+
+
+
+11.1 PostgreSQL Schema
+
+
+
+```sql
+
+-- Story Graph — PostgreSQL Operational Data
+
+
+
+CREATE TABLE stories (
+
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+      story_id UUID UNIQUE NOT NULL,
+
+      tenant_id UUID NOT NULL,
+
+      headline TEXT NOT NULL,
+
+      summary TEXT,
+
+      state VARCHAR(30) NOT NULL DEFAULT 'DISCOVERED',
+
+      priority VARCHAR(20) DEFAULT 'MEDIUM',
+
+      category VARCHAR(50),
+
+      archetype VARCHAR(50),
+
+      version INT NOT NULL DEFAULT 1,
+
+      confidence_score DECIMAL(5,2),
+
+      language VARCHAR(10) DEFAULT 'en',
+
+      geographic_scope VARCHAR(50),
+
+      parent_story_id UUID,
+
+     first_detected_at TIMESTAMPTZ NOT NULL,
+
+     first_published_at TIMESTAMPTZ,
+
+     last_updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+     archived_at TIMESTAMPTZ,
+
+     created_by VARCHAR(100) NOT NULL,
+
+     last_modified_by VARCHAR(100)
+
+);
+
+
+
+CREATE INDEX idx_stories_tenant ON stories(tenant_id, created_at DESC);
+
+CREATE INDEX idx_stories_state ON stories(state, priority);
+
+CREATE INDEX idx_stories_category ON stories(category, created_at DESC);
+
+
+
+CREATE TABLE story_embeddings (
+
+     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+     story_id UUID NOT NULL UNIQUE REFERENCES stories(story_id),
+
+     embedding vector(1536),
+
+     embedding_model VARCHAR(100),
+
+     generated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+);
+
+
+
+CREATE INDEX idx_story_embeddings_vector ON story_embeddings
+
+     USING ivfflat (embedding vector_cosine_ops) WITH (lists = 200);
+
+
+
+CREATE TABLE entity_embeddings (
+
+     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+     entity_id VARCHAR(255) NOT NULL,
+
+     embedding vector(1536),
+
+     entity_type VARCHAR(50),
+
+     generated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+);
+
+
+
+CREATE INDEX idx_entity_embeddings_vector ON entity_embeddings
+
+     USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+
+
+
+CREATE TABLE story_events (
+
+     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+     event_id UUID UNIQUE NOT NULL,
+
+     stream_id VARCHAR(255) NOT NULL,
+
+     event_version BIGINT NOT NULL,
+
+     event_type VARCHAR(50) NOT NULL,
+
+     story_id UUID NOT NULL,
+
+     data JSONB NOT NULL,
+
+     metadata JSONB DEFAULT '{}',
+
+     occurred_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+     UNIQUE(stream_id, event_version)
+
+);
+
+
+
+CREATE INDEX idx_story_events_stream ON story_events(stream_id, event_version);
+
+
+
+CREATE TABLE story_snapshots (
+
+     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+      stream_id VARCHAR(255) NOT NULL,
+
+      version BIGINT NOT NULL,
+
+      state JSONB NOT NULL,
+
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+      UNIQUE(stream_id, version)
+
+);
+
+
+
+CREATE TABLE merge_history (
+
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+      merge_id UUID UNIQUE NOT NULL,
+
+      source_story_id UUID NOT NULL,
+
+      target_story_id UUID NOT NULL,
+
+      result_story_id UUID NOT NULL,
+
+      strategy VARCHAR(30) NOT NULL,
+
+      changes JSONB DEFAULT '[]',
+
+      merged_by VARCHAR(100) NOT NULL,
+
+      merged_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+);
+
+
+
+CREATE INDEX idx_merge_history_source ON merge_history(source_story_id);
+
+CREATE INDEX idx_merge_history_target ON merge_history(target_story_id);
+
+```
+
+
+
+---
+
+
+
+PART XII — SECURITY
+
+```yaml
+
+security:
+
+ graph_authorization:
+
+  model: "Property-based access control via OPA"
+
+  tenant_isolation: |
+
+   All graph queries include tenant_id filter
+
+   OPA policies enforce tenant boundaries
+
+   Neo4j procedures wrap tenant checks
+
+
+
+  role_permissions:
+
+   STORY_GRAPH_ADMIN:
+
+    - read_all_graphs
+
+    - write_all_graphs
+
+    - merge_stories
+
+    - delete_stories
+
+    - manage_schema
+
+   STORY_GRAPH_EDITOR:
+
+    - read_graph
+
+    - update_stories
+
+    - link_entities
+
+    - propose_merges
+
+   STORY_GRAPH_VIEWER:
+
+    - read_graph
+
+    - search_graph
+
+   STORY_GRAPH_AI:
+
+        - read_graph
+
+        - search_graph
+
+        - extract_knowledge
+
+        - propose_entities
+
+        - generate_embeddings
+
+
+
+ audit:
+
+      graph_operations: All mutations logged to immutable audit table
+
+      entity_changes: Tracked with before/after state
+
+      merge_operations: Full history preserved
+
+      search_queries: Logged for abuse detection
+
+```
+
+
+
+---
+
+
+
+PART XIII — OBSERVABILITY
+
+
+
+```yaml
+
+metrics:
+
+ story_graph:
+
+      stories_created_total:
+
+       type: counter
+
+       labels: [category, archetype]
+
+
+
+      stories_merged_total:
+
+       type: counter
+
+ labels: [strategy]
+
+
+
+entities_resolved_total:
+
+ type: counter
+
+ labels: [resolution_method]
+
+
+
+graph_size:
+
+ type: gauge
+
+ labels: [node_type]
+
+ description: "Total nodes by type"
+
+
+
+relationship_count:
+
+ type: gauge
+
+ labels: [relationship_type]
+
+
+
+query_latency_seconds:
+
+ type: histogram
+
+ buckets: [0.01, 0.05, 0.1, 0.5, 1, 2, 5]
+
+ labels: [query_type]
+
+
+
+embedding_generation_seconds:
+
+ type: histogram
+
+ labels: [model]
+
+
+
+neo4j_connection_pool:
+
+ type: gauge
+
+       labels: [state]
+
+
+
+slos:
+
+ story_graph_api:
+
+      availability: 99.95%
+
+      read_latency_p99: 200ms
+
+      write_latency_p99: 500ms
+
+
+
+ search:
+
+      availability: 99.9%
+
+      latency_p95: 1s (hybrid), 500ms (entity)
+
+
+
+ embedding_generation:
+
+      availability: 99.5%
+
+      latency_p99: 2s
+
+```
+
+
+
+---
+
+
+
+PART XIV — DEPLOYMENT
+
+
+
+```yaml
+
+deployment:
+
+ neo4j:
+
+      type: Enterprise Causal Cluster
+
+      core_members: 3
+
+ read_replicas: 2
+
+ storage: SSD (gp3)
+
+ memory: 32GB per node
+
+ backup:
+
+  schedule: daily full, 4-hour incremental
+
+  retention: 30 days
+
+
+
+kubernetes:
+
+ story_lifecycle:
+
+  replicas: 3
+
+  resources:
+
+   requests: {cpu: 500m, memory: 512Mi}
+
+   limits: {cpu: 2000m, memory: 2Gi}
+
+  autoscaling:
+
+   min: 3, max: 10
+
+   target_cpu: 70%
+
+
+
+ search_engine:
+
+  replicas: 3
+
+  resources:
+
+   requests: {cpu: 1, memory: 1Gi}
+
+   limits: {cpu: 4, memory: 4Gi}
+
+
+
+ embedding_service:
+
+  replicas: 2
+
+  resources:
+
+        requests: {cpu: 2, memory: 4Gi}
+
+        limits: {cpu: 8, memory: 16Gi}
+
+       gpu: optional (for faster embedding)
+
+
+
+ disaster_recovery:
+
+      neo4j_rpo: 5 minutes
+
+      neo4j_rto: 30 minutes
+
+      postgresql_rpo: 0 (Aurora continuous backup)
+
+      postgresql_rto: 15 minutes
+
+```
+
+
+
+---
+
+
+
+PART XV — IMPLEMENTATION ROADMAP
+
+
+
+```yaml
+
+roadmap:
+
+ mvp:
+
+      timeline: Weeks 1-4
+
+      deliverables:
+
+       - Story CRUD operations
+
+       - Basic story state machine
+
+       - Entity extraction and resolution
+
+       - Simple duplicate detection (exact + near-exact)
+
+       - Basic Neo4j schema with core relationships
+
+       - gRPC API for story operations
+
+       - Event publishing to Kafka
+
+
+
+ growth:
+
+      timeline: Weeks 5-12
+
+      deliverables:
+
+       - Story merge and branch operations
+
+       - Event-sourced versioning with snapshots
+
+       - Semantic duplicate detection with embeddings
+
+       - Knowledge extraction and enrichment
+
+       - Hybrid search (graph + vector)
+
+       - AI memory and RAG context assembly
+
+       - Entity relationship inference
+
+       - Topic clustering
+
+
+
+ enterprise:
+
+      timeline: Weeks 13-24
+
+      deliverables:
+
+       - Cross-lingual duplicate detection
+
+       - Advanced graph algorithms (PageRank, community detection)
+
+       - Knowledge freshness management
+
+       - Multi-region Neo4j deployment
+
+       - Graph analytics and trend detection
+
+       - Custom embedding models
+
+       - Real-time graph updates via Kafka streams
+
+       - Graph visualization API
+
+```
+
+---
+
+
+
+PART XVI — ARCHITECTURE DECISION RECORDS
+
+
+
+```markdown
+
+## ADR-STG-001: Neo4j as Primary Story Graph Database
+
+**Decision:** Neo4j Enterprise 5.x with causal clustering
+
+**Rationale:** Purpose-built graph engine, 10-100x better traversal performance than RDBMS
+
+**Alternatives:** PostgreSQL recursive CTEs, Amazon Neptune, ArangoDB
+
+**Trade-offs:** Additional operational complexity, but essential for graph workloads
+
+
+
+## ADR-STG-002: Event-Sourced Story Versioning
+
+**Decision:** All story mutations as immutable events
+
+**Rationale:** Complete audit trail, time-travel queries, conflict resolution
+
+**Alternatives:** Traditional CRUD with version columns, Git-like branching
+
+**Trade-offs:** Storage overhead for events, but essential for editorial integrity
+
+
+
+## ADR-STG-003: Hybrid pgvector + Neo4j Architecture
+
+**Decision:** pgvector for embeddings, Neo4j for graph, combined via hybrid search
+
+**Rationale:** Each database optimized for its domain
+
+**Alternatives:** Neo4j-only, dedicated vector DB
+
+**Trade-offs:** Two query systems, but each optimal for its workload
+
+
+
+## ADR-STG-004: CQRS for Story Read/Write
+
+**Decision:** Separate command and query models
+
+**Rationale:** Optimize reads and writes independently
+
+**Alternatives:** Single model
+
+**Trade-offs:** Eventual consistency, acceptable for story content
+
+
+
+## ADR-STG-005: Entity Resolution with Wikidata Integration
+
+**Decision:** Multi-strategy entity resolution with Wikidata as authority
+
+**Rationale:** Combines graph lookup, Wikidata API, and embedding similarity
+
+**Alternatives:** Graph-only resolution
+
+**Trade-offs:** External API dependency, but significantly better entity linking
+
+```
+
+
+
+---
+
+
+
+EXECUTIVE SUMMARY
+
+
+
+Volume 27 delivers the complete, production-ready specification for the Agbofa Nexus AI Story
+Graph & Knowledge Intelligence Engine — the central nervous system of the autonomous
+newsroom. Every story, entity, claim, relationship, and version is managed through a
+sophisticated graph architecture that enables the platform to maintain a single evolving
+canonical story for every real-world event.
+
+
+
+Key Deliverables:
+
+
+
+· Story Lifecycle Engine: Complete state machine with merge, branch, and split operations
+
+· Graph Data Model: Comprehensive Neo4j schema with 15+ node types and 20+ relationship
+types
+
+· Knowledge Intelligence: Entity extraction, resolution (Wikidata + graph + embedding),
+relationship inference, topic clustering
+
+· Event-Sourced Versioning: Immutable event log with snapshot optimization, diff generation,
+time-travel queries
+
+· Duplicate Detection: Multi-tier strategy (exact hash → SimHash → semantic vector → entity
+overlap → cross-lingual)
+
+· Hybrid Search: Combined vector similarity (pgvector) + graph relevance (Neo4j) with reranking
+
+· AI Memory: Context assembly for AI agents, RAG retrieval with token budgeting
+
+· Knowledge Freshness: Automated staleness detection and refresh prioritization
+
+
+
+The Story Graph is the single source of editorial truth for the Agbofa Nexus AI platform and is
+ready for implementation.
+
+
+
+---
+
+
+
+END OF VOLUME 27
+
+
+
+Date: 2026-08-07
+
+Version: 1.0.0 — Implementation-Ready
+
+Next Volume: Volume 28 — AI Learning, Memory & Intelligence Code Specification
+
+
+

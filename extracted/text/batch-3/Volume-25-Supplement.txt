@@ -1,0 +1,4294 @@
+VOLUME 25: TRUTH ENGINE CODE SPECIFICATION — SUPPLEMENT
+
+
+
+Document Reference: AGBA-NEXUS-VOL25-CODE-1.0-SUPP
+
+Status: Implementation-Ready — Production Specification
+
+Approved Baseline: Volumes 1–24, Volume 25 Parts I-XV (Immutable)
+
+Purpose: Parts XVI-XVIII — Failure Handling, Testing Strategy, MVP/Growth/Enterprise
+
+---
+
+
+
+PART XVI — FAILURE HANDLING
+
+
+
+16.1 Failure Classification & Handling Strategy
+
+
+
+```
+
+TRUTH ENGINE — FAILURE HANDLING STRATEGY:
+
+
+
+┌─────────────────────────────────────────────────────────────────────────────
+┐
+
+│           FAILURE CLASSIFICATION HIERARCHY                    │
+
+├
+─────────────────────────────────────────────────────────────────────────────
+┤
+
+│                                             │
+
+│ FAILURE CATEGORIES:                                      │
+
+│                                             │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ CATEGORY 1: TRANSIENT FAILURES (Auto-Retry)                      ││
+
+│ │ • Network timeouts       • Temporary API rate limits            ││
+
+│ │ • DNS resolution failures • Brief database unavailability       ││
+
+│ │ • Redis connection drops • Kafka broker leader elections         ││
+
+│ │                                           ││
+
+│ │ Strategy: Exponential backoff (100ms → 500ms → 2s → 10s → 30s)        ││
+
+│ │ Max Retries: 5                                  ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                             │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ CATEGORY 2: DEGRADED SERVICE (Partial Functionality)                 ││
+
+│ │ • External fact-check API unavailable • Knowledge Graph degraded │ │
+
+│ │ • Single verification method failing   • Neo4j read replica down     ││
+
+│ │                                          ││
+
+│ │ Strategy: Graceful degradation — continue with available methods          ││
+
+│ │ Flag result as "PARTIAL_VERIFICATION"                      ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                             │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ CATEGORY 3: SOURCE FAILURES (Source-Specific)                      ││
+
+│ │ • Source website down • Source API deprecated                   ││
+
+│ │ • Source authentication expired • Source rate limit exhausted        ││
+
+│ │                                          ││
+
+│ │ Strategy: Source health degradation → mark DEGRADED → UNHEALTHY                ││
+
+│ │ Exponential backoff on polling                        ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                             │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ CATEGORY 4: DATA QUALITY FAILURES (Cannot Auto-Resolve)                   ││
+
+│ │ • Contradictory evidence      • Incomplete verification             ││
+
+│ │ • All sources disagree      • No evidence found                ││
+
+│ │                                            ││
+
+│ │ Strategy: Escalate to human review                        ││
+
+│ │ Flag story with UNCERTAIN_VERDICT                          ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                              │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ CATEGORY 5: CRITICAL INFRASTRUCTURE FAILURES (Immediate Alert)            ││
+
+│ │ • PostgreSQL primary down • Kafka cluster unavailable                ││
+
+│ │ • Neo4j cluster failure    • Redis cluster failure         ││
+
+│ │                                            ││
+
+│ │ Strategy: Circuit breaker → Fail-stop → Alert on-call           ││
+
+│ │ Queue pending work for replay on recovery                       ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+└─────────────────────────────────────────────────────────────────────────────
+┘
+
+```
+
+
+
+16.2 Circuit Breaker Implementation
+
+
+
+```go
+
+// services/truth-engine/shared/pkg/resilience/circuit_breaker.go
+
+package resilience
+
+import (
+
+    "context"
+
+    "fmt"
+
+    "sync"
+
+    "time"
+
+)
+
+
+
+// CircuitState represents the current state of a circuit breaker
+
+type CircuitState string
+
+
+
+const (
+
+    CircuitClosed CircuitState = "CLOSED" // Normal operation
+
+    CircuitOpen     CircuitState = "OPEN"   // Failing, reject requests
+
+    CircuitHalfOpen CircuitState = "HALF_OPEN" // Testing recovery
+
+)
+
+
+
+// CircuitBreaker implements the circuit breaker pattern
+
+type CircuitBreaker struct {
+
+    name           string
+
+    state         CircuitState
+
+    failureThreshold int
+
+    successThreshold int
+
+    timeout         time.Duration
+
+    failureCount     int
+
+    successCount      int
+
+    lastFailureTime time.Time
+
+    lastSuccessTime time.Time
+
+    mu          sync.RWMutex
+
+    metrics       *CircuitBreakerMetrics
+
+}
+
+
+
+// CircuitBreakerConfig configures a circuit breaker
+
+type CircuitBreakerConfig struct {
+
+    Name         string       `json:"name"`
+
+    FailureThreshold int        `json:"failure_threshold"` // Open after N failures
+
+    SuccessThreshold int         `json:"success_threshold"` // Close after N successes
+
+    Timeout       time.Duration `json:"timeout"`         // Time before half-open
+
+    HalfOpenMaxReqs int            `json:"half_open_max_reqs"` // Max requests in half-open
+
+}
+
+
+
+var DefaultCircuitBreakerConfig = CircuitBreakerConfig{
+
+    FailureThreshold: 5,
+
+    SuccessThreshold: 3,
+
+    Timeout:          30 * time.Second,
+
+    HalfOpenMaxReqs: 3,
+
+}
+
+
+
+// Circuit breaker configurations per dependency
+
+var CircuitBreakerConfigs = map[string]CircuitBreakerConfig{
+
+    "postgresql": {
+
+      Name:            "postgresql",
+
+     FailureThreshold: 3,
+
+     SuccessThreshold: 2,
+
+     Timeout:      10 * time.Second,
+
+     HalfOpenMaxReqs: 2,
+
+},
+
+"neo4j": {
+
+     Name:         "neo4j",
+
+     FailureThreshold: 3,
+
+     SuccessThreshold: 2,
+
+     Timeout:      15 * time.Second,
+
+     HalfOpenMaxReqs: 2,
+
+},
+
+"redis": {
+
+     Name:         "redis",
+
+     FailureThreshold: 5,
+
+     SuccessThreshold: 3,
+
+     Timeout:      5 * time.Second,
+
+     HalfOpenMaxReqs: 5,
+
+},
+
+"external_factcheck_api": {
+
+     Name:         "external_factcheck_api",
+
+     FailureThreshold: 5,
+
+     SuccessThreshold: 2,
+
+     Timeout:      60 * time.Second,
+
+     HalfOpenMaxReqs: 2,
+
+},
+
+    "kafka": {
+
+         Name:         "kafka",
+
+         FailureThreshold: 3,
+
+         SuccessThreshold: 2,
+
+         Timeout:      30 * time.Second,
+
+         HalfOpenMaxReqs: 2,
+
+    },
+
+    "knowledge_graph": {
+
+         Name:         "knowledge_graph",
+
+         FailureThreshold: 3,
+
+         SuccessThreshold: 2,
+
+         Timeout:      30 * time.Second,
+
+         HalfOpenMaxReqs: 2,
+
+    },
+
+}
+
+
+
+// NewCircuitBreaker creates a new circuit breaker
+
+func NewCircuitBreaker(config CircuitBreakerConfig) *CircuitBreaker {
+
+    return &CircuitBreaker{
+
+         name:        config.Name,
+
+         state:      CircuitClosed,
+
+         failureThreshold: config.FailureThreshold,
+
+         successThreshold: config.SuccessThreshold,
+
+         timeout:      config.Timeout,
+
+    }
+
+}
+
+// Execute runs a function with circuit breaker protection
+
+func (cb *CircuitBreaker) Execute(ctx context.Context, fn func(context.Context) error) error {
+
+    // Check if circuit is open
+
+    if err := cb.beforeRequest(); err != nil {
+
+        return err
+
+    }
+
+
+
+    // Execute the function
+
+    err := fn(ctx)
+
+
+
+    // Record result
+
+    cb.afterRequest(err)
+
+
+
+    return err
+
+}
+
+
+
+func (cb *CircuitBreaker) beforeRequest() error {
+
+    cb.mu.Lock()
+
+    defer cb.mu.Unlock()
+
+
+
+    switch cb.state {
+
+    case CircuitClosed:
+
+        return nil
+
+
+
+    case CircuitOpen:
+
+        // Check if timeout has elapsed
+
+        if time.Since(cb.lastFailureTime) >= cb.timeout {
+
+            cb.state = CircuitHalfOpen
+
+            cb.successCount = 0
+
+            return nil
+
+        }
+
+        return fmt.Errorf("circuit breaker %s is OPEN: %v since last failure",
+
+            cb.name, time.Since(cb.lastFailureTime))
+
+
+
+    case CircuitHalfOpen:
+
+        return nil
+
+
+
+    default:
+
+        return nil
+
+    }
+
+}
+
+
+
+func (cb *CircuitBreaker) afterRequest(err error) {
+
+    cb.mu.Lock()
+
+    defer cb.mu.Unlock()
+
+
+
+    if err != nil {
+
+        cb.onFailure()
+
+    } else {
+
+        cb.onSuccess()
+
+    }
+
+}
+
+
+
+func (cb *CircuitBreaker) onFailure() {
+
+    cb.failureCount++
+
+    cb.successCount = 0
+
+    cb.lastFailureTime = time.Now()
+
+
+
+    switch cb.state {
+
+    case CircuitClosed:
+
+        if cb.failureCount >= cb.failureThreshold {
+
+            cb.state = CircuitOpen
+
+            cb.metrics.RecordCircuitOpen(cb.name)
+
+        }
+
+    case CircuitHalfOpen:
+
+        cb.state = CircuitOpen
+
+        cb.metrics.RecordCircuitOpen(cb.name)
+
+    }
+
+}
+
+
+
+func (cb *CircuitBreaker) onSuccess() {
+
+    cb.successCount++
+
+    cb.failureCount = 0
+
+    cb.lastSuccessTime = time.Now()
+
+
+
+    if cb.state == CircuitHalfOpen && cb.successCount >= cb.successThreshold {
+
+        cb.state = CircuitClosed
+
+        cb.metrics.RecordCircuitClosed(cb.name)
+
+    }
+
+}
+
+
+
+// State returns the current circuit state
+
+func (cb *CircuitBreaker) State() CircuitState {
+
+    cb.mu.RLock()
+
+    defer cb.mu.RUnlock()
+
+    return cb.state
+
+}
+
+
+
+// CircuitBreakerRegistry manages circuit breakers for all dependencies
+
+type CircuitBreakerRegistry struct {
+
+    breakers map[string]*CircuitBreaker
+
+    mu      sync.RWMutex
+
+}
+
+
+
+func NewCircuitBreakerRegistry() *CircuitBreakerRegistry {
+
+    registry := &CircuitBreakerRegistry{
+
+        breakers: make(map[string]*CircuitBreaker),
+
+    }
+
+
+
+    // Initialize all configured circuit breakers
+
+    for name, config := range CircuitBreakerConfigs {
+
+        registry.breakers[name] = NewCircuitBreaker(config)
+
+    }
+
+      return registry
+
+}
+
+
+
+func (cbr *CircuitBreakerRegistry) Get(name string) (*CircuitBreaker, error) {
+
+      cbr.mu.RLock()
+
+      defer cbr.mu.RUnlock()
+
+
+
+      cb, exists := cbr.breakers[name]
+
+      if !exists {
+
+          return nil, fmt.Errorf("circuit breaker not found: %s", name)
+
+      }
+
+      return cb, nil
+
+}
+
+```
+
+
+
+16.3 Retry Logic with Backoff
+
+
+
+```go
+
+// services/truth-engine/shared/pkg/resilience/retry.go
+
+package resilience
+
+
+
+import (
+
+      "context"
+
+      "fmt"
+
+      "math"
+
+    "math/rand"
+
+    "time"
+
+)
+
+
+
+// RetryConfig defines retry behavior
+
+type RetryConfig struct {
+
+    MaxAttempts        int        `json:"max_attempts"`
+
+    InitialDelay time.Duration `json:"initial_delay"`
+
+    MaxDelay       time.Duration `json:"max_delay"`
+
+    BackoffFactor float64          `json:"backoff_factor"`
+
+    Jitter      bool         `json:"jitter"`
+
+    RetryableErrors []string       `json:"retryable_errors"`
+
+}
+
+
+
+// Retry configurations per operation type
+
+var RetryConfigs = map[string]RetryConfig{
+
+    "source_verification": {
+
+      MaxAttempts: 3,
+
+      InitialDelay: 1 * time.Second,
+
+      MaxDelay:        30 * time.Second,
+
+      BackoffFactor: 2.0,
+
+      Jitter:    true,
+
+      RetryableErrors: []string{
+
+           "NETWORK_ERROR", "TIMEOUT", "DNS_RESOLUTION_FAILURE",
+
+           "RATE_LIMITED", "5XX", "CONNECTION_REFUSED",
+
+      },
+
+},
+
+"claim_verification": {
+
+     MaxAttempts: 3,
+
+     InitialDelay: 500 * time.Millisecond,
+
+     MaxDelay:      15 * time.Second,
+
+     BackoffFactor: 2.0,
+
+     Jitter:    true,
+
+     RetryableErrors: []string{
+
+          "NETWORK_ERROR", "TIMEOUT", "KG_QUERY_FAILED",
+
+          "API_RATE_LIMITED", "TEMPORARY_FAILURE",
+
+     },
+
+},
+
+"external_api_call": {
+
+     MaxAttempts: 5,
+
+     InitialDelay: 2 * time.Second,
+
+     MaxDelay:      120 * time.Second,
+
+     BackoffFactor: 3.0,
+
+     Jitter:    true,
+
+     RetryableErrors: []string{
+
+          "RATE_LIMITED", "SERVER_ERROR", "TIMEOUT",
+
+          "SERVICE_UNAVAILABLE", "TOO_MANY_REQUESTS",
+
+     },
+
+},
+
+"database_operation": {
+
+     MaxAttempts: 3,
+
+     InitialDelay: 100 * time.Millisecond,
+
+         MaxDelay:     5 * time.Second,
+
+         BackoffFactor: 2.0,
+
+         Jitter:    true,
+
+         RetryableErrors: []string{
+
+              "CONNECTION_ERROR", "DEADLOCK_DETECTED",
+
+              "SERIALIZATION_FAILURE", "TOO_MANY_CONNECTIONS",
+
+         },
+
+    },
+
+    "evidence_storage": {
+
+         MaxAttempts: 5,
+
+         InitialDelay: 1 * time.Second,
+
+         MaxDelay:     60 * time.Second,
+
+         BackoffFactor: 2.0,
+
+         Jitter:    true,
+
+         RetryableErrors: []string{
+
+              "STORAGE_FULL", "WRITE_TIMEOUT", "S3_SLOW_DOWN",
+
+         },
+
+    },
+
+}
+
+
+
+// RetryWithBackoff executes a function with exponential backoff retry
+
+func RetryWithBackoff(
+
+    ctx context.Context,
+
+    config RetryConfig,
+
+    operationName string,
+
+    fn func(context.Context) error,
+
+) error {
+
+
+
+  var lastErr error
+
+  delay := config.InitialDelay
+
+
+
+  for attempt := 0; attempt <= config.MaxAttempts; attempt++ {
+
+     // Check context cancellation
+
+     select {
+
+     case <-ctx.Done():
+
+         return fmt.Errorf("%s cancelled: %w", operationName, ctx.Err())
+
+     default:
+
+     }
+
+
+
+     // Execute operation
+
+     err := fn(ctx)
+
+     if err == nil {
+
+         return nil
+
+     }
+
+
+
+     lastErr = err
+
+
+
+     // Check if error is retryable
+
+     if !isRetryableError(err, config.RetryableErrors) {
+
+         return fmt.Errorf("%s: non-retryable error: %w", operationName, err)
+
+     }
+
+    // Don't sleep on last attempt
+
+    if attempt == config.MaxAttempts {
+
+        break
+
+    }
+
+
+
+    // Calculate backoff delay
+
+    backoffDelay := float64(delay) * math.Pow(config.BackoffFactor, float64(attempt))
+
+    if config.Jitter {
+
+        // Add ±25% jitter
+
+        jitterRange := backoffDelay * 0.5
+
+        backoffDelay += (rand.Float64() - 0.5) * jitterRange
+
+    }
+
+
+
+    if backoffDelay > float64(config.MaxDelay) {
+
+        backoffDelay = float64(config.MaxDelay)
+
+    }
+
+
+
+    sleepDuration := time.Duration(backoffDelay)
+
+
+
+    // Wait with context awareness
+
+    select {
+
+    case <-time.After(sleepDuration):
+
+    case <-ctx.Done():
+
+        return fmt.Errorf("%s cancelled during retry: %w", operationName, ctx.Err())
+
+    }
+
+}
+
+      return fmt.Errorf("%s: max retries (%d) exceeded: %w",
+
+          operationName, config.MaxAttempts, lastErr)
+
+}
+
+
+
+func isRetryableError(err error, retryablePatterns []string) bool {
+
+      errStr := err.Error()
+
+      for _, pattern := range retryablePatterns {
+
+          if containsIgnoreCase(errStr, pattern) {
+
+              return true
+
+          }
+
+      }
+
+      return false
+
+}
+
+```
+
+
+
+16.4 Graceful Degradation Strategy
+
+
+
+```go
+
+// services/truth-engine/shared/pkg/resilience/degradation.go
+
+package resilience
+
+
+
+// DegradationMode defines how the system degrades when dependencies fail
+
+type DegradationMode string
+
+
+
+const (
+
+    DegradationNone             DegradationMode = "NONE"         // No degradation
+
+    DegradationPartial DegradationMode = "PARTIAL"               // Reduced accuracy
+
+    DegradationMinimal DegradationMode = "MINIMAL"                  // Basic checks only
+
+    DegradationFailClosed DegradationMode = "FAIL_CLOSED" // Reject until restored
+
+)
+
+
+
+// DegradationConfig defines degradation behavior per dependency
+
+type DegradationConfig struct {
+
+    Dependency         string         `json:"dependency"`
+
+    FailureMode      DegradationMode         `json:"failure_mode"`
+
+    FallbackAction string             `json:"fallback_action"`
+
+    MaxDegradedTime time.Duration             `json:"max_degraded_time"` // Escalate after
+
+}
+
+
+
+var DegradationConfigs = map[string]DegradationConfig{
+
+    "external_factcheck_api": {
+
+         Dependency:     "external_factcheck_api",
+
+         FailureMode: DegradationPartial,
+
+         FallbackAction: "USE_KG_AND_SOURCE_ANALYSIS_ONLY",
+
+         MaxDegradedTime: 30 * time.Minute,
+
+    },
+
+    "knowledge_graph": {
+
+         Dependency:     "knowledge_graph",
+
+         FailureMode: DegradationPartial,
+
+         FallbackAction: "USE_CACHED_KG_RESULTS",
+
+         MaxDegradedTime: 1 * time.Hour,
+
+    },
+
+    "neo4j": {
+
+         Dependency:     "neo4j",
+
+         FailureMode: DegradationMinimal,
+
+         FallbackAction: "SKIP_GRAPH_VALIDATION",
+
+         MaxDegradedTime: 15 * time.Minute,
+
+    },
+
+    "media_forensics": {
+
+         Dependency:     "media_forensics",
+
+         FailureMode: DegradationPartial,
+
+         FallbackAction: "SKIP_MEDIA_ANALYSIS_FLAG_CONTENT",
+
+         MaxDegradedTime: 1 * time.Hour,
+
+    },
+
+}
+
+
+
+// DegradationManager handles graceful degradation
+
+type DegradationManager struct {
+
+    status map[string]DegradationStatus
+
+    mu        sync.RWMutex
+
+}
+
+
+
+type DegradationStatus struct {
+
+    Dependency         string       `json:"dependency"`
+
+    IsDegraded      bool        `json:"is_degraded"`
+
+    Mode          DegradationMode `json:"mode"`
+
+    DegradedSince *time.Time           `json:"degraded_since,omitempty"`
+
+    Reason        string      `json:"reason"`
+
+    EscalationSent bool          `json:"escalation_sent"`
+
+}
+
+
+
+// GetVerificationCapabilities returns what verification is possible given current state
+
+func (dm *DegradationManager) GetVerificationCapabilities() VerificationCapabilities {
+
+    dm.mu.RLock()
+
+    defer dm.mu.RUnlock()
+
+
+
+    caps := VerificationCapabilities{
+
+        CanUseKnowledgeGraph: true,
+
+        CanUseExternalAPIs:     true,
+
+        CanUseGraphValidation: true,
+
+        CanUseMediaAnalysis: true,
+
+        CanCalculateConfidence: true,
+
+        IsFullyOperational:   true,
+
+    }
+
+
+
+    if status, exists := dm.status["knowledge_graph"]; exists && status.IsDegraded {
+
+        caps.CanUseKnowledgeGraph = false
+
+        caps.IsFullyOperational = false
+
+    }
+
+
+
+    if status, exists := dm.status["external_factcheck_api"]; exists && status.IsDegraded {
+
+        caps.CanUseExternalAPIs = false
+
+        caps.IsFullyOperational = false
+
+    }
+
+
+
+    if status, exists := dm.status["neo4j"]; exists && status.IsDegraded {
+
+        caps.CanUseGraphValidation = false
+
+        caps.IsFullyOperational = false
+
+    }
+
+
+
+    if status, exists := dm.status["media_forensics"]; exists && status.IsDegraded {
+
+        caps.CanUseMediaAnalysis = false
+
+        caps.IsFullyOperational = false
+
+    }
+
+
+
+    // If too many dependencies degraded, cannot calculate confidence
+
+    degradedCount := 0
+
+    for _, status := range dm.status {
+
+        if status.IsDegraded {
+
+            degradedCount++
+
+        }
+
+    }
+
+    if degradedCount >= 3 {
+
+        caps.CanCalculateConfidence = false
+
+    }
+
+
+
+    return caps
+
+}
+
+type VerificationCapabilities struct {
+
+      CanUseKnowledgeGraph bool `json:"can_use_knowledge_graph"`
+
+      CanUseExternalAPIs       bool `json:"can_use_external_apis"`
+
+      CanUseGraphValidation bool `json:"can_use_graph_validation"`
+
+      CanUseMediaAnalysis bool `json:"can_use_media_analysis"`
+
+      CanCalculateConfidence bool `json:"can_calculate_confidence"`
+
+      IsFullyOperational     bool `json:"is_fully_operational"`
+
+}
+
+```
+
+
+
+16.5 Contradictory Evidence Handling
+
+
+
+```go
+
+// services/truth-engine/claim-verifier/internal/domain/contradiction.go
+
+package domain
+
+
+
+// ContradictionResolver handles conflicting evidence scenarios
+
+type ContradictionResolver struct {
+
+      evidenceWeights EvidenceWeights
+
+      escalationThreshold float64
+
+}
+
+
+
+type ContradictionResult struct {
+
+      ClaimID       string          `json:"claim_id"`
+
+      HasContradiction bool              `json:"has_contradiction"`
+
+      ContradictionLevel ContradictionLevel `json:"contradiction_level"`
+
+    SupportingSources int              `json:"supporting_sources"`
+
+    ContradictingSources int            `json:"contradicting_sources"`
+
+    Resolution       string         `json:"resolution"`
+
+    RequiresHumanReview bool                `json:"requires_human_review"`
+
+    Detail         string         `json:"detail"`
+
+}
+
+
+
+type ContradictionLevel string
+
+const (
+
+    ContradictionNone         ContradictionLevel = "NONE"
+
+    ContradictionMinor        ContradictionLevel = "MINOR"    // Minor disagreement
+
+    ContradictionModerate ContradictionLevel = "MODERATE" // Significant disagreement
+
+    ContradictionSevere ContradictionLevel = "SEVERE"         // Direct contradiction
+
+    ContradictionIrreconcilable ContradictionLevel = "IRRECONCILABLE" // Cannot resolve
+
+)
+
+
+
+// ResolveContradiction handles conflicting evidence for a claim
+
+func (cr *ContradictionResolver) ResolveContradiction(
+
+    ctx context.Context,
+
+    claim *AtomicClaim,
+
+    evidence []*Evidence,
+
+) (*ContradictionResult, error) {
+
+
+
+    result := &ContradictionResult{
+
+        ClaimID: claim.ClaimID,
+
+    }
+
+// Separate supporting and contradicting evidence
+
+var supporting []*Evidence
+
+var contradicting []*Evidence
+
+
+
+for _, ev := range evidence {
+
+    if ev.SupportsClaim {
+
+        supporting = append(supporting, ev)
+
+    } else {
+
+        contradicting = append(contradicting, ev)
+
+    }
+
+}
+
+
+
+result.SupportingSources = len(supporting)
+
+result.ContradictingSources = len(contradicting)
+
+
+
+// No contradiction if no contradicting evidence
+
+if len(contradicting) == 0 {
+
+    result.HasContradiction = false
+
+    result.ContradictionLevel = ContradictionNone
+
+    result.Resolution = "NO_CONTRADICTION"
+
+    return result, nil
+
+}
+
+
+
+result.HasContradiction = true
+
+// Calculate weighted scores for each side
+
+supportingScore := cr.calculateWeightedScore(supporting)
+
+contradictingScore := cr.calculateWeightedScore(contradicting)
+
+
+
+// Determine contradiction level
+
+scoreRatio := 0.0
+
+if supportingScore+contradictingScore > 0 {
+
+    scoreRatio = contradictingScore / (supportingScore + contradictingScore)
+
+}
+
+
+
+switch {
+
+case scoreRatio < 0.2:
+
+    result.ContradictionLevel = ContradictionMinor
+
+    result.Resolution = "MAJORITY_SUPPORTS_CLAIM"
+
+    result.Detail = fmt.Sprintf(
+
+        "Minor contradiction: %.0f%% of weighted evidence contradicts (minority sources)",
+
+        scoreRatio*100,
+
+    )
+
+
+
+case scoreRatio < 0.4:
+
+    result.ContradictionLevel = ContradictionModerate
+
+    result.Resolution = "WEIGHTED_MAJORITY_SUPPORTS"
+
+    result.RequiresHumanReview = true
+
+    result.Detail = fmt.Sprintf(
+
+        "Moderate contradiction: %.0f%% of weighted evidence contradicts",
+
+        scoreRatio*100,
+
+        )
+
+
+
+    case scoreRatio < 0.6:
+
+        result.ContradictionLevel = ContradictionSevere
+
+        result.Resolution = "EVIDENCE_SPLIT_REQUIRES_RESOLUTION"
+
+        result.RequiresHumanReview = true
+
+        result.Detail = fmt.Sprintf(
+
+            "Severe contradiction: evidence is split (%.0f%% contradicts)",
+
+            scoreRatio*100,
+
+        )
+
+
+
+    default:
+
+        result.ContradictionLevel = ContradictionIrreconcilable
+
+        result.Resolution = "CANNOT_RESOLVE_AUTOMATICALLY"
+
+        result.RequiresHumanReview = true
+
+        result.Detail = fmt.Sprintf(
+
+            "Irreconcilable contradiction: %.0f%% of weighted evidence contradicts the claim",
+
+            scoreRatio*100,
+
+        )
+
+    }
+
+
+
+    return result, nil
+
+}
+
+
+
+func (cr *ContradictionResolver) calculateWeightedScore(evidence []*Evidence) float64 {
+
+    score := 0.0
+
+      for _, ev := range evidence {
+
+          // Weight by source reliability and evidence quality
+
+          weight := ev.SourceReliability * ev.EvidenceQuality
+
+          score += weight
+
+      }
+
+
+
+      return score
+
+}
+
+```
+
+
+
+16.6 Recovery Workflows
+
+
+
+```go
+
+// services/truth-engine/shared/pkg/resilience/recovery.go
+
+package resilience
+
+
+
+// RecoveryManager handles recovery after failures
+
+type RecoveryManager struct {
+
+      circuitBreakers *CircuitBreakerRegistry
+
+      degradation     *DegradationManager
+
+      jobQueue        *JobQueue
+
+      eventBus       EventBus
+
+}
+
+
+
+// RecoveryWorkflow defines steps to recover a component
+
+type RecoveryWorkflow struct {
+
+    Component string             `json:"component"`
+
+    Steps     []RecoveryStep     `json:"steps"`
+
+    CurrentStep int            `json:"current_step"`
+
+    Status    RecoveryStatus      `json:"status"`
+
+}
+
+
+
+type RecoveryStep struct {
+
+    Name      string        `json:"name"`
+
+    Action    string        `json:"action"`
+
+    Timeout    time.Duration      `json:"timeout"`
+
+    RetryCount int           `json:"retry_count"`
+
+    Status    StepStatus       `json:"status"`
+
+}
+
+
+
+type RecoveryStatus string
+
+const (
+
+    RecoveryPending RecoveryStatus = "PENDING"
+
+    RecoveryInProgress RecoveryStatus = "IN_PROGRESS"
+
+    RecoveryCompleted RecoveryStatus = "COMPLETED"
+
+    RecoveryFailed     RecoveryStatus = "FAILED"
+
+)
+
+
+
+var RecoveryWorkflows = map[string]RecoveryWorkflow{
+
+    "neo4j_recovery": {
+
+      Component: "neo4j",
+
+Steps: []RecoveryStep{
+
+  {
+
+       Name: "wait_for_cluster_stabilization",
+
+       Action: "WAIT_30_SECONDS",
+
+       Timeout: 60 * time.Second,
+
+  },
+
+  {
+
+       Name: "verify_cluster_health",
+
+       Action: "CHECK_CLUSTER_STATUS",
+
+       Timeout: 30 * time.Second,
+
+  },
+
+  {
+
+       Name: "replay_pending_graph_operations",
+
+       Action: "REPLAY_FROM_KAFKA",
+
+       Timeout: 5 * time.Minute,
+
+  },
+
+  {
+
+       Name: "rebuild_indexes",
+
+       Action: "REBUILD_INDEXES",
+
+       Timeout: 10 * time.Minute,
+
+  },
+
+  {
+
+       Name: "validate_data_integrity",
+
+       Action: "RUN_CONSISTENCY_CHECK",
+
+       Timeout: 5 * time.Minute,
+
+  },
+
+     },
+
+},
+
+"external_api_recovery": {
+
+     Component: "external_factcheck_api",
+
+     Steps: []RecoveryStep{
+
+          {
+
+               Name: "verify_api_availability",
+
+               Action: "HEALTH_CHECK",
+
+               Timeout: 10 * time.Second,
+
+          },
+
+          {
+
+               Name: "reset_rate_limit_counters",
+
+               Action: "RESET_RATE_LIMITS",
+
+               Timeout: 5 * time.Second,
+
+          },
+
+          {
+
+               Name: "replay_failed_verifications",
+
+               Action: "REPLAY_FAILED_JOBS",
+
+               Timeout: 30 * time.Minute,
+
+          },
+
+     },
+
+},
+
+"postgresql_recovery": {
+
+     Component: "postgresql",
+
+     Steps: []RecoveryStep{
+
+          {
+
+                   Name: "verify_primary_availability",
+
+                   Action: "CHECK_PRIMARY_HEALTH",
+
+                   Timeout: 30 * time.Second,
+
+              },
+
+              {
+
+                   Name: "promote_replica_if_needed",
+
+                   Action: "FAILOVER_TO_REPLICA",
+
+                   Timeout: 120 * time.Second,
+
+              },
+
+              {
+
+                   Name: "verify_data_consistency",
+
+                   Action: "CHECK_REPLICATION_LAG",
+
+                   Timeout: 60 * time.Second,
+
+              },
+
+              {
+
+                   Name: "replay_pending_transactions",
+
+                   Action: "REPLAY_WAL",
+
+                   Timeout: 5 * time.Minute,
+
+              },
+
+         },
+
+    },
+
+}
+
+
+
+// ExecuteRecovery runs a recovery workflow
+
+func (rm *RecoveryManager) ExecuteRecovery(
+
+    ctx context.Context,
+
+  component string,
+
+) error {
+
+
+
+  workflow, exists := RecoveryWorkflows[component]
+
+  if !exists {
+
+      return fmt.Errorf("no recovery workflow defined for: %s", component)
+
+  }
+
+
+
+  workflow.Status = RecoveryInProgress
+
+
+
+  for i, step := range workflow.Steps {
+
+      workflow.CurrentStep = i
+
+
+
+      stepCtx, cancel := context.WithTimeout(ctx, step.Timeout)
+
+      defer cancel()
+
+
+
+      err := rm.executeRecoveryStep(stepCtx, step)
+
+      if err != nil {
+
+        step.Status = StepFailed
+
+        workflow.Status = RecoveryFailed
+
+
+
+        if step.RetryCount < 3 {
+
+            step.RetryCount++
+
+            i-- // Retry same step
+
+            continue
+
+        }
+
+              return fmt.Errorf("recovery step %s failed: %w", step.Name, err)
+
+          }
+
+
+
+          step.Status = StepCompleted
+
+      }
+
+
+
+      workflow.Status = RecoveryCompleted
+
+
+
+      // Reset circuit breaker
+
+      if cb, err := rm.circuitBreakers.Get(component); err == nil {
+
+          cb.Reset()
+
+      }
+
+
+
+      // Clear degradation
+
+      rm.degradation.ClearDegradation(component)
+
+
+
+      return nil
+
+}
+
+```
+
+
+
+16.7 Failure Scenario Matrix
+
+
+
+```yaml
+
+failure_scenarios:
+
+    network_failures:
+
+ dns_resolution_failure:
+
+  impact: Cannot reach external APIs or sources
+
+  detection: DNS lookup timeout > 5s
+
+  auto_recovery: Retry with exponential backoff (3 attempts)
+
+  fallback: Use cached DNS records (TTL: 1 hour)
+
+  escalation: After 3 failures, alert SRE
+
+  rto: 5 minutes
+
+
+
+ connection_timeout:
+
+  impact: Slow or failed API calls
+
+  detection: TCP connection > 10s
+
+  auto_recovery: Retry 3x with 2x backoff
+
+  fallback: Use alternate endpoint if configured
+
+  rto: 2 minutes
+
+
+
+ tls_certificate_expired:
+
+  impact: Cannot establish secure connections
+
+  detection: TLS handshake failure
+
+  auto_recovery: None (requires manual intervention)
+
+  fallback: None
+
+  escalation: IMMEDIATE PagerDuty alert
+
+  rto: 15 minutes (certificate renewal)
+
+
+
+api_failures:
+
+ rate_limited:
+
+  impact: Throttled verification requests
+
+  detection: HTTP 429 response
+
+  auto_recovery: Honor Retry-After header, exponential backoff
+
+  fallback: Use cached results if available
+
+  rto: Varies by Retry-After
+
+
+
+ authentication_expired:
+
+  impact: Cannot access protected APIs
+
+  detection: HTTP 401/403 response
+
+  auto_recovery: Automatic token refresh from Vault
+
+  fallback: None
+
+  rto: 30 seconds (token refresh)
+
+
+
+ api_deprecated:
+
+  impact: API endpoint no longer available
+
+  detection: HTTP 410 Gone or schema mismatch
+
+  auto_recovery: Switch to new API version if configured
+
+  fallback: Flag source for manual update
+
+  escalation: Alert API integration team
+
+  rto: 1 business day (API migration)
+
+
+
+source_outages:
+
+ source_website_down:
+
+  impact: Cannot fetch content from source
+
+  detection: HTTP 5xx or connection refused
+
+  auto_recovery: Retry with increasing intervals
+
+  fallback: Mark source DEGRADED, skip in polling
+
+  rto: Depends on source recovery
+
+
+
+ source_blocked_crawler:
+
+  impact: Access denied to source
+
+  detection: HTTP 403 with bot detection
+
+  auto_recovery: Rotate user agent, reduce request rate
+
+  fallback: Manual intervention required
+
+  escalation: Alert editorial team
+
+  rto: 4 hours
+
+
+
+ source_data_format_changed:
+
+  impact: Cannot parse source content
+
+  detection: Parse errors > threshold
+
+  auto_recovery: Attempt schema inference
+
+  fallback: Flag for connector update
+
+  rto: 1 business day
+
+
+
+contradictory_evidence:
+
+ equal_weight_contradiction:
+
+  impact: Cannot determine truth
+
+  detection: ContradictionResolver score ratio 0.4-0.6
+
+  auto_recovery: None (requires human judgment)
+
+  fallback: Escalate to human review with all evidence
+
+  rto: 2 hours (human review SLA)
+
+
+
+ majority_contradicts_source:
+
+  impact: Trusted source may be wrong
+
+  detection: High-trust source contradicted by majority
+
+  auto_recovery: None
+
+  fallback: Flag for senior editorial review
+
+  escalation: Alert senior editor
+
+  rto: 1 hour
+
+
+
+ new_evidence_contradicts_previous:
+
+  impact: Published story may need correction
+
+  detection: New evidence contradicts verified claim
+
+  auto_recovery: Trigger re-verification
+
+  fallback: Flag for correction workflow
+
+  escalation: Alert editorial team immediately
+
+  rto: 30 minutes
+
+
+
+incomplete_verification:
+
+ partial_methods_available:
+
+  impact: Reduced verification confidence
+
+  detection: DegradationManager reports partial capabilities
+
+  auto_recovery: Continue with available methods
+
+  fallback: Flag result as PARTIAL_VERIFICATION
+
+  rto: Depends on degraded component recovery
+
+
+
+ no_evidence_found:
+
+  impact: Claim cannot be verified
+
+  detection: All methods return no evidence
+
+       auto_recovery: Expand search parameters, retry
+
+       fallback: Verdict UNVERIFIABLE
+
+       rto: N/A (accepted outcome)
+
+
+
+      timeout_during_verification:
+
+       impact: Verification did not complete in time
+
+       detection: Context deadline exceeded
+
+       auto_recovery: Retry with reduced scope
+
+       fallback: Use partial results if available
+
+       rto: 2 minutes (retry)
+
+```
+
+
+
+---
+
+
+
+PART XVII — TESTING STRATEGY
+
+
+
+17.1 Testing Pyramid & Strategy
+
+
+
+```
+
+TRUTH ENGINE — TESTING PYRAMID:
+
+
+
+                     ┌─────────┐
+
+                     │ E2E │ Editorial Simulation Tests
+
+                     │ TESTS │ Full Pipeline Integration
+
+                     └────┬────┘
+
+                    ┌──────┴──────┐
+
+                  │ CONTRACT │ API Contract Tests (Pact)
+
+                  │ TESTS │ Event Schema Validation
+
+                  └──────┬──────┘
+
+              ┌────────────┴────────────┐
+
+              │   INTEGRATION TESTS │
+
+              │ Service Integration   │
+
+              │ Database Integration │
+
+              │ Kafka Integration     │
+
+              │ External API Mocks        │
+
+              └────────────┬────────────┘
+
+        ┌──────────────────┴──────────────────┐
+
+        │          UNIT TESTS             │
+
+        │ Domain Logic                        │
+
+        │ Business Rules                      │
+
+        │ Algorithms (Confidence, Scoring)        │
+
+        │ State Machines                      │
+
+        │ Validation Logic                    │
+
+        └──────────────────────────────────────┘
+
+
+
+TEST COVERAGE TARGETS:
+
+Unit Tests:       >90% code coverage
+
+Integration Tests: >80% service interaction coverage
+
+Contract Tests: 100% of published APIs
+
+E2E Tests:        Critical paths (Breaking news, Standard verification)
+
+Property Tests: Confidence scoring algorithms, Reputation algorithms
+
+Performance Tests: All services at expected load
+
+    Chaos Tests:       All resilience patterns verified
+
+```
+
+
+
+17.2 Unit Testing Standards
+
+
+
+```go
+
+// services/truth-engine/confidence-engine/internal/domain/scorer_test.go
+
+package domain_test
+
+
+
+import (
+
+      "context"
+
+      "testing"
+
+
+
+      "github.com/stretchr/testify/assert"
+
+      "github.com/stretchr/testify/require"
+
+)
+
+
+
+func TestConfidenceEngine_CalculateStoryConfidence(t *testing.T) {
+
+      t.Parallel()
+
+
+
+      tests := []struct {
+
+        name          string
+
+        verifications []*ClaimVerification
+
+        sourceScores []*ReputationScore
+
+        crossValidation *CrossValidationResult
+
+        wantConfidence float64
+
+     wantRiskLevel RiskLevel
+
+     wantRecommendation string
+
+}{
+
+     {
+
+          name: "all_claims_verified_high_confidence",
+
+          verifications: []*ClaimVerification{
+
+               {Verdict: VerdictTrue, Confidence: 0.95},
+
+               {Verdict: VerdictTrue, Confidence: 0.92},
+
+               {Verdict: VerdictMostlyTrue, Confidence: 0.88},
+
+          },
+
+          sourceScores: []*ReputationScore{
+
+               {OverallScore: 90},
+
+               {OverallScore: 85},
+
+          },
+
+          crossValidation: &CrossValidationResult{
+
+               CorroborationScore: 95,
+
+               IndependentSources: 3,
+
+          },
+
+          wantConfidence: 85.0,
+
+          wantRiskLevel:      RiskLevelLow,
+
+          wantRecommendation: "AUTO_PUBLISH",
+
+     },
+
+     {
+
+          name: "conflicting_evidence_low_confidence",
+
+          verifications: []*ClaimVerification{
+
+               {Verdict: VerdictTrue, Confidence: 0.6},
+
+          {Verdict: VerdictFalse, Confidence: 0.7},
+
+          {Verdict: VerdictUnverifiable, Confidence: 0.0},
+
+     },
+
+     sourceScores: []*ReputationScore{
+
+          {OverallScore: 40},
+
+     },
+
+     crossValidation: &CrossValidationResult{
+
+          CorroborationScore: 30,
+
+          IndependentSources: 1,
+
+          ConsensusLevel:       ConsensusDisputed,
+
+     },
+
+     wantConfidence: 35.0,
+
+     wantRiskLevel:       RiskLevelHigh,
+
+     wantRecommendation: "HUMAN_REVIEW_REQUIRED",
+
+},
+
+{
+
+     name:           "no_verification_data",
+
+     verifications: []*ClaimVerification{},
+
+     sourceScores:      []*ReputationScore{},
+
+     crossValidation: &CrossValidationResult{},
+
+     wantConfidence: 50.0, // Neutral prior
+
+     wantRiskLevel:       RiskLevelMedium,
+
+     wantRecommendation: "HUMAN_REVIEW_REQUIRED",
+
+},
+
+{
+
+     name: "single_unreliable_source",
+
+         verifications: []*ClaimVerification{
+
+              {Verdict: VerdictTrue, Confidence: 0.5},
+
+         },
+
+         sourceScores: []*ReputationScore{
+
+              {OverallScore: 20},
+
+         },
+
+         crossValidation: &CrossValidationResult{
+
+              CorroborationScore: 0,
+
+              IndependentSources: 0,
+
+         },
+
+         wantConfidence: 25.0,
+
+         wantRiskLevel:       RiskLevelHigh,
+
+         wantRecommendation: "HUMAN_REVIEW_REQUIRED",
+
+    },
+
+}
+
+
+
+for _, tt := range tests {
+
+    tt := tt
+
+    t.Run(tt.name, func(t *testing.T) {
+
+         t.Parallel()
+
+
+
+         engine := NewConfidenceEngine(DefaultEvidenceWeights())
+
+
+
+         story := &CanonicalStory{
+
+              ID:    uuid.New(),
+
+              Priority: PriorityStandard,
+
+               }
+
+
+
+               result, err := engine.CalculateStoryConfidence(
+
+                   context.Background(),
+
+                   story,
+
+                   tt.verifications,
+
+                   tt.crossValidation,
+
+                   tt.sourceScores,
+
+               )
+
+
+
+               require.NoError(t, err)
+
+               assert.InDelta(t, tt.wantConfidence, result.OverallConfidence, 10.0,
+
+                   "Overall confidence should be within 10 points")
+
+               assert.Equal(t, tt.wantRiskLevel, result.RiskLevel)
+
+               assert.Equal(t, tt.wantRecommendation, result.PublicationRecommendation)
+
+          })
+
+      }
+
+}
+
+```
+
+
+
+17.3 Property-Based Testing
+
+
+
+```go
+
+// services/truth-engine/confidence-engine/internal/domain/scorer_property_test.go
+
+package domain_test
+
+import (
+
+    "testing"
+
+
+
+    "pgregory.net/rapid"
+
+)
+
+
+
+func TestConfidenceEngine_Property_Monotonicity(t *testing.T) {
+
+    // Property: Adding more reliable sources should never DECREASE confidence
+
+    rapid.Check(t, func(t *rapid.T) {
+
+      // Generate random verification data
+
+      numClaims := rapid.IntRange(1, 20).Draw(t, "num_claims")
+
+      numSources := rapid.IntRange(1, 10).Draw(t, "num_sources")
+
+
+
+      verifications := make([]*ClaimVerification, numClaims)
+
+      for i := range verifications {
+
+          verifications[i] = &ClaimVerification{
+
+              Verdict: rapid.SampledFrom([]Verdict{
+
+                VerdictTrue, VerdictMostlyTrue, VerdictHalfTrue,
+
+                VerdictMostlyFalse, VerdictFalse, VerdictUnverifiable,
+
+              }).Draw(t, "verdict"),
+
+              Confidence: rapid.Float64Range(0.0, 1.0).Draw(t, "confidence"),
+
+          }
+
+      }
+
+
+
+      sources := make([]*ReputationScore, numSources)
+
+      for i := range sources {
+
+    sources[i] = &ReputationScore{
+
+        OverallScore: rapid.Float64Range(0.0, 100.0).Draw(t, "source_score"),
+
+    }
+
+}
+
+
+
+engine := NewConfidenceEngine(DefaultEvidenceWeights())
+
+story := &CanonicalStory{ID: uuid.New(), Priority: PriorityStandard}
+
+crossValidation := &CrossValidationResult{
+
+    CorroborationScore: rapid.Float64Range(0.0, 100.0).Draw(t, "corroboration"),
+
+}
+
+
+
+// Calculate initial confidence
+
+initial, err := engine.CalculateStoryConfidence(
+
+    context.Background(), story, verifications, crossValidation, sources,
+
+)
+
+if err != nil {
+
+    t.Skip("skipping due to error")
+
+}
+
+
+
+// Add a highly reliable source
+
+newSources := append(sources, &ReputationScore{OverallScore: 95.0})
+
+newCrossValidation := &CrossValidationResult{
+
+    CorroborationScore: min(100, crossValidation.CorroborationScore+10),
+
+    IndependentSources: crossValidation.IndependentSources + 1,
+
+}
+
+         // Calculate with additional source
+
+         withMore, err := engine.CalculateStoryConfidence(
+
+             context.Background(), story, verifications, newCrossValidation, newSources,
+
+         )
+
+         if err != nil {
+
+             t.Skip("skipping due to error")
+
+         }
+
+
+
+         // Confidence should not decrease when adding a reliable source
+
+         if withMore.OverallConfidence < initial.OverallConfidence-5 {
+
+             t.Errorf("Adding reliable source decreased confidence from %.1f to %.1f",
+
+               initial.OverallConfidence, withMore.OverallConfidence)
+
+         }
+
+    })
+
+}
+
+
+
+func TestConfidenceEngine_Property_BoundedOutput(t *testing.T) {
+
+    // Property: Confidence scores are always in [0, 100]
+
+    rapid.Check(t, func(t *rapid *rapid.T) {
+
+         engine := NewConfidenceEngine(DefaultEvidenceWeights())
+
+         story := &CanonicalStory{ID: uuid.New(), Priority: PriorityStandard}
+
+
+
+         result, err := engine.CalculateStoryConfidence(
+
+             context.Background(),
+
+             story,
+
+             rapid.SliceOf(rapidVerification()).Draw(t, "verifications"),
+
+               rapidCrossValidation().Draw(t, "cross_validation"),
+
+               rapid.SliceOf(rapidSourceScore()).Draw(t, "sources"),
+
+           )
+
+
+
+           if err != nil {
+
+               return // Skip error cases
+
+           }
+
+
+
+           if result.OverallConfidence < 0 || result.OverallConfidence > 100 {
+
+               t.Errorf("Confidence out of bounds: %.1f", result.OverallConfidence)
+
+           }
+
+
+
+           if result.DimensionalScores.SourceTrust < 0 || result.DimensionalScores.SourceTrust > 100 {
+
+               t.Errorf("Source trust out of bounds: %.1f", result.DimensionalScores.SourceTrust)
+
+           }
+
+      })
+
+}
+
+```
+
+
+
+17.4 Integration Testing
+
+
+
+```go
+
+// tests/integration/truth_engine/verification_pipeline_test.go
+
+package integration
+
+
+
+import (
+
+    "context"
+
+    "testing"
+
+    "time"
+
+
+
+    "github.com/stretchr/testify/assert"
+
+    "github.com/stretchr/testify/require"
+
+    "github.com/testcontainers/testcontainers-go"
+
+)
+
+
+
+func TestVerificationPipeline_EndToEnd(t *testing.T) {
+
+    // Skip in short mode
+
+    if testing.Short() {
+
+         t.Skip("skipping integration test")
+
+    }
+
+
+
+    ctx := context.Background()
+
+
+
+    // Setup test containers
+
+  postgres, err := testcontainers.GenericContainer(ctx,
+testcontainers.GenericContainerRequest{
+
+         ContainerRequest: testcontainers.ContainerRequest{
+
+              Image: "pgvector/pgvector:pg16",
+
+         },
+
+         Started: true,
+
+    })
+
+    require.NoError(t, err)
+
+defer postgres.Terminate(ctx)
+
+
+
+neo4j, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+
+     ContainerRequest: testcontainers.ContainerRequest{
+
+          Image: "neo4j:5-enterprise",
+
+     },
+
+     Started: true,
+
+})
+
+require.NoError(t, err)
+
+defer neo4j.Terminate(ctx)
+
+
+
+redis, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+
+     ContainerRequest: testcontainers.ContainerRequest{
+
+          Image: "redis:7-alpine",
+
+     },
+
+     Started: true,
+
+})
+
+require.NoError(t, err)
+
+defer redis.Terminate(ctx)
+
+
+
+// Initialize services
+
+sourceIntel := setupSourceIntelligence(t, postgres, redis)
+
+claimExtractor := setupClaimExtractor(t)
+
+claimVerifier := setupClaimVerifier(t, neo4j, redis)
+
+confidenceEngine := setupConfidenceEngine(t)
+
+editorialEngine := setupEditorialEngine(t)
+
+// Test story
+
+story := createTestStory(t)
+
+
+
+t.Run("full_verification_pipeline", func(t *testing.T) {
+
+  // Step 1: Verify sources
+
+  sources := story.Sources
+
+  for _, source := range sources {
+
+      auth, err := sourceIntel.AuthenticateSource(ctx, source)
+
+      require.NoError(t, err)
+
+      assert.True(t, auth.IsAuthentic)
+
+  }
+
+
+
+  // Step 2: Extract claims
+
+  claims, err := claimExtractor.ExtractClaims(ctx, story.Body, story.Metadata)
+
+  require.NoError(t, err)
+
+  assert.Greater(t, len(claims), 0)
+
+
+
+  // Step 3: Verify each claim
+
+  verifications := make([]*ClaimVerification, len(claims))
+
+  for i, claim := range claims {
+
+      v, err := claimVerifier.VerifyClaim(ctx, claim, story)
+
+      require.NoError(t, err)
+
+      verifications[i] = v
+
+  }
+
+           // Step 4: Cross-source validation
+
+           crossValidation := performCrossValidation(t, ctx, claims, sources)
+
+
+
+           // Step 5: Calculate confidence
+
+           confidence, err := confidenceEngine.CalculateStoryConfidence(
+
+               ctx, story, verifications, crossValidation, getSourceScores(sources),
+
+           )
+
+           require.NoError(t, err)
+
+           assert.Greater(t, confidence.OverallConfidence, 0.0)
+
+
+
+           // Step 6: Make editorial decision
+
+           decision, err := editorialEngine.MakeDecision(
+
+               ctx, story, confidence, nil,
+
+           )
+
+           require.NoError(t, err)
+
+           assert.NotEmpty(t, decision.Action)
+
+
+
+           t.Logf("Verification complete: Confidence=%.1f, Decision=%s",
+
+               confidence.OverallConfidence, decision.Action)
+
+      })
+
+}
+
+```
+
+
+
+17.5 Contract Testing
+
+
+
+```yaml
+
+# Pact Contract Test Configuration
+
+pact:
+
+ consumer_tests:
+
+  - consumer: content-factory
+
+   provider: truth-engine
+
+   interactions:
+
+    - description: "Get story confidence score"
+
+        request:
+
+         method: POST
+
+         path: "/truth_engine.v1.TruthEngineService/CalculateConfidence"
+
+         body:
+
+          tenant_id: "uuid"
+
+          story_id: "uuid"
+
+        response:
+
+         status: 200
+
+         body:
+
+          story_id: "uuid"
+
+          overall_confidence: 85.5
+
+          risk_level: "LOW"
+
+          publication_recommendation: "AUTO_PUBLISH"
+
+
+
+  - consumer: distribution-engine
+
+   provider: truth-engine
+
+   interactions:
+
+    - description: "Verify story before distribution"
+
+        request:
+
+          method: POST
+
+          path: "/truth_engine.v1.TruthEngineService/VerifyStory"
+
+         response:
+
+          status: 200
+
+          body:
+
+           story_id: "uuid"
+
+           verification_status: "VERIFIED"
+
+           can_publish: true
+
+
+
+ provider_verification:
+
+      provider: truth-engine
+
+      provider_base_url: "http://localhost:9201"
+
+      publish_verification_results: true
+
+```
+
+
+
+17.6 Performance Testing
+
+
+
+```go
+
+// tests/performance/truth_engine/load_test.go
+
+package performance
+
+
+
+import (
+
+      "context"
+
+      "testing"
+
+      "time"
+
+    "github.com/stretchr/testify/require"
+
+)
+
+
+
+func TestClaimVerification_Performance(t *testing.T) {
+
+    if testing.Short() {
+
+        t.Skip("skipping performance test")
+
+    }
+
+
+
+    ctx := context.Background()
+
+    claimVerifier := setupClaimVerifier(t)
+
+
+
+    // Generate test claims
+
+    claims := generateTestClaims(1000)
+
+
+
+    // Warm up
+
+    for i := 0; i < 100; i++ {
+
+        claimVerifier.VerifyClaim(ctx, claims[i], testStory)
+
+    }
+
+
+
+    // Benchmark
+
+    start := time.Now()
+
+
+
+    var totalDuration time.Duration
+
+    successCount := 0
+
+    errorCount := 0
+
+for _, claim := range claims {
+
+    claimStart := time.Now()
+
+    _, err := claimVerifier.VerifyClaim(ctx, claim, testStory)
+
+    totalDuration += time.Since(claimStart)
+
+
+
+    if err != nil {
+
+        errorCount++
+
+    } else {
+
+        successCount++
+
+    }
+
+}
+
+
+
+elapsed := time.Since(start)
+
+
+
+// Performance assertions
+
+avgLatency := totalDuration / time.Duration(len(claims))
+
+throughput := float64(len(claims)) / elapsed.Seconds()
+
+
+
+t.Logf("Performance Results:")
+
+t.Logf(" Total claims: %d", len(claims))
+
+t.Logf(" Success: %d, Errors: %d", successCount, errorCount)
+
+t.Logf(" Total time: %v", elapsed)
+
+t.Logf(" Avg latency: %v", avgLatency)
+
+t.Logf(" Throughput: %.1f claims/sec", throughput)
+
+t.Logf(" P50: %v, P95: %v, P99: %v",
+
+    calculatePercentile(latencies, 0.50),
+
+        calculatePercentile(latencies, 0.95),
+
+        calculatePercentile(latencies, 0.99))
+
+
+
+      // SLO assertions
+
+      require.Less(t, avgLatency, 500*time.Millisecond,
+
+        "Average latency should be under 500ms")
+
+      require.Greater(t, throughput, 50.0,
+
+        "Throughput should exceed 50 claims/sec")
+
+      require.Less(t, float64(errorCount)/float64(len(claims)), 0.01,
+
+        "Error rate should be under 1%")
+
+}
+
+```
+
+
+
+17.7 Chaos Testing
+
+
+
+```go
+
+// tests/chaos/truth_engine/resilience_test.go
+
+package chaos
+
+
+
+import (
+
+      "context"
+
+      "testing"
+
+      "time"
+
+
+
+      "github.com/stretchr/testify/assert"
+
+      "github.com/stretchr/testify/require"
+
+)
+
+
+
+func TestTruthEngine_Chaos_ExternalAPIFailure(t *testing.T) {
+
+    ctx := context.Background()
+
+
+
+    t.Run("factcheck_api_unavailable", func(t *testing.T) {
+
+      // Setup services
+
+      claimVerifier := setupClaimVerifier(t)
+
+
+
+      // Inject failure: block external API
+
+      apiBlocker := NewNetworkBlocker("external-factcheck-api:443")
+
+      apiBlocker.Block()
+
+      defer apiBlocker.Unblock()
+
+
+
+      // Verify a claim — should degrade gracefully
+
+      claim := createTestClaim()
+
+
+
+      result, err := claimVerifier.VerifyClaim(ctx, claim, testStory)
+
+      require.NoError(t, err, "Should not fail completely when API is down")
+
+
+
+      // Should still produce a result using other methods
+
+      assert.NotEmpty(t, result.Verdict)
+
+      assert.Less(t, result.Confidence, 1.0,
+
+        "Confidence should be lower with missing method")
+
+      assert.Contains(t, result.MethodResults, "knowledge_graph",
+
+        "Should fall back to knowledge graph")
+
+     assert.Contains(t, result.MethodResults, "source_analysis",
+
+         "Should fall back to source analysis")
+
+})
+
+
+
+t.Run("database_connection_failure", func(t *testing.T) {
+
+     // Setup with circuit breaker
+
+     cb := NewCircuitBreaker(CircuitBreakerConfigs["postgresql"])
+
+     sourceIntel := setupSourceIntelligence(t)
+
+
+
+     // Inject failure: kill database connection
+
+     dbBlocker := NewPortBlocker("postgres:5432")
+
+     dbBlocker.Block()
+
+     defer dbBlocker.Unblock()
+
+
+
+     // Execute multiple operations to trigger circuit breaker
+
+     for i := 0; i < 5; i++ {
+
+         _, err := sourceIntel.GetSourceReputation(ctx, testSourceID)
+
+         if err != nil {
+
+             // Expected after circuit opens
+
+             assert.Contains(t, err.Error(), "circuit breaker")
+
+             break
+
+         }
+
+     }
+
+
+
+     // Verify circuit is open
+
+     assert.Equal(t, CircuitOpen, cb.State())
+
+     // Restore database
+
+     dbBlocker.Unblock()
+
+     time.Sleep(15 * time.Second) // Wait for half-open timeout
+
+
+
+     // Try again — should recover
+
+     _, err := sourceIntel.GetSourceReputation(ctx, testSourceID)
+
+     require.NoError(t, err, "Should recover after database restored")
+
+
+
+     assert.Equal(t, CircuitClosed, cb.State())
+
+})
+
+
+
+t.Run("kafka_broker_failure", func(t *testing.T) {
+
+     // Setup
+
+     eventProducer := setupEventProducer(t)
+
+
+
+     // Inject failure: kill Kafka broker
+
+     kafkaBlocker := NewPortBlocker("kafka:9092")
+
+     kafkaBlocker.Block()
+
+     defer kafkaBlocker.Unblock()
+
+
+
+     // Try to publish events
+
+     event := createTestEvent()
+
+
+
+     // Should retry and eventually succeed or fail gracefully
+
+     err := eventProducer.PublishWithRetry(ctx, event)
+
+           // Either succeeds (if retry worked) or fails gracefully
+
+           if err != nil {
+
+               assert.Contains(t, err.Error(), "max retries")
+
+           }
+
+
+
+           // Verify no data loss: events should be queued
+
+           pendingEvents := eventProducer.GetPendingEventCount(ctx)
+
+           t.Logf("Pending events after Kafka failure: %d", pendingEvents)
+
+
+
+           // Restore Kafka
+
+           kafkaBlocker.Unblock()
+
+           time.Sleep(10 * time.Second)
+
+
+
+           // Pending events should be delivered
+
+           err = eventProducer.FlushPending(ctx, 30*time.Second)
+
+           require.NoError(t, err, "Pending events should be delivered after recovery")
+
+      })
+
+}
+
+```
+
+
+
+17.8 AI Validation Testing
+
+
+
+```go
+
+// tests/ai_validation/truth_engine/accuracy_test.go
+
+package ai_validation
+
+import (
+
+    "context"
+
+    "testing"
+
+
+
+    "github.com/stretchr/testify/assert"
+
+    "github.com/stretchr/testify/require"
+
+)
+
+
+
+// TestClaimVerification_Accuracy validates AI verification against known dataset
+
+func TestClaimVerification_Accuracy(t *testing.T) {
+
+    ctx := context.Background()
+
+
+
+    // Load labeled test dataset
+
+    dataset, err := LoadLabeledDataset("testdata/verified_claims.jsonl")
+
+    require.NoError(t, err)
+
+
+
+    claimVerifier := setupClaimVerifier(t)
+
+
+
+    var truePositives, trueNegatives int
+
+    var falsePositives, falseNegatives int
+
+
+
+    for _, sample := range dataset {
+
+      claim := sample.ToClaim()
+
+
+
+      result, err := claimVerifier.VerifyClaim(ctx, claim, sample.Story)
+
+    require.NoError(t, err)
+
+
+
+    predicted := result.Verdict == VerdictTrue || result.Verdict == VerdictMostlyTrue
+
+    actual := sample.IsTrue
+
+
+
+    if predicted && actual {
+
+        truePositives++
+
+    } else if !predicted && !actual {
+
+        trueNegatives++
+
+    } else if predicted && !actual {
+
+        falsePositives++
+
+    } else {
+
+        falseNegatives++
+
+    }
+
+}
+
+
+
+total := len(dataset)
+
+accuracy := float64(truePositives+trueNegatives) / float64(total)
+
+precision := float64(truePositives) / float64(truePositives+falsePositives)
+
+recall := float64(truePositives) / float64(truePositives+falseNegatives)
+
+f1Score := 2 * precision * recall / (precision + recall)
+
+
+
+t.Logf("AI Validation Results:")
+
+t.Logf(" Total samples: %d", total)
+
+t.Logf(" Accuracy: %.2f%%", accuracy*100)
+
+t.Logf(" Precision: %.2f%%", precision*100)
+
+    t.Logf(" Recall: %.2f%%", recall*100)
+
+    t.Logf(" F1 Score: %.2f", f1Score)
+
+    t.Logf(" True Positives: %d, False Positives: %d", truePositives, falsePositives)
+
+    t.Logf(" True Negatives: %d, False Negatives: %d", trueNegatives, falseNegatives)
+
+
+
+    // Quality thresholds
+
+    assert.Greater(t, accuracy, 0.95, "Accuracy should exceed 95%")
+
+    assert.Greater(t, precision, 0.90, "Precision should exceed 90%")
+
+    assert.Greater(t, recall, 0.95, "Recall should exceed 95%")
+
+    assert.Less(t, float64(falsePositives)/float64(total), 0.01,
+
+      "False positive rate should be under 1%")
+
+}
+
+
+
+// TestHallucinationDetection validates hallucination detection accuracy
+
+func TestHallucinationDetection(t *testing.T) {
+
+    ctx := context.Background()
+
+
+
+    hallucinationDetector := setupHallucinationDetector(t)
+
+
+
+    // Load test dataset with known hallucinations
+
+    dataset, err := LoadLabeledDataset("testdata/hallucination_samples.jsonl")
+
+    require.NoError(t, err)
+
+
+
+    correct := 0
+
+    total := len(dataset)
+
+      for _, sample := range dataset {
+
+          assessment, err := hallucinationDetector.Assess(
+
+              ctx, sample.Content, sample.Claims, sample.Verifications, sample.SourceInfo,
+
+          )
+
+          require.NoError(t, err)
+
+
+
+          detected := assessment.OverallRisk == MisinfoRiskLevelHigh ||
+
+                 assessment.OverallRisk == MisinfoRiskLevelCritical
+
+
+
+          if detected == sample.ContainsHallucination {
+
+              correct++
+
+          }
+
+      }
+
+
+
+      accuracy := float64(correct) / float64(total)
+
+      t.Logf("Hallucination Detection Accuracy: %.2f%%", accuracy*100)
+
+
+
+      assert.Greater(t, accuracy, 0.90, "Hallucination detection accuracy should exceed 90%")
+
+}
+
+```
+
+
+
+17.9 Editorial Simulation Testing
+
+
+
+```go
+
+// tests/simulation/truth_engine/editorial_workflow_test.go
+
+package simulation
+
+import (
+
+    "context"
+
+    "testing"
+
+    "time"
+
+
+
+    "github.com/stretchr/testify/assert"
+
+    "github.com/stretchr/testify/require"
+
+)
+
+
+
+// TestEditorialWorkflow_Simulation tests the full editorial decision workflow
+
+func TestEditorialWorkflow_Simulation(t *testing.T) {
+
+    ctx := context.Background()
+
+
+
+    scenarios := []EditorialScenario{
+
+      {
+
+           Name: "breaking_news_auto_approve",
+
+           Story: createStory(
+
+                WithPriority(PriorityBreaking),
+
+                WithCategory("GENERAL"),
+
+                WithSourceTrust(85),
+
+                WithClaimConfidence(0.9),
+
+           ),
+
+           ExpectedDecision: ActionAutoApprove,
+
+           MaxLatency:        5 * time.Second,
+
+      },
+
+{
+
+     Name: "health_news_requires_human_review",
+
+     Story: createStory(
+
+          WithPriority(PriorityStandard),
+
+          WithCategory("HEALTH"),
+
+          WithSourceTrust(90),
+
+          WithClaimConfidence(0.95),
+
+     ),
+
+     ExpectedDecision: ActionHumanReview,
+
+     MaxLatency:        30 * time.Second,
+
+},
+
+{
+
+     Name: "low_confidence_escalates",
+
+     Story: createStory(
+
+          WithPriority(PriorityStandard),
+
+          WithCategory("GENERAL"),
+
+          WithSourceTrust(30),
+
+          WithClaimConfidence(0.3),
+
+     ),
+
+     ExpectedDecision: ActionHumanReview,
+
+     MaxLatency:        30 * time.Second,
+
+},
+
+{
+
+     Name: "high_confidence_auto_approve",
+
+     Story: createStory(
+
+          WithPriority(PriorityStandard),
+
+              WithCategory("TECHNOLOGY"),
+
+              WithSourceTrust(90),
+
+              WithClaimConfidence(0.95),
+
+         ),
+
+         ExpectedDecision: ActionAutoApprove,
+
+         MaxLatency:        2 * time.Second,
+
+    },
+
+    {
+
+         Name: "misinformation_detected_reject",
+
+         Story: createStory(
+
+              WithPriority(PriorityStandard),
+
+              WithCategory("POLITICAL"),
+
+              WithSourceTrust(20),
+
+              WithClaimConfidence(0.1),
+
+              WithMisinfoRisk(MisinfoRiskLevelCritical),
+
+         ),
+
+         ExpectedDecision: ActionHumanReview,
+
+         MaxLatency:        30 * time.Second,
+
+    },
+
+}
+
+
+
+editorialEngine := setupEditorialEngine(t)
+
+
+
+for _, scenario := range scenarios {
+
+    t.Run(scenario.Name, func(t *testing.T) {
+
+         start := time.Now()
+
+               decision, err := editorialEngine.MakeDecision(
+
+                   ctx,
+
+                   scenario.Story,
+
+                   scenario.Story.Confidence,
+
+                   scenario.Story.MisinfoAssessment,
+
+               )
+
+
+
+               latency := time.Since(start)
+
+
+
+               require.NoError(t, err)
+
+               assert.Equal(t, scenario.ExpectedDecision, decision.Action,
+
+                   "Expected decision %s, got %s", scenario.ExpectedDecision, decision.Action)
+
+               assert.Less(t, latency, scenario.MaxLatency,
+
+                   "Decision latency %v exceeded max %v", latency, scenario.MaxLatency)
+
+
+
+               t.Logf("Scenario '%s': Decision=%s, Latency=%v, Reason=%s",
+
+                   scenario.Name, decision.Action, latency, decision.Reason)
+
+          })
+
+      }
+
+}
+
+```
+
+
+
+---
+
+
+
+PART XVIII — MVP → GROWTH → ENTERPRISE
+
+18.1 Source Intelligence Evolution
+
+
+
+```yaml
+
+source_intelligence:
+
+ mvp:
+
+  features:
+
+   - Basic source registry (PostgreSQL)
+
+   - Static trust tiers (manual assignment)
+
+   - Simple reputation scoring (averaging)
+
+   - Source blacklist/whitelist
+
+  limitations:
+
+   - No dynamic reputation updates
+
+   - No bias assessment
+
+   - No ownership tracking
+
+   - Manual trust tier assignment
+
+  infrastructure:
+
+   - Single PostgreSQL instance
+
+   - No Redis caching
+
+  metrics:
+
+   - Sources tracked: 1000
+
+   - Score updates: Daily batch
+
+
+
+ growth:
+
+  features:
+
+   - Dynamic reputation scoring with time decay
+
+  - Automated trust tier assignment
+
+  - Bias assessment (political, editorial)
+
+  - Ownership transparency tracking
+
+  - Peer citation analysis
+
+  - Source health monitoring integration
+
+ infrastructure:
+
+  - PostgreSQL with read replicas
+
+  - Redis caching for reputation scores
+
+  - Kafka events for reputation changes
+
+ metrics:
+
+  - Sources tracked: 10000
+
+  - Score updates: Hourly
+
+  - Historical accuracy tracking
+
+
+
+ migration_from_mvp:
+
+  steps:
+
+   - Deploy new reputation engine alongside old
+
+   - Backfill historical accuracy data
+
+   - Enable dynamic scoring with shadow mode
+
+   - Validate scores against manual assessments
+
+   - Switch to dynamic scoring
+
+  rollback: Keep manual overrides available
+
+
+
+enterprise:
+
+ features:
+
+  - ML-based reputation prediction
+
+       - Real-time reputation updates
+
+       - Cross-tenant reputation sharing (anonymized)
+
+       - Automated source discovery and categorization
+
+       - Geographic and language-specific reputation
+
+       - Reputation API for third-party integration
+
+      infrastructure:
+
+       - Multi-region PostgreSQL (Aurora Global)
+
+       - ML model serving (GPU nodes)
+
+       - Real-time stream processing
+
+      metrics:
+
+       - Sources tracked: 100000+
+
+       - Score updates: Real-time
+
+       - ML model accuracy: >95%
+
+
+
+      migration_from_growth:
+
+       steps:
+
+        - Deploy ML training pipeline
+
+        - Train initial model on historical data
+
+        - A/B test ML vs heuristic scoring
+
+        - Gradual rollout based on source category
+
+       rollback: Fall back to heuristic scoring
+
+```
+
+
+
+18.2 Claim Verification Evolution
+
+
+
+```yaml
+
+claim_verification:
+
+ mvp:
+
+  features:
+
+   - Basic claim extraction (NER + pattern matching)
+
+   - Knowledge Graph verification only
+
+   - Binary true/false verdict
+
+   - Simple evidence storage
+
+  limitations:
+
+   - No external API integration
+
+   - No cross-source validation
+
+   - Single verification method
+
+   - Limited claim types
+
+  infrastructure:
+
+   - Single Neo4j instance
+
+   - Basic PostgreSQL evidence store
+
+  metrics:
+
+   - Claims verified: 10000/day
+
+   - Verification latency p99: 10s
+
+   - Accuracy: 85%
+
+
+
+ growth:
+
+  features:
+
+   - Multi-method verification (KG + APIs + Source)
+
+   - Ensemble voting with confidence
+
+   - Cross-source validation
+
+   - 9-point verdict scale
+
+  - Comprehensive evidence aggregation
+
+  - Contradiction detection
+
+ infrastructure:
+
+  - Neo4j causal cluster (3 core)
+
+  - Multiple external API integrations
+
+  - Redis for verification caching
+
+ metrics:
+
+  - Claims verified: 100000/day
+
+  - Verification latency p99: 5s
+
+  - Accuracy: 95%
+
+
+
+ migration_from_mvp:
+
+  steps:
+
+   - Add external API clients
+
+   - Implement ensemble voting
+
+   - Migrate verdicts to 9-point scale
+
+   - Backfill cross-source data
+
+  rollback: Maintain binary verdict mapping
+
+
+
+enterprise:
+
+ features:
+
+  - Custom ML models for claim verification
+
+  - Real-time claim verification
+
+  - Multi-language claim extraction
+
+  - Complex claim decomposition (causal, predictive)
+
+  - Automated evidence discovery
+
+       - Citation validation
+
+      infrastructure:
+
+       - GPU-accelerated ML inference
+
+       - Multi-region Neo4j
+
+       - Streaming verification pipeline
+
+      metrics:
+
+       - Claims verified: 1000000/day
+
+       - Verification latency p99: 2s
+
+       - Accuracy: 99%
+
+
+
+      migration_from_growth:
+
+       steps:
+
+        - Train custom verification models
+
+        - Deploy model serving infrastructure
+
+        - A/B test against ensemble method
+
+        - Gradual rollout by claim type
+
+       rollback: Ensemble method as fallback
+
+```
+
+
+
+18.3 Confidence Scoring Evolution
+
+
+
+```yaml
+
+confidence_scoring:
+
+ mvp:
+
+      features:
+
+       - Simple weighted average
+
+ - Fixed thresholds
+
+ - Binary publish/reject decision
+
+ - Basic risk levels (LOW, MEDIUM, HIGH)
+
+limitations:
+
+ - No Bayesian priors
+
+ - No confidence intervals
+
+ - Fixed weights
+
+ - No uncertainty quantification
+
+infrastructure:
+
+ - In-memory calculation
+
+ - PostgreSQL for score storage
+
+
+
+growth:
+
+features:
+
+ - Bayesian scoring with informative priors
+
+ - Bootstrap confidence intervals
+
+ - Dimensional scoring (6 dimensions)
+
+ - Dynamic thresholds by category
+
+ - Publication recommendations
+
+ - Confidence decay for time-sensitive claims
+
+infrastructure:
+
+ - Redis for real-time score caching
+
+ - Kafka for confidence update events
+
+ - PostgreSQL for score history
+
+
+
+migration_from_mvp:
+
+  steps:
+
+   - Implement Bayesian engine
+
+   - Calculate priors from historical data
+
+   - Run parallel with existing scoring
+
+   - Validate against editorial decisions
+
+   - Switch to Bayesian scoring
+
+  rollback: Weighted average fallback
+
+
+
+enterprise:
+
+ features:
+
+  - ML-powered confidence prediction
+
+  - Real-time confidence updates
+
+  - Confidence calibration
+
+  - Predictive confidence for unpublished stories
+
+  - A/B testing for threshold optimization
+
+  - Confidence API for downstream services
+
+ infrastructure:
+
+  - ML model serving
+
+  - Real-time feature computation
+
+  - Calibration dataset management
+
+
+
+ migration_from_growth:
+
+  steps:
+
+   - Train confidence prediction model
+
+   - Deploy as shadow scoring
+
+   - Compare against Bayesian scores
+
+        - Gradual rollout with monitoring
+
+       rollback: Bayesian fallback
+
+```
+
+
+
+18.4 Misinformation Detection Evolution
+
+
+
+```yaml
+
+misinformation_detection:
+
+ mvp:
+
+      features:
+
+       - Pattern-based detection
+
+       - Simple fake news classifier
+
+       - Basic hallucination detection
+
+      limitations:
+
+       - No media analysis
+
+       - No coordinated behavior detection
+
+       - Limited to English
+
+       - Rule-based only
+
+      infrastructure:
+
+       - Python ML service (single instance)
+
+       - PostgreSQL for results
+
+
+
+ growth:
+
+      features:
+
+       - Multi-strategy detection (fake news, hallucination, media)
+
+       - Media forensics (image manipulation detection)
+
+  - Coordinated behavior detection
+
+  - Multi-language support
+
+  - Risk scoring with confidence
+
+ infrastructure:
+
+  - GPU instances for media analysis
+
+  - Redis for real-time detection
+
+  - Kafka for alert events
+
+
+
+ migration_from_mvp:
+
+  steps:
+
+   - Deploy media forensics models
+
+   - Add coordinated behavior analysis
+
+   - Expand language support
+
+  rollback: Keep pattern-based as fallback
+
+
+
+enterprise:
+
+ features:
+
+  - Deep learning models for all detection types
+
+  - Real-time video manipulation detection
+
+  - Deepfake detection
+
+  - Cross-platform misinformation tracking
+
+  - Automated response recommendations
+
+  - Misinformation network analysis
+
+ infrastructure:
+
+  - Multi-GPU inference
+
+  - Streaming video analysis
+
+       - Graph analysis for networks
+
+
+
+      migration_from_growth:
+
+       steps:
+
+        - Train deep learning models
+
+        - Deploy GPU inference
+
+        - Integrate video analysis pipeline
+
+       rollback: Classic ML models as fallback
+
+```
+
+
+
+18.5 Infrastructure Evolution Summary
+
+
+
+```yaml
+
+infrastructure_evolution:
+
+ mvp:
+
+      kubernetes: Single EKS cluster, 3 AZs
+
+      postgresql: Single RDS instance (db.r7g.xlarge)
+
+      neo4j: Single EC2 instance
+
+      redis: Single ElastiCache node
+
+      kafka: MSK with 3 brokers
+
+      compute: 10-20 nodes (mixed c7i/m7i)
+
+      observability: Prometheus + Grafana (basic)
+
+      cost_estimate: $15,000-25,000/month
+
+
+
+ growth:
+
+      kubernetes: EKS with Karpenter autoscaling
+
+      postgresql: Aurora cluster (1 writer + 2 readers)
+
+      neo4j: Causal cluster (3 core + 2 read replicas)
+
+      redis: Cluster mode (3 shards x 2 replicas)
+
+      kafka: MSK with 9 brokers (3 per AZ)
+
+      compute: 50-100 nodes (mixed, including GPU)
+
+      observability: Full Grafana LGTM stack
+
+      cost_estimate: $50,000-100,000/month
+
+
+
+ enterprise:
+
+      kubernetes: Multi-region EKS (3 regions)
+
+      postgresql: Aurora Global Database
+
+      neo4j: Multi-DC fabric
+
+      redis: Global Datastore
+
+      kafka: Multi-region MSK with MirrorMaker 2
+
+      compute: 200-500 nodes per region
+
+      observability: Enterprise Grafana + Mimir + Tempo
+
+      cost_estimate: $200,000-500,000/month
+
+```
+
+
+
+---
+
+
+
+END OF VOLUME 25 SUPPLEMENT
+
+
+
+Date: 2026-08-07
+
+Version: 1.0.0 — Implementation-Ready
+
+Volume 25 is now complete with all eighteen parts.
+
+---
+
+
+
+EXECUTIVE SUMMARY
+
+
+
+Volume 25 delivers the complete, production-ready specification for the Agbofa Nexus AI Truth
+Engine — the editorial integrity backbone of the autonomous newsroom. Every aspect of source
+intelligence, claim verification, cross-source validation, confidence scoring, misinformation
+detection, editorial decision-making, and immutable provenance has been specified to
+implementation-ready detail.
+
+
+
+Key Deliverables:
+
+
+
+· Source Intelligence: Comprehensive reputation scoring with Bayesian priors, bias assessment,
+ownership tracking, and dynamic trust evolution
+
+· Source Authentication: Multi-check verification (DNS, TLS, domain analysis, impersonation
+detection, government source verification)
+
+· Claim Extraction: Atomic claim decomposition with entity extraction, relationship extraction,
+numerical validation, and quote attribution
+
+· Multi-Method Verification: Ensemble of Knowledge Graph, external fact-check APIs, source
+analysis, and context matching with weighted voting
+
+· Cross-Source Validation: Independence analysis via Neo4j graph, corroboration scoring,
+consensus determination
+
+· Bayesian Confidence: Informative priors for cold start, bootstrap confidence intervals,
+dimensional scoring with explainability
+
+· Misinformation Detection: Multi-strategy detection (fake news, hallucination, media
+manipulation, coordinated behavior)
+
+· Editorial Decision Engine: Rule-based decisions with category-specific handling, human review
+escalation with priority routing
+
+· Truth Ledger: SHA-256 chained immutable audit trail with Merkle tree verification and
+complete provenance tracking
+
+
+
+The Truth Engine is ready for implementation. Volume 26 will build upon this to implement the
+Story Graph & Editorial Intelligence Engine for canonical story management and AI editorial
+orchestration.
+
+
+
+---
+
+
+
+END OF VOLUME 25
+
+
+
+Date: 2026-08-07
+
+Version: 1.0.0 — Implementation-Ready
+
+Next Volume: Volume 26 — Story Graph & Editorial Intelligence Code Specification
+
+
+

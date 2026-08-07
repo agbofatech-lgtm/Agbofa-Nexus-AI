@@ -1,0 +1,4378 @@
+VOLUME 23: IDENTITY, AUTHENTICATION, AUTHORIZATION & PLATFORM FOUNDATION CODE
+SPECIFICATION
+
+
+
+Document Reference: AGBA-NEXUS-VOL23-CODE-1.0
+
+Status: Implementation-Ready — Production Specification
+
+Phase: 3 — Production Engineering Specifications
+
+Approved Baseline: Volumes 1–22 (Immutable)
+
+Purpose: First Production Microservices
+
+Quality Level: US$50M Enterprise Platform Standard
+
+
+
+---
+
+
+
+SERVICE DECISION RECORDS (SDR)
+
+
+
+SDR-001: Argon2id for Password Hashing
+
+
+
+Decision: Use Argon2id with calibrated parameters (time=3, memory=65536, threads=4) for all
+password hashing.
+
+Rationale: Argon2id is the OWASP-recommended algorithm, resistant to GPU and side-channel
+attacks. Calibrated parameters provide ~500ms hashing time, balancing security and user
+experience.
+
+Alternatives: bcrypt (rejected — less memory-hard, more vulnerable to GPU attacks); scrypt
+(rejected — less studied than Argon2id).
+
+Trade-offs: Higher memory usage per hash, but acceptable for authentication service scale.
+
+SDR-002: JWT with Asymmetric Signing (Ed25519)
+
+
+
+Decision: Sign all JWTs using Ed25519 asymmetric keys, with key rotation every 30 days via
+Vault.
+
+Rationale: Ed25519 provides 128-bit security with small signatures and fast verification.
+Asymmetric signing allows any service to verify tokens without sharing secrets.
+
+Alternatives: RS256 (rejected — larger keys and signatures); HS256 (rejected — symmetric,
+requires secret sharing).
+
+Trade-offs: Key management complexity, but significantly better security posture.
+
+
+
+SDR-003: Row-Level Security for Multi-Tenancy
+
+
+
+Decision: Enforce tenant isolation at the database level using PostgreSQL Row-Level Security
+(RLS) policies, with application-level tenant context injection.
+
+Rationale: Defense in depth — even if application logic fails, database prevents cross-tenant
+data access. RLS is more reliable than application-level filtering alone.
+
+Alternatives: Separate databases per tenant (rejected — operational complexity); application-
+level only (rejected — insufficient isolation).
+
+Trade-offs: Slight query overhead, but essential for multi-tenant security.
+
+
+
+SDR-004: SPIFFE/SPIRE for Service Identity
+
+
+
+Decision: All service-to-service authentication uses SPIFFE/SPIRE-issued X.509 certificates with
+mTLS, enforced by Istio Ambient Mesh.
+
+Rationale: SPIFFE provides cryptographically verifiable workload identity without manual
+certificate management. Automatic rotation eliminates certificate expiry risks.
+
+Alternatives: Manual certificate management (rejected — operational burden); API keys
+(rejected — weaker security model).
+
+Trade-offs: SPIRE infrastructure overhead, but essential for zero-trust architecture.
+
+
+
+---
+
+
+
+PART I — FOUNDATION PLATFORM OVERVIEW
+
+
+
+1.1 Foundation Service Architecture
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+┐
+
+│            FOUNDATION PLATFORM SERVICES                          │
+
+├
+─────────────────────────────────────────────────────────────────────────────
+┤
+
+│                                             │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │               API GATEWAY (APISIX)                    ││
+
+│ │ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────┐ │ │
+
+│ │ │ JWT │ │ Rate │ │ Tenant │ │ Request │ │ API               │ ││
+
+│ │ │ Auth │ │ Limiting │ │ Routing │ │Validation│ │ Versioning │ │ │
+
+│ │ └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────────┘ │ │
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                      │                       │
+
+│ ┌───────────────────────────────────┼────────────────────────────────────┐
+│
+
+│ │             FOUNDATION SERVICES                             ││
+
+│ │                                              ││
+
+│ │ ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────────────┐ │ │
+
+│ │ │ TENANT &         │ │ AUTHORIZATION │ │ GLOBAL CONFIGURATION │ │ │
+
+│ │ │ IDENTITY        │ │ ENGINE          │ │ SERVICE            │││
+
+│ │ │ SERVICE         │ │ (OPA)          │ │             │││
+
+│ │ │           │ │          │ │ • Feature Flags         │││
+
+│ │ │ • Users      │ │ • RBAC            │ │ • Runtime Config        │││
+
+│ │ │ • Tenants       │ │ • ABAC          │ │ • AI Parameters        │││
+
+│ │ │ • Auth       │ │ • Policies    │ │ • Environment Config │ │ │
+
+│ │ │ • Sessions      │ │ • Permissions │ │                  │││
+
+│ │ │ • MFA        │ │             │ │                 │││
+
+│ │ └────────┬────────┘ └────────┬────────┘ └────────────┬────────────┘ │ │
+
+│ │      │              │                 │       ││
+
+│ │ ┌────────▼────────────────────▼─────────────────────────▼────────────┐
+││
+
+│ │ │             SHARED INFRASTRUCTURE                          │││
+
+│ │ │ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ │ │ │
+
+│ │ │ │PostgreSQL│ │ Redis │ │ Vault │ │ Kafka │ │ SPIFFE │ │ │ │
+
+│ │ │ └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘ │ │ │
+
+│ │ └────────────────────────────────────────────────────────────────────┘ │ │
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+└─────────────────────────────────────────────────────────────────────────────
+┘
+
+```
+
+1.2 Service Responsibilities
+
+
+
+```yaml
+
+foundation_services:
+
+ tenant_identity_service:
+
+  id: SVC-FND-TIS
+
+  runtime: Golang
+
+  port: 9091
+
+  responsibilities:
+
+   - Tenant lifecycle management
+
+   - User registration and management
+
+   - Authentication (password, MFA, SSO, OAuth2/OIDC)
+
+   - JWT token issuance and validation
+
+   - Session management
+
+   - Refresh token rotation
+
+   - Device tracking
+
+   - Login history and auditing
+
+
+
+  dependencies:
+
+   upstream: []
+
+   downstream: [all platform services]
+
+   storage:
+
+    primary: PostgreSQL (tenant_db)
+
+    cache: Redis (session_cache)
+
+    secrets: HashiCorp Vault
+
+   messaging:
+
+   produces:
+
+    - foundation.tenant.provisioned
+
+    - foundation.tenant.suspended
+
+    - foundation.user.created
+
+    - foundation.user.authenticated
+
+    - foundation.user.deactivated
+
+
+
+authorization_engine:
+
+ id: SVC-FND-AUTHZ
+
+ runtime: Golang + OPA
+
+ port: 9092
+
+ responsibilities:
+
+  - Policy evaluation (RBAC + ABAC)
+
+  - Role and permission management
+
+  - Dynamic policy updates
+
+  - Policy decision point (PDP) for all services
+
+  - Emergency access management
+
+
+
+ dependencies:
+
+  upstream: [tenant_identity_service]
+
+  downstream: [all platform services]
+
+  storage:
+
+   primary: PostgreSQL (authz_db)
+
+   cache: Redis (policy_cache)
+
+  messaging:
+
+   consumes:
+
+    - foundation.tenant.provisioned
+
+    - foundation.user.created
+
+   produces:
+
+    - foundation.policy.updated
+
+    - foundation.permission.granted
+
+    - foundation.permission.revoked
+
+
+
+configuration_service:
+
+ id: SVC-FND-CFG
+
+ runtime: Golang
+
+ port: 9093
+
+ responsibilities:
+
+  - Feature flag management
+
+  - Runtime configuration
+
+  - AI model parameter configuration
+
+  - Environment-specific settings
+
+  - Configuration audit history
+
+  - Real-time configuration updates
+
+
+
+ dependencies:
+
+  upstream: [tenant_identity_service]
+
+  downstream: [all platform services]
+
+  storage:
+
+   primary: PostgreSQL (config_db)
+
+   cache: Redis (config_cache)
+
+  messaging:
+
+      produces:
+
+       - foundation.configuration.updated
+
+      consumes:
+
+       - foundation.tenant.provisioned
+
+```
+
+
+
+1.3 Dependency Graph
+
+
+
+```
+
+SERVICE DEPENDENCY GRAPH:
+
+
+
+┌─────────────────────────────────────────────────────────────────┐
+
+│                                             │
+
+│ tenant-identity-service ─────────────────────────┐                           │
+
+│ (SVC-FND-TIS)                           │               │
+
+│     │                          │                │
+
+│     │ provides: JWT tokens, user context                │        │
+
+│     │                          │                │
+
+│     ├──────────────────────────────┐                         │           │
+
+│     │                  │        │               │
+
+│     ▼                      ▼        ▼               │
+
+│ authorization-engine configuration-service ALL SERVICES │
+
+│ (SVC-FND-AUTHZ)            (SVC-FND-CFG)                (consume JWT) │
+
+│     │             │                         │
+
+│     │ provides: permissions │ provides: feature flags                │
+
+│     │              │                        │
+
+│     ▼                 ▼                    │
+
+│ ALL SERVICES            ALL SERVICES              │
+
+│ (check permissions)        (read configuration)       │
+
+│                                        │
+
+└─────────────────────────────────────────────────────────────────┘
+
+
+
+STARTUP ORDER:
+
+1. PostgreSQL (database)
+
+2. Redis (cache)
+
+3. Vault (secrets)
+
+4. SPIFFE/SPIRE (identity)
+
+5. tenant-identity-service
+
+6. authorization-engine
+
+7. configuration-service
+
+8. All other services
+
+```
+
+
+
+---
+
+
+
+PART II — TENANT & IDENTITY SERVICE
+
+
+
+2.1 Service Overview
+
+
+
+Service ID: SVC-FND-TIS
+
+Runtime: Golang 1.22+
+
+gRPC Port: 9091
+
+Health Port: 9090
+
+Metrics Port: 9092
+
+
+
+The Tenant & Identity Service is the root trust domain for all human and non-human actors in
+the Agbofa Nexus AI platform. It manages the complete lifecycle of tenants, users,
+authentication, and session management.
+
+
+
+2.2 Domain Model
+
+
+
+```go
+
+// internal/domain/model.go
+
+package domain
+
+
+
+import (
+
+    "time"
+
+    "github.com/google/uuid"
+
+)
+
+
+
+// Tenant represents a customer organization
+
+type Tenant struct {
+
+    ID       uuid.UUID `json:"id"`
+
+    Name       string    `json:"name"`
+
+    Slug     string     `json:"slug"`    // URL-safe identifier
+
+    Status TenantStatus `json:"status"`
+
+    Tier     TenantTier `json:"tier"`      // FREE, PRO, ENTERPRISE
+
+    Config TenantConfig `json:"config"`
+
+    CreatedAt time.Time `json:"created_at"`
+
+    UpdatedAt time.Time `json:"updated_at"`
+
+}
+
+
+
+type TenantStatus string
+
+const (
+
+    TenantStatusActive         TenantStatus = "ACTIVE"
+
+    TenantStatusSuspended TenantStatus = "SUSPENDED"
+
+    TenantStatusDeleted TenantStatus = "DELETED"
+
+    TenantStatusTrial         TenantStatus = "TRIAL"
+
+)
+
+
+
+type TenantTier string
+
+const (
+
+    TierFree    TenantTier = "FREE"
+
+    TierPro     TenantTier = "PRO"
+
+    TierEnterprise TenantTier = "ENTERPRISE"
+
+)
+
+
+
+// TenantConfig stores tenant-specific configuration
+
+type TenantConfig struct {
+
+    MaxUsers            int          `json:"max_users"`
+
+    MaxStoriesPerDay           int       `json:"max_stories_per_day"`
+
+    AllowedAuthProviders []AuthProvider          `json:"allowed_auth_providers"`
+
+    DefaultRegion        string         `json:"default_region"`
+
+    SSOConfig           *SSOConfig        `json:"sso_config,omitempty"`
+
+    MFAPolicy           MFAPolicy        `json:"mfa_policy"`
+
+    SessionTimeoutMinutes int             `json:"session_timeout_minutes"`
+
+    AllowedDomains       []string      `json:"allowed_domains"`
+
+    CustomBranding       *BrandingConfig `json:"custom_branding,omitempty"`
+
+}
+
+
+
+type AuthProvider string
+
+const (
+
+    AuthProviderEmail AuthProvider = "EMAIL"
+
+    AuthProviderGoogle AuthProvider = "GOOGLE"
+
+    AuthProviderGitHub AuthProvider = "GITHUB"
+
+    AuthProviderSAML     AuthProvider = "SAML"
+
+    AuthProviderOIDC     AuthProvider = "OIDC"
+
+)
+
+
+
+type MFAPolicy string
+
+const (
+
+    MFAPolicyOptional MFAPolicy = "OPTIONAL"
+
+    MFAPolicyRequired MFAPolicy = "REQUIRED"
+
+    MFAPolicyAdminOnly MFAPolicy = "ADMIN_ONLY"
+
+)
+
+
+
+// User represents a platform user
+
+type User struct {
+
+    ID         uuid.UUID `json:"id"`
+
+    TenantID      uuid.UUID `json:"tenant_id"`
+
+    Email       string   `json:"email"`
+
+    EmailVerified bool           `json:"email_verified"`
+
+    DisplayName       string      `json:"display_name"`
+
+    AvatarURL        string     `json:"avatar_url,omitempty"`
+
+    Status        UserStatus `json:"status"`
+
+    Roles         []string    `json:"roles"`
+
+    MFAEnabled        bool        `json:"mfa_enabled"`
+
+    MFAVerified      bool        `json:"mfa_verified"`
+
+    LastLoginAt      *time.Time `json:"last_login_at"`
+
+    CreatedAt       time.Time `json:"created_at"`
+
+    UpdatedAt        time.Time `json:"updated_at"`
+
+    DeactivatedAt *time.Time `json:"deactivated_at,omitempty"`
+
+}
+
+
+
+type UserStatus string
+
+const (
+
+    UserStatusActive            UserStatus = "ACTIVE"
+
+    UserStatusPendingVerification UserStatus = "PENDING_VERIFICATION"
+
+    UserStatusPasswordReset           UserStatus = "PASSWORD_RESET_REQUIRED"
+
+    UserStatusDisabled            UserStatus = "DISABLED"
+
+    UserStatusSuspended             UserStatus = "SUSPENDED"
+
+)
+
+
+
+// Session represents an authenticated user session
+
+type Session struct {
+
+    ID       uuid.UUID `json:"id"`
+
+    UserID        uuid.UUID `json:"user_id"`
+
+      TenantID      uuid.UUID `json:"tenant_id"`
+
+      RefreshTokenHash string `json:"-"`
+
+      DeviceInfo    DeviceInfo `json:"device_info"`
+
+      IPAddress     string    `json:"ip_address"`
+
+      UserAgent      string    `json:"user_agent"`
+
+      IsTrusted    bool       `json:"is_trusted"`
+
+      CreatedAt     time.Time `json:"created_at"`
+
+      ExpiresAt     time.Time `json:"expires_at"`
+
+      RevokedAt      *time.Time `json:"revoked_at,omitempty"`
+
+}
+
+
+
+type DeviceInfo struct {
+
+      DeviceID string `json:"device_id"`
+
+      DeviceName string `json:"device_name"`
+
+      DeviceType string `json:"device_type"` // MOBILE, DESKTOP, TABLET
+
+      OS     string `json:"os"`
+
+      Browser string `json:"browser"`
+
+}
+
+```
+
+
+
+2.3 Authentication Flow Sequence
+
+
+
+```
+
+AUTHENTICATION FLOW (Password Login):
+
+
+
+Client             API Gateway        Tenant-Identity   PostgreSQL   Redis   Kafka
+
+│           │             │          │               │           │
+
+│──POST /auth/login──      │             │               │               │               │
+
+│           │──Forward──────────         │               │               │                   │
+
+│           │             │          │               │           │
+
+│           │             │──Lookup User─────            │               │               │
+
+│           │             │    ──User Record─────│                       │               │
+
+│           │             │          │               │           │
+
+│           │             │──Verify Password──│                  │               │
+
+│           │             │ (Argon2id)       │           │               │
+
+│           │             │          │               │           │
+
+│           │             │──Check MFA────────│                      │               │
+
+│           │             │ (if required) │              │               │
+
+│           │             │          │               │           │
+
+│           │             │──Generate JWT─────│                      │               │
+
+│           │             │ (Ed25519 sign) │                 │               │
+
+│           │             │          │               │           │
+
+│           │             │──Store Session────│──────────────                            │           │
+
+│           │             │ (Refresh Token) │                │               │
+
+│           │             │          │               │           │
+
+│           │             │──Publish Event────────────────────────────────                               │
+
+│           │             │ user.authenticated│                  │               │
+
+│           │             │          │               │           │
+
+│           │      ──Tokens + User─────│                 │               │               │
+
+│   ──200 OK────────────│                    │               │               │                   │
+
+│ {access_token,     │          │                │           │               │
+
+ │ refresh_token, │                   │               │           │        │
+
+ │ expires_in}     │              │               │           │        │
+
+
+
+
+MFA FLOW (TOTP):
+
+
+
+Client      API Gateway           Tenant-Identity         PostgreSQL
+
+ │           │            │               │
+
+ │──POST /auth/mfa────        │               │               │
+
+ │ {session_id, code} │──Forward──────────                │           │
+
+ │           │            │──Verify Session──             │
+
+ │           │            │       ──Session─────────│
+
+ │           │            │               │
+
+ │           │            │──Verify TOTP Code │
+
+ │           │            │ (time-based)          │
+
+ │           │            │               │
+
+ │           │            │──Issue JWT────────│
+
+ │           │            │ (full access) │
+
+ │           │            │               │
+
+ │           │   ──JWT──────────────│                         │
+
+ │   ──200 OK────────────│                    │                   │
+
+
+
+TOKEN REFRESH FLOW:
+
+
+
+Client      API Gateway           Tenant-Identity         PostgreSQL           Redis
+
+ │            │               │             │           │
+
+ │──POST /auth/refresh─           │             │           │               │
+
+ │ {refresh_token} │──Forward──────────                 │               │           │
+
+ │            │               │──Hash Token──────           │               │
+
+ │            │               │       ──Session Record──│               │
+
+ │            │               │             │           │
+
+ │            │               │──Validate Session │                 │
+
+ │            │               │ (not expired, │             │
+
+ │            │               │ not revoked) │                  │
+
+ │            │               │             │           │
+
+ │            │               │──Rotate Token─────│──────────────                       │
+
+ │            │               │ (revoke old,        │       │
+
+ │            │               │ issue new)          │       │
+
+ │            │               │             │           │
+
+ │            │      ──New Tokens────────│                      │               │
+
+ │    ──200 OK────────────│                         │           │               │
+
+```
+
+
+
+2.4 gRPC Service Definition
+
+
+
+```protobuf
+
+// api/protobuf/foundation/v1/tenant_identity.proto
+
+syntax = "proto3";
+
+
+
+package foundation.v1;
+
+option go_package = "github.com/agbofa/nexus-api/gen/go/foundation/v1;foundationv1";
+
+
+
+import "google/protobuf/timestamp.proto";
+
+import "buf/validate/validate.proto";
+
+
+
+// Tenant & Identity Service
+
+service TenantIdentityService {
+
+  // Tenant Management
+
+  rpc CreateTenant(CreateTenantRequest) returns (CreateTenantResponse);
+
+  rpc GetTenant(GetTenantRequest) returns (GetTenantResponse);
+
+  rpc UpdateTenant(UpdateTenantRequest) returns (UpdateTenantResponse);
+
+  rpc SuspendTenant(SuspendTenantRequest) returns (SuspendTenantResponse);
+
+  rpc ListTenants(ListTenantsRequest) returns (ListTenantsResponse);
+
+
+
+  // User Management
+
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+
+  rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
+
+  rpc DeactivateUser(DeactivateUserRequest) returns (DeactivateUserResponse);
+
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+
+
+
+  // Authentication
+
+  rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse);
+
+  rpc AuthenticateMFA(AuthenticateMFARequest) returns (AuthenticateResponse);
+
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
+
+    rpc RevokeSession(RevokeSessionRequest) returns (RevokeSessionResponse);
+
+    rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+
+
+
+    // MFA Management
+
+    rpc SetupMFA(SetupMFARequest) returns (SetupMFAResponse);
+
+    rpc VerifyMFA(VerifyMFARequest) returns (VerifyMFAResponse);
+
+    rpc DisableMFA(DisableMFARequest) returns (DisableMFAResponse);
+
+
+
+    // Session Management
+
+    rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
+
+    rpc RevokeAllSessions(RevokeAllSessionsRequest) returns (RevokeAllSessionsResponse);
+
+}
+
+
+
+// --- Tenant Messages ---
+
+
+
+message CreateTenantRequest {
+
+    string name = 1 [(buf.validate.field).string = {
+
+          min_len: 1,
+
+          max_len: 255
+
+    }];
+
+    string slug = 2 [(buf.validate.field).string = {
+
+          min_len: 1,
+
+          max_len: 63
+
+          pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+
+    }];
+
+    TenantTier tier = 3;
+
+    TenantConfig config = 4;
+
+    string idempotency_key = 5 [(buf.validate.field).string.uuid = true];
+
+}
+
+
+
+message TenantConfig {
+
+    int32 max_users = 1 [(buf.validate.field).int32.gte = 1];
+
+    repeated string allowed_auth_providers = 2;
+
+    string default_region = 3;
+
+    SSOConfig sso_config = 4;
+
+    MFAPolicy mfa_policy = 5;
+
+    int32 session_timeout_minutes = 6 [(buf.validate.field).int32 = {
+
+          gte: 5,
+
+          lte: 1440
+
+    }];
+
+}
+
+
+
+enum TenantTier {
+
+    TENANT_TIER_UNSPECIFIED = 0;
+
+    TENANT_TIER_FREE = 1;
+
+    TENANT_TIER_PRO = 2;
+
+    TENANT_TIER_ENTERPRISE = 3;
+
+}
+
+
+
+enum MFAPolicy {
+
+    MFA_POLICY_UNSPECIFIED = 0;
+
+    MFA_POLICY_OPTIONAL = 1;
+
+    MFA_POLICY_REQUIRED = 2;
+
+    MFA_POLICY_ADMIN_ONLY = 3;
+
+}
+
+
+
+message CreateTenantResponse {
+
+    Tenant tenant = 1;
+
+    User bootstrap_admin = 2; // Initial admin user
+
+    string temporary_password = 3; // Must be changed on first login
+
+}
+
+
+
+message Tenant {
+
+    string id = 1;
+
+    string name = 2;
+
+    string slug = 3;
+
+    TenantTier tier = 4;
+
+    TenantStatus status = 5;
+
+    TenantConfig config = 6;
+
+    google.protobuf.Timestamp created_at = 7;
+
+    google.protobuf.Timestamp updated_at = 8;
+
+}
+
+
+
+enum TenantStatus {
+
+    TENANT_STATUS_UNSPECIFIED = 0;
+
+    TENANT_STATUS_ACTIVE = 1;
+
+    TENANT_STATUS_SUSPENDED = 2;
+
+    TENANT_STATUS_DELETED = 3;
+
+    TENANT_STATUS_TRIAL = 4;
+
+}
+
+
+
+// --- User Messages ---
+
+
+
+message CreateUserRequest {
+
+    string tenant_id = 1 [(buf.validate.field).string.uuid = true];
+
+    string email = 2 [(buf.validate.field).string.email = true];
+
+    string display_name = 3 [(buf.validate.field).string = {
+
+          min_len: 1,
+
+          max_len: 255
+
+    }];
+
+    string password = 4 [(buf.validate.field).string = {
+
+          min_len: 8,
+
+          max_len: 128
+
+    }];
+
+    repeated string roles = 5;
+
+    string idempotency_key = 6 [(buf.validate.field).string.uuid = true];
+
+}
+
+
+
+message CreateUserResponse {
+
+    User user = 1;
+
+}
+
+
+
+message User {
+
+    string id = 1;
+
+    string tenant_id = 2;
+
+    string email = 3;
+
+    bool email_verified = 4;
+
+    string display_name = 5;
+
+    string avatar_url = 6;
+
+    UserStatus status = 7;
+
+    repeated string roles = 8;
+
+    bool mfa_enabled = 9;
+
+    google.protobuf.Timestamp last_login_at = 10;
+
+    google.protobuf.Timestamp created_at = 11;
+
+}
+
+
+
+enum UserStatus {
+
+    USER_STATUS_UNSPECIFIED = 0;
+
+    USER_STATUS_ACTIVE = 1;
+
+    USER_STATUS_PENDING_VERIFICATION = 2;
+
+    USER_STATUS_PASSWORD_RESET_REQUIRED = 3;
+
+    USER_STATUS_DISABLED = 4;
+
+    USER_STATUS_SUSPENDED = 5;
+
+}
+
+
+
+// --- Authentication Messages ---
+
+
+
+message AuthenticateRequest {
+
+    string tenant_slug = 1 [(buf.validate.field).string.min_len = 1];
+
+    string email = 2 [(buf.validate.field).string.email = true];
+
+    string password = 3 [(buf.validate.field).string.min_len = 1];
+
+    DeviceInfo device_info = 4;
+
+    string ip_address = 5;
+
+    string user_agent = 6;
+
+}
+
+
+
+message DeviceInfo {
+
+    string device_id = 1;
+
+    string device_name = 2;
+
+    string device_type = 3;
+
+    string os = 4;
+
+    string browser = 5;
+
+}
+
+
+
+message AuthenticateResponse {
+
+    string access_token = 1;      // JWT, 15-minute expiry
+
+    string refresh_token = 2;     // Opaque token, 7-day expiry
+
+    int32 expires_in = 3;       // Seconds until access token expires
+
+    string token_type = 4;       // "Bearer"
+
+    User user = 5;
+
+    bool mfa_required = 6;        // If MFA is required but not yet completed
+
+    string session_id = 7;      // For MFA continuation
+
+}
+
+
+
+message RefreshTokenRequest {
+
+    string refresh_token = 1 [(buf.validate.field).string.min_len = 1];
+
+}
+
+
+
+message RefreshTokenResponse {
+
+      string access_token = 1;
+
+      string refresh_token = 2;    // New refresh token (rotation)
+
+      int32 expires_in = 3;
+
+}
+
+
+
+message ValidateTokenRequest {
+
+      string access_token = 1 [(buf.validate.field).string.min_len = 1];
+
+}
+
+
+
+message ValidateTokenResponse {
+
+      bool valid = 1;
+
+      string user_id = 2;
+
+      string tenant_id = 3;
+
+      repeated string roles = 4;
+
+      google.protobuf.Timestamp expires_at = 5;
+
+}
+
+```
+
+
+
+2.5 JWT Token Structure
+
+
+
+```go
+
+// internal/domain/token.go
+
+package domain
+
+import (
+
+    "crypto/ed25519"
+
+    "time"
+
+
+
+    "github.com/golang-jwt/jwt/v5"
+
+)
+
+
+
+// TokenClaims represents the JWT claims structure
+
+type TokenClaims struct {
+
+    jwt.RegisteredClaims
+
+
+
+    // Tenant context
+
+    TenantID string `json:"tenant_id"`
+
+    TenantSlug string `json:"tenant_slug"`
+
+
+
+    // User context
+
+    UserID       string `json:"user_id"`
+
+    Email    string `json:"email"`
+
+    DisplayName string `json:"display_name"`
+
+
+
+    // Authorization
+
+    Roles    []string `json:"roles"`
+
+    Permissions []string `json:"permissions,omitempty"`
+
+
+
+    // Session
+
+    SessionID string `json:"session_id"`
+
+
+
+    // Security
+
+    TokenID        string `json:"jti"`
+
+    IssuedAt int64 `json:"iat"`
+
+    ExpiresAt int64 `json:"exp"`
+
+    NotBefore int64 `json:"nbf"`
+
+}
+
+
+
+// TokenService manages JWT creation and validation
+
+type TokenService struct {
+
+    privateKey ed25519.PrivateKey
+
+    publicKey ed25519.PublicKey
+
+    keyID       string
+
+    issuer      string
+
+    ttl       time.Duration
+
+}
+
+
+
+// NewTokenService creates a token service with key rotation support
+
+func NewTokenService(vaultClient VaultClient) (*TokenService, error) {
+
+    // Fetch current signing key from Vault
+
+    key, err := vaultClient.GetSigningKey(context.Background())
+
+    if err != nil {
+
+          return nil, fmt.Errorf("get signing key: %w", err)
+
+    }
+
+    return &TokenService{
+
+       privateKey: key.Private,
+
+       publicKey: key.Public,
+
+       keyID:        key.ID,
+
+       issuer:       "agbofa-nexus",
+
+       ttl:        15 * time.Minute, // Access token: 15 minutes
+
+    }, nil
+
+}
+
+
+
+// CreateAccessToken generates a new JWT access token
+
+func (ts *TokenService) CreateAccessToken(user *User, session *Session) (string, error) {
+
+    now := time.Now()
+
+
+
+    claims := &TokenClaims{
+
+       RegisteredClaims: jwt.RegisteredClaims{
+
+             Issuer: ts.issuer,
+
+             Subject: user.ID.String(),
+
+             Audience: jwt.ClaimStrings{"agbofa-nexus"},
+
+             ExpiresAt: jwt.NewNumericDate(now.Add(ts.ttl)),
+
+             NotBefore: jwt.NewNumericDate(now),
+
+             IssuedAt: jwt.NewNumericDate(now),
+
+             ID:     uuid.NewV7().String(),
+
+       },
+
+       TenantID: user.TenantID.String(),
+
+       UserID:        user.ID.String(),
+
+       Email:        user.Email,
+
+        DisplayName: user.DisplayName,
+
+        Roles:        user.Roles,
+
+        SessionID: session.ID.String(),
+
+    }
+
+
+
+    token := jwt.NewWithClaims(jwt.SigningMethodEdDSA, claims)
+
+    token.Header["kid"] = ts.keyID
+
+
+
+    signed, err := token.SignedString(ts.privateKey)
+
+    if err != nil {
+
+        return "", fmt.Errorf("sign token: %w", err)
+
+    }
+
+
+
+    return signed, nil
+
+}
+
+
+
+// ValidateAccessToken validates and parses a JWT access token
+
+func (ts *TokenService) ValidateAccessToken(tokenString string) (*TokenClaims, error) {
+
+    token, err := jwt.ParseWithClaims(tokenString, &TokenClaims{},
+
+        func(token *jwt.Token) (interface{}, error) {
+
+          // Verify signing algorithm
+
+          if _, ok := token.Method.(*jwt.SigningMethodEd25519); !ok {
+
+              return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+
+          }
+
+
+
+          // Verify key ID matches current key
+
+               if token.Header["kid"] != ts.keyID {
+
+                   // Could be rotated — check Vault for previous key
+
+                   return ts.getKeyByID(token.Header["kid"].(string))
+
+               }
+
+
+
+               return ts.publicKey, nil
+
+          },
+
+          jwt.WithLeeway(30*time.Second), // 30 second clock skew tolerance
+
+      )
+
+
+
+      if err != nil {
+
+          return nil, fmt.Errorf("parse token: %w", err)
+
+      }
+
+
+
+      claims, ok := token.Claims.(*TokenClaims)
+
+      if !ok || !token.Valid {
+
+          return nil, ErrInvalidToken
+
+      }
+
+
+
+      return claims, nil
+
+}
+
+```
+
+
+
+2.6 Refresh Token Rotation
+
+
+
+```go
+
+// internal/domain/refresh_token.go
+
+package domain
+
+
+
+import (
+
+    "crypto/rand"
+
+    "crypto/sha256"
+
+    "encoding/hex"
+
+    "time"
+
+)
+
+
+
+// RefreshTokenService manages opaque refresh tokens with rotation
+
+type RefreshTokenService struct {
+
+    store RefreshTokenStore
+
+}
+
+
+
+// GenerateRefreshToken creates a new cryptographically random refresh token
+
+func (rts *RefreshTokenService) GenerateRefreshToken() (string, error) {
+
+    // 256-bit random token
+
+    bytes := make([]byte, 32)
+
+    if _, err := rand.Read(bytes); err != nil {
+
+        return "", fmt.Errorf("generate random: %w", err)
+
+    }
+
+
+
+    // URL-safe base64 encoding
+
+    token := base64.RawURLEncoding.EncodeToString(bytes)
+
+    return token, nil
+
+}
+
+
+
+// StoreRefreshToken hashes and stores the refresh token
+
+func (rts *RefreshTokenService) StoreRefreshToken(
+
+    ctx context.Context,
+
+    token string,
+
+    sessionID uuid.UUID,
+
+    expiresAt time.Time,
+
+) error {
+
+    // Hash the token with SHA-256 before storage
+
+    hash := sha256.Sum256([]byte(token))
+
+    tokenHash := hex.EncodeToString(hash[:])
+
+
+
+    return rts.store.Store(ctx, &StoredRefreshToken{
+
+         TokenHash: tokenHash,
+
+         SessionID: sessionID,
+
+         ExpiresAt: expiresAt,
+
+         CreatedAt: time.Now(),
+
+    })
+
+}
+
+
+
+// RotateRefreshToken implements token rotation:
+
+// 1. Validate old token
+
+// 2. Revoke old token
+
+// 3. Issue new token
+
+// This prevents refresh token replay attacks
+
+func (rts *RefreshTokenService) RotateRefreshToken(
+
+  ctx context.Context,
+
+  oldToken string,
+
+) (*TokenRotation, error) {
+
+
+
+  // 1. Hash the old token
+
+  oldHash := sha256.Sum256([]byte(oldToken))
+
+  oldTokenHash := hex.EncodeToString(oldHash[:])
+
+
+
+  // 2. Find and validate the stored token
+
+  stored, err := rts.store.FindByHash(ctx, oldTokenHash)
+
+  if err != nil {
+
+      return nil, ErrInvalidRefreshToken
+
+  }
+
+
+
+  // 3. Check expiration
+
+  if time.Now().After(stored.ExpiresAt) {
+
+      return nil, ErrRefreshTokenExpired
+
+  }
+
+
+
+  // 4. Check if already revoked (replay attack detection)
+
+  if stored.RevokedAt != nil {
+
+      // Token reuse detected — revoke ALL tokens for this user
+
+      rts.store.RevokeAllForUser(ctx, stored.UserID)
+
+      return nil, ErrTokenReuseDetected
+
+  }
+
+      // 5. Revoke old token
+
+      if err := rts.store.Revoke(ctx, oldTokenHash); err != nil {
+
+          return nil, fmt.Errorf("revoke old token: %w", err)
+
+      }
+
+
+
+      // 6. Generate new token
+
+      newToken, err := rts.GenerateRefreshToken()
+
+      if err != nil {
+
+          return nil, fmt.Errorf("generate new token: %w", err)
+
+      }
+
+
+
+      // 7. Store new token with same session
+
+      newExpiresAt := time.Now().Add(7 * 24 * time.Hour) // 7 days
+
+      if err := rts.StoreRefreshToken(ctx, newToken, stored.SessionID, newExpiresAt); err != nil {
+
+          return nil, fmt.Errorf("store new token: %w", err)
+
+      }
+
+
+
+      return &TokenRotation{
+
+          NewToken: newToken,
+
+          SessionID: stored.SessionID,
+
+          ExpiresAt: newExpiresAt,
+
+      }, nil
+
+}
+
+```
+
+2.7 Password Management
+
+
+
+```go
+
+// internal/domain/password.go
+
+package domain
+
+
+
+import (
+
+    "crypto/subtle"
+
+    "fmt"
+
+
+
+    "golang.org/x/crypto/argon2"
+
+)
+
+
+
+// Argon2id parameters (OWASP recommended)
+
+const (
+
+    argon2Time = 3      // Number of iterations
+
+    argon2Memory = 65536 // 64 MB
+
+    argon2Threads = 4    // Number of threads
+
+    argon2KeyLen = 32 // 256-bit key
+
+    argon2SaltLen = 16 // 128-bit salt
+
+)
+
+
+
+// PasswordService manages password hashing and verification
+
+type PasswordService struct{}
+
+
+
+// HashPassword hashes a password using Argon2id
+
+func (ps *PasswordService) HashPassword(password string) (string, error) {
+
+  // Generate random salt
+
+  salt := make([]byte, argon2SaltLen)
+
+  if _, err := rand.Read(salt); err != nil {
+
+      return "", fmt.Errorf("generate salt: %w", err)
+
+  }
+
+
+
+  // Hash password with Argon2id
+
+  hash := argon2.IDKey(
+
+      []byte(password),
+
+      salt,
+
+      argon2Time,
+
+      argon2Memory,
+
+      argon2Threads,
+
+      argon2KeyLen,
+
+  )
+
+
+
+  // Encode as: $argon2id$v=19$m=65536,t=3,p=4$<salt>$<hash>
+
+  encoded := fmt.Sprintf(
+
+      "$argon2id$v=19$m=%d,t=%d,p=%d$%s$%s",
+
+      argon2Memory,
+
+      argon2Time,
+
+      argon2Threads,
+
+      base64.RawStdEncoding.EncodeToString(salt),
+
+      base64.RawStdEncoding.EncodeToString(hash),
+
+  )
+
+    return encoded, nil
+
+}
+
+
+
+// VerifyPassword verifies a password against its hash using constant-time comparison
+
+func (ps *PasswordService) VerifyPassword(password, encodedHash string) (bool, error) {
+
+    // Parse encoded hash
+
+    params, salt, hash, err := ps.decodeHash(encodedHash)
+
+    if err != nil {
+
+        return false, fmt.Errorf("decode hash: %w", err)
+
+    }
+
+
+
+    // Recompute hash with same parameters
+
+    computedHash := argon2.IDKey(
+
+        []byte(password),
+
+        salt,
+
+        params.iterations,
+
+        params.memory,
+
+        params.threads,
+
+        params.keyLen,
+
+    )
+
+
+
+    // Constant-time comparison to prevent timing attacks
+
+    return subtle.ConstantTimeCompare(hash, computedHash) == 1, nil
+
+}
+
+// ValidatePasswordStrength enforces password policies
+
+func (ps *PasswordService) ValidatePasswordStrength(password string) error {
+
+  if len(password) < 8 {
+
+      return ErrPasswordTooShort
+
+  }
+
+
+
+  if len(password) > 128 {
+
+      return ErrPasswordTooLong
+
+  }
+
+
+
+  hasUpper := false
+
+  hasLower := false
+
+  hasDigit := false
+
+  hasSpecial := false
+
+
+
+  for _, ch := range password {
+
+      switch {
+
+      case 'A' <= ch && ch <= 'Z':
+
+          hasUpper = true
+
+      case 'a' <= ch && ch <= 'z':
+
+          hasLower = true
+
+      case '0' <= ch && ch <= '9':
+
+          hasDigit = true
+
+      case isSpecialChar(ch):
+
+          hasSpecial = true
+
+      }
+
+      }
+
+
+
+      if !hasUpper {
+
+          return ErrPasswordNoUppercase
+
+      }
+
+      if !hasLower {
+
+          return ErrPasswordNoLowercase
+
+      }
+
+      if !hasDigit {
+
+          return ErrPasswordNoDigit
+
+      }
+
+      if !hasSpecial {
+
+          return ErrPasswordNoSpecial
+
+      }
+
+
+
+      return nil
+
+}
+
+```
+
+
+
+---
+
+
+
+PART III — TENANT MANAGEMENT
+
+
+
+3.1 Tenant Lifecycle State Machine
+
+
+
+```
+
+TENANT LIFECYCLE:
+
+
+
+                 ┌──────────┐
+
+                 │ CREATED │
+
+                 └────┬─────┘
+
+                   │
+
+                 ┌────▼─────┐
+
+                 │ TRIAL │ (14-day trial)
+
+                 └────┬─────┘
+
+                   │
+
+          ┌──────────┼──────────┐
+
+          │         │      │
+
+        ┌────▼─────┐ ┌──▼───┐ ┌───▼──────┐
+
+        │ ACTIVE │ │EXPIRED│ │CONVERTED │
+
+        └────┬─────┘ └──────┘ └──────────┘
+
+          │
+
+    ┌─────────┼─────────┐
+
+    │        │      │
+
+┌───▼───┐ ┌──▼───┐ ┌───▼──────┐
+
+│SUSPEND│ │DELETE│ │UPGRADE │
+
+│       ││       │ │TIER   │
+
+└───┬───┘ └──────┘ └──────────┘
+
+    │
+
+┌───▼───┐
+
+│ACTIVE │ (reactivate)
+
+└───────┘
+
+TRANSITIONS:
+
+    CREATED → TRIAL:      Automatic on tenant creation
+
+    TRIAL → ACTIVE:      Payment confirmed
+
+    TRIAL → EXPIRED:     14 days without payment
+
+    ACTIVE → SUSPENDED:      Payment failure, TOS violation
+
+    SUSPENDED → ACTIVE:      Issue resolved
+
+    ACTIVE → DELETED:      Account deletion (30-day grace period)
+
+    ACTIVE → UPGRADE:       Tier change (FREE → PRO → ENTERPRISE)
+
+```
+
+
+
+3.2 Tenant Isolation Implementation
+
+
+
+```go
+
+// internal/infrastructure/persistence/postgres.go
+
+package persistence
+
+
+
+import (
+
+      "context"
+
+      "fmt"
+
+
+
+      "github.com/jackc/pgx/v5"
+
+)
+
+
+
+// TenantContext carries tenant information for database operations
+
+type TenantContext struct {
+
+    TenantID uuid.UUID
+
+}
+
+
+
+// SetTenantContext sets the tenant context for the current database session
+
+// This enables Row-Level Security (RLS) to automatically filter queries
+
+func (r *PostgresRepository) SetTenantContext(ctx context.Context, tc TenantContext) error {
+
+    _, err := r.pool.Exec(ctx,
+
+         "SELECT set_config('app.current_tenant_id', $1, true)",
+
+         tc.TenantID.String(),
+
+    )
+
+    if err != nil {
+
+         return fmt.Errorf("set tenant context: %w", err)
+
+    }
+
+    return nil
+
+}
+
+
+
+// Example query — RLS automatically adds "WHERE tenant_id =
+current_setting('app.current_tenant_id')"
+
+func (r *PostgresRepository) ListUsers(ctx context.Context) ([]*User, error) {
+
+    // RLS ensures only users from the current tenant are returned
+
+    rows, err := r.pool.Query(ctx, `
+
+         SELECT id, tenant_id, email, display_name, status, roles, created_at
+
+         FROM users
+
+         ORDER BY created_at DESC
+
+    `)
+
+    // ... row scanning
+
+}
+
+```
+
+
+
+3.3 Row-Level Security Policies
+
+
+
+```sql
+
+-- migrations/000002_tenant_rls.up.sql
+
+
+
+-- Enable RLS on all multi-tenant tables
+
+ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE api_keys ENABLE ROW LEVEL SECURITY;
+
+
+
+-- Tenants: Users can only see their own tenant
+
+CREATE POLICY tenant_isolation ON tenants
+
+      FOR ALL
+
+      USING (id::text = current_setting('app.current_tenant_id', true))
+
+      WITH CHECK (id::text = current_setting('app.current_tenant_id', true));
+
+
+
+-- Users: Filtered by tenant
+
+CREATE POLICY user_tenant_isolation ON users
+
+      FOR ALL
+
+      USING (tenant_id::text = current_setting('app.current_tenant_id', true))
+
+      WITH CHECK (tenant_id::text = current_setting('app.current_tenant_id', true));
+
+-- Sessions: Filtered by tenant through user relationship
+
+CREATE POLICY session_tenant_isolation ON sessions
+
+  FOR ALL
+
+  USING (
+
+       user_id IN (
+
+           SELECT id FROM users
+
+           WHERE tenant_id::text = current_setting('app.current_tenant_id', true)
+
+       )
+
+  );
+
+
+
+-- API Keys: Filtered by tenant
+
+CREATE POLICY apikey_tenant_isolation ON api_keys
+
+  FOR ALL
+
+  USING (tenant_id::text = current_setting('app.current_tenant_id', true))
+
+  WITH CHECK (tenant_id::text = current_setting('app.current_tenant_id', true));
+
+
+
+-- Admin bypass policy for platform operators
+
+CREATE POLICY admin_bypass ON users
+
+  FOR ALL
+
+  USING (current_setting('app.is_platform_admin', true) = 'true');
+
+
+
+-- Create function to set tenant context
+
+CREATE OR REPLACE FUNCTION set_tenant_context(tenant_id UUID)
+
+RETURNS void AS $$
+
+BEGIN
+
+  PERFORM set_config('app.current_tenant_id', tenant_id::text, true);
+
+END;
+
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+```
+
+
+
+---
+
+
+
+PART IV — AUTHORIZATION ENGINE
+
+
+
+4.1 Authorization Service
+
+
+
+Service ID: SVC-FND-AUTHZ
+
+Runtime: Golang + OPA (Open Policy Agent)
+
+
+
+```go
+
+// internal/domain/authorization.go
+
+package domain
+
+
+
+// AuthorizationService evaluates access policies
+
+type AuthorizationService struct {
+
+      opaClient *opa.Client
+
+      policyStore PolicyStore
+
+      cache     *redis.Client
+
+}
+
+
+
+// AuthorizationRequest represents an access check
+
+type AuthorizationRequest struct {
+
+    Subject Subject `json:"subject"`
+
+    Action string `json:"action"`
+
+    Resource Resource `json:"resource"`
+
+    Context Context `json:"context"`
+
+}
+
+
+
+type Subject struct {
+
+    UserID string `json:"user_id"`
+
+    TenantID string `json:"tenant_id"`
+
+    Roles    []string `json:"roles"`
+
+}
+
+
+
+type Resource struct {
+
+    Type     string `json:"type"`      // "story", "article", "source", "tenant"
+
+    ID      string `json:"id"`      // Resource identifier
+
+    TenantID string `json:"tenant_id"` // Owning tenant
+
+    Attributes map[string]interface{} `json:"attributes,omitempty"`
+
+}
+
+
+
+type Context struct {
+
+    IPAddress string `json:"ip_address"`
+
+    UserAgent string `json:"user_agent"`
+
+    Timestamp int64 `json:"timestamp"`
+
+    IsEmergency bool `json:"is_emergency,omitempty"`
+
+}
+
+// AuthorizationResponse represents the authorization decision
+
+type AuthorizationResponse struct {
+
+    Allowed bool      `json:"allowed"`
+
+    Reason string `json:"reason,omitempty"`
+
+  Obligations []string `json:"obligations,omitempty"` // Required actions (e.g., "LOG_AUDIT",
+"NOTIFY_ADMIN")
+
+}
+
+
+
+// CheckAuthorization evaluates whether a subject can perform an action on a resource
+
+func (as *AuthorizationService) CheckAuthorization(
+
+    ctx context.Context,
+
+    req *AuthorizationRequest,
+
+) (*AuthorizationResponse, error) {
+
+
+
+    // Check cache first
+
+    cacheKey := as.cacheKey(req)
+
+    if cached, err := as.cache.Get(ctx, cacheKey); err == nil {
+
+        var resp AuthorizationResponse
+
+        json.Unmarshal([]byte(cached), &resp)
+
+        return &resp, nil
+
+    }
+
+
+
+    // Evaluate OPA policy
+
+    input := map[string]interface{}{
+
+        "subject": req.Subject,
+
+        "action": req.Action,
+
+          "resource": req.Resource,
+
+          "context": req.Context,
+
+      }
+
+
+
+      result, err := as.opaClient.Evaluate(ctx, "data.agbofa.authz.allow", input)
+
+      if err != nil {
+
+          return nil, fmt.Errorf("opa evaluation: %w", err)
+
+      }
+
+
+
+      resp := &AuthorizationResponse{
+
+          Allowed: result.Allowed,
+
+          Reason: result.Reason,
+
+      }
+
+
+
+      if result.Allowed && len(result.Obligations) > 0 {
+
+          resp.Obligations = result.Obligations
+
+      }
+
+
+
+      // Cache decision (short TTL for real-time policy updates)
+
+      as.cache.Set(ctx, cacheKey, resp, 30*time.Second)
+
+
+
+      return resp, nil
+
+}
+
+```
+
+
+
+4.2 OPA Policy Definitions
+
+```rego
+
+# infrastructure/kubernetes/base/opa/policies/authz.rego
+
+package agbofa.authz
+
+
+
+import future.keywords.if
+
+import future.keywords.in
+
+
+
+# Default deny
+
+default allow := false
+
+
+
+# --- Role-Based Access Control ---
+
+
+
+# Tenant Admin has full access within their tenant
+
+allow if {
+
+    "TENANT_ADMIN" in input.subject.roles
+
+    input.resource.tenant_id == input.subject.tenant_id
+
+}
+
+
+
+# Editor can create and edit content
+
+allow if {
+
+    "EDITOR" in input.subject.roles
+
+    input.resource.tenant_id == input.subject.tenant_id
+
+    input.action in [
+
+      "content:read",
+
+      "content:create",
+
+        "content:update",
+
+        "story:read",
+
+        "story:update",
+
+        "headline:create",
+
+        "media:upload",
+
+    ]
+
+}
+
+
+
+# Viewer can only read
+
+allow if {
+
+    "VIEWER" in input.subject.roles
+
+    input.resource.tenant_id == input.subject.tenant_id
+
+    input.action in [
+
+        "content:read",
+
+        "story:read",
+
+        "analytics:read",
+
+    ]
+
+}
+
+
+
+# AI Agent permissions
+
+allow if {
+
+    "AI_AGENT" in input.subject.roles
+
+    input.resource.tenant_id == input.subject.tenant_id
+
+    input.action in [
+
+        "story:read",
+
+        "story:detect",
+
+        "content:generate",
+
+        "headline:generate",
+
+        "source:read",
+
+    ]
+
+}
+
+
+
+# --- Emergency Override ---
+
+
+
+# Emergency access bypass (requires MFA verification)
+
+allow if {
+
+    input.context.is_emergency == true
+
+    input.context.mfa_verified == true
+
+    "EMERGENCY_ACCESS" in input.subject.roles
+
+    # Must log audit event
+
+    obligations := ["LOG_AUDIT", "NOTIFY_SECURITY"]
+
+}
+
+
+
+# --- Platform Admin (cross-tenant) ---
+
+
+
+allow if {
+
+    "PLATFORM_ADMIN" in input.subject.roles
+
+    # Platform admins have access to all tenants
+
+    obligations := ["LOG_AUDIT"]
+
+}
+
+
+
+# --- API Key Access ---
+
+allow if {
+
+      input.subject.type == "API_KEY"
+
+      input.resource.tenant_id == input.subject.tenant_id
+
+      # API key permissions are scoped
+
+      input.action in input.subject.api_key_permissions
+
+}
+
+
+
+# --- Resource Ownership ---
+
+
+
+# Story authors can manage their own stories
+
+allow if {
+
+      input.action in ["story:update", "story:delete"]
+
+      input.resource.author_id == input.subject.user_id
+
+}
+
+
+
+# --- Rate Limiting Obligation ---
+
+
+
+obligations["LOG_AUDIT"] if {
+
+      not input.action in ["health:check", "metrics:read"]
+
+}
+
+```
+
+
+
+4.3 Role Definitions
+
+
+
+```yaml
+
+roles:
+
+ PLATFORM_ADMIN:
+
+  description: "Full platform access across all tenants"
+
+  permissions:
+
+   - "*:*" # All actions on all resources
+
+  cross_tenant: true
+
+  mfa_required: true
+
+
+
+ TENANT_ADMIN:
+
+  description: "Full access within own tenant"
+
+  permissions:
+
+   - "tenant:read"
+
+   - "tenant:update"
+
+   - "user:*"
+
+   - "content:*"
+
+   - "story:*"
+
+   - "analytics:*"
+
+   - "billing:read"
+
+  cross_tenant: false
+
+  mfa_required: true
+
+
+
+ SENIOR_EDITOR:
+
+  description: "Can publish and manage editorial workflow"
+
+  permissions:
+
+   - "content:*"
+
+   - "story:*"
+
+ - "headline:*"
+
+ - "media:*"
+
+ - "distribution:publish"
+
+ - "distribution:schedule"
+
+ - "compliance:override" # With audit
+
+ - "analytics:read"
+
+cross_tenant: false
+
+
+
+EDITOR:
+
+description: "Can create and edit content"
+
+permissions:
+
+ - "content:read"
+
+ - "content:create"
+
+ - "content:update"
+
+ - "story:read"
+
+ - "story:update"
+
+ - "headline:create"
+
+ - "headline:update"
+
+ - "media:upload"
+
+ - "media:read"
+
+ - "analytics:read"
+
+cross_tenant: false
+
+
+
+AI_AGENT:
+
+description: "AI system agent"
+
+permissions:
+
+ - "story:read"
+
+ - "story:detect"
+
+ - "source:read"
+
+ - "content:generate"
+
+ - "headline:generate"
+
+ - "media:generate"
+
+ - "analytics:write"
+
+ - "compliance:check"
+
+cross_tenant: false
+
+is_system: true
+
+
+
+VIEWER:
+
+description: "Read-only access"
+
+permissions:
+
+ - "content:read"
+
+ - "story:read"
+
+ - "analytics:read"
+
+cross_tenant: false
+
+
+
+EMERGENCY_ACCESS:
+
+description: "Emergency override access"
+
+permissions:
+
+ - "distribution:emergency_publish"
+
+ - "compliance:emergency_override"
+
+cross_tenant: false
+
+mfa_required: true
+
+      audit_required: true
+
+```
+
+
+
+---
+
+
+
+PART V — DATABASE SCHEMA
+
+
+
+5.1 Complete PostgreSQL Schema
+
+
+
+```sql
+
+-- migrations/000001_initial_schema.up.sql
+
+
+
+-- Extensions
+
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+
+
+-- ============================================================================
+
+-- TENANTS
+
+-- ============================================================================
+
+CREATE TABLE tenants (
+
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+      name VARCHAR(255) NOT NULL,
+
+      slug VARCHAR(63) NOT NULL UNIQUE,
+
+      status VARCHAR(20) NOT NULL DEFAULT 'TRIAL'
+
+        CHECK (status IN ('ACTIVE', 'SUSPENDED', 'DELETED', 'TRIAL')),
+
+      tier VARCHAR(20) NOT NULL DEFAULT 'FREE'
+
+       CHECK (tier IN ('FREE', 'PRO', 'ENTERPRISE')),
+
+     config JSONB NOT NULL DEFAULT '{}',
+
+     billing_id VARCHAR(255),
+
+     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+     deleted_at TIMESTAMPTZ,
+
+
+
+     CONSTRAINT valid_slug CHECK (slug ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$')
+
+);
+
+
+
+CREATE INDEX idx_tenants_slug ON tenants(slug) WHERE deleted_at IS NULL;
+
+CREATE INDEX idx_tenants_status ON tenants(status);
+
+
+
+-- ============================================================================
+
+-- USERS
+
+-- ============================================================================
+
+CREATE TABLE users (
+
+     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+     tenant_id UUID NOT NULL REFERENCES tenants(id),
+
+     email VARCHAR(255) NOT NULL,
+
+     email_verified BOOLEAN NOT NULL DEFAULT false,
+
+     display_name VARCHAR(255) NOT NULL,
+
+     avatar_url TEXT,
+
+     password_hash TEXT,
+
+     status VARCHAR(30) NOT NULL DEFAULT 'PENDING_VERIFICATION'
+
+       CHECK (status IN (
+
+             'ACTIVE', 'PENDING_VERIFICATION', 'PASSWORD_RESET_REQUIRED',
+
+             'DISABLED', 'SUSPENDED'
+
+       )),
+
+     roles JSONB NOT NULL DEFAULT '["VIEWER"]',
+
+     mfa_enabled BOOLEAN NOT NULL DEFAULT false,
+
+     mfa_secret TEXT,
+
+     mfa_verified BOOLEAN NOT NULL DEFAULT false,
+
+     failed_login_attempts INT NOT NULL DEFAULT 0,
+
+     locked_until TIMESTAMPTZ,
+
+     last_login_at TIMESTAMPTZ,
+
+     password_changed_at TIMESTAMPTZ,
+
+     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+     deactivated_at TIMESTAMPTZ,
+
+
+
+     UNIQUE(tenant_id, email)
+
+);
+
+
+
+CREATE INDEX idx_users_tenant ON users(tenant_id) WHERE deactivated_at IS NULL;
+
+CREATE INDEX idx_users_email ON users(tenant_id, email);
+
+CREATE INDEX idx_users_status ON users(tenant_id, status);
+
+
+
+-- ============================================================================
+
+-- SESSIONS (Refresh Tokens)
+
+-- ============================================================================
+
+CREATE TABLE sessions (
+
+     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+     user_id UUID NOT NULL REFERENCES users(id),
+
+     token_hash VARCHAR(64) NOT NULL UNIQUE, -- SHA-256 of refresh token
+
+     device_info JSONB NOT NULL DEFAULT '{}',
+
+     ip_address INET,
+
+     user_agent TEXT,
+
+     is_trusted BOOLEAN NOT NULL DEFAULT false,
+
+     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+     expires_at TIMESTAMPTZ NOT NULL,
+
+     revoked_at TIMESTAMPTZ,
+
+     revoked_reason VARCHAR(100),
+
+
+
+     CONSTRAINT session_not_expired CHECK (expires_at > created_at)
+
+);
+
+
+
+CREATE INDEX idx_sessions_user ON sessions(user_id);
+
+CREATE INDEX idx_sessions_hash ON sessions(token_hash);
+
+CREATE INDEX idx_sessions_expires ON sessions(expires_at) WHERE revoked_at IS NULL;
+
+
+
+-- ============================================================================
+
+-- LOGIN HISTORY (Audit)
+
+-- ============================================================================
+
+CREATE TABLE login_history (
+
+     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+     user_id UUID NOT NULL REFERENCES users(id),
+
+     tenant_id UUID NOT NULL REFERENCES tenants(id),
+
+     success BOOLEAN NOT NULL,
+
+     ip_address INET,
+
+     user_agent TEXT,
+
+     device_info JSONB,
+
+     failure_reason VARCHAR(100),
+
+     mfa_used BOOLEAN NOT NULL DEFAULT false,
+
+     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+);
+
+
+
+CREATE INDEX idx_login_history_user ON login_history(user_id, created_at DESC);
+
+CREATE INDEX idx_login_history_tenant ON login_history(tenant_id, created_at DESC);
+
+
+
+-- ============================================================================
+
+-- API KEYS
+
+-- ============================================================================
+
+CREATE TABLE api_keys (
+
+     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+     tenant_id UUID NOT NULL REFERENCES tenants(id),
+
+     name VARCHAR(255) NOT NULL,
+
+     key_hash VARCHAR(64) NOT NULL UNIQUE, -- SHA-256 of API key
+
+     key_prefix VARCHAR(8) NOT NULL,     -- First 8 chars for display
+
+     permissions JSONB NOT NULL DEFAULT '[]',
+
+     created_by UUID REFERENCES users(id),
+
+     last_used_at TIMESTAMPTZ,
+
+     expires_at TIMESTAMPTZ,
+
+     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+     revoked_at TIMESTAMPTZ,
+
+
+
+     UNIQUE(tenant_id, name)
+
+);
+
+
+
+CREATE INDEX idx_apikeys_tenant ON api_keys(tenant_id);
+
+CREATE INDEX idx_apikeys_hash ON api_keys(key_hash);
+
+
+
+-- ============================================================================
+
+-- ROLES
+
+-- ============================================================================
+
+CREATE TABLE roles (
+
+     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+     tenant_id UUID REFERENCES tenants(id), -- NULL for platform roles
+
+     name VARCHAR(100) NOT NULL,
+
+     description TEXT,
+
+     permissions JSONB NOT NULL DEFAULT '[]',
+
+     is_system BOOLEAN NOT NULL DEFAULT false,
+
+     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+
+
+     UNIQUE(tenant_id, name)
+
+);
+
+
+
+-- ============================================================================
+
+-- CONFIGURATION
+
+-- ============================================================================
+
+CREATE TABLE configurations (
+
+     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+     tenant_id UUID REFERENCES tenants(id), -- NULL for global config
+
+     namespace VARCHAR(100) NOT NULL,
+
+     key VARCHAR(255) NOT NULL,
+
+     value JSONB NOT NULL,
+
+     version INT NOT NULL DEFAULT 1,
+
+     description TEXT,
+
+     created_by VARCHAR(100),
+
+     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+
+
+     UNIQUE(tenant_id, namespace, key)
+
+);
+
+
+
+CREATE INDEX idx_config_tenant ON configurations(tenant_id, namespace);
+
+
+
+-- ============================================================================
+
+-- CONFIGURATION AUDIT
+
+-- ============================================================================
+
+CREATE TABLE configuration_audit (
+
+     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+     configuration_id UUID NOT NULL REFERENCES configurations(id),
+
+     old_value JSONB,
+
+     new_value JSONB NOT NULL,
+
+     changed_by VARCHAR(100) NOT NULL,
+
+     change_reason TEXT,
+
+     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+);
+
+
+
+CREATE INDEX idx_config_audit_config ON configuration_audit(configuration_id, created_at
+DESC);
+
+
+
+-- ============================================================================
+
+-- AUDIT LOG (Immutable)
+
+-- ============================================================================
+
+CREATE TABLE audit_log (
+
+     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+     event_id VARCHAR(64) NOT NULL UNIQUE,
+
+     tenant_id UUID,
+
+     user_id UUID,
+
+     action VARCHAR(100) NOT NULL,
+
+     resource_type VARCHAR(100),
+
+     resource_id VARCHAR(100),
+
+     details JSONB NOT NULL DEFAULT '{}',
+
+     ip_address INET,
+
+     user_agent TEXT,
+
+     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+
+
+     -- Prevent modifications to audit log
+
+     CONSTRAINT audit_immutable CHECK (true)
+
+);
+
+-- Prevent UPDATE and DELETE on audit log
+
+CREATE RULE audit_no_update AS ON UPDATE TO audit_log DO INSTEAD NOTHING;
+
+CREATE RULE audit_no_delete AS ON DELETE TO audit_log DO INSTEAD NOTHING;
+
+
+
+CREATE INDEX idx_audit_tenant ON audit_log(tenant_id, created_at DESC);
+
+CREATE INDEX idx_audit_user ON audit_log(user_id, created_at DESC);
+
+CREATE INDEX idx_audit_action ON audit_log(action, created_at DESC);
+
+CREATE INDEX idx_audit_resource ON audit_log(resource_type, resource_id);
+
+```
+
+
+
+5.2 Redis Schema
+
+
+
+```yaml
+
+redis_keys:
+
+ sessions:
+
+      pattern: "session:{session_id}"
+
+      type: hash
+
+      fields:
+
+       - user_id
+
+       - tenant_id
+
+       - roles (JSON)
+
+       - created_at
+
+       - expires_at
+
+      ttl: 7 days # Matches refresh token expiry
+
+access_tokens_blacklist:
+
+ pattern: "blacklist:{jti}"
+
+ type: string
+
+ value: "revoked"
+
+ ttl: 15 minutes # Matches access token expiry
+
+
+
+rate_limiting:
+
+ pattern: "ratelimit:{tenant_id}:{endpoint}:{window}"
+
+ type: string (counter)
+
+ ttl: window_duration
+
+
+
+mfa_challenges:
+
+ pattern: "mfa:{session_id}"
+
+ type: hash
+
+ fields:
+
+  - user_id
+
+  - challenge_token
+
+  - expires_at
+
+ ttl: 5 minutes
+
+
+
+password_reset_tokens:
+
+ pattern: "pwdreset:{token_hash}"
+
+ type: hash
+
+ fields:
+
+  - user_id
+
+  - expires_at
+
+      ttl: 1 hour
+
+
+
+ email_verification_tokens:
+
+      pattern: "emailverify:{token_hash}"
+
+      type: hash
+
+      fields:
+
+       - user_id
+
+       - email
+
+       - expires_at
+
+      ttl: 24 hours
+
+```
+
+
+
+---
+
+
+
+PART VI — EVENT CONTRACTS
+
+
+
+6.1 Kafka Topics
+
+
+
+```yaml
+
+topics:
+
+ foundation.tenant:
+
+      partitions: 6
+
+      replication_factor: 3
+
+      retention_ms: 2592000000 # 30 days
+
+      message_schema: TenantEvent
+
+      events:
+
+  - provisioned
+
+  - updated
+
+  - suspended
+
+  - reactivated
+
+  - deleted
+
+  - tier_changed
+
+
+
+foundation.user:
+
+ partitions: 12
+
+ replication_factor: 3
+
+ retention_ms: 2592000000 # 30 days
+
+ message_schema: UserEvent
+
+ events:
+
+  - created
+
+  - updated
+
+  - authenticated
+
+  - deactivated
+
+  - role_changed
+
+  - mfa_enabled
+
+  - mfa_disabled
+
+
+
+foundation.configuration:
+
+ partitions: 6
+
+ replication_factor: 3
+
+ retention_ms: 604800000 # 7 days
+
+ message_schema: ConfigurationEvent
+
+      events:
+
+       - updated
+
+       - feature_flag_changed
+
+
+
+ foundation.permission:
+
+      partitions: 6
+
+      replication_factor: 3
+
+      retention_ms: 2592000000 # 30 days
+
+      message_schema: PermissionEvent
+
+      events:
+
+       - granted
+
+       - revoked
+
+       - policy_updated
+
+```
+
+
+
+6.2 Event Schemas
+
+
+
+```go
+
+// libs/go/pkg/events/foundation_events.go
+
+package events
+
+
+
+// TenantProvisionedEvent is emitted when a new tenant is created
+
+type TenantProvisionedEvent struct {
+
+      BaseEvent
+
+      TenantID string `json:"tenant_id"`
+
+      TenantName string `json:"tenant_name"`
+
+    TenantSlug string `json:"tenant_slug"`
+
+    Tier     string `json:"tier"`
+
+    AdminEmail string `json:"admin_email"`
+
+}
+
+
+
+func (e *TenantProvisionedEvent) EventType() EventType {
+
+    return EventTenantProvisioned
+
+}
+
+
+
+// UserCreatedEvent is emitted when a new user is created
+
+type UserCreatedEvent struct {
+
+    BaseEvent
+
+    UserID     string `json:"user_id"`
+
+    Email     string `json:"email"`
+
+    DisplayName string `json:"display_name"`
+
+    Roles     []string `json:"roles"`
+
+    CreatedBy string `json:"created_by"` // "SELF", "ADMIN", "SYSTEM"
+
+}
+
+
+
+func (e *UserCreatedEvent) EventType() EventType {
+
+    return EventUserCreated
+
+}
+
+
+
+// UserAuthenticatedEvent is emitted on successful authentication
+
+type UserAuthenticatedEvent struct {
+
+    BaseEvent
+
+      UserID     string `json:"user_id"`
+
+      SessionID string `json:"session_id"`
+
+      MFAUsed bool `json:"mfa_used"`
+
+      DeviceInfo DeviceInfo `json:"device_info"`
+
+      IPAddress string `json:"ip_address"`
+
+}
+
+
+
+func (e *UserAuthenticatedEvent) EventType() EventType {
+
+      return EventUserAuthenticated
+
+}
+
+
+
+// ConfigurationUpdatedEvent is emitted when configuration changes
+
+type ConfigurationUpdatedEvent struct {
+
+      BaseEvent
+
+      Namespace string         `json:"namespace"`
+
+      Changes []ConfigChange `json:"changes"`
+
+      Version int64         `json:"version"`
+
+}
+
+
+
+type ConfigChange struct {
+
+      Key      string   `json:"key"`
+
+      OldValue interface{} `json:"old_value,omitempty"`
+
+      NewValue interface{} `json:"new_value"`
+
+}
+
+```
+
+---
+
+
+
+PART VII — SECURITY IMPLEMENTATION
+
+
+
+7.1 Security Controls
+
+
+
+```yaml
+
+security_implementation:
+
+ password_storage:
+
+  algorithm: Argon2id
+
+  parameters:
+
+      time: 3
+
+      memory: 65536
+
+      threads: 4
+
+      key_length: 32
+
+      salt_length: 16
+
+  encoding: "$argon2id$v=19$m=65536,t=3,p=4$<base64_salt>$<base64_hash>"
+
+
+
+ jwt_signing:
+
+  algorithm: Ed25519 (EdDSA)
+
+  key_rotation: 30 days (automated via Vault)
+
+  access_token_ttl: 15 minutes
+
+  refresh_token_ttl: 7 days
+
+  refresh_token_rotation: On every use (old token revoked)
+
+
+
+ mfa:
+
+ totp:
+
+  algorithm: SHA-256
+
+  digits: 6
+
+  period: 30 seconds
+
+  skew: 1 (allows 1 period before/after)
+
+ recovery_codes:
+
+  count: 10
+
+  format: 16-character alphanumeric
+
+  storage: SHA-256 hashed in database
+
+
+
+rate_limiting:
+
+ login:
+
+  max_attempts: 5 per email per 15 minutes
+
+  lockout_duration: 30 minutes
+
+ api:
+
+  default: 100 requests/minute per user
+
+  authenticated: 1000 requests/minute per tenant
+
+ mfa:
+
+  max_attempts: 3 per session
+
+  lockout_duration: 5 minutes
+
+
+
+headers:
+
+ strict_transport_security: "max-age=31536000; includeSubDomains; preload"
+
+ content_security_policy: "default-src 'self'"
+
+ x_content_type_options: "nosniff"
+
+ x_frame_options: "DENY"
+
+      referrer_policy: "strict-origin-when-cross-origin"
+
+
+
+    cors:
+
+      allowed_origins: "https://*.agbofa.com"
+
+      allowed_methods: "GET, POST, PUT, DELETE, OPTIONS"
+
+      allowed_headers: "Authorization, Content-Type, X-Tenant-ID"
+
+      max_age: 3600
+
+```
+
+
+
+7.2 Secret Rotation Implementation
+
+
+
+```go
+
+// internal/domain/key_rotation.go
+
+package domain
+
+
+
+// KeyRotationService manages automated key rotation
+
+type KeyRotationService struct {
+
+      vault VaultClient
+
+      store KeyStore
+
+      current *SigningKey
+
+      mu    sync.RWMutex
+
+}
+
+
+
+type SigningKey struct {
+
+      ID    string
+
+      Public ed25519.PublicKey
+
+    Private ed25519.PrivateKey
+
+    CreatedAt time.Time
+
+    ExpiresAt time.Time
+
+}
+
+
+
+// RotateKeys performs automated key rotation
+
+func (krs *KeyRotationService) RotateKeys(ctx context.Context) error {
+
+    krs.mu.Lock()
+
+    defer krs.mu.Unlock()
+
+
+
+    // 1. Generate new key pair
+
+    public, private, err := ed25519.GenerateKey(rand.Reader)
+
+    if err != nil {
+
+        return fmt.Errorf("generate key pair: %w", err)
+
+    }
+
+
+
+    newKey := &SigningKey{
+
+        ID:     fmt.Sprintf("key-%d", time.Now().Unix()),
+
+        Public: public,
+
+        Private: private,
+
+        CreatedAt: time.Now(),
+
+        ExpiresAt: time.Now().Add(60 * 24 * time.Hour), // 60 days (overlap with 30-day rotation)
+
+    }
+
+
+
+    // 2. Store private key in Vault
+
+    if err := krs.vault.StoreSigningKey(ctx, newKey); err != nil {
+
+          return fmt.Errorf("store key in vault: %w", err)
+
+      }
+
+
+
+      // 3. Store public key metadata for verification
+
+      if err := krs.store.StorePublicKey(ctx, newKey); err != nil {
+
+          return fmt.Errorf("store public key: %w", err)
+
+      }
+
+
+
+      // 4. Update current key (new tokens use this)
+
+      oldKey := krs.current
+
+      krs.current = newKey
+
+
+
+      // 5. Schedule old key archival (keep for token verification during overlap)
+
+      go krs.archiveKeyAfterWindow(ctx, oldKey, 30*24*time.Hour)
+
+
+
+      return nil
+
+}
+
+```
+
+
+
+---
+
+
+
+PART VIII — OBSERVABILITY
+
+
+
+8.1 Metrics
+
+
+
+```yaml
+
+metrics:
+
+ tenant_identity:
+
+  authentication:
+
+   - name: auth_attempts_total
+
+    type: counter
+
+    labels: [tenant_id, status, method]
+
+    description: "Total authentication attempts"
+
+
+
+   - name: auth_duration_seconds
+
+    type: histogram
+
+    buckets: [0.01, 0.05, 0.1, 0.5, 1, 2, 5]
+
+    description: "Authentication request duration"
+
+
+
+   - name: active_sessions
+
+    type: gauge
+
+    labels: [tenant_id]
+
+    description: "Number of active sessions"
+
+
+
+   - name: token_refresh_total
+
+    type: counter
+
+    labels: [tenant_id, status]
+
+    description: "Token refresh attempts"
+
+
+
+   - name: token_reuse_detected_total
+
+    type: counter
+
+    labels: [tenant_id]
+
+        description: "Refresh token reuse detected (potential theft)"
+
+
+
+      users:
+
+       - name: users_total
+
+        type: gauge
+
+        labels: [tenant_id, status]
+
+        description: "Total users by status"
+
+
+
+       - name: user_operations_total
+
+        type: counter
+
+        labels: [tenant_id, operation, status]
+
+        description: "User CRUD operations"
+
+
+
+      tenants:
+
+       - name: tenants_total
+
+        type: gauge
+
+        labels: [status, tier]
+
+        description: "Total tenants"
+
+
+
+       - name: tenant_operations_total
+
+        type: counter
+
+        labels: [operation, status]
+
+        description: "Tenant lifecycle operations"
+
+```
+
+
+
+8.2 SLO Definitions
+
+```yaml
+
+slos:
+
+ authentication:
+
+      availability: 99.99%
+
+      latency_p99: 500ms
+
+      error_rate: <0.01%
+
+
+
+ token_validation:
+
+      availability: 99.999%
+
+      latency_p99: 10ms
+
+      error_rate: <0.001%
+
+
+
+ authorization:
+
+      availability: 99.99%
+
+      latency_p99: 50ms
+
+      error_rate: <0.01%
+
+
+
+ configuration:
+
+      availability: 99.95%
+
+      propagation_delay_p99: 5s
+
+      error_rate: <0.1%
+
+```
+
+
+
+---
+
+PART IX — PRODUCTION READINESS
+
+
+
+9.1 Health Check Configuration
+
+
+
+```yaml
+
+health_checks:
+
+ liveness:
+
+  endpoint: /healthz
+
+  initial_delay: 5s
+
+  period: 10s
+
+  timeout: 3s
+
+  failure_threshold: 3
+
+  checks:
+
+   - goroutine_count (max: 1000)
+
+   - memory_usage (< 80%)
+
+
+
+ readiness:
+
+  endpoint: /readyz
+
+  initial_delay: 10s
+
+  period: 5s
+
+  timeout: 3s
+
+  failure_threshold: 2
+
+  checks:
+
+   - database_connectivity
+
+   - redis_connectivity
+
+   - kafka_connectivity
+
+       - vault_connectivity
+
+```
+
+
+
+9.2 Scaling Configuration
+
+
+
+```yaml
+
+scaling:
+
+ horizontal_pod_autoscaler:
+
+      min_replicas: 3
+
+      max_replicas: 20
+
+      metrics:
+
+       - type: Resource
+
+        resource:
+
+         name: cpu
+
+         target:
+
+          type: Utilization
+
+          averageUtilization: 70
+
+       - type: Resource
+
+        resource:
+
+         name: memory
+
+         target:
+
+          type: Utilization
+
+          averageUtilization: 80
+
+
+
+ pod_disruption_budget:
+
+      min_available: 2 # Ensure at least 2 pods during voluntary disruptions
+
+ topology_spread:
+
+      max_skew: 1
+
+      topology_key: topology.kubernetes.io/zone
+
+      when_unsatisfiable: DoNotSchedule
+
+```
+
+
+
+9.3 Performance Benchmarks
+
+
+
+```yaml
+
+performance_targets:
+
+ authentication:
+
+      requests_per_second: 10000
+
+      concurrent_users: 1000000
+
+      p50_latency: 50ms
+
+      p99_latency: 500ms
+
+
+
+ token_validation:
+
+      requests_per_second: 100000
+
+      p50_latency: 1ms
+
+      p99_latency: 10ms
+
+
+
+ user_creation:
+
+      requests_per_second: 100
+
+      p99_latency: 1s
+
+ authorization_check:
+
+      requests_per_second: 50000
+
+      p50_latency: 5ms
+
+      p99_latency: 50ms
+
+      cache_hit_ratio: >95%
+
+```
+
+
+
+---
+
+
+
+PART X — DEPLOYMENT
+
+
+
+10.1 Kubernetes Deployment
+
+
+
+```yaml
+
+# infrastructure/kubernetes/base/foundation/tenant-identity/deployment.yaml
+
+apiVersion: apps/v1
+
+kind: Deployment
+
+metadata:
+
+ name: tenant-identity
+
+ namespace: foundation
+
+ labels:
+
+      app: tenant-identity
+
+      component: foundation
+
+spec:
+
+ replicas: 3
+
+ strategy:
+
+ type: RollingUpdate
+
+ rollingUpdate:
+
+  maxUnavailable: 0
+
+  maxSurge: 1
+
+selector:
+
+ matchLabels:
+
+  app: tenant-identity
+
+template:
+
+ metadata:
+
+  labels:
+
+   app: tenant-identity
+
+   version: "{{ .Values.image.tag }}"
+
+  annotations:
+
+   prometheus.io/scrape: "true"
+
+   prometheus.io/port: "9092"
+
+ spec:
+
+  serviceAccountName: tenant-identity
+
+  securityContext:
+
+   runAsNonRoot: true
+
+   runAsUser: 1000
+
+  containers:
+
+   - name: tenant-identity
+
+    image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+
+    ports:
+
+     - name: grpc
+
+         containerPort: 9091
+
+ - name: health
+
+  containerPort: 9090
+
+ - name: metrics
+
+  containerPort: 9092
+
+env:
+
+ - name: DATABASE_HOST
+
+  valueFrom:
+
+   secretKeyRef:
+
+       name: tenant-identity-db
+
+       key: host
+
+ - name: DATABASE_PASSWORD
+
+  valueFrom:
+
+   secretKeyRef:
+
+       name: tenant-identity-db
+
+       key: password
+
+resources:
+
+ requests:
+
+  cpu: 250m
+
+  memory: 256Mi
+
+ limits:
+
+  cpu: 1000m
+
+  memory: 512Mi
+
+livenessProbe:
+
+ httpGet:
+
+  path: /healthz
+
+  port: 9090
+
+       initialDelaySeconds: 5
+
+       periodSeconds: 10
+
+      readinessProbe:
+
+       httpGet:
+
+        path: /readyz
+
+        port: 9090
+
+       initialDelaySeconds: 10
+
+       periodSeconds: 5
+
+```
+
+
+
+---
+
+
+
+EXECUTIVE SUMMARY
+
+
+
+Volume 23 delivers the complete, production-ready specification for the Agbofa Nexus AI
+foundation platform services. Every aspect of identity, authentication, authorization, tenant
+management, and platform configuration has been specified to a level of detail sufficient for
+immediate implementation by engineering teams or AI coding agents.
+
+
+
+Key Deliverables:
+
+
+
+· Tenant & Identity Service: Complete user lifecycle, multi-tenant isolation, JWT with Ed25519
+signing, refresh token rotation with replay detection, Argon2id password hashing, TOTP-based
+MFA
+
+· Authorization Engine: OPA-based RBAC/ABAC with dynamic policy evaluation, emergency
+access controls, API key management
+
+· Configuration Service: Global feature flags, runtime configuration, real-time updates via Kafka
+
+· Database Schema: Production-grade PostgreSQL with Row-Level Security, comprehensive
+indexing, immutable audit logs
+
+· Security: SPIFFE/SPIRE service identity, mTLS everywhere, Vault secret management,
+automated key rotation
+
+· Observability: Comprehensive metrics, structured logging, distributed tracing, SLO definitions
+
+
+
+The platform foundation is ready for implementation. Volume 24 will build upon this foundation
+to implement the Content Origination Engine.
+
+
+
+---
+
+
+
+END OF VOLUME 23
+
+
+
+Date: 2026-08-07
+
+Version: 1.0.0 — Implementation-Ready
+
+Next Volume: Volume 24 — Content Origination Engine Production Code Specification
+

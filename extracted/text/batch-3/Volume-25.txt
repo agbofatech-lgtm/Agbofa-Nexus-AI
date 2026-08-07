@@ -1,0 +1,6237 @@
+VOLUME 25: TRUTH ENGINE CODE SPECIFICATION
+
+
+
+Document Reference: AGBA-NEXUS-VOL25-CODE-1.0
+
+Status: Implementation-Ready — Production Specification
+
+Phase: 3 — Production Engineering Specifications
+
+Approved Baseline: Volumes 1–24 (Immutable)
+
+Purpose: Core AI Newsroom Intelligence — Editorial Integrity System
+
+Quality Level: US$50M Enterprise Platform Standard
+
+
+
+---
+
+
+
+SERVICE DECISION RECORDS (SDR)
+
+
+
+SDR-TRT-001: Multi-Model Ensemble for Claim Verification
+
+
+
+Decision: Use an ensemble of three verification strategies (Knowledge Graph lookup, external
+fact-check API, source-based verification) with weighted voting for claim verdicts.
+
+Rationale: No single verification method is sufficient. Knowledge Graph provides historical
+context, external APIs provide third-party validation, and source analysis provides provenance.
+Ensemble reduces false positives/negatives.
+
+Alternatives: Single-method verification (rejected — insufficient accuracy); LLM-only verification
+(rejected — hallucination risk).
+
+Trade-offs: Higher latency (parallel calls), higher cost (multiple API calls), but significantly higher
+accuracy.
+
+
+
+SDR-TRT-002: Cryptographic Evidence Chain
+
+Decision: All evidence and verification decisions stored in an append-only, cryptographically
+chained ledger using SHA-256 hashing with Merkle tree verification.
+
+Rationale: Editorial integrity requires tamper-proof evidence. Cryptographic chaining provides
+non-repudiable audit trail for every verification decision.
+
+Alternatives: Traditional audit tables (rejected — can be modified); blockchain (rejected —
+unnecessary decentralization, high cost).
+
+Trade-offs: Additional storage and write latency, but essential for trust.
+
+
+
+SDR-TRT-003: Bayesian Confidence with Prior-Based Cold Start
+
+
+
+Decision: Use Bayesian confidence scoring with informative priors based on source type and
+category for cold-start scenarios, transitioning to evidence-based posteriors as data
+accumulates.
+
+Rationale: New sources and claims have no history. Informative priors prevent both over-
+trusting and under-trusting unknown sources while allowing evidence to dominate over time.
+
+Alternatives: Frequentist scoring (rejected — poor cold-start behavior); simple averaging
+(rejected — doesn't handle uncertainty well).
+
+Trade-offs: Prior specification requires domain expertise, but provides principled uncertainty
+quantification.
+
+
+
+SDR-TRT-004: Human-in-the-Loop for High-Stakes Decisions
+
+
+
+Decision: Automatically escalate stories with CRITICAL risk scores, health/medical claims,
+financial information, or political content for human editorial review regardless of confidence
+scores.
+
+Rationale: AI confidence alone is insufficient for life-impacting content. Human judgment is the
+final arbiter for high-stakes categories.
+
+Alternatives: Fully automated (rejected — too risky); human review for everything (rejected —
+not scalable).
+
+Trade-offs: Editorial staffing requirements, but essential for trust and safety.
+
+---
+
+
+
+PART I — TRUTH ENGINE ARCHITECTURE OVERVIEW
+
+
+
+1.1 Mission & Editorial Integrity Philosophy
+
+
+
+```
+
+TRUTH ENGINE — EDITORIAL INTEGRITY SYSTEM:
+
+
+
+┌─────────────────────────────────────────────────────────────────────────────
+┐
+
+│                TRUTH ENGINE MISSION                             │
+
+├
+─────────────────────────────────────────────────────────────────────────────
+┤
+
+│                                               │
+
+│ "Verify every claim. Question every source. Document every decision.            │
+
+│ Publish only what can be proven."                                   │
+
+│                                               │
+
+│ CORE PRINCIPLES:                                        │
+
+│                                               │
+
+│ 1. PRESUMPTION OF SKEPTICISM                                            │
+
+│     All information is treated as unverified until proven otherwise.        │
+
+│     Trust is earned, not assumed.                               │
+
+│                                               │
+
+│ 2. DEFENSE IN DEPTH                                         │
+
+│     Multiple independent verification methods must agree.                      │
+
+│     No single source or method is sufficient.                      │
+
+│                                                  │
+
+│ 3. PROVENANCE OVER AUTHORITY                                           │
+
+│     Evidence chains matter more than source reputation.                    │
+
+│     Every verification decision must be traceable to its origin.           │
+
+│                                                  │
+
+│ 4. GRACEFUL UNCERTAINTY                                        │
+
+│     "Unknown" is a valid and important verdict.                        │
+
+│     Confidence intervals are reported alongside point estimates.               │
+
+│                                                  │
+
+│ 5. HUMAN SOVEREIGNTY                                          │
+
+│     AI recommends; humans decide for high-stakes content.                      │
+
+│     Editorial judgment is the final authority.                     │
+
+│                                                  │
+
+│ 6. CONTINUOUS LEARNING                                             │
+
+│     Every verification outcome improves future assessments.                    │
+
+│     Source trust evolves with evidence.                        │
+
+│                                                  │
+
+└─────────────────────────────────────────────────────────────────────────────
+┘
+
+```
+
+
+
+1.2 Position in the AI Newsroom
+
+
+
+```
+
+AGBOFA NEXUS AI — TRUTH ENGINE POSITION:
+
+
+
+┌─────────────────────────────────────────────────────────────────────────────
+┐
+
+│               AI NEWSROOM PIPELINE                               │
+
+├
+─────────────────────────────────────────────────────────────────────────────
+┤
+
+│                                           │
+
+│ ┌─────────────────┐                                          │
+
+│ │ CONTENT          │                                    │
+
+│ │ ORIGINATION │──         Stories detected, clusters formed                │
+
+│ │ (Vol 24)     │                                    │
+
+│ └────────┬────────┘                                           │
+
+│       │                                     │
+
+│       ▼                                         │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │              TRUTH ENGINE (Vol 25)                        ││
+
+│ │                                          ││
+
+│ │ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────┐ │ │
+
+│ │ │ SOURCE │ │ CLAIM │ │ CROSS- │ │CONFIDENCE│ │ EDITORIAL │ │ │
+
+│ │ │ VERIFY │       │ VERIFY │   │ SOURCE │              │ SCORING │    │ DECISION │ │ │
+
+│ │ └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────────┘ │ │
+
+│ │                                          ││
+
+│ │ ┌─────────────────────────────────────────────────────────────────────┐ │ │
+
+│ │ │          TRUTH LEDGER (Immutable Audit Trail)                    │││
+
+│ │ └─────────────────────────────────────────────────────────────────────┘ │ │
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│         │                                    │
+
+│         ▼                                        │
+
+│ ┌─────────────────┐          ┌─────────────────┐                     │
+
+│ │ STORY GRAPH │           │ CONTENT FACTORY │                    │
+
+│ │ (Vol 26)       │    │ (Vol 27)   │                     │
+
+│ └─────────────────┘          └─────────────────┘                     │
+
+│                                             │
+
+│ ┌─────────────────┐                                          │
+
+│ │ COMPLIANCE │            ── Continuous feedback loop                │
+
+│ │ GATEKEEPER │                                           │
+
+│ │ (Vol 16)       │                                   │
+
+│ └─────────────────┘                                          │
+
+└─────────────────────────────────────────────────────────────────────────────
+┘
+
+```
+
+
+
+1.3 Service Inventory
+
+
+
+```yaml
+
+truth_engine_services:
+
+ source_intelligence:
+
+      id: SVC-TRT-SRC
+
+      runtime: Golang
+
+ port: 9201
+
+ description: "Source registry, reputation management, trust scoring"
+
+
+
+source_verifier:
+
+ id: SVC-TRT-SVR
+
+ runtime: Golang
+
+ port: 9202
+
+ description: "Source authentication, domain verification, impersonation detection"
+
+
+
+claim_extractor:
+
+ id: SVC-TRT-CEX
+
+ runtime: Python (NLP) + Golang
+
+ port: 9203
+
+ description: "Atomic claim decomposition, entity extraction, relationship extraction"
+
+
+
+claim_verifier:
+
+ id: SVC-TRT-CVR
+
+ runtime: Golang + Python (ML)
+
+ port: 9204
+
+ description: "Multi-method claim verification, evidence aggregation"
+
+
+
+cross_validator:
+
+ id: SVC-TRT-XVL
+
+ runtime: Golang
+
+ port: 9205
+
+ description: "Cross-source comparison, consensus calculation, contradiction detection"
+
+ confidence_engine:
+
+      id: SVC-TRT-CNF
+
+      runtime: Golang
+
+      port: 9206
+
+      description: "Bayesian confidence scoring, risk assessment, publication readiness"
+
+
+
+ misinformation_detector:
+
+      id: SVC-TRT-MSN
+
+      runtime: Python (ML)
+
+      port: 9207
+
+      description: "Fake news detection, hallucination detection, media manipulation detection"
+
+
+
+ editorial_validator:
+
+      id: SVC-TRT-EDV
+
+      runtime: Golang
+
+      port: 9208
+
+      description: "Editorial rules engine, human review routing, publication decisions"
+
+
+
+ truth_ledger:
+
+      id: SVC-TRT-LDG
+
+      runtime: Golang
+
+      port: 9209
+
+      description: "Immutable provenance records, audit trail, evidence chain"
+
+```
+
+---
+
+
+
+PART II — SOURCE INTELLIGENCE SERVICE
+
+
+
+Service ID: SVC-TRT-SRC
+
+Runtime: Golang 1.22+
+
+gRPC Port: 9201
+
+
+
+2.1 Domain Model
+
+
+
+```go
+
+// services/truth-engine/source-intelligence/internal/domain/model.go
+
+package domain
+
+
+
+// Source represents a news source with reputation tracking
+
+type Source struct {
+
+  ID          uuid.UUID      `json:"id"`
+
+  TenantID       uuid.UUID      `json:"tenant_id"`
+
+  Name          string       `json:"name"`
+
+  URL          string     `json:"url"`
+
+  SourceType      SourceType       `json:"source_type"`
+
+  Category       SourceCategory `json:"category"`
+
+
+
+  // Reputation
+
+  ReliabilityScore float64      `json:"reliability_score"`   // 0-100
+
+  TrustTier       TrustTier `json:"trust_tier"`
+
+FactualAccuracy      float64     `json:"factual_accuracy"`      // Historical accuracy rate
+
+CorrectionRate      float64      `json:"correction_rate"`      // How often they issue corrections
+
+
+
+// Bias Assessment
+
+PoliticalBias    *BiasAssessment `json:"political_bias,omitempty"`
+
+EditorialBias     *BiasAssessment `json:"editorial_bias,omitempty"`
+
+
+
+// Coverage
+
+GeographicScope       []string `json:"geographic_scope"`
+
+Language          []string `json:"language"`
+
+Topics          []string `json:"topics"`
+
+
+
+// Ownership
+
+ParentOrganization string         `json:"parent_organization,omitempty"`
+
+OwnershipType        string      `json:"ownership_type"`
+
+FundingModel         string      `json:"funding_model,omitempty"`
+
+
+
+// History
+
+EstablishedAt      *time.Time `json:"established_at,omitempty"`
+
+VerifiedClaims     int64       `json:"verified_claims"`
+
+FailedClaims       int64       `json:"failed_claims"`
+
+CorrectionsIssued int64          `json:"corrections_issued"`
+
+RetractionsIssued int64          `json:"retractions_issued"`
+
+
+
+// Status
+
+Status          SourceStatus `json:"status"`
+
+    VerificationStatus VerificationStatus `json:"verification_status"`
+
+    LastVerifiedAt      *time.Time `json:"last_verified_at"`
+
+    CreatedAt          time.Time `json:"created_at"`
+
+    UpdatedAt          time.Time `json:"updated_at"`
+
+}
+
+
+
+type SourceType string
+
+const (
+
+    SourceTypeGovernment          SourceType = "GOVERNMENT"
+
+    SourceTypeNewsWire           SourceType = "NEWS_WIRE"
+
+    SourceTypeNewspaper           SourceType = "NEWSPAPER"
+
+    SourceTypeBroadcast         SourceType = "BROADCAST"
+
+    SourceTypeDigitalNative SourceType = "DIGITAL_NATIVE"
+
+    SourceTypeBlog           SourceType = "BLOG"
+
+    SourceTypeSocialMedia        SourceType = "SOCIAL_MEDIA"
+
+    SourceTypeAcademicJournal SourceType = "ACADEMIC_JOURNAL"
+
+    SourceTypeNGO             SourceType = "NGO"
+
+    SourceTypeCorporate         SourceType = "CORPORATE"
+
+    SourceTypeUnknown            SourceType = "UNKNOWN"
+
+)
+
+
+
+type SourceCategory string
+
+const (
+
+    CategoryOfficial       SourceCategory = "OFFICIAL"
+
+    CategoryAuthoritative SourceCategory = "AUTHORITATIVE"
+
+    CategoryEstablished      SourceCategory = "ESTABLISHED"
+
+    CategoryEmerging        SourceCategory = "EMERGING"
+
+    CategoryUnverified      SourceCategory = "UNVERIFIED"
+
+    CategoryDeprecated       SourceCategory = "DEPRECATED"
+
+)
+
+
+
+type TrustTier string
+
+const (
+
+    TrustTierVerified    TrustTier = "VERIFIED"     // 90-100
+
+    TrustTierHighTrust TrustTier = "HIGH_TRUST"          // 75-89
+
+    TrustTierStandard     TrustTier = "STANDARD"        // 50-74
+
+    TrustTierLowTrust     TrustTier = "LOW_TRUST"        // 25-49
+
+    TrustTierUntrusted TrustTier = "UNTRUSTED"           // 0-24
+
+)
+
+
+
+type BiasAssessment struct {
+
+    Dimension string         `json:"dimension"`     // POLITICAL, EDITORIAL, ECONOMIC
+
+  Leaning     string       `json:"leaning"`     // LEFT, CENTER-LEFT, CENTER, CENTER-RIGHT,
+RIGHT
+
+    Confidence float64        `json:"confidence"`     // 0-1
+
+    Evidence []string       `json:"evidence"`
+
+    AssessedAt time.Time       `json:"assessed_at"`
+
+    AssessedBy string        `json:"assessed_by"` // SYSTEM, HUMAN, THIRD_PARTY
+
+}
+
+
+
+type SourceStatus string
+
+const (
+
+      SourceStatusActive     SourceStatus = "ACTIVE"
+
+      SourceStatusSuspended SourceStatus = "SUSPENDED"
+
+      SourceStatusBlacklisted SourceStatus = "BLACKLISTED"
+
+      SourceStatusWhitelisted SourceStatus = "WHITELISTED"
+
+      SourceStatusDeprecated SourceStatus = "DEPRECATED"
+
+)
+
+
+
+type VerificationStatus string
+
+const (
+
+      VerificationStatusUnverified VerificationStatus = "UNVERIFIED"
+
+      VerificationStatusPending     VerificationStatus = "PENDING"
+
+      VerificationStatusVerified   VerificationStatus = "VERIFIED"
+
+      VerificationStatusFailed     VerificationStatus = "FAILED"
+
+)
+
+```
+
+
+
+2.2 Reputation Scoring Engine
+
+
+
+```go
+
+// services/truth-engine/source-intelligence/internal/domain/reputation.go
+
+package domain
+
+
+
+// ReputationEngine calculates and updates source trust scores
+
+type ReputationEngine struct {
+
+      factCheckHistory FactCheckRepository
+
+      correctionTracker CorrectionTracker
+
+    weights           ReputationWeights
+
+}
+
+
+
+type ReputationWeights struct {
+
+    FactualAccuracy float64 `json:"factual_accuracy"` // 0.40
+
+    CorrectionRate float64 `json:"correction_rate"` // 0.20
+
+    SourceLongevity float64 `json:"source_longevity"` // 0.10
+
+    OwnershipTransparency float64 `json:"ownership_transparency"` // 0.10
+
+    PeerCitations float64 `json:"peer_citations"`       // 0.10
+
+    ConsistencyScore float64 `json:"consistency_score"` // 0.10
+
+}
+
+
+
+// CalculateReputation computes the current reputation score for a source
+
+func (re *ReputationEngine) CalculateReputation(
+
+    ctx context.Context,
+
+    sourceID uuid.UUID,
+
+) (*ReputationScore, error) {
+
+
+
+    // Get source
+
+    source, err := re.sourceRepo.GetByID(ctx, sourceID)
+
+    if err != nil {
+
+        return nil, fmt.Errorf("get source: %w", err)
+
+    }
+
+
+
+    // Get fact-check history
+
+    history, err := re.factCheckHistory.GetRecent(ctx, sourceID, 200)
+
+if err != nil {
+
+    return nil, fmt.Errorf("get fact check history: %w", err)
+
+}
+
+
+
+score := &ReputationScore{
+
+    SourceID: sourceID,
+
+    CalculatedAt: time.Now(),
+
+    DataPoints: len(history),
+
+}
+
+
+
+// 1. Factual Accuracy Score
+
+score.FactualAccuracy = re.calculateAccuracy(history)
+
+
+
+// 2. Correction Rate
+
+score.CorrectionRate = re.calculateCorrectionRate(ctx, sourceID)
+
+
+
+// 3. Source Longevity
+
+score.Longevity = re.calculateLongevity(source)
+
+
+
+// 4. Ownership Transparency
+
+score.OwnershipTransparency = re.calculateTransparency(source)
+
+
+
+// 5. Peer Citations
+
+score.PeerCitations = re.calculatePeerCitations(ctx, sourceID)
+
+
+
+// 6. Consistency Score
+
+score.Consistency = re.calculateConsistency(ctx, sourceID)
+
+
+
+// Weighted combination
+
+w := re.weights
+
+score.OverallScore =
+
+    score.FactualAccuracy * w.FactualAccuracy +
+
+    score.CorrectionRate * w.CorrectionRate +
+
+    score.Longevity * w.SourceLongevity +
+
+    score.OwnershipTransparency * w.OwnershipTransparency +
+
+    score.PeerCitations * w.PeerCitations +
+
+    score.Consistency * w.ConsistencyScore
+
+
+
+// Apply Bayesian prior when data is sparse
+
+if len(history) < 10 {
+
+    prior := re.getInformativePrior(source)
+
+    weight := float64(len(history)) / 10.0
+
+    score.OverallScore = weight*score.OverallScore + (1-weight)*prior
+
+}
+
+
+
+// Determine trust tier
+
+score.TrustTier = re.determineTrustTier(score.OverallScore)
+
+
+
+// Calculate confidence interval
+
+score.ConfidenceInterval = re.calculateConfidenceInterval(len(history), score.OverallScore)
+
+
+
+return score, nil
+
+}
+
+
+
+// calculateAccuracy computes historical factual accuracy with time decay
+
+func (re *ReputationEngine) calculateAccuracy(history []FactCheckResult) float64 {
+
+    if len(history) == 0 {
+
+        return 0
+
+    }
+
+
+
+    totalWeight := 0.0
+
+    weightedCorrect := 0.0
+
+
+
+    for _, result := range history {
+
+        // Recent results weighted more heavily
+
+        ageInDays := time.Since(result.EvaluatedAt).Hours() / 24
+
+        weight := math.Exp(-ageInDays / 90) // 90-day half-life
+
+
+
+        if result.Verdict == VerdictTrue || result.Verdict == VerdictMostlyTrue {
+
+            weightedCorrect += weight
+
+        }
+
+        totalWeight += weight
+
+    }
+
+
+
+    if totalWeight == 0 {
+
+        return 0
+
+    }
+
+    return (weightedCorrect / totalWeight) * 100
+
+}
+
+
+
+// getInformativePrior returns a prior estimate based on source category
+
+func (re *ReputationEngine) getInformativePrior(source *Source) float64 {
+
+    priors := map[SourceCategory]float64{
+
+        CategoryOfficial:      85.0, // Government, official sources
+
+        CategoryAuthoritative: 80.0, // Major news wires, academic journals
+
+        CategoryEstablished: 65.0, // Established newspapers, broadcasters
+
+        CategoryEmerging:        45.0, // Digital natives, blogs
+
+        CategoryUnverified: 25.0, // Unknown sources
+
+        CategoryDeprecated: 10.0, // Previously unreliable
+
+    }
+
+
+
+    if prior, exists := priors[source.Category]; exists {
+
+        return prior
+
+    }
+
+    return 50.0 // Neutral prior for unknown categories
+
+}
+
+
+
+type ReputationScore struct {
+
+    SourceID           uuid.UUID `json:"source_id"`
+
+    OverallScore        float64 `json:"overall_score"`
+
+    FactualAccuracy         float64 `json:"factual_accuracy"`
+
+    CorrectionRate          float64 `json:"correction_rate"`
+
+    Longevity          float64 `json:"longevity"`
+
+      OwnershipTransparency float64 `json:"ownership_transparency"`
+
+      PeerCitations         float64 `json:"peer_citations"`
+
+      Consistency           float64 `json:"consistency"`
+
+      TrustTier        TrustTier `json:"trust_tier"`
+
+      ConfidenceInterval float64 `json:"confidence_interval"`
+
+      DataPoints           int      `json:"data_points"`
+
+      CalculatedAt          time.Time `json:"calculated_at"`
+
+}
+
+```
+
+
+
+2.3 Source Blacklist/Whitelist Management
+
+
+
+```go
+
+// Source blacklist/whitelist management
+
+type SourceListManager struct {
+
+      blacklistRepo BlacklistRepository
+
+      whitelistRepo WhitelistRepository
+
+}
+
+
+
+type BlacklistEntry struct {
+
+      ID       uuid.UUID `json:"id"`
+
+      SourceID uuid.UUID `json:"source_id"`
+
+      Reason      string     `json:"reason"`
+
+      Category string         `json:"category"`      // FAKE_NEWS, HATE_SPEECH, PROPAGANDA, etc.
+
+      Evidence []string `json:"evidence"`
+
+      AddedBy      string        `json:"added_by"`
+
+    AddedAt        time.Time `json:"added_at"`
+
+    ExpiresAt *time.Time `json:"expires_at,omitempty"`
+
+    IsPermanent bool            `json:"is_permanent"`
+
+}
+
+
+
+type WhitelistEntry struct {
+
+    ID        uuid.UUID `json:"id"`
+
+    SourceID uuid.UUID `json:"source_id"`
+
+    Reason        string      `json:"reason"`   // OFFICIAL_GOVERNMENT, VERIFIED_PARTNER, etc.
+
+    VerifiedBy string         `json:"verified_by"`
+
+    AddedAt        time.Time `json:"added_at"`
+
+}
+
+
+
+// CheckBlacklist verifies if a source is blacklisted
+
+func (slm *SourceListManager) CheckBlacklist(ctx context.Context, sourceID uuid.UUID)
+(*BlacklistCheck, error) {
+
+    entry, err := slm.blacklistRepo.FindActive(ctx, sourceID)
+
+    if err == ErrNotFound {
+
+         return &BlacklistCheck{Blacklisted: false}, nil
+
+    }
+
+    if err != nil {
+
+         return nil, fmt.Errorf("check blacklist: %w", err)
+
+    }
+
+
+
+    return &BlacklistCheck{
+
+         Blacklisted: true,
+
+         Reason:     entry.Reason,
+
+         Category: entry.Category,
+
+         IsPermanent: entry.IsPermanent,
+
+         AddedAt:    entry.AddedAt,
+
+      }, nil
+
+}
+
+```
+
+
+
+---
+
+
+
+PART III — SOURCE VERIFICATION ENGINE
+
+
+
+Service ID: SVC-TRT-SVR
+
+Runtime: Golang 1.22+
+
+gRPC Port: 9202
+
+
+
+3.1 Source Authentication
+
+
+
+```go
+
+// services/truth-engine/source-verifier/internal/domain/authenticator.go
+
+package domain
+
+
+
+// SourceAuthenticator verifies the authenticity of news sources
+
+type SourceAuthenticator struct {
+
+      dnsVerifier    *DNSVerifier
+
+      tlsVerifier   *TLSVerifier
+
+    domainAnalyzer *DomainAnalyzer
+
+    impersonationDetector *ImpersonationDetector
+
+    whoisChecker *WHOISChecker
+
+}
+
+
+
+type SourceAuthentication struct {
+
+    SourceID       uuid.UUID            `json:"source_id"`
+
+    URL          string        `json:"url"`
+
+    IsAuthentic     bool          `json:"is_authentic"`
+
+    Confidence       float64        `json:"confidence"`
+
+    Checks         []AuthCheckResult `json:"checks"`
+
+    VerifiedAt     time.Time        `json:"verified_at"`
+
+}
+
+
+
+type AuthCheckResult struct {
+
+    CheckName string `json:"check_name"`
+
+    Passed       bool `json:"passed"`
+
+    Confidence float64 `json:"confidence"`
+
+    Detail     string `json:"detail"`
+
+    Evidence string `json:"evidence,omitempty"`
+
+}
+
+
+
+// AuthenticateSource performs comprehensive source authentication
+
+func (sa *SourceAuthenticator) AuthenticateSource(
+
+    ctx context.Context,
+
+    source *Source,
+
+) (*SourceAuthentication, error) {
+
+
+
+  auth := &SourceAuthentication{
+
+      SourceID: source.ID,
+
+      URL:      source.URL,
+
+      VerifiedAt: time.Now(),
+
+  }
+
+
+
+  // Run all authentication checks in parallel
+
+  type checkResult struct {
+
+      name string
+
+      result AuthCheckResult
+
+  }
+
+
+
+  results := make(chan checkResult, 6)
+
+
+
+  // Check 1: DNS verification
+
+  go func() {
+
+      result := sa.dnsVerifier.Verify(ctx, source.URL)
+
+      results <- checkResult{"dns", result}
+
+  }()
+
+
+
+  // Check 2: TLS certificate verification
+
+  go func() {
+
+      result := sa.tlsVerifier.Verify(ctx, source.URL)
+
+      results <- checkResult{"tls", result}
+
+}()
+
+
+
+// Check 3: Domain age and history
+
+go func() {
+
+  result := sa.domainAnalyzer.Analyze(ctx, source.URL)
+
+  results <- checkResult{"domain", result}
+
+}()
+
+
+
+// Check 4: Impersonation detection
+
+go func() {
+
+  result := sa.impersonationDetector.Check(ctx, source)
+
+  results <- checkResult{"impersonation", result}
+
+}()
+
+
+
+// Check 5: WHOIS information
+
+go func() {
+
+  result := sa.whoisChecker.Check(ctx, source.URL)
+
+  results <- checkResult{"whois", result}
+
+}()
+
+
+
+// Check 6: Government source verification (if applicable)
+
+go func() {
+
+  if source.SourceType == SourceTypeGovernment {
+
+      result := sa.verifyGovernmentSource(ctx, source)
+
+      results <- checkResult{"government", result}
+
+  }
+
+}()
+
+
+
+// Collect results
+
+collectedResults := make(map[string]AuthCheckResult)
+
+for i := 0; i < 6; i++ {
+
+    cr := <-results
+
+    collectedResults[cr.name] = cr.result
+
+    auth.Checks = append(auth.Checks, cr.result)
+
+}
+
+
+
+// Determine authentication status
+
+criticalChecks := []string{"dns", "tls", "domain"}
+
+allCriticalPassed := true
+
+totalConfidence := 0.0
+
+
+
+for _, name := range criticalChecks {
+
+    if result, exists := collectedResults[name]; exists && !result.Passed {
+
+        allCriticalPassed = false
+
+    }
+
+}
+
+
+
+for _, result := range collectedResults {
+
+    totalConfidence += result.Confidence
+
+}
+
+
+
+auth.IsAuthentic = allCriticalPassed
+
+      auth.Confidence = totalConfidence / float64(len(collectedResults))
+
+
+
+      return auth, nil
+
+}
+
+```
+
+
+
+3.2 Impersonation Detection
+
+
+
+```go
+
+// ImpersonationDetector identifies fake/clone websites
+
+type ImpersonationDetector struct {
+
+      knownDomains *KnownDomainRegistry
+
+      similarityEngine *DomainSimilarityEngine
+
+}
+
+
+
+type ImpersonationCheck struct {
+
+      IsSuspicious    bool     `json:"is_suspicious"`
+
+      RiskLevel      string `json:"risk_level"`     // LOW, MEDIUM, HIGH, CRITICAL
+
+      Impersonating string `json:"impersonating,omitempty"` // Target being impersonated
+
+      Indicators     []string `json:"indicators"`
+
+      Confidence         float64 `json:"confidence"`
+
+}
+
+
+
+func (id *ImpersonationDetector) Check(ctx context.Context, source *Source) AuthCheckResult
+{
+
+check := ImpersonationCheck{}
+
+indicators := []string{}
+
+
+
+// 1. Typosquatting detection
+
+typosquatMatches := id.detectTyposquatting(source.URL)
+
+if len(typosquatMatches) > 0 {
+
+    indicators = append(indicators,
+
+      fmt.Sprintf("URL similar to known domain: %v", typosquatMatches))
+
+    check.Impersonating = typosquatMatches[0]
+
+}
+
+
+
+// 2. Domain age check (new domains are suspicious)
+
+domainAge := id.getDomainAge(source.URL)
+
+if domainAge < 30*24*time.Hour { // Less than 30 days
+
+    indicators = append(indicators,
+
+      fmt.Sprintf("Domain registered %d days ago", int(domainAge.Hours()/24)))
+
+}
+
+
+
+// 3. WHOIS privacy check
+
+if id.hasPrivateWHOIS(source.URL) && domainAge < 90*24*time.Hour {
+
+    indicators = append(indicators, "Private WHOIS on recently registered domain")
+
+}
+
+
+
+// 4. Content similarity to known brands
+
+if source.Name != "" {
+
+    brandSimilarity := id.checkBrandSimilarity(source.Name)
+
+    if brandSimilarity > 0.85 {
+
+        indicators = append(indicators,
+
+          fmt.Sprintf("Name similar to known brand (%.0f%%)", brandSimilarity*100))
+
+    }
+
+}
+
+
+
+// 5. SSL certificate anomalies
+
+certAnomalies := id.checkCertificateAnomalies(source.URL)
+
+indicators = append(indicators, certAnomalies...)
+
+
+
+check.Indicators = indicators
+
+check.IsSuspicious = len(indicators) >= 3
+
+check.Confidence = math.Min(float64(len(indicators))*0.3, 1.0)
+
+
+
+// Determine risk level
+
+switch {
+
+case len(indicators) >= 5:
+
+    check.RiskLevel = "CRITICAL"
+
+case len(indicators) >= 3:
+
+    check.RiskLevel = "HIGH"
+
+case len(indicators) >= 1:
+
+    check.RiskLevel = "MEDIUM"
+
+default:
+
+    check.RiskLevel = "LOW"
+
+}
+
+      return AuthCheckResult{
+
+          CheckName: "impersonation",
+
+          Passed:    !check.IsSuspicious || check.RiskLevel == "LOW",
+
+          Confidence: 1.0 - check.Confidence,
+
+          Detail:   fmt.Sprintf("Impersonation risk: %s (%d indicators)",
+
+            check.RiskLevel, len(indicators)),
+
+          Evidence: strings.Join(indicators, "; "),
+
+      }
+
+}
+
+```
+
+
+
+---
+
+
+
+PART IV — CLAIM ANALYSIS ENGINE
+
+
+
+Service ID: SVC-TRT-CEX
+
+Runtime: Python (NLP) + Golang (orchestration)
+
+gRPC Port: 9203
+
+
+
+4.1 Claim Extraction
+
+
+
+```python
+
+# services/truth-engine/claim-extractor/src/extractor/pipeline.py
+
+"""
+
+Claim Extraction Pipeline — Decomposes content into atomic, verifiable claims.
+
+"""
+
+from dataclasses import dataclass, field
+
+from typing import List, Optional, Dict, Any
+
+from enum import Enum
+
+import structlog
+
+
+
+logger = structlog.get_logger(__name__)
+
+
+
+
+class ClaimType(Enum):
+
+  FACTUAL = "FACTUAL"            # Verifiable statement of fact
+
+  NUMERICAL = "NUMERICAL"             # Contains numbers/statistics
+
+  ATTRIBUTION = "ATTRIBUTION"         # "X said Y"
+
+  TEMPORAL = "TEMPORAL"              # Date/time claim
+
+  LOCATION = "LOCATION"            # Geographic claim
+
+  CAUSAL = "CAUSAL"             # Cause-effect claim
+
+  COMPARATIVE = "COMPARATIVE"              # Comparison claim
+
+  PREDICTIVE = "PREDICTIVE"        # Future prediction
+
+  QUOTATION = "QUOTATION"            # Direct or indirect quote
+
+
+
+
+@dataclass
+
+class AtomicClaim:
+
+  """An atomic, independently verifiable claim."""
+
+  claim_id: str
+
+  claim_text: str           # The exact text of the claim
+
+claim_type: List[ClaimType]
+
+
+
+# Structured elements
+
+subject: Optional[str] = None      # What/who the claim is about
+
+predicate: Optional[str] = None # The relationship/action
+
+object: Optional[str] = None      # The target/value
+
+qualifiers: List[str] = field(default_factory=list) # Modifying phrases
+
+
+
+# Entities referenced
+
+entities: List[Dict[str, Any]] = field(default_factory=list)
+
+
+
+# Temporal information
+
+temporal_context: Optional[Dict[str, Any]] = None
+
+
+
+# Location information
+
+location_context: Optional[Dict[str, Any]] = None
+
+
+
+# Numerical information
+
+numerical_values: List[Dict[str, Any]] = field(default_factory=list)
+
+
+
+# Source attribution
+
+attributed_to: Optional[str] = None
+
+attribution_type: Optional[str] = None # DIRECT_QUOTE, INDIRECT, ANONYMOUS
+
+
+
+# Metadata
+
+confidence: float = 0.0         # Extraction confidence
+
+  source_text_offset: tuple = (0, 0) # Position in source text
+
+  language: str = "en"
+
+
+
+
+class ClaimExtractionPipeline:
+
+  """Multi-stage claim extraction pipeline."""
+
+
+
+  def __init__(self, nlp_models: Dict[str, Any]):
+
+    self.sentence_segmenter = nlp_models["sentence_segmenter"]
+
+    self.ner_model = nlp_models["named_entity_recognition"]
+
+    self.relation_extractor = nlp_models["relation_extraction"]
+
+    self.claim_classifier = nlp_models["claim_classification"]
+
+    self.numerical_extractor = NumericalExtractor()
+
+    self.quote_extractor = QuoteExtractor()
+
+
+
+  async def extract_claims(
+
+    self,
+
+    text: str,
+
+    metadata: Dict[str, Any],
+
+  ) -> List[AtomicClaim]:
+
+    """
+
+    Extract all verifiable claims from text content.
+
+    """
+
+    logger.info("extracting_claims", text_length=len(text))
+
+
+
+    # Stage 1: Sentence segmentation
+
+sentences = await self.sentence_segmenter.segment(text)
+
+logger.debug("sentences_segmented", count=len(sentences))
+
+
+
+# Stage 2: Filter to claim-containing sentences
+
+claim_sentences = []
+
+for sentence in sentences:
+
+  is_claim = await self.claim_classifier.is_claim(sentence)
+
+  if is_claim:
+
+    claim_sentences.append(sentence)
+
+
+
+logger.debug("claim_sentences_identified", count=len(claim_sentences))
+
+
+
+# Stage 3: Extract atomic claims from each sentence
+
+all_claims = []
+
+for sentence in claim_sentences:
+
+  atomic_claims = await self.decompose_sentence(sentence, text)
+
+  all_claims.extend(atomic_claims)
+
+
+
+# Stage 4: Deduplicate similar claims
+
+unique_claims = self.deduplicate_claims(all_claims)
+
+
+
+logger.info("claims_extracted",
+
+       total=len(unique_claims),
+
+       types=self.count_claim_types(unique_claims))
+
+
+
+return unique_claims
+
+async def decompose_sentence(
+
+  self,
+
+  sentence: str,
+
+  full_text: str,
+
+) -> List[AtomicClaim]:
+
+  """
+
+  Decompose a sentence into atomic, independently verifiable claims.
+
+  """
+
+  claims = []
+
+
+
+  # Extract entities
+
+  entities = await self.ner_model.extract(sentence)
+
+
+
+  # Extract relationships (Subject-Predicate-Object triples)
+
+  triples = await self.relation_extractor.extract_triples(sentence)
+
+
+
+  for triple in triples:
+
+    # Classify claim type
+
+    claim_types = await self.classify_claim(sentence, triple)
+
+
+
+    # Extract numerical values if present
+
+    numerical_values = self.numerical_extractor.extract(sentence)
+
+    if numerical_values and ClaimType.NUMERICAL not in claim_types:
+
+          claim_types.append(ClaimType.NUMERICAL)
+
+# Extract temporal information
+
+temporal = self.extract_temporal_info(sentence)
+
+if temporal and ClaimType.TEMPORAL not in claim_types:
+
+  claim_types.append(ClaimType.TEMPORAL)
+
+
+
+# Extract location information
+
+location = self.extract_location_info(sentence)
+
+if location and ClaimType.LOCATION not in claim_types:
+
+  claim_types.append(ClaimType.LOCATION)
+
+
+
+# Check for quotations
+
+quote_info = self.quote_extractor.extract(sentence)
+
+if quote_info:
+
+  claim_types.append(ClaimType.QUOTATION if quote_info["is_direct"]
+
+            else ClaimType.ATTRIBUTION)
+
+
+
+claim = AtomicClaim(
+
+  claim_id=str(uuid.uuid4()),
+
+  claim_text=sentence.strip(),
+
+  claim_type=claim_types,
+
+  subject=triple.get("subject"),
+
+  predicate=triple.get("predicate"),
+
+  object=triple.get("object"),
+
+  entities=entities,
+
+  temporal_context=temporal,
+
+  location_context=location,
+
+          numerical_values=numerical_values,
+
+          attributed_to=quote_info.get("attributed_to") if quote_info else None,
+
+          attribution_type=quote_info.get("type") if quote_info else None,
+
+          confidence=self.calculate_extraction_confidence(
+
+               sentence, triple, entities
+
+          ),
+
+          source_text_offset=self.find_offset(sentence, full_text),
+
+          language=await self.detect_language(sentence),
+
+    )
+
+
+
+    claims.append(claim)
+
+
+
+  return claims
+
+
+
+async def classify_claim(
+
+  self,
+
+  sentence: str,
+
+  triple: Dict[str, Any],
+
+) -> List[ClaimType]:
+
+  """Classify the type(s) of a claim."""
+
+
+
+  types = [ClaimType.FACTUAL] # Base type
+
+
+
+  # Check for causal language
+
+  causal_indicators = ["because", "therefore", "as a result", "due to",
+
+                   "caused by", "leads to", "results in"]
+
+  if any(indicator in sentence.lower() for indicator in causal_indicators):
+
+     types.append(ClaimType.CAUSAL)
+
+
+
+  # Check for comparative language
+
+  comparative_indicators = ["more than", "less than", "compared to",
+
+                    "higher than", "lower than", "versus"]
+
+  if any(indicator in sentence.lower() for indicator in comparative_indicators):
+
+     types.append(ClaimType.COMPARATIVE)
+
+
+
+  # Check for predictive language
+
+  predictive_indicators = ["will", "going to", "expected to", "forecast",
+
+                   "projected", "predicted", "estimate"]
+
+  if any(indicator in sentence.lower() for indicator in predictive_indicators):
+
+     types.append(ClaimType.PREDICTIVE)
+
+
+
+  return types
+
+
+
+def calculate_extraction_confidence(
+
+  self,
+
+  sentence: str,
+
+  triple: Dict[str, Any],
+
+  entities: List[Dict[str, Any]],
+
+) -> float:
+
+  """Calculate confidence in the extraction quality."""
+
+
+
+  confidence = 0.8 # Base confidence
+
+  # Higher confidence if all triple elements present
+
+  if triple.get("subject") and triple.get("predicate") and triple.get("object"):
+
+    confidence += 0.1
+
+
+
+  # Higher confidence if entities are well-recognized
+
+  high_conf_entities = sum(1 for e in entities if e.get("confidence", 0) > 0.9)
+
+  if high_conf_entities > 0:
+
+    confidence += 0.05 * min(high_conf_entities, 4)
+
+
+
+  # Lower confidence for very short or very long claims
+
+  word_count = len(sentence.split())
+
+  if word_count < 3:
+
+    confidence -= 0.2
+
+  elif word_count > 50:
+
+    confidence -= 0.1
+
+
+
+  return max(0.0, min(1.0, confidence))
+
+
+
+def deduplicate_claims(self, claims: List[AtomicClaim]) -> List[AtomicClaim]:
+
+  """Remove duplicate claims based on semantic similarity."""
+
+  unique_claims = []
+
+  seen_hashes = set()
+
+
+
+  for claim in claims:
+
+    # Create a hash of the core claim elements
+
+            claim_key = f"{claim.subject}|{claim.predicate}|{claim.object}"
+
+            claim_hash = hashlib.sha256(claim_key.encode()).hexdigest()
+
+
+
+            if claim_hash not in seen_hashes:
+
+               seen_hashes.add(claim_hash)
+
+               unique_claims.append(claim)
+
+
+
+          return unique_claims
+
+```
+
+
+
+4.2 Quote Extractor
+
+
+
+```python
+
+class QuoteExtractor:
+
+      """Extracts and validates direct and indirect quotations."""
+
+
+
+      # Patterns for direct quotes
+
+      DIRECT_QUOTE_PATTERNS = [
+
+          r'"([^"]+)"',              # Double quotes
+
+          r'\'([^\']+)\'',           # Single quotes
+
+          r'"([^"]+)"\s*,\s*(\w+\s+\w+)',    # Quote with attribution
+
+          r'(\w+\s+\w+)\s+said\s*[,:]?\s*"([^"]+)"', # Attribution with quote
+
+      ]
+
+
+
+      # Attribution verbs
+
+      ATTRIBUTION_VERBS = [
+
+    "said", "stated", "announced", "declared", "reported",
+
+    "claimed", "asserted", "noted", "added", "explained",
+
+    "according to", "per", "as stated by", "as reported by",
+
+]
+
+
+
+def extract(self, text: str) -> Optional[Dict[str, Any]]:
+
+    """
+
+    Extract quotation and attribution from text.
+
+    Returns None if no quotation found.
+
+    """
+
+    # Try direct quote patterns
+
+    for pattern in self.DIRECT_QUOTE_PATTERNS:
+
+      match = re.search(pattern, text, re.IGNORECASE)
+
+      if match:
+
+          quote_text = match.group(1) if len(match.groups()) >= 1 else match.group(2)
+
+          attribution = self.extract_attribution(text)
+
+
+
+          return {
+
+              "type": "DIRECT_QUOTE",
+
+              "quote_text": quote_text.strip(),
+
+              "attributed_to": attribution,
+
+              "is_direct": True,
+
+              "is_anonymous": attribution is None or attribution.lower() in [
+
+                   "sources", "anonymous", "unnamed", "officials"
+
+              ],
+
+          }
+
+  # Try indirect quote patterns
+
+  for verb in self.ATTRIBUTION_VERBS:
+
+    pattern = rf'(\w[\w\s]{{2,50}})\s+{verb}\s+that\s+(.{{10,}})'
+
+    match = re.search(pattern, text, re.IGNORECASE)
+
+    if match:
+
+       return {
+
+           "type": "INDIRECT_QUOTE",
+
+           "quote_text": match.group(2).strip(),
+
+           "attributed_to": match.group(1).strip(),
+
+           "is_direct": False,
+
+           "is_anonymous": False,
+
+       }
+
+
+
+  return None
+
+
+
+def extract_attribution(self, text: str) -> Optional[str]:
+
+  """Extract who a quote is attributed to."""
+
+  for verb in self.ATTRIBUTION_VERBS:
+
+    # Pattern: "PERSON said"
+
+    pattern = rf'([\w\s]{{2,50}})\s+{verb}'
+
+    match = re.search(pattern, text, re.IGNORECASE)
+
+    if match:
+
+       return match.group(1).strip()
+
+
+
+  return None
+
+```
+
+
+
+---
+
+
+
+PART V — MULTI-SOURCE FACT CHECKING
+
+
+
+Service ID: SVC-TRT-CVR
+
+Runtime: Golang + Python (ML)
+
+gRPC Port: 9204
+
+
+
+5.1 Claim Verification Engine
+
+
+
+```go
+
+// services/truth-engine/claim-verifier/internal/application/verifier.go
+
+package application
+
+
+
+// ClaimVerifier performs multi-method claim verification
+
+type ClaimVerifier struct {
+
+      knowledgeGraph KnowledgeGraphClient
+
+      factCheckAPIs []FactCheckAPIClient
+
+      evidenceStore EvidenceRepository
+
+      sourceVerifier SourceVerifierClient
+
+      ensembleWeights EnsembleWeights
+
+}
+
+
+
+type EnsembleWeights struct {
+
+    KnowledgeGraph float64 `json:"knowledge_graph"` // 0.35
+
+    ExternalAPIs float64 `json:"external_apis"` // 0.25
+
+    SourceAnalysis float64 `json:"source_analysis"` // 0.25
+
+    ContextMatch float64 `json:"context_match"` // 0.15
+
+}
+
+
+
+// VerifyClaim performs comprehensive claim verification
+
+func (cv *ClaimVerifier) VerifyClaim(
+
+    ctx context.Context,
+
+    claim *AtomicClaim,
+
+    story *CanonicalStory,
+
+) (*ClaimVerification, error) {
+
+
+
+    verification := &ClaimVerification{
+
+        ClaimID: claim.ClaimID,
+
+        VerifiedAt: time.Now(),
+
+    }
+
+
+
+    // Run all verification methods in parallel
+
+    type methodResult struct {
+
+        name string
+
+        result *VerificationMethodResult
+
+    }
+
+
+
+    results := make(chan methodResult, 4)
+
+// Method 1: Knowledge Graph lookup
+
+go func() {
+
+  result := cv.verifyAgainstKnowledgeGraph(ctx, claim)
+
+  results <- methodResult{"knowledge_graph", result}
+
+}()
+
+
+
+// Method 2: External fact-check APIs
+
+go func() {
+
+  result := cv.verifyAgainstExternalAPIs(ctx, claim)
+
+  results <- methodResult{"external_apis", result}
+
+}()
+
+
+
+// Method 3: Source-based analysis
+
+go func() {
+
+  result := cv.verifyAgainstSources(ctx, claim, story)
+
+  results <- methodResult{"source_analysis", result}
+
+}()
+
+
+
+// Method 4: Context matching
+
+go func() {
+
+  result := cv.verifyContextMatch(ctx, claim, story)
+
+  results <- methodResult{"context_match", result}
+
+}()
+
+
+
+// Collect results
+
+collectedResults := make(map[string]*VerificationMethodResult)
+
+    for i := 0; i < 4; i++ {
+
+        mr := <-results
+
+        collectedResults[mr.name] = mr.result
+
+        verification.MethodResults = append(verification.MethodResults, mr.result)
+
+    }
+
+
+
+    // Ensemble verdict
+
+    verification.Verdict, verification.Confidence = cv.ensembleVerdict(collectedResults)
+
+
+
+    // Aggregate evidence
+
+    verification.SupportingEvidence = cv.aggregateSupportingEvidence(collectedResults)
+
+    verification.ContradictingEvidence = cv.aggregateContradictingEvidence(collectedResults)
+
+
+
+    // Store evidence
+
+    cv.evidenceStore.Store(ctx, verification)
+
+
+
+    return verification, nil
+
+}
+
+
+
+// ensembleVerdict combines multiple verification methods into a final verdict
+
+func (cv *ClaimVerifier) ensembleVerdict(
+
+    results map[string]*VerificationMethodResult,
+
+) (Verdict, float64) {
+
+
+
+    // Convert each verdict to a numerical score (-1 to 1)
+
+    scores := make(map[string]float64)
+
+    totalWeight := 0.0
+
+
+
+    for name, result := range results {
+
+        weight := cv.getMethodWeight(name)
+
+        numericScore := cv.verdictToScore(result.Verdict)
+
+        scores[name] = numericScore * weight * result.Confidence
+
+        totalWeight += weight
+
+    }
+
+
+
+    if totalWeight == 0 {
+
+        return VerdictUnverifiable, 0.0
+
+    }
+
+
+
+    // Weighted average
+
+    aggregateScore := 0.0
+
+    for _, score := range scores {
+
+        aggregateScore += score
+
+    }
+
+    aggregateScore /= totalWeight
+
+
+
+    // Convert back to verdict
+
+    verdict := cv.scoreToVerdict(aggregateScore)
+
+    confidence := math.Abs(aggregateScore)
+
+
+
+    return verdict, confidence
+
+}
+
+// verdictToScore converts a verdict to a numerical score
+
+func (cv *ClaimVerifier) verdictToScore(verdict Verdict) float64 {
+
+      scores := map[Verdict]float64{
+
+          VerdictTrue:       1.0,
+
+          VerdictMostlyTrue: 0.6,
+
+          VerdictHalfTrue:     0.1,
+
+          VerdictMostlyFalse: -0.4,
+
+          VerdictFalse:      -1.0,
+
+          VerdictUnverifiable: 0.0,
+
+          VerdictMisleading: -0.7,
+
+          VerdictOutOfContext: -0.5,
+
+      }
+
+
+
+      if score, exists := scores[verdict]; exists {
+
+          return score
+
+      }
+
+      return 0.0
+
+}
+
+```
+
+
+
+5.2 Cross-Source Validation
+
+
+
+```go
+
+// services/truth-engine/cross-validator/internal/domain/validator.go
+
+package domain
+
+// CrossSourceValidator checks claims across multiple independent sources
+
+type CrossSourceValidator struct {
+
+    sourceGraph neo4j.Driver
+
+    sourceIntel SourceIntelligenceClient
+
+}
+
+
+
+type CrossValidationResult struct {
+
+    ClaimID         string       `json:"claim_id"`
+
+    CorroborationScore float64           `json:"corroboration_score"` // 0-100
+
+    IndependentSources int             `json:"independent_sources"`
+
+    ConflictingSources int           `json:"conflicting_sources"`
+
+    ConsensusLevel      ConsensusLevel     `json:"consensus_level"`
+
+    SourceDetails     []SourceValidation `json:"source_details"`
+
+    ConsensusConfidence float64           `json:"consensus_confidence"`
+
+}
+
+
+
+type ConsensusLevel string
+
+const (
+
+    ConsensusStronglyConfirmed ConsensusLevel = "STRONGLY_CONFIRMED" // 5+ independent
+
+    ConsensusConfirmed        ConsensusLevel = "CONFIRMED"             // 3-4 independent
+
+    ConsensusPartiallyConfirmed ConsensusLevel = "PARTIALLY_CONFIRMED" // 2 independent
+
+    ConsensusUnconfirmed        ConsensusLevel = "UNCONFIRMED"            // 1 source
+
+    ConsensusDisputed        ConsensusLevel = "DISPUTED"            // Conflicting
+
+    ConsensusWidelyDisputed ConsensusLevel = "WIDELY_DISPUTED"               // Majority disagree
+
+)
+
+// ValidateCrossSource checks claim against multiple independent sources
+
+func (csv *CrossSourceValidator) ValidateCrossSource(
+
+  ctx context.Context,
+
+  claim *AtomicClaim,
+
+  sources []*SourceReference,
+
+) (*CrossValidationResult, error) {
+
+
+
+  result := &CrossValidationResult{
+
+      ClaimID: claim.ClaimID,
+
+  }
+
+
+
+  // 1. Find all sources reporting on this claim
+
+  reportingSources, err := csv.findReportingSources(ctx, claim)
+
+  if err != nil {
+
+      return nil, fmt.Errorf("find reporting sources: %w", err)
+
+  }
+
+
+
+  // 2. Determine source independence
+
+  // Sources that share parent companies or syndication are not independent
+
+  independentGroups := csv.groupIndependentSources(ctx, reportingSources)
+
+
+
+  // 3. For each independent group, evaluate support
+
+  supporting := 0
+
+  conflicting := 0
+
+  var sourceDetails []SourceValidation
+
+for _, group := range independentGroups {
+
+    detail := csv.evaluateSourceGroup(ctx, group, claim)
+
+    sourceDetails = append(sourceDetails, detail)
+
+
+
+    if detail.SupportsClaim {
+
+        supporting++
+
+    } else if detail.ContradictsClaim {
+
+        conflicting++
+
+    }
+
+}
+
+
+
+result.IndependentSources = supporting + conflicting
+
+result.ConflictingSources = conflicting
+
+result.SourceDetails = sourceDetails
+
+
+
+// 4. Calculate corroboration score
+
+if result.IndependentSources > 0 {
+
+    result.CorroborationScore =
+
+        float64(supporting) / float64(result.IndependentSources) * 100
+
+}
+
+
+
+// 5. Determine consensus level
+
+result.ConsensusLevel = csv.determineConsensus(supporting, conflicting)
+
+result.ConsensusConfidence = csv.calculateConsensusConfidence(
+
+    supporting, conflicting, len(sourceDetails),
+
+    )
+
+
+
+    return result, nil
+
+}
+
+
+
+// groupIndependentSources identifies truly independent sources using graph analysis
+
+func (csv *CrossSourceValidator) groupIndependentSources(
+
+    ctx context.Context,
+
+    sources []*Source,
+
+) [][]*Source {
+
+
+
+    // Use Neo4j to find ownership and syndication relationships
+
+    // Sources connected within 2 hops are NOT independent
+
+    query := `
+
+        MATCH (s1:Source {source_id: $id1}), (s2:Source {source_id: $id2})
+
+        OPTIONAL MATCH path = shortestPath((s1)-[:OWNS|SYNDICATES|CITES*1..2]-(s2))
+
+        RETURN s1.source_id as source1, s2.source_id as source2,
+
+            CASE WHEN path IS NULL THEN true ELSE false END as independent
+
+    `
+
+
+
+    // Build independence matrix and group using union-find
+
+    uf := NewUnionFind(len(sources))
+
+
+
+    for i, sourceA := range sources {
+
+        for j := i + 1; j < len(sources); j++ {
+
+          sourceB := sources[j]
+
+        result, _ := csv.sourceGraph.Run(ctx, query, map[string]interface{}{
+
+             "id1": sourceA.ID,
+
+             "id2": sourceB.ID,
+
+        })
+
+
+
+        if result.Record().Values[2].(bool) {
+
+             // Sources are independent — don't union
+
+             continue
+
+        }
+
+
+
+        // Sources are related — union them
+
+        uf.Union(i, j)
+
+    }
+
+}
+
+
+
+// Group by union-find root
+
+groups := make(map[int][]*Source)
+
+for i, source := range sources {
+
+    root := uf.Find(i)
+
+    groups[root] = append(groups[root], source)
+
+}
+
+
+
+var result [][]*Source
+
+for _, group := range groups {
+
+    result = append(result, group)
+
+      }
+
+
+
+      return result
+
+}
+
+```
+
+
+
+---
+
+
+
+PART VI — CONFIDENCE SCORING ENGINE
+
+
+
+Service ID: SVC-TRT-CNF
+
+Runtime: Golang 1.22+
+
+gRPC Port: 9206
+
+
+
+6.1 Bayesian Confidence Model
+
+
+
+```go
+
+// services/truth-engine/confidence-engine/internal/domain/scorer.go
+
+package domain
+
+
+
+// ConfidenceEngine calculates Bayesian confidence scores
+
+type ConfidenceEngine struct {
+
+      priorEstimator *PriorEstimator
+
+      evidenceWeights EvidenceWeights
+
+}
+
+type EvidenceWeights struct {
+
+    SourceReliability float64 `json:"source_reliability"` // 0.30
+
+    ClaimVerification float64 `json:"claim_verification"` // 0.30
+
+    CrossSourceConsensus float64 `json:"cross_source_consensus"` // 0.20
+
+    EvidenceQuality     float64 `json:"evidence_quality"`      // 0.10
+
+    TemporalRecency      float64 `json:"temporal_recency"`       // 0.05
+
+    ContextCoherence float64 `json:"context_coherence"`           // 0.05
+
+}
+
+
+
+type StoryConfidence struct {
+
+    StoryID         uuid.UUID       `json:"story_id"`
+
+    OverallConfidence float64          `json:"overall_confidence"`       // 0-100
+
+    DimensionalScores DimensionalScores `json:"dimensional_scores"`
+
+    ConfidenceInterval ConfidenceInterval `json:"confidence_interval"`
+
+    VerificationStatus VerificationStatus `json:"verification_status"`
+
+    RiskLevel       RiskLevel      `json:"risk_level"`
+
+    PublicationRecommendation string         `json:"publication_recommendation"`
+
+    Factors        []ConfidenceFactor `json:"factors"`
+
+    CalculatedAt      time.Time       `json:"calculated_at"`
+
+    ModelVersion       string        `json:"model_version"`
+
+}
+
+
+
+type DimensionalScores struct {
+
+    SourceTrust       float64 `json:"source_trust"`
+
+    ClaimAccuracy      float64 `json:"claim_accuracy"`
+
+    CrossValidation    float64 `json:"cross_validation"`
+
+    EvidenceStrength float64 `json:"evidence_strength"`
+
+    MisinformationRisk float64 `json:"misinformation_risk"` // Higher = worse
+
+    CompletenessScore float64 `json:"completeness_score"`
+
+}
+
+
+
+type ConfidenceInterval struct {
+
+    Lower float64 `json:"lower"` // 5th percentile
+
+    Upper float64 `json:"upper"` // 95th percentile
+
+    Width float64 `json:"width"` // upper - lower
+
+}
+
+
+
+type RiskLevel string
+
+const (
+
+    RiskLevelMinimal RiskLevel = "MINIMAL"
+
+    RiskLevelLow     RiskLevel = "LOW"
+
+    RiskLevelMedium RiskLevel = "MEDIUM"
+
+    RiskLevelHigh    RiskLevel = "HIGH"
+
+    RiskLevelCritical RiskLevel = "CRITICAL"
+
+)
+
+
+
+// CalculateStoryConfidence computes the confidence score for a story
+
+func (ce *ConfidenceEngine) CalculateStoryConfidence(
+
+    ctx context.Context,
+
+    story *CanonicalStory,
+
+    verifications []*ClaimVerification,
+
+    crossValidation *CrossValidationResult,
+
+  sourceScores []*ReputationScore,
+
+) (*StoryConfidence, error) {
+
+
+
+  confidence := &StoryConfidence{
+
+      StoryID:   story.ID,
+
+      CalculatedAt: time.Now(),
+
+      ModelVersion: "2.1.0",
+
+  }
+
+
+
+  // 1. Source Trust Score
+
+  confidence.DimensionalScores.SourceTrust = ce.calculateSourceTrust(sourceScores)
+
+
+
+  // 2. Claim Accuracy Score
+
+  confidence.DimensionalScores.ClaimAccuracy = ce.calculateClaimAccuracy(verifications)
+
+
+
+  // 3. Cross-Validation Score
+
+  confidence.DimensionalScores.CrossValidation = crossValidation.CorroborationScore
+
+
+
+  // 4. Evidence Strength
+
+  confidence.DimensionalScores.EvidenceStrength = ce.calculateEvidenceStrength(verifications)
+
+
+
+  // 5. Misinformation Risk (inverted — lower is better)
+
+  confidence.DimensionalScores.MisinformationRisk = ce.calculateMisinformationRisk(story,
+verifications)
+
+
+
+  // 6. Completeness Score
+
+confidence.DimensionalScores.CompletenessScore = ce.calculateCompleteness(verifications)
+
+
+
+// Weighted combination
+
+w := ce.evidenceWeights
+
+confidence.OverallConfidence =
+
+  confidence.DimensionalScores.SourceTrust * w.SourceReliability +
+
+  confidence.DimensionalScores.ClaimAccuracy * w.ClaimVerification +
+
+  confidence.DimensionalScores.CrossValidation * w.CrossSourceConsensus +
+
+  confidence.DimensionalScores.EvidenceStrength * w.EvidenceQuality +
+
+  (100 - confidence.DimensionalScores.MisinformationRisk) * w.TemporalRecency +
+
+  confidence.DimensionalScores.CompletenessScore * w.ContextCoherence
+
+
+
+// Calculate confidence interval using bootstrap
+
+confidence.ConfidenceInterval = ce.bootstrapConfidenceInterval(verifications, 1000)
+
+
+
+// Determine verification status
+
+confidence.VerificationStatus = ce.determineVerificationStatus(confidence)
+
+
+
+// Determine risk level
+
+confidence.RiskLevel = ce.determineRiskLevel(confidence)
+
+
+
+// Generate publication recommendation
+
+confidence.PublicationRecommendation = ce.generateRecommendation(confidence)
+
+
+
+// Generate explainability factors
+
+confidence.Factors = ce.generateFactors(confidence)
+
+    return confidence, nil
+
+}
+
+
+
+// calculateSourceTrust aggregates source reputation scores
+
+func (ce *ConfidenceEngine) calculateSourceTrust(scores []*ReputationScore) float64 {
+
+    if len(scores) == 0 {
+
+        return 50.0 // Neutral
+
+    }
+
+
+
+    // Weight by source count (more sources = more reliable)
+
+    totalWeight := 0.0
+
+    weightedScore := 0.0
+
+
+
+    for _, score := range scores {
+
+        weight := score.OverallScore / 100 // Higher score sources weight more
+
+        weightedScore += score.OverallScore * weight
+
+        totalWeight += weight
+
+    }
+
+
+
+    if totalWeight == 0 {
+
+        return 50.0
+
+    }
+
+
+
+    return weightedScore / totalWeight
+
+}
+
+// calculateClaimAccuracy aggregates claim verification results
+
+func (ce *ConfidenceEngine) calculateClaimAccuracy(verifications []*ClaimVerification) float64 {
+
+    if len(verifications) == 0 {
+
+        return 50.0
+
+    }
+
+
+
+    totalConfidence := 0.0
+
+    count := 0
+
+
+
+    for _, v := range verifications {
+
+        if v.Verdict == VerdictUnverifiable {
+
+            continue // Skip unverifiable claims in accuracy calculation
+
+        }
+
+        totalConfidence += v.Confidence * 100
+
+        count++
+
+    }
+
+
+
+    if count == 0 {
+
+        return 50.0
+
+    }
+
+
+
+    return totalConfidence / float64(count)
+
+}
+
+
+
+// bootstrapConfidenceInterval estimates confidence interval via bootstrap resampling
+
+func (ce *ConfidenceEngine) bootstrapConfidenceInterval(
+
+  verifications []*ClaimVerification,
+
+  iterations int,
+
+) ConfidenceInterval {
+
+
+
+  if len(verifications) == 0 {
+
+      return ConfidenceInterval{Lower: 0, Upper: 100, Width: 100}
+
+  }
+
+
+
+  scores := make([]float64, len(verifications))
+
+  for i, v := range verifications {
+
+      scores[i] = v.Confidence
+
+  }
+
+
+
+  // Bootstrap resampling
+
+  means := make([]float64, iterations)
+
+  rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+
+
+  for i := 0; i < iterations; i++ {
+
+      // Sample with replacement
+
+      sample := make([]float64, len(scores))
+
+      for j := range sample {
+
+          sample[j] = scores[rng.Intn(len(scores))]
+
+      }
+
+
+
+      // Calculate mean
+
+          sum := 0.0
+
+          for _, s := range sample {
+
+              sum += s
+
+          }
+
+          means[i] = sum / float64(len(sample))
+
+      }
+
+
+
+      // Sort and get percentiles
+
+      sort.Float64s(means)
+
+      lower := means[int(float64(iterations)*0.05)]
+
+      upper := means[int(float64(iterations)*0.95)]
+
+
+
+      return ConfidenceInterval{
+
+          Lower: lower * 100,
+
+          Upper: upper * 100,
+
+          Width: (upper - lower) * 100,
+
+      }
+
+}
+
+```
+
+
+
+6.2 Publication Thresholds
+
+
+
+```go
+
+// PublicationThresholds defines when content can be auto-published
+
+type PublicationThresholds struct {
+
+      AutoPublishMin        float64 `json:"auto_publish_min"`   // 85
+
+    HumanReviewMin         float64 `json:"human_review_min"`       // 60
+
+    RejectBelow        float64 `json:"reject_below"`      // 40
+
+    BreakingNewsMin       float64 `json:"breaking_news_min"`      // 70 (lower bar for speed)
+
+    MaxConfidenceWidth float64 `json:"max_confidence_width"` // 30 (too uncertain)
+
+    MinSourcesRequired int      `json:"min_sources_required"` // 2
+
+    MinCrossSourceScore float64 `json:"min_cross_source_score"` // 60
+
+}
+
+
+
+// generateRecommendation determines what should happen with the story
+
+func (ce *ConfidenceEngine) generateRecommendation(confidence *StoryConfidence) string {
+
+    thresholds := DefaultThresholds()
+
+
+
+    // Check if breaking news (lower threshold)
+
+    isBreaking := confidence.StoryPriority == PriorityBreaking
+
+
+
+    minScore := thresholds.AutoPublishMin
+
+    if isBreaking {
+
+        minScore = thresholds.BreakingNewsMin
+
+    }
+
+
+
+    if confidence.OverallConfidence >= minScore &&
+
+        confidence.ConfidenceInterval.Width <= thresholds.MaxConfidenceWidth {
+
+        return "AUTO_PUBLISH"
+
+    }
+
+
+
+    if confidence.OverallConfidence >= thresholds.HumanReviewMin {
+
+          if confidence.RiskLevel == RiskLevelHigh || confidence.RiskLevel == RiskLevelCritical {
+
+              return "HUMAN_REVIEW_REQUIRED"
+
+          }
+
+          return "HUMAN_REVIEW_RECOMMENDED"
+
+      }
+
+
+
+      if confidence.OverallConfidence < thresholds.RejectBelow {
+
+          return "REJECT"
+
+      }
+
+
+
+      return "HUMAN_REVIEW_REQUIRED"
+
+}
+
+```
+
+
+
+---
+
+
+
+PART VII — MISINFORMATION DETECTION
+
+
+
+Service ID: SVC-TRT-MSN
+
+Runtime: Python (ML)
+
+gRPC Port: 9207
+
+
+
+7.1 Misinformation Detection Engine
+
+
+
+```python
+
+# services/truth-engine/misinformation-detector/src/detector/engine.py
+
+"""
+
+Misinformation Detection Engine — Identifies potential fake news,
+
+hallucinations, and manipulated content.
+
+"""
+
+
+
+from dataclasses import dataclass, field
+
+from typing import List, Dict, Any, Optional
+
+from enum import Enum
+
+import structlog
+
+
+
+logger = structlog.get_logger(__name__)
+
+
+
+
+class MisinfoRiskLevel(Enum):
+
+  NONE = "NONE"
+
+  LOW = "LOW"
+
+  MEDIUM = "MEDIUM"
+
+  HIGH = "HIGH"
+
+  CRITICAL = "CRITICAL"
+
+
+
+
+@dataclass
+
+class MisinformationAssessment:
+
+  """Comprehensive misinformation risk assessment."""
+
+  assessment_id: str
+
+  content_id: str
+
+  overall_risk: MisinfoRiskLevel
+
+  risk_score: float # 0-100
+
+
+
+  # Detected patterns
+
+  detected_patterns: List[str] = field(default_factory=list)
+
+
+
+  # Specific detectors
+
+  fake_news_score: float = 0.0
+
+  hallucination_score: float = 0.0
+
+  manipulation_score: float = 0.0
+
+  coordinated_behavior_score: float = 0.0
+
+
+
+  # Evidence
+
+  indicators: List[Dict[str, Any]] = field(default_factory=list)
+
+
+
+  # Recommendations
+
+  recommended_action: str = ""
+
+  requires_human_review: bool = False
+
+
+
+  # Metadata
+
+  model_version: str = "2.0.0"
+
+  assessed_at: str = ""
+
+
+
+
+class MisinformationDetectionEngine:
+
+"""Multi-strategy misinformation detection."""
+
+
+
+def __init__(self, models: Dict[str, Any]):
+
+  self.fake_news_detector = models["fake_news_classifier"]
+
+  self.hallucination_detector = HallucinationDetector()
+
+  self.media_forensics = MediaForensicsAnalyzer()
+
+  self.coordinated_behavior = CoordinatedBehaviorDetector()
+
+  self.pattern_matcher = MisinfoPatternMatcher()
+
+
+
+async def assess(
+
+  self,
+
+  content: Dict[str, Any],
+
+  claims: List[AtomicClaim],
+
+  verifications: List[ClaimVerification],
+
+  source_info: Dict[str, Any],
+
+) -> MisinformationAssessment:
+
+  """
+
+  Comprehensive misinformation assessment.
+
+  """
+
+
+
+  assessment = MisinformationAssessment(
+
+      assessment_id=str(uuid.uuid4()),
+
+      content_id=content.get("content_id", ""),
+
+      assessed_at=datetime.utcnow().isoformat(),
+
+  )
+
+# Run all detectors in parallel
+
+tasks = [
+
+    self.fake_news_detector.analyze(content, claims, source_info),
+
+    self.hallucination_detector.detect(content, claims, verifications),
+
+    self.media_forensics.analyze(content),
+
+    self.coordinated_behavior.check(content, source_info),
+
+    self.pattern_matcher.match(content, claims),
+
+]
+
+
+
+results = await asyncio.gather(*tasks, return_exceptions=True)
+
+
+
+# Process results
+
+for result in results:
+
+    if isinstance(result, Exception):
+
+      logger.error("detector_failed", error=str(result))
+
+      continue
+
+
+
+    if result.get("detector") == "fake_news":
+
+      assessment.fake_news_score = result["score"]
+
+    elif result.get("detector") == "hallucination":
+
+      assessment.hallucination_score = result["score"]
+
+    elif result.get("detector") == "media_forensics":
+
+      assessment.manipulation_score = result["score"]
+
+    elif result.get("detector") == "coordinated_behavior":
+
+      assessment.coordinated_behavior_score = result["score"]
+
+      assessment.indicators.extend(result.get("indicators", []))
+
+      assessment.detected_patterns.extend(result.get("patterns", []))
+
+
+
+  # Calculate overall risk score
+
+  assessment.risk_score = self.calculate_overall_risk(assessment)
+
+  assessment.overall_risk = self.classify_risk(assessment.risk_score)
+
+  assessment.requires_human_review = assessment.overall_risk in [
+
+      MisinfoRiskLevel.HIGH, MisinfoRiskLevel.CRITICAL
+
+  ]
+
+  assessment.recommended_action = self.recommend_action(assessment)
+
+
+
+  return assessment
+
+
+
+def calculate_overall_risk(self, assessment: MisinformationAssessment) -> float:
+
+  """Weighted combination of risk factors."""
+
+  weights = {
+
+      "fake_news": 0.35,
+
+      "hallucination": 0.30,
+
+      "manipulation": 0.20,
+
+      "coordinated_behavior": 0.15,
+
+  }
+
+
+
+  score = (
+
+      assessment.fake_news_score * weights["fake_news"] +
+
+      assessment.hallucination_score * weights["hallucination"] +
+
+      assessment.manipulation_score * weights["manipulation"] +
+
+            assessment.coordinated_behavior_score * weights["coordinated_behavior"]
+
+        )
+
+
+
+        return min(100, max(0, score))
+
+
+
+      def classify_risk(self, score: float) -> MisinfoRiskLevel:
+
+        if score >= 80:
+
+            return MisinfoRiskLevel.CRITICAL
+
+        elif score >= 60:
+
+            return MisinfoRiskLevel.HIGH
+
+        elif score >= 30:
+
+            return MisinfoRiskLevel.MEDIUM
+
+        elif score >= 10:
+
+            return MisinfoRiskLevel.LOW
+
+        return MisinfoRiskLevel.NONE
+
+```
+
+
+
+7.2 AI Hallucination Detector
+
+
+
+```python
+
+class HallucinationDetector:
+
+      """Detects AI-generated hallucinations in content."""
+
+
+
+      HALLUCINATION_INDICATORS = {
+
+        "internal_contradiction": {
+
+            "weight": 0.25,
+
+         "description": "Content contradicts itself",
+
+    },
+
+    "entity_fabrication": {
+
+         "weight": 0.25,
+
+         "description": "References non-existent entities",
+
+    },
+
+    "temporal_impossibility": {
+
+         "weight": 0.15,
+
+         "description": "Impossible dates or sequences",
+
+    },
+
+    "statistical_anomaly": {
+
+         "weight": 0.15,
+
+         "description": "Improbable or fabricated statistics",
+
+    },
+
+    "quote_fabrication": {
+
+         "weight": 0.10,
+
+         "description": "Fabricated quotations",
+
+    },
+
+    "source_hallucination": {
+
+         "weight": 0.10,
+
+         "description": "References non-existent sources",
+
+    },
+
+}
+
+
+
+async def detect(
+
+    self,
+
+  content: Dict[str, Any],
+
+  claims: List[AtomicClaim],
+
+  verifications: List[ClaimVerification],
+
+) -> Dict[str, Any]:
+
+  """Detect hallucinations by comparing claims against verifications."""
+
+
+
+  indicators = []
+
+  scores = {}
+
+
+
+  # 1. Check for fabricated claims (claims that fail ALL verification)
+
+  fabricated_claims = [v for v in verifications
+
+                if v.verdict == VerdictFalse and v.confidence > 0.8]
+
+  if fabricated_claims:
+
+     scores["entity_fabrication"] = len(fabricated_claims) * 15
+
+     indicators.append({
+
+          "type": "fabricated_claims",
+
+          "count": len(fabricated_claims),
+
+          "examples": [c.claim_text[:100] for c in fabricated_claims[:3]],
+
+          "severity": "HIGH" if len(fabricated_claims) > 2 else "MEDIUM",
+
+     })
+
+
+
+  # 2. Check for statistical anomalies
+
+  stats_anomalies = self.detect_statistical_anomalies(claims)
+
+  if stats_anomalies:
+
+     scores["statistical_anomaly"] = len(stats_anomalies) * 12
+
+     indicators.extend(stats_anomalies)
+
+  # 3. Check for internal contradictions
+
+  contradictions = await self.detect_contradictions(claims, verifications)
+
+  if contradictions:
+
+      scores["internal_contradiction"] = len(contradictions) * 20
+
+      indicators.extend(contradictions)
+
+
+
+  # 4. Check for temporal impossibilities
+
+  temporal_issues = self.detect_temporal_issues(claims)
+
+  if temporal_issues:
+
+      scores["temporal_impossibility"] = len(temporal_issues) * 15
+
+      indicators.extend(temporal_issues)
+
+
+
+  # Calculate overall score
+
+  overall_score = sum(scores.values())
+
+  overall_score = min(100, overall_score)
+
+
+
+  return {
+
+      "detector": "hallucination",
+
+      "score": overall_score,
+
+      "indicators": indicators,
+
+      "patterns": [k for k, v in scores.items() if v > 0],
+
+      "confidence": min(overall_score / 100, 1.0),
+
+  }
+
+
+
+async def detect_contradictions(
+
+  self,
+
+  claims: List[AtomicClaim],
+
+  verifications: List[ClaimVerification],
+
+) -> List[Dict[str, Any]]:
+
+  """Detect contradictory claims within the content."""
+
+  contradictions = []
+
+
+
+  # Group claims by subject
+
+  by_subject = {}
+
+  for claim in claims:
+
+     subject = claim.subject or "unknown"
+
+     if subject not in by_subject:
+
+          by_subject[subject] = []
+
+     by_subject[subject].append(claim)
+
+
+
+  # Check for contradictory claims about same subject
+
+  for subject, subject_claims in by_subject.items():
+
+     if len(subject_claims) < 2:
+
+          continue
+
+
+
+     for i, claim_a in enumerate(subject_claims):
+
+          for claim_b in subject_claims[i+1:]:
+
+            # Simple negation check
+
+            if self.are_contradictory(claim_a, claim_b):
+
+              contradictions.append({
+
+                "type": "contradiction",
+
+                        "subject": subject,
+
+                        "claim_a": claim_a.claim_text[:100],
+
+                        "claim_b": claim_b.claim_text[:100],
+
+                        "severity": "HIGH",
+
+                   })
+
+
+
+        return contradictions
+
+
+
+      def are_contradictory(self, claim_a: AtomicClaim, claim_b: AtomicClaim) -> bool:
+
+        """Check if two claims contradict each other."""
+
+        # Check for direct negation
+
+        negation_patterns = [
+
+            (r"is (\w+)", r"is not \1"),
+
+            (r"was (\w+)", r"was not \1"),
+
+            (r"(\d+)", r"(?!\1)(\d+)"), # Different numbers
+
+        ]
+
+
+
+        # Simplified: use semantic similarity with opposite sentiment
+
+        # Full implementation would use NLI (Natural Language Inference) model
+
+        return False # Placeholder
+
+```
+
+
+
+---
+
+
+
+PART VIII — EDITORIAL VALIDATION ENGINE
+
+Service ID: SVC-TRT-EDV
+
+Runtime: Golang 1.22+
+
+gRPC Port: 9208
+
+
+
+8.1 Editorial Decision Engine
+
+
+
+```go
+
+// services/truth-engine/editorial-validator/internal/domain/editorial.go
+
+package domain// EditorialDecisionEngine makes publication decisions
+
+type EditorialDecisionEngine struct {
+
+    rules    []EditorialRule
+
+    categoryRules map[StoryCategory][]EditorialRule
+
+    humanReview HumanReviewClient
+
+}
+
+
+
+type EditorialRule struct {
+
+    RuleID   string           `json:"rule_id"`
+
+    Name      string           `json:"name"`
+
+    Priority int           `json:"priority"`     // Higher = evaluated first
+
+    Condition RuleCondition         `json:"condition"`
+
+    Action   EditorialAction      `json:"action"`
+
+    IsOverride bool            `json:"is_override"` // Can override confidence
+
+}
+
+
+
+type RuleCondition struct {
+
+    Field string      `json:"field"` // e.g., "confidence.overall", "category"
+
+    Operator string          `json:"operator"` // ">", "<", "==", "IN", "CONTAINS"
+
+    Value interface{} `json:"value"`
+
+}
+
+
+
+type EditorialAction string
+
+const (
+
+    ActionAutoApprove EditorialAction = "AUTO_APPROVE"
+
+    ActionAutoReject          EditorialAction = "AUTO_REJECT"
+
+    ActionHumanReview EditorialAction = "HUMAN_REVIEW"
+
+    ActionEscalate          EditorialAction = "ESCALATE"
+
+    ActionFlagForReview EditorialAction = "FLAG_FOR_REVIEW"
+
+)
+
+
+
+// Sensitive category rules — always require human review
+
+var sensitiveCategoryRules = []EditorialRule{
+
+    {
+
+         RuleID: "HEALTH_ALWAYS_REVIEW",
+
+         Name:       "Health information requires expert review",
+
+         Priority: 100,
+
+         Condition: RuleCondition{
+
+              Field: "category", Operator: "IN",
+
+              Value: []string{"HEALTH", "MEDICAL", "PANDEMIC"},
+
+         },
+
+         Action:     ActionHumanReview,
+
+         IsOverride: true,
+
+    },
+
+{
+
+     RuleID: "FINANCIAL_ENHANCED_REVIEW",
+
+     Name:       "Financial news requires official source verification",
+
+     Priority: 100,
+
+     Condition: RuleCondition{
+
+          Field: "category", Operator: "IN",
+
+          Value: []string{"FINANCIAL", "MARKET_MOVING", "CRYPTOCURRENCY"},
+
+     },
+
+     Action:     ActionHumanReview,
+
+     IsOverride: true,
+
+},
+
+{
+
+     RuleID: "POLITICAL_ENHANCED_REVIEW",
+
+     Name:       "Political content requires enhanced verification",
+
+     Priority: 90,
+
+     Condition: RuleCondition{
+
+          Field: "category", Operator: "IN",
+
+          Value: []string{"POLITICAL", "ELECTION", "GEOPOLITICAL"},
+
+     },
+
+     Action:     ActionHumanReview,
+
+     IsOverride: false,
+
+},
+
+{
+
+     RuleID: "EMERGENCY_FAST_TRACK",
+
+     Name:       "Emergency alerts can auto-publish with lower threshold",
+
+     Priority: 200,
+
+         Condition: RuleCondition{
+
+              Field: "category", Operator: "IN",
+
+              Value: []string{"EMERGENCY", "PUBLIC_SAFETY"},
+
+         },
+
+         Action:     ActionAutoApprove,
+
+         IsOverride: true,
+
+    },
+
+}
+
+
+
+// MakeDecision determines the editorial action for a story
+
+func (ede *EditorialDecisionEngine) MakeDecision(
+
+    ctx context.Context,
+
+    story *CanonicalStory,
+
+    confidence *StoryConfidence,
+
+    misinfoAssessment *MisinformationAssessment,
+
+) (*EditorialDecision, error) {
+
+
+
+    decision := &EditorialDecision{
+
+         StoryID: story.ID,
+
+         DecidedAt: time.Now(),
+
+         Confidence: confidence,
+
+    }
+
+
+
+    // 1. Check override rules first (always apply)
+
+    for _, rule := range ede.rules {
+
+         if rule.IsOverride && ede.matchesCondition(rule.Condition, story, confidence) {
+
+        decision.Action = rule.Action
+
+        decision.RuleApplied = rule.RuleID
+
+        decision.Reason = fmt.Sprintf("Override rule: %s", rule.Name)
+
+
+
+        if rule.Action == ActionHumanReview {
+
+            return ede.escalateToHuman(ctx, story, decision)
+
+        }
+
+        return decision, nil
+
+    }
+
+}
+
+
+
+// 2. Check misinformation risk
+
+if misinfoAssessment.OverallRisk == MisinfoRiskLevelCritical ||
+
+    misinfoAssessment.OverallRisk == MisinfoRiskLevelHigh {
+
+    decision.Action = ActionHumanReview
+
+    decision.Reason = fmt.Sprintf("Misinformation risk: %s", misinfoAssessment.OverallRisk)
+
+    return ede.escalateToHuman(ctx, story, decision)
+
+}
+
+
+
+// 3. Apply confidence-based rules
+
+if confidence.PublicationRecommendation == "AUTO_PUBLISH" {
+
+    decision.Action = ActionAutoApprove
+
+    decision.Reason = fmt.Sprintf("Confidence %.1f meets auto-publish threshold",
+
+        confidence.OverallConfidence)
+
+} else if confidence.PublicationRecommendation == "REJECT" {
+
+    decision.Action = ActionAutoReject
+
+        decision.Reason = fmt.Sprintf("Confidence %.1f below minimum threshold",
+
+          confidence.OverallConfidence)
+
+    } else {
+
+        decision.Action = ActionHumanReview
+
+        decision.Reason = "Confidence requires human review"
+
+        return ede.escalateToHuman(ctx, story, decision)
+
+    }
+
+
+
+    return decision, nil
+
+}
+
+
+
+// escalateToHuman sends a story for human editorial review
+
+func (ede *EditorialDecisionEngine) escalateToHuman(
+
+    ctx context.Context,
+
+    story *CanonicalStory,
+
+    decision *EditorialDecision,
+
+) (*EditorialDecision, error) {
+
+
+
+    // Determine review priority
+
+    priority := ede.calculateReviewPriority(story, decision.Confidence)
+
+
+
+    // Create review task
+
+    task := &HumanReviewTask{
+
+        TaskID: uuid.NewV7().String(),
+
+        StoryID: story.ID,
+
+        Priority: priority,
+
+        Reason: decision.Reason,
+
+        Deadline: ede.calculateDeadline(priority),
+
+        StorySummary: story.Summary,
+
+        ConfidenceSummary: decision.Confidence,
+
+        CreatedAt: time.Now(),
+
+    }
+
+
+
+    // Submit to review queue
+
+    if err := ede.humanReview.SubmitTask(ctx, task); err != nil {
+
+        return nil, fmt.Errorf("submit review task: %w", err)
+
+    }
+
+
+
+    decision.ReviewTaskID = task.TaskID
+
+    decision.EscalatedTo = "HUMAN_REVIEW_QUEUE"
+
+
+
+    return decision, nil
+
+}
+
+
+
+func (ede *EditorialDecisionEngine) calculateReviewPriority(
+
+    story *CanonicalStory,
+
+    confidence *StoryConfidence,
+
+) ReviewPriority {
+
+
+
+    // Breaking news always critical
+
+    if story.Priority == PriorityBreaking {
+
+        return ReviewPriorityCritical
+
+    }
+
+
+
+    // High risk = critical
+
+    if confidence.RiskLevel == RiskLevelCritical || confidence.RiskLevel == RiskLevelHigh {
+
+        return ReviewPriorityCritical
+
+    }
+
+
+
+    // Sensitive categories = high
+
+    sensitiveCategories := []string{"HEALTH", "FINANCIAL", "POLITICAL", "EMERGENCY"}
+
+    for _, cat := range sensitiveCategories {
+
+        if story.Category == cat {
+
+            return ReviewPriorityHigh
+
+        }
+
+    }
+
+
+
+    return ReviewPriorityMedium
+
+}
+
+
+
+func (ede *EditorialDecisionEngine) calculateDeadline(priority ReviewPriority) time.Time {
+
+    now := time.Now()
+
+
+
+    deadlines := map[ReviewPriority]time.Duration{
+
+        ReviewPriorityCritical: 5 * time.Minute,
+
+        ReviewPriorityHigh:     30 * time.Minute,
+
+        ReviewPriorityMedium: 2 * time.Hour,
+
+        ReviewPriorityLow:      8 * time.Hour,
+
+      }
+
+
+
+      if deadline, exists := deadlines[priority]; exists {
+
+          return now.Add(deadline)
+
+      }
+
+      return now.Add(4 * time.Hour)
+
+}
+
+```
+
+
+
+---
+
+
+
+PART IX — TRUTH LEDGER & PROVENANCE
+
+
+
+Service ID: SVC-TRT-LDG
+
+Runtime: Golang 1.22+
+
+gRPC Port: 9209
+
+
+
+9.1 Immutable Truth Ledger
+
+
+
+```go
+
+// services/truth-engine/truth-ledger/internal/domain/ledger.go
+
+package domain
+
+
+
+// TruthLedger provides an immutable, cryptographically-chained audit trail
+
+type TruthLedger struct {
+
+      store LedgerStore
+
+    hasher *ChainHasher
+
+}
+
+
+
+// LedgerEntry represents a single immutable record in the truth ledger
+
+type LedgerEntry struct {
+
+    EntryID    string      `json:"entry_id"`
+
+    PreviousHash string        `json:"previous_hash"`
+
+    Timestamp time.Time          `json:"timestamp"`
+
+    Action     LedgerAction `json:"action"`
+
+    Actor      LedgerActor    `json:"actor"`
+
+    Target     LedgerTarget `json:"target"`
+
+    BeforeState json.RawMessage `json:"before_state,omitempty"`
+
+    AfterState json.RawMessage `json:"after_state,omitempty"`
+
+    Evidence    json.RawMessage `json:"evidence,omitempty"`
+
+    Metadata     json.RawMessage `json:"metadata,omitempty"`
+
+    Hash       string      `json:"hash"`
+
+}
+
+
+
+type LedgerAction string
+
+const (
+
+    ActionSourceVerified      LedgerAction = "SOURCE_VERIFIED"
+
+    ActionSourceBlacklisted LedgerAction = "SOURCE_BLACKLISTED"
+
+    ActionClaimExtracted      LedgerAction = "CLAIM_EXTRACTED"
+
+    ActionClaimVerified      LedgerAction = "CLAIM_VERIFIED"
+
+    ActionEvidenceAdded        LedgerAction = "EVIDENCE_ADDED"
+
+    ActionConfidenceCalculated LedgerAction = "CONFIDENCE_CALCULATED"
+
+    ActionStoryApproved        LedgerAction = "STORY_APPROVED"
+
+    ActionStoryRejected        LedgerAction = "STORY_REJECTED"
+
+    ActionHumanReviewStarted LedgerAction = "HUMAN_REVIEW_STARTED"
+
+    ActionHumanDecisionMade LedgerAction = "HUMAN_DECISION_MADE"
+
+    ActionCorrectionIssued LedgerAction = "CORRECTION_ISSUED"
+
+    ActionRetractionIssued LedgerAction = "RETRACTION_ISSUED"
+
+)
+
+
+
+type LedgerActor struct {
+
+    ActorID string `json:"actor_id"`
+
+    ActorType string `json:"actor_type"` // HUMAN, AI_AGENT, SYSTEM
+
+    Name     string `json:"name"`
+
+}
+
+
+
+type LedgerTarget struct {
+
+    TargetType string `json:"target_type"` // SOURCE, CLAIM, STORY, EVIDENCE
+
+    TargetID string `json:"target_id"`
+
+}
+
+
+
+// RecordEntry appends a new entry to the immutable ledger
+
+func (tl *TruthLedger) RecordEntry(
+
+    ctx context.Context,
+
+    action LedgerAction,
+
+    actor LedgerActor,
+
+    target LedgerTarget,
+
+    beforeState interface{},
+
+  afterState interface{},
+
+  evidence interface{},
+
+) (*LedgerEntry, error) {
+
+
+
+  // Get last entry for chain continuity
+
+  lastEntry, err := tl.store.GetLastEntry(ctx, target.TargetID)
+
+  if err != nil && err != ErrNotFound {
+
+      return nil, fmt.Errorf("get last entry: %w", err)
+
+  }
+
+
+
+  previousHash := ""
+
+  if lastEntry != nil {
+
+      previousHash = lastEntry.Hash
+
+  }
+
+
+
+  // Serialize states
+
+  beforeJSON, _ := json.Marshal(beforeState)
+
+  afterJSON, _ := json.Marshal(afterState)
+
+  evidenceJSON, _ := json.Marshal(evidence)
+
+
+
+  // Create entry
+
+  entry := &LedgerEntry{
+
+      EntryID:    uuid.NewV7().String(),
+
+      PreviousHash: previousHash,
+
+      Timestamp: time.Now(),
+
+      Action:    action,
+
+        Actor:      actor,
+
+        Target:     target,
+
+        BeforeState: beforeJSON,
+
+        AfterState: afterJSON,
+
+        Evidence:    evidenceJSON,
+
+    }
+
+
+
+    // Calculate cryptographic hash
+
+    entry.Hash = tl.hasher.CalculateHash(entry)
+
+
+
+    // Append to immutable store
+
+    if err := tl.store.Append(ctx, entry); err != nil {
+
+        return nil, fmt.Errorf("append to ledger: %w", err)
+
+    }
+
+
+
+    return entry, nil
+
+}
+
+
+
+// ChainHasher calculates SHA-256 hashes for ledger chain integrity
+
+type ChainHasher struct{}
+
+
+
+func (ch *ChainHasher) CalculateHash(entry *LedgerEntry) string {
+
+    // Build canonical representation for hashing
+
+    data := fmt.Sprintf("%s|%s|%s|%s|%s|%s|%s|%s",
+
+        entry.EntryID,
+
+        entry.PreviousHash,
+
+        entry.Timestamp.Format(time.RFC3339Nano),
+
+        entry.Action,
+
+        entry.Actor.ActorID,
+
+        entry.Target.TargetType,
+
+        entry.Target.TargetID,
+
+        entry.AfterState,
+
+    )
+
+
+
+    hash := sha256.Sum256([]byte(data))
+
+    return hex.EncodeToString(hash[:])
+
+}
+
+
+
+// VerifyChainIntegrity checks the entire chain for tampering
+
+func (tl *TruthLedger) VerifyChainIntegrity(
+
+    ctx context.Context,
+
+    targetID string,
+
+) (*ChainVerification, error) {
+
+
+
+    entries, err := tl.store.GetFullChain(ctx, targetID)
+
+    if err != nil {
+
+        return nil, fmt.Errorf("get chain: %w", err)
+
+    }
+
+
+
+    verification := &ChainVerification{
+
+        TargetID:     targetID,
+
+        EntryCount: len(entries),
+
+    Verified:     true,
+
+    CheckedAt: time.Now(),
+
+}
+
+
+
+var previousHash string
+
+
+
+for i, entry := range entries {
+
+    // Verify chain link
+
+    if i > 0 && entry.PreviousHash != previousHash {
+
+        verification.Verified = false
+
+        verification.BreakPoint = i
+
+        verification.ExpectedHash = previousHash
+
+        verification.FoundHash = entry.PreviousHash
+
+        verification.Detail = fmt.Sprintf(
+
+            "Chain broken at entry %d: expected hash %s, found %s",
+
+            i, previousHash[:16], entry.PreviousHash[:16],
+
+        )
+
+        break
+
+    }
+
+
+
+    // Verify entry integrity
+
+    calculatedHash := tl.hasher.CalculateHash(&entry)
+
+    if calculatedHash != entry.Hash {
+
+        verification.Verified = false
+
+        verification.BreakPoint = i
+
+        verification.ExpectedHash = calculatedHash
+
+            verification.FoundHash = entry.Hash
+
+            verification.Detail = fmt.Sprintf(
+
+                "Entry %d tampered: hash mismatch", i,
+
+            )
+
+            break
+
+        }
+
+
+
+        previousHash = entry.Hash
+
+    }
+
+
+
+    return verification, nil
+
+}
+
+
+
+// GetProvenanceChain returns the complete provenance for a target
+
+func (tl *TruthLedger) GetProvenanceChain(
+
+    ctx context.Context,
+
+    targetID string,
+
+) (*ProvenanceChain, error) {
+
+
+
+    entries, err := tl.store.GetFullChain(ctx, targetID)
+
+    if err != nil {
+
+        return nil, fmt.Errorf("get chain: %w", err)
+
+    }
+
+
+
+    chain := &ProvenanceChain{
+
+        TargetID: targetID,
+
+          Timeline: make([]ProvenanceEvent, 0, len(entries)),
+
+      }
+
+
+
+      for _, entry := range entries {
+
+          chain.Timeline = append(chain.Timeline, ProvenanceEvent{
+
+               Timestamp: entry.Timestamp,
+
+               Action: string(entry.Action),
+
+               Actor:   entry.Actor.Name,
+
+               ActorType: entry.Actor.ActorType,
+
+               Detail: string(entry.AfterState),
+
+          })
+
+      }
+
+
+
+      return chain, nil
+
+}
+
+```
+
+
+
+9.2 Evidence Graph in Neo4j
+
+
+
+```cypher
+
+// Neo4j Evidence Graph Schema
+
+
+
+// Create evidence node
+
+CREATE (ev:Evidence {
+
+      evidence_id: $evidenceId,
+
+      evidence_type: $evidenceType,
+
+     content: $content,
+
+     source_url: $sourceUrl,
+
+     reliability_score: $reliabilityScore,
+
+     retrieved_at: datetime($retrievedAt),
+
+     hash: $hash
+
+})
+
+
+
+// Relationships
+
+// Evidence supports a claim
+
+(:Evidence)-[:SUPPORTS {
+
+     confidence: $confidence,
+
+     verified_at: datetime($verifiedAt),
+
+     verified_by: $verifiedBy
+
+}]->(:Claim)
+
+
+
+// Evidence contradicts a claim
+
+(:Evidence)-[:CONTRADICTS {
+
+     confidence: $confidence,
+
+     reason: $reason
+
+}]->(:Claim)
+
+
+
+// Evidence originates from a source
+
+(:Evidence)-[:ORIGINATED_FROM]->(:Source)
+
+
+
+// Evidence verifies another piece of evidence
+
+(:Evidence)-[:VERIFIES {
+
+      method: $method,
+
+      confidence: $confidence
+
+}]->(:Evidence)
+
+
+
+// Indexes
+
+CREATE INDEX evidence_id_idx FOR (ev:Evidence) ON (ev.evidence_id);
+
+CREATE INDEX evidence_type_idx FOR (ev:Evidence) ON (ev.evidence_type);
+
+```
+
+
+
+---
+
+
+
+PART X — TRUTH STATE MACHINE
+
+
+
+10.1 Complete Story Truth Lifecycle
+
+
+
+```
+
+TRUTH ENGINE — STORY VERIFICATION LIFECYCLE:
+
+
+
+                 ┌──────────┐
+
+                 │ NEW │ Story received from Content Origination
+
+                 └────┬─────┘
+
+                   │
+
+              ┌─────────▼─────────┐
+
+              │ DISCOVERED      │ Initial assessment
+
+              └────────┬──────────┘
+
+                   │
+
+┌────────▼────────┐
+
+│ SOURCE VERIFIED │ Verify all sources
+
+└────────┬────────┘
+
+    │
+
+┌────────▼────────┐
+
+│ CLAIMS EXTRACTED│ Decompose into atomic claims
+
+└────────┬────────┘
+
+    │
+
+┌────────▼────────┐
+
+│ FACT CHECKING │ Multi-method verification
+
+└────────┬────────┘
+
+    │
+
+┌────────▼────────┐
+
+│ CONSENSUS        │ Cross-source validation
+
+└────────┬────────┘
+
+    │
+
+┌────────▼────────┐
+
+│ CONFIDENCE │ Bayesian scoring
+
+│ SCORING      │
+
+└────────┬────────┘
+
+    │
+
+┌────────▼────────┐
+
+│ EDITORIAL    │ Rules-based decision
+
+│ DECISION     │
+
+└───┬───┬───┬─────┘
+
+  │ │ │
+
+       ┌─────────▼┐ │ ┌▼─────────────┐
+
+       │ APPROVED │ │ │ HUMAN REVIEW │──               APPROVED / REJECTED
+
+       └────┬─────┘ │ └───────────────┘
+
+          │      │
+
+          │ ┌────▼─────┐
+
+          │ │ REJECTED │
+
+          │ └──────────┘
+
+          │
+
+      ┌────────▼────────┐
+
+      │ STORY GRAPH │──           Content Factory (Vol 27)
+
+      │ PUBLISHED        │
+
+      └─────────────────┘
+
+
+
+FAILURE PATHS:
+
+ Any State ──        TIMEOUT ──     HUMAN REVIEW (escalation)
+
+ Any State ──        SOURCE FAILURE ──     RETRY (3x) ──     PARTIAL VERIFICATION
+
+ Any State ──        CRITICAL MISINFO DETECTED ──      AUTO-REJECT + ALERT
+
+
+
+RETRY LOGIC:
+
+ FACT CHECKING: Retry 3x with different methods before partial verification
+
+ CONSENSUS: Retry 2x with expanded source search
+
+ CONFIDENCE: Recalculate if new evidence arrives within 24h
+
+```
+
+
+
+10.2 State Machine Implementation
+
+```go
+
+// services/truth-engine/editorial-validator/internal/domain/state_machine.go
+
+package domain
+
+
+
+type TruthState string
+
+
+
+const (
+
+    TruthStateNew          TruthState = "NEW"
+
+    TruthStateDiscovered       TruthState = "DISCOVERED"
+
+    TruthStateSourceVerified TruthState = "SOURCE_VERIFIED"
+
+    TruthStateClaimsExtracted TruthState = "CLAIMS_EXTRACTED"
+
+    TruthStateFactChecking      TruthState = "FACT_CHECKING"
+
+    TruthStateConsensus        TruthState = "CONSENSUS"
+
+    TruthStateConfidenceScoring TruthState = "CONFIDENCE_SCORING"
+
+    TruthStateEditorialDecision TruthState = "EDITORIAL_DECISION"
+
+    TruthStateApproved        TruthState = "APPROVED"
+
+    TruthStateRejected        TruthState = "REJECTED"
+
+    TruthStateHumanReview        TruthState = "HUMAN_REVIEW"
+
+    TruthStatePublished       TruthState = "PUBLISHED"
+
+    TruthStateFailed       TruthState = "FAILED"
+
+)
+
+
+
+type TruthStateMachine struct {
+
+    story   *CanonicalStory
+
+    currentState TruthState
+
+    transitions map[TruthState]map[TruthEvent]TruthState
+
+    ledger   *TruthLedger
+
+}
+
+
+
+type TruthEvent string
+
+
+
+const (
+
+    EventStoryReceived       TruthEvent = "STORY_RECEIVED"
+
+    EventSourcesVerified     TruthEvent = "SOURCES_VERIFIED"
+
+    EventClaimsExtracted     TruthEvent = "CLAIMS_EXTRACTED"
+
+    EventFactCheckComplete TruthEvent = "FACT_CHECK_COMPLETE"
+
+    EventFactCheckFailed     TruthEvent = "FACT_CHECK_FAILED"
+
+    EventConsensusReached TruthEvent = "CONSENSUS_REACHED"
+
+    EventConsensusFailed      TruthEvent = "CONSENSUS_FAILED"
+
+    EventConfidenceCalculated TruthEvent = "CONFIDENCE_CALCULATED"
+
+    EventAutoApproved         TruthEvent = "AUTO_APPROVED"
+
+    EventAutoRejected        TruthEvent = "AUTO_REJECTED"
+
+    EventHumanReviewRequired TruthEvent = "HUMAN_REVIEW_REQUIRED"
+
+    EventHumanApproved         TruthEvent = "HUMAN_APPROVED"
+
+    EventHumanRejected        TruthEvent = "HUMAN_REJECTED"
+
+    EventPublished         TruthEvent = "PUBLISHED"
+
+    EventTimeout           TruthEvent = "TIMEOUT"
+
+    EventMisinfoCritical    TruthEvent = "MISINFO_CRITICAL"
+
+    EventRetryExhausted      TruthEvent = "RETRY_EXHAUSTED"
+
+)
+
+func NewTruthStateMachine(story *CanonicalStory, ledger *TruthLedger) *TruthStateMachine {
+
+  sm := &TruthStateMachine{
+
+      story:      story,
+
+      currentState: TruthStateNew,
+
+      ledger:      ledger,
+
+  }
+
+
+
+  sm.transitions = map[TruthState]map[TruthEvent]TruthState{
+
+      TruthStateNew: {
+
+           EventStoryReceived: TruthStateDiscovered,
+
+      },
+
+      TruthStateDiscovered: {
+
+           EventSourcesVerified: TruthStateSourceVerified,
+
+           EventTimeout:      TruthStateHumanReview,
+
+      },
+
+      TruthStateSourceVerified: {
+
+           EventClaimsExtracted: TruthStateClaimsExtracted,
+
+           EventTimeout:      TruthStateHumanReview,
+
+      },
+
+      TruthStateClaimsExtracted: {
+
+           EventFactCheckComplete: TruthStateFactChecking,
+
+           EventFactCheckFailed: TruthStateHumanReview,
+
+      },
+
+      TruthStateFactChecking: {
+
+           EventFactCheckComplete: TruthStateConsensus,
+
+           EventFactCheckFailed: TruthStateFactChecking, // Retry
+
+     EventRetryExhausted:    TruthStateHumanReview,
+
+     EventMisinfoCritical: TruthStateRejected,
+
+},
+
+TruthStateConsensus: {
+
+     EventConsensusReached: TruthStateConfidenceScoring,
+
+     EventConsensusFailed:   TruthStateConsensus, // Retry
+
+     EventRetryExhausted:    TruthStateHumanReview,
+
+},
+
+TruthStateConfidenceScoring: {
+
+     EventConfidenceCalculated: TruthStateEditorialDecision,
+
+},
+
+TruthStateEditorialDecision: {
+
+     EventAutoApproved:       TruthStateApproved,
+
+     EventAutoRejected:      TruthStateRejected,
+
+     EventHumanReviewRequired: TruthStateHumanReview,
+
+},
+
+TruthStateHumanReview: {
+
+     EventHumanApproved: TruthStateApproved,
+
+     EventHumanRejected: TruthStateRejected,
+
+     EventTimeout:     TruthStateHumanReview, // Escalate
+
+},
+
+TruthStateApproved: {
+
+     EventPublished: TruthStatePublished,
+
+},
+
+TruthStateRejected: {
+
+     // Terminal state — can be resubmitted
+
+        },
+
+        TruthStateFailed: {
+
+             EventStoryReceived: TruthStateDiscovered, // Retry from beginning
+
+        },
+
+    }
+
+
+
+    return sm
+
+}
+
+
+
+func (sm *TruthStateMachine) Transition(event TruthEvent, metadata interface{}) error {
+
+    validEvents, exists := sm.transitions[sm.currentState]
+
+    if !exists {
+
+        return fmt.Errorf("no transitions from state: %s", sm.currentState)
+
+    }
+
+
+
+    nextState, valid := validEvents[event]
+
+    if !valid {
+
+        return fmt.Errorf("invalid transition: %s -[%s]-> ?", sm.currentState, event)
+
+    }
+
+
+
+    // Record in immutable ledger
+
+    sm.ledger.RecordEntry(context.Background(),
+
+        LedgerAction(fmt.Sprintf("STATE_%s", event)),
+
+        LedgerActor{ActorID: "system", ActorType: "SYSTEM", Name: "Truth State Machine"},
+
+        LedgerTarget{TargetType: "STORY", TargetID: sm.story.ID.String()},
+
+        map[string]interface{}{"from_state": sm.currentState},
+
+          map[string]interface{}{"to_state": nextState, "event": event},
+
+          metadata,
+
+      )
+
+
+
+      sm.currentState = nextState
+
+      sm.story.TruthState = string(nextState)
+
+      sm.story.UpdatedAt = time.Now()
+
+
+
+      return nil
+
+}
+
+```
+
+
+
+---
+
+
+
+PART XI — DATA ARCHITECTURE
+
+
+
+11.1 PostgreSQL Schema
+
+
+
+```sql
+
+-- Truth Engine Database Schema
+
+
+
+-- Source Reputation
+
+CREATE TABLE source_reputation (
+
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+      source_id UUID NOT NULL UNIQUE,
+
+      overall_score DECIMAL(5,2) NOT NULL CHECK (overall_score BETWEEN 0 AND 100),
+
+     factual_accuracy DECIMAL(5,2),
+
+     correction_rate DECIMAL(5,2),
+
+     longevity_score DECIMAL(5,2),
+
+     transparency_score DECIMAL(5,2),
+
+     peer_citation_score DECIMAL(5,2),
+
+     consistency_score DECIMAL(5,2),
+
+     trust_tier VARCHAR(20) NOT NULL,
+
+     data_points INT DEFAULT 0,
+
+     confidence_interval DECIMAL(5,2),
+
+     algorithm_version VARCHAR(20) NOT NULL,
+
+     calculated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+);
+
+
+
+CREATE INDEX idx_reputation_score ON source_reputation(overall_score DESC);
+
+CREATE INDEX idx_reputation_tier ON source_reputation(trust_tier);
+
+
+
+-- Verification Jobs
+
+CREATE TABLE verification_jobs (
+
+     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+     job_id VARCHAR(64) UNIQUE NOT NULL,
+
+     story_id UUID NOT NULL,
+
+     claim_id UUID,
+
+     job_type VARCHAR(50) NOT NULL,
+
+     status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+
+     priority VARCHAR(20) DEFAULT 'MEDIUM',
+
+     retry_count INT DEFAULT 0,
+
+     max_retries INT DEFAULT 3,
+
+     started_at TIMESTAMPTZ,
+
+     completed_at TIMESTAMPTZ,
+
+     error_message TEXT,
+
+     result JSONB,
+
+     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+);
+
+
+
+CREATE INDEX idx_verification_jobs_status ON verification_jobs(status, priority, created_at);
+
+CREATE INDEX idx_verification_jobs_story ON verification_jobs(story_id);
+
+
+
+-- Claim Registry
+
+CREATE TABLE claim_registry (
+
+     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+     claim_id VARCHAR(64) UNIQUE NOT NULL,
+
+     story_id UUID NOT NULL,
+
+     tenant_id UUID NOT NULL,
+
+     claim_text TEXT NOT NULL,
+
+     claim_type VARCHAR(50)[] NOT NULL,
+
+     subject TEXT,
+
+     predicate TEXT,
+
+     object TEXT,
+
+     entities JSONB DEFAULT '[]',
+
+     numerical_values JSONB DEFAULT '[]',
+
+     attributed_to TEXT,
+
+     extraction_confidence DECIMAL(5,4),
+
+     verdict VARCHAR(30),
+
+     confidence DECIMAL(5,4),
+
+     verified_at TIMESTAMPTZ,
+
+     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+);
+
+
+
+CREATE INDEX idx_claims_story ON claim_registry(story_id);
+
+CREATE INDEX idx_claims_verdict ON claim_registry(verdict);
+
+
+
+-- Confidence Scores
+
+CREATE TABLE confidence_scores (
+
+     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+     story_id UUID NOT NULL,
+
+     overall_confidence DECIMAL(5,2) NOT NULL,
+
+     source_trust DECIMAL(5,2),
+
+     claim_accuracy DECIMAL(5,2),
+
+     cross_validation DECIMAL(5,2),
+
+     evidence_strength DECIMAL(5,2),
+
+     misinformation_risk DECIMAL(5,2),
+
+     completeness DECIMAL(5,2),
+
+     confidence_lower DECIMAL(5,2),
+
+     confidence_upper DECIMAL(5,2),
+
+     risk_level VARCHAR(20) NOT NULL,
+
+     verification_status VARCHAR(30),
+
+     publication_recommendation TEXT,
+
+     model_version VARCHAR(20),
+
+     calculated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+);
+
+
+
+CREATE INDEX idx_confidence_story ON confidence_scores(story_id, calculated_at DESC);
+
+CREATE INDEX idx_confidence_risk ON confidence_scores(risk_level);
+
+
+
+-- Verification History
+
+CREATE TABLE verification_history (
+
+     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+     story_id UUID NOT NULL,
+
+     claim_id UUID,
+
+     action VARCHAR(50) NOT NULL,
+
+     actor_id VARCHAR(100) NOT NULL,
+
+     actor_type VARCHAR(20) NOT NULL,
+
+     details JSONB DEFAULT '{}',
+
+     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+);
+
+
+
+CREATE INDEX idx_verification_history_story ON verification_history(story_id, created_at DESC);
+
+
+
+-- Truth Ledger (Immutable)
+
+CREATE TABLE truth_ledger (
+
+     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+     entry_id VARCHAR(64) UNIQUE NOT NULL,
+
+     previous_hash VARCHAR(64) NOT NULL,
+
+     entry_hash VARCHAR(64) NOT NULL,
+
+      target_type VARCHAR(50) NOT NULL,
+
+      target_id VARCHAR(100) NOT NULL,
+
+      action VARCHAR(50) NOT NULL,
+
+      actor_id VARCHAR(100) NOT NULL,
+
+      actor_type VARCHAR(20) NOT NULL,
+
+      before_state JSONB,
+
+      after_state JSONB,
+
+      evidence JSONB,
+
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+);
+
+
+
+-- Prevent modifications to ledger
+
+CREATE RULE ledger_no_update AS ON UPDATE TO truth_ledger DO INSTEAD NOTHING;
+
+CREATE RULE ledger_no_delete AS ON DELETE TO truth_ledger DO INSTEAD NOTHING;
+
+
+
+CREATE INDEX idx_ledger_target ON truth_ledger(target_type, target_id, created_at DESC);
+
+CREATE INDEX idx_ledger_hash ON truth_ledger(entry_hash);
+
+```
+
+
+
+11.2 MongoDB Collections
+
+
+
+```json
+
+// evidence_documents collection
+
+{
+
+      "_id": ObjectId,
+
+      "evidence_id": "uuid-string",
+
+    "claim_id": "uuid-string",
+
+    "evidence_type": "WEB_PAGE | API_RESPONSE | KNOWLEDGE_GRAPH | EXPERT_CITATION",
+
+    "content": {
+
+         "text": "Full evidence text",
+
+         "url": "Source URL",
+
+         "captured_at": "ISO datetime",
+
+         "screenshot_url": "S3 URL for screenshot",
+
+         "archived_url": "Archive.org URL"
+
+    },
+
+    "metadata": {
+
+         "source_name": "Source name",
+
+         "source_trust_score": 85.5,
+
+         "relevance_score": 0.95,
+
+         "retrieval_method": "API | CRAWL | KG_QUERY"
+
+    },
+
+    "hash": "SHA-256 of content",
+
+    "created_at": "ISO datetime"
+
+}
+
+
+
+// verification_reports collection
+
+{
+
+    "_id": ObjectId,
+
+    "report_id": "uuid-string",
+
+    "story_id": "uuid-string",
+
+    "verification_summary": {
+
+         "total_claims": 15,
+
+     "verified_true": 8,
+
+     "verified_false": 2,
+
+     "unverifiable": 5,
+
+     "overall_confidence": 72.5
+
+},
+
+"claim_results": [
+
+     {
+
+         "claim_id": "uuid",
+
+         "claim_text": "Claim text",
+
+         "verdict": "TRUE | FALSE | UNVERIFIABLE",
+
+         "confidence": 0.85,
+
+         "evidence_ids": ["ev-1", "ev-2"],
+
+         "method_results": {
+
+             "knowledge_graph": {"verdict": "TRUE", "confidence": 0.9},
+
+             "external_api": {"verdict": "TRUE", "confidence": 0.8},
+
+             "source_analysis": {"verdict": "LIKELY_TRUE", "confidence": 0.7}
+
+         }
+
+     }
+
+],
+
+"recommendations": {
+
+     "publication_ready": false,
+
+     "requires_human_review": true,
+
+     "human_review_reason": "Financial content requires verification"
+
+},
+
+"generated_at": "ISO datetime",
+
+"model_version": "2.0.0"
+
+}
+
+```
+
+
+
+11.3 Redis Usage
+
+
+
+```yaml
+
+redis_keys:
+
+    source_reputation_cache:
+
+      pattern: "reputation:{source_id}"
+
+      type: hash
+
+      fields: [overall_score, trust_tier, data_points]
+
+      ttl: 1 hour
+
+
+
+    verification_job_locks:
+
+      pattern: "lock:verification:{story_id}"
+
+      type: string
+
+      value: "job_id"
+
+      ttl: 5 minutes # Prevent duplicate verification
+
+
+
+    claim_cache:
+
+      pattern: "claim:{claim_hash}"
+
+      type: string (JSON)
+
+      value: serialized_verification_result
+
+      ttl: 24 hours
+
+
+
+    confidence_cache:
+
+      pattern: "confidence:{story_id}"
+
+      type: string (JSON)
+
+      ttl: 15 minutes
+
+
+
+ rate_limiting:
+
+      pattern: "ratelimit:verification:{source_id}"
+
+      type: counter
+
+      ttl: 1 minute
+
+
+
+ breaking_news_priority:
+
+      pattern: "priority:breaking:{story_id}"
+
+      type: string
+
+      value: "1"
+
+      ttl: 1 hour
+
+```
+
+
+
+---
+
+
+
+PART XII — APIS
+
+
+
+12.1 gRPC Service Definitions
+
+
+
+```protobuf
+
+// api/protobuf/truth_engine/v1/truth_engine.proto
+
+syntax = "proto3";
+
+package truth_engine.v1;
+
+service TruthEngineService {
+
+  // Source Intelligence
+
+  rpc GetSourceReputation(GetSourceReputationRequest) returns (SourceReputation);
+
+  rpc RecalculateReputation(RecalculateReputationRequest) returns (SourceReputation);
+
+  rpc BlacklistSource(BlacklistSourceRequest) returns (BlacklistSourceResponse);
+
+
+
+  // Source Verification
+
+  rpc AuthenticateSource(AuthenticateSourceRequest) returns (SourceAuthentication);
+
+  rpc VerifySourceIdentity(VerifySourceIdentityRequest) returns (SourceIdentityVerification);
+
+
+
+  // Claim Extraction & Verification
+
+  rpc ExtractClaims(ExtractClaimsRequest) returns (ExtractClaimsResponse);
+
+  rpc VerifyClaim(VerifyClaimRequest) returns (ClaimVerification);
+
+  rpc BatchVerifyClaims(BatchVerifyClaimsRequest) returns (stream ClaimVerification);
+
+
+
+  // Cross-Source Validation
+
+  rpc ValidateCrossSource(ValidateCrossSourceRequest) returns (CrossValidationResult);
+
+
+
+  // Confidence Scoring
+
+  rpc CalculateConfidence(CalculateConfidenceRequest) returns (StoryConfidence);
+
+  rpc RecalculateConfidence(RecalculateConfidenceRequest) returns (StoryConfidence);
+
+
+
+  // Misinformation Detection
+
+  rpc DetectMisinformation(DetectMisinformationRequest) returns
+(MisinformationAssessment);
+
+    // Editorial Decision
+
+    rpc MakeEditorialDecision(EditorialDecisionRequest) returns (EditorialDecision);
+
+    rpc RecordHumanDecision(RecordHumanDecisionRequest) returns (EditorialDecision);
+
+
+
+    // Truth Ledger
+
+    rpc GetProvenanceChain(GetProvenanceChainRequest) returns (ProvenanceChain);
+
+    rpc VerifyChainIntegrity(VerifyChainIntegrityRequest) returns (ChainVerification);
+
+
+
+    // Streaming
+
+  rpc StreamVerificationProgress(StreamVerificationRequest) returns (stream
+VerificationProgress);
+
+    rpc WatchConfidenceChanges(WatchConfidenceRequest) returns (stream StoryConfidence);
+
+}
+
+
+
+message CalculateConfidenceRequest {
+
+    string tenant_id = 1 [(buf.validate.field).string.uuid = true];
+
+    string story_id = 2 [(buf.validate.field).string.uuid = true];
+
+    ConfidenceOptions options = 3;
+
+    string idempotency_key = 4;
+
+}
+
+
+
+message ConfidenceOptions {
+
+    bool deep_analysis = 1;
+
+    bool include_misinformation_check = 2;
+
+    double custom_auto_publish_threshold = 3;
+
+}
+
+
+
+message StoryConfidence {
+
+    string story_id = 1;
+
+    double overall_confidence = 2;
+
+    DimensionalScores dimensional_scores = 3;
+
+    ConfidenceInterval confidence_interval = 4;
+
+    string verification_status = 5;
+
+    string risk_level = 6;
+
+    string publication_recommendation = 7;
+
+    repeated ConfidenceFactor factors = 8;
+
+    int64 calculated_at = 9;
+
+}
+
+
+
+message DimensionalScores {
+
+    double source_trust = 1;
+
+    double claim_accuracy = 2;
+
+    double cross_validation = 3;
+
+    double evidence_strength = 4;
+
+    double misinformation_risk = 5;
+
+    double completeness = 6;
+
+}
+
+
+
+message ConfidenceInterval {
+
+    double lower = 1;
+
+    double upper = 2;
+
+      double width = 3;
+
+}
+
+```
+
+
+
+---
+
+
+
+PART XIII — KAFKA EVENTS
+
+
+
+13.1 Event Topics
+
+
+
+```yaml
+
+topics:
+
+    truth_engine.source.verified:
+
+      partitions: 6
+
+      replication_factor: 3
+
+      retention_ms: 2592000000
+
+      description: "Source authentication completed"
+
+
+
+    truth_engine.source.reputation.updated:
+
+      partitions: 6
+
+      replication_factor: 3
+
+      retention_ms: 2592000000
+
+      description: "Source reputation score changed"
+
+
+
+    truth_engine.claims.extracted:
+
+      partitions: 12
+
+ replication_factor: 3
+
+ retention_ms: 604800000
+
+ description: "Claims extracted from content"
+
+
+
+truth_engine.claim.verified:
+
+ partitions: 12
+
+ replication_factor: 3
+
+ retention_ms: 2592000000
+
+ description: "Individual claim verification completed"
+
+
+
+truth_engine.evidence.added:
+
+ partitions: 12
+
+ replication_factor: 3
+
+ retention_ms: 2592000000
+
+ description: "New evidence added to claim"
+
+
+
+truth_engine.confidence.updated:
+
+ partitions: 12
+
+ replication_factor: 3
+
+ retention_ms: 604800000
+
+ description: "Story confidence score updated"
+
+
+
+truth_engine.misinfo.detected:
+
+ partitions: 6
+
+ replication_factor: 3
+
+ retention_ms: 2592000000
+
+      description: "Misinformation detected"
+
+
+
+ truth_engine.editorial.decision:
+
+      partitions: 6
+
+      replication_factor: 3
+
+      retention_ms: 2592000000
+
+      description: "Editorial decision made"
+
+
+
+ truth_engine.story.approved:
+
+      partitions: 6
+
+      replication_factor: 3
+
+      retention_ms: 604800000
+
+      description: "Story approved for publication"
+
+
+
+ truth_engine.story.rejected:
+
+      partitions: 6
+
+      replication_factor: 3
+
+      retention_ms: 604800000
+
+      description: "Story rejected"
+
+
+
+ truth_engine.human.review.requested:
+
+      partitions: 6
+
+      replication_factor: 3
+
+      retention_ms: 604800000
+
+      description: "Human review requested"
+
+```
+
+13.2 Event Definitions
+
+
+
+```go
+
+// ClaimVerifiedEvent
+
+type ClaimVerifiedEvent struct {
+
+    BaseEvent
+
+    ClaimID     string `json:"claim_id"`
+
+    StoryID     string `json:"story_id"`
+
+    Verdict     string `json:"verdict"`
+
+    Confidence float64 `json:"confidence"`
+
+    EvidenceCount int `json:"evidence_count"`
+
+    MethodsUsed []string `json:"methods_used"`
+
+    VerifiedAt time.Time `json:"verified_at"`
+
+}
+
+
+
+// ConfidenceUpdatedEvent
+
+type ConfidenceUpdatedEvent struct {
+
+    BaseEvent
+
+    StoryID          string `json:"story_id"`
+
+    OverallConfidence float64 `json:"overall_confidence"`
+
+    PreviousConfidence float64 `json:"previous_confidence"`
+
+    RiskLevel        string `json:"risk_level"`
+
+    PublicationRecommendation string `json:"publication_recommendation"`
+
+    RequiresHumanReview bool `json:"requires_human_review"`
+
+    UpdatedAt          time.Time `json:"updated_at"`
+
+}
+
+
+
+// MisinfoDetectedEvent
+
+type MisinfoDetectedEvent struct {
+
+      BaseEvent
+
+      StoryID      string `json:"story_id"`
+
+      RiskScore     float64 `json:"risk_score"`
+
+      RiskLevel     string `json:"risk_level"`
+
+      DetectedPatterns []string `json:"detected_patterns"`
+
+      RecommendedAction string `json:"recommended_action"`
+
+      DetectedAt      time.Time `json:"detected_at"`
+
+}
+
+
+
+// EditorialDecisionEvent
+
+type EditorialDecisionEvent struct {
+
+      BaseEvent
+
+      StoryID     string `json:"story_id"`
+
+      Decision string `json:"decision"`
+
+      Reason      string `json:"reason"`
+
+      DecidedBy string `json:"decided_by"` // SYSTEM, HUMAN
+
+      ReviewerID string `json:"reviewer_id,omitempty"`
+
+      DecidedAt time.Time `json:"decided_at"`
+
+}
+
+```
+
+
+
+---
+
+PART XIV — SECURITY
+
+
+
+```yaml
+
+security:
+
+ zero_trust:
+
+  service_identity: SPIFFE/SPIRE
+
+  mTLS: Required between all services
+
+  authorization: OPA policies at every verification step
+
+
+
+ evidence_integrity:
+
+  hashing: SHA-256 for all evidence
+
+  signing: Ed25519 signatures on verification results
+
+  chain_verification: Merkle tree for batch verification
+
+
+
+ access_control:
+
+  rbac_roles:
+
+   TRUTH_ENGINE_ADMIN:
+
+    - manage_sources
+
+    - override_verification
+
+    - manage_blacklists
+
+   TRUTH_ENGINE_EDITOR:
+
+    - review_verification
+
+    - approve_stories
+
+    - reject_stories
+
+    - request_reverification
+
+       TRUTH_ENGINE_AI:
+
+        - verify_claims
+
+        - calculate_confidence
+
+        - detect_misinformation
+
+       TRUTH_ENGINE_VIEWER:
+
+        - read_verification_results
+
+        - read_confidence_scores
+
+
+
+ audit:
+
+      immutable_ledger: All verification decisions
+
+      tamper_detection: Chain verification available
+
+      retention: 7 years minimum
+
+```
+
+
+
+---
+
+
+
+PART XV — OBSERVABILITY
+
+
+
+```yaml
+
+metrics:
+
+ source_intelligence:
+
+      - sources_evaluated_total
+
+      - source_reputation_changes
+
+      - blacklist_additions_total
+
+
+
+ claim_verification:
+
+ - claims_verified_total{verdict}
+
+ - verification_duration_seconds
+
+ - evidence_gathered_total
+
+ - verification_methods_used{method}
+
+
+
+cross_validation:
+
+ - cross_validations_total{consensus_level}
+
+ - independent_sources_found
+
+ - conflicts_detected_total
+
+
+
+confidence:
+
+ - confidence_calculations_total
+
+ - confidence_distribution{bucket}
+
+ - auto_approve_rate
+
+ - human_review_rate
+
+
+
+misinformation:
+
+ - misinformation_detected_total{risk_level}
+
+ - hallucination_detected_total
+
+ - false_positive_rate
+
+ - false_negative_rate
+
+
+
+editorial:
+
+ - editorial_decisions_total{action}
+
+ - human_review_queue_depth{priority}
+
+ - human_review_response_time_seconds
+
+slos:
+
+ source_verification:
+
+  availability: 99.95%
+
+  latency_p99: 10s
+
+
+
+ claim_verification:
+
+  availability: 99.9%
+
+  latency_p99: 30s (standard), 5s (breaking)
+
+  accuracy: >99.5%
+
+
+
+ confidence_scoring:
+
+  availability: 99.95%
+
+  latency_p99: 5s
+
+
+
+ editorial_decision:
+
+  availability: 99.9%
+
+  latency_p99: 2s (automated), 5min (human review assignment)
+
+
+

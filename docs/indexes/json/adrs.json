@@ -1311,6 +1311,398 @@
       "related_apis_events_databases": [],
       "supersedes": "Pending reconciliation",
       "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-094",
+      "title": "ADR-ENG-001 — Monorepo with Domain-Based Structure",
+      "status": "Extracted from Batch 3 — Pending ADR/SDR/RDR Reconciliation",
+      "decision_area": "Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:152905",
+      "related_volumes": [
+        "Volume 21"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Binding only after global reconciliation and implementation planning approval."
+    },
+    {
+      "id": "ADR-095",
+      "title": "ADR-ENG-002 — Trunk-Based Development",
+      "status": "Extracted from Batch 3 — Pending ADR/SDR/RDR Reconciliation",
+      "decision_area": "Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:152923",
+      "related_volumes": [
+        "Volume 21"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Binding only after global reconciliation and implementation planning approval."
+    },
+    {
+      "id": "ADR-096",
+      "title": "ADR-ENG-003 — AI-First Development Workflow",
+      "status": "Extracted from Batch 3 — Pending ADR/SDR/RDR Reconciliation",
+      "decision_area": "Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:152940",
+      "related_volumes": [
+        "Volume 21"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Binding only after global reconciliation and implementation planning approval."
+    },
+    {
+      "id": "ADR-097",
+      "title": "ADR-ENG-004 — Contract-First API Development",
+      "status": "Extracted from Batch 3 — Pending ADR/SDR/RDR Reconciliation",
+      "decision_area": "Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:152954",
+      "related_volumes": [
+        "Volume 21"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Binding only after global reconciliation and implementation planning approval."
+    },
+    {
+      "id": "ADR-098",
+      "title": "RDR-001 — Monorepo with Domain-Based Structure",
+      "status": "Extracted from Batch 3 — Pending ADR/SDR/RDR Reconciliation",
+      "decision_area": "Repository",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:157109",
+      "related_volumes": [
+        "Volume 22"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Binding only after global reconciliation and implementation planning approval."
+    },
+    {
+      "id": "ADR-099",
+      "title": "RDR-002 — Go Workspaces + Python Monorepo Tools",
+      "status": "Extracted from Batch 3 — Pending ADR/SDR/RDR Reconciliation",
+      "decision_area": "Repository",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:157128",
+      "related_volumes": [
+        "Volume 22"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Binding only after global reconciliation and implementation planning approval."
+    },
+    {
+      "id": "ADR-100",
+      "title": "RDR-003 — Contract-First with Centralized API Definitions",
+      "status": "Extracted from Batch 3 — Pending ADR/SDR/RDR Reconciliation",
+      "decision_area": "Repository",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:157146",
+      "related_volumes": [
+        "Volume 22"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Binding only after global reconciliation and implementation planning approval."
+    },
+    {
+      "id": "ADR-101",
+      "title": "RDR-004 — Template-Based Service Scaffolding",
+      "status": "Extracted from Batch 3 — Pending ADR/SDR/RDR Reconciliation",
+      "decision_area": "Repository",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:157165",
+      "related_volumes": [
+        "Volume 22"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Binding only after global reconciliation and implementation planning approval."
+    },
+    {
+      "id": "ADR-102",
+      "title": "SDR-IDENT-001 — Argon2id for Password Hashing",
+      "status": "Extracted from Batch 3 — Pending ADR/SDR/RDR Reconciliation",
+      "decision_area": "Identity",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:161187",
+      "related_volumes": [
+        "Volume 23"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Binding only after global reconciliation and implementation planning approval."
+    },
+    {
+      "id": "ADR-103",
+      "title": "SDR-IDENT-002 — JWT with Asymmetric Signing",
+      "status": "Extracted from Batch 3 — Pending ADR/SDR/RDR Reconciliation",
+      "decision_area": "Identity",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:161203",
+      "related_volumes": [
+        "Volume 23"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Binding only after global reconciliation and implementation planning approval."
+    },
+    {
+      "id": "ADR-104",
+      "title": "SDR-IDENT-003 — Row-Level Security for Multi-Tenancy",
+      "status": "Extracted from Batch 3 — Pending ADR/SDR/RDR Reconciliation",
+      "decision_area": "Identity",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:161220",
+      "related_volumes": [
+        "Volume 23"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Binding only after global reconciliation and implementation planning approval."
+    },
+    {
+      "id": "ADR-105",
+      "title": "SDR-IDENT-004 — SPIFFE/SPIRE for Service Identity",
+      "status": "Extracted from Batch 3 — Pending ADR/SDR/RDR Reconciliation",
+      "decision_area": "Identity",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:161237",
+      "related_volumes": [
+        "Volume 23"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Binding only after global reconciliation and implementation planning approval."
+    },
+    {
+      "id": "ADR-106",
+      "title": "SDR-STG-001 — Neo4j as Primary Story Graph Database",
+      "status": "Extracted from Batch 3 — Pending ADR/SDR/RDR Reconciliation",
+      "decision_area": "Story Graph",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:186200",
+      "related_volumes": [
+        "Volume 27"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Binding only after global reconciliation and implementation planning approval."
+    },
+    {
+      "id": "ADR-107",
+      "title": "SDR-STG-002 — Event-Sourced Story Versioning",
+      "status": "Extracted from Batch 3 — Pending ADR/SDR/RDR Reconciliation",
+      "decision_area": "Story Graph",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:186222",
+      "related_volumes": [
+        "Volume 27"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Binding only after global reconciliation and implementation planning approval."
+    },
+    {
+      "id": "ADR-108",
+      "title": "SDR-STG-003 — pgvector with Neo4j Graph Traversal",
+      "status": "Extracted from Batch 3 — Pending ADR/SDR/RDR Reconciliation",
+      "decision_area": "Story Graph",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:186242",
+      "related_volumes": [
+        "Volume 27"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Binding only after global reconciliation and implementation planning approval."
+    },
+    {
+      "id": "ADR-109",
+      "title": "SDR-STG-004 — CQRS for Story Read/Write Separation",
+      "status": "Extracted from Batch 3 — Pending ADR/SDR/RDR Reconciliation",
+      "decision_area": "Story Graph",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:186258",
+      "related_volumes": [
+        "Volume 27"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Binding only after global reconciliation and implementation planning approval."
+    },
+    {
+      "id": "ADR-110",
+      "title": "SDR-DST-001 — Connector Plugin Architecture with Hot-Swap",
+      "status": "Extracted from Batch 3 — Pending ADR/SDR/RDR Reconciliation",
+      "decision_area": "Distribution",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:191989",
+      "related_volumes": [
+        "Volume 28"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Binding only after global reconciliation and implementation planning approval."
+    },
+    {
+      "id": "ADR-111",
+      "title": "SDR-DST-002 — Priority-Based Multi-Queue Architecture",
+      "status": "Extracted from Batch 3 — Pending ADR/SDR/RDR Reconciliation",
+      "decision_area": "Distribution",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:192009",
+      "related_volumes": [
+        "Volume 28"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Binding only after global reconciliation and implementation planning approval."
+    },
+    {
+      "id": "ADR-112",
+      "title": "SDR-DST-003 — Idempotent Publishing with Content Hashing",
+      "status": "Extracted from Batch 3 — Pending ADR/SDR/RDR Reconciliation",
+      "decision_area": "Distribution",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:192025",
+      "related_volumes": [
+        "Volume 28"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Binding only after global reconciliation and implementation planning approval."
+    },
+    {
+      "id": "ADR-113",
+      "title": "SDR-DST-004 — Event-Sourced Publication State",
+      "status": "Extracted from Batch 3 — Pending ADR/SDR/RDR Reconciliation",
+      "decision_area": "Distribution",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:192043",
+      "related_volumes": [
+        "Volume 28"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Binding only after global reconciliation and implementation planning approval."
+    },
+    {
+      "id": "ADR-114",
+      "title": "SDR-ANA-001 — Unified Analytics Data Lake with Iceberg",
+      "status": "Extracted from Batch 3 — Pending ADR/SDR/RDR Reconciliation",
+      "decision_area": "Analytics",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:195931",
+      "related_volumes": [
+        "Volume 29"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Binding only after global reconciliation and implementation planning approval."
+    },
+    {
+      "id": "ADR-115",
+      "title": "SDR-ANA-002 — Real-Time + Batch Lambda Architecture",
+      "status": "Extracted from Batch 3 — Pending ADR/SDR/RDR Reconciliation",
+      "decision_area": "Analytics",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:195951",
+      "related_volumes": [
+        "Volume 29"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Binding only after global reconciliation and implementation planning approval."
+    },
+    {
+      "id": "ADR-116",
+      "title": "SDR-ANA-003 — Feature Store for ML Features",
+      "status": "Extracted from Batch 3 — Pending ADR/SDR/RDR Reconciliation",
+      "decision_area": "Analytics",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:195967",
+      "related_volumes": [
+        "Volume 29"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Binding only after global reconciliation and implementation planning approval."
+    },
+    {
+      "id": "ADR-117",
+      "title": "SDR-ANA-004 — Closed-Loop AI Optimization",
+      "status": "Extracted from Batch 3 — Pending ADR/SDR/RDR Reconciliation",
+      "decision_area": "Analytics",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:195986",
+      "related_volumes": [
+        "Volume 29"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Binding only after global reconciliation and implementation planning approval."
+    },
+    {
+      "id": "ADR-118",
+      "title": "ADR-RUN-001 — LangGraph-Inspired Workflow Engine",
+      "status": "Extracted from Batch 3 — Pending ADR/SDR/RDR Reconciliation",
+      "decision_area": "Runtime",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:200062",
+      "related_volumes": [
+        "Volume 30"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Binding only after global reconciliation and implementation planning approval."
+    },
+    {
+      "id": "ADR-119",
+      "title": "ADR-RUN-002 — Event-Sourced Workflow State with Kafka",
+      "status": "Extracted from Batch 3 — Pending ADR/SDR/RDR Reconciliation",
+      "decision_area": "Runtime",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:200085",
+      "related_volumes": [
+        "Volume 30"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Binding only after global reconciliation and implementation planning approval."
+    },
+    {
+      "id": "ADR-120",
+      "title": "ADR-RUN-003 — Service Mesh with Istio Ambient for Zero-Trust",
+      "status": "Extracted from Batch 3 — Pending ADR/SDR/RDR Reconciliation",
+      "decision_area": "Runtime",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:200104",
+      "related_volumes": [
+        "Volume 30"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Binding only after global reconciliation and implementation planning approval."
+    },
+    {
+      "id": "ADR-121",
+      "title": "ADR-RUN-004 — Multi-Region Active-Active with Global Traffic Management",
+      "status": "Extracted from Batch 3 — Pending ADR/SDR/RDR Reconciliation",
+      "decision_area": "Runtime",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:200121",
+      "related_volumes": [
+        "Volume 30"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Binding only after global reconciliation and implementation planning approval."
     }
   ]
 }

@@ -1,0 +1,5827 @@
+VOLUME 26: CONTENT FACTORY CODE SPECIFICATION
+
+
+
+Document Reference: AGBA-NEXUS-VOL26-CODE-1.0
+
+Status: Implementation-Ready — Production Specification
+
+Phase: 3 — Production Engineering Specifications
+
+Approved Baseline: Volumes 1–25 (Immutable)
+
+Purpose: AI Content Generation Pipeline — Story Transformation
+
+Quality Level: US$50M Enterprise Platform Standard
+
+
+
+---
+
+
+
+SERVICE DECISION RECORDS (SDR)
+
+SDR-CF-001: Fact-Locking Before Generation
+
+
+
+Decision: All verified facts, quotes, and statistics are extracted into an immutable LockedFactSet
+before any content generation begins. All generation prompts include the locked facts as
+constraints with explicit "DO NOT MODIFY" instructions.
+
+Rationale: Prevents AI hallucination and ensures factual consistency across all content variants.
+The LockedFactSet serves as the single source of truth for all generation.
+
+Alternatives: Real-time fact verification during generation (rejected — latency, inconsistency);
+post-generation fact checking (rejected — higher revision cost).
+
+Trade-offs: Additional preprocessing step, but eliminates hallucination risk.
+
+
+
+SDR-CF-002: Multi-Pass Generation Pipeline
+
+
+
+Decision: Content generation uses a three-pass architecture: structural outline (Pass 1), full draft
+(Pass 2), editorial refinement (Pass 3). Each pass is scored by an editorial quality model before
+proceeding.
+
+Rationale: Single-pass generation produces inconsistent quality. Multi-pass allows early
+detection of structural issues and progressive refinement.
+
+Alternatives: Single-pass generation (rejected — quality issues); iterative human-AI
+collaboration (rejected — not scalable).
+
+Trade-offs: Higher token usage (3x), but significantly higher quality output.
+
+
+
+SDR-CF-003: Platform-Native Generation (Not Translation)
+
+
+
+Decision: Platform-specific content (social posts, video scripts) is generated natively using
+platform-aware prompts rather than generating once and adapting.
+
+Rationale: True platform-native content requires different narrative structures, tones, and
+conventions. Translation/adaptation produces inferior results.
+
+Alternatives: Generate canonical version, then adapt (partially adopted for efficiency in breaking
+news MVP).
+
+Trade-offs: More LLM calls, but significantly better platform engagement.
+
+
+
+SDR-CF-004: Model Tiering for Cost Optimization
+
+
+
+Decision: Route generation tasks to models based on content criticality: Claude-3-Opus for full
+articles and sensitive content, Claude-3-Sonnet for standard generation, Claude-3-Haiku for
+headlines/SEO/social posts.
+
+Rationale: Full articles require highest quality; headlines and social posts can use faster, cheaper
+models. Tiering reduces costs by 40-60% without quality degradation.
+
+Alternatives: Single model for everything (rejected — cost prohibitive at scale); open-source
+only (rejected — quality gap).
+
+Trade-offs: Multiple model management, but significant cost savings.
+
+
+
+---
+
+
+
+PART I — CONTENT FACTORY ARCHITECTURE
+
+
+
+1.1 Position in the AI Newsroom
+
+
+
+```
+
+AGBOFA NEXUS AI — CONTENT FACTORY POSITION:
+
+
+
+┌─────────────────────────────────────────────────────────────────────────────
+┐
+
+│              AI NEWSROOM PIPELINE                          │
+
+├
+─────────────────────────────────────────────────────────────────────────────
+┤
+
+│                                          │
+
+│ ┌─────────────────┐                                   │
+
+│ │ TRUTH       │                                  │
+
+│ │ ENGINE      │──    Verified stories with LockedFactSet        │
+
+│ │ (Vol 25)   │                                   │
+
+│ └────────┬────────┘                                       │
+
+│     │                                     │
+
+│     ▼                                        │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │            CONTENT FACTORY (Vol 26)                     ││
+
+│ │                                        ││
+
+│ │ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────┐ │ │
+
+│ │ │ CONTENT │ │ ARTICLE │ │MULTIMEDIA│ │ PLATFORM │ │ QUALITY │ │ │
+
+│ │ │ASSEMBLER │      │GENERATOR │     │ FACTORY │      │ ADAPTER │   │ ASSURANCE │ │
+│
+
+│ │ └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────────┘ │ │
+
+│ │                                        ││
+
+│ │ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────┐ │ │
+
+│ │ │ HEADLINE │ │ SUMMARY │ │ SEO │ │ BRAND │ │ TRANSLATION │ │ │
+
+│ │ │ ENGINE │ │GENERATOR │ │ ENGINE │ │ VOICE │ │ SERVICE │ │ │
+
+│ │ └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────────┘ │ │
+
+│ │                                        ││
+
+│ │ ┌─────────────────────────────────────────────────────────────────────┐ │ │
+
+│ │ │              CONTENT PACKAGING SERVICE                       │││
+
+│ │ └─────────────────────────────────────────────────────────────────────┘ │ │
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│          │                                        │
+
+│          ▼                                            │
+
+│ ┌─────────────────┐            ┌─────────────────┐                        │
+
+│ │ COMPLIANCE           │     │ DISTRIBUTION │                     │
+
+│ │ GATEKEEPER           │──     │ ENGINE       │                    │
+
+│ │ (Vol 16)         │   │ (Vol 17)   │                     │
+
+│ └─────────────────┘            └─────────────────┘                        │
+
+└─────────────────────────────────────────────────────────────────────────────
+┘
+
+```
+
+
+
+1.2 Service Inventory
+
+
+
+```yaml
+
+content_factory_services:
+
+ content_assembler:
+
+      id: SVC-CF-CAS
+
+      runtime: Golang
+
+      port: 9301
+
+      description: "Story intake, fact locking, content planning, generation orchestration"
+
+
+
+ article_generator:
+
+ id: SVC-CF-ARG
+
+ runtime: Python (LLM) + Golang (orchestration)
+
+ port: 9302
+
+ description: "Long-form article generation, multi-pass writing, editorial refinement"
+
+
+
+headline_engine:
+
+ id: SVC-CF-HDL
+
+ runtime: Python (LLM)
+
+ port: 9303
+
+ description: "Headline generation, variant creation, A/B testing, click optimization"
+
+
+
+summary_generator:
+
+ id: SVC-CF-SUM
+
+ runtime: Python (LLM)
+
+ port: 9304
+
+ description: "Multi-length summary generation, platform-specific summaries"
+
+
+
+seo_engine:
+
+ id: SVC-CF-SEO
+
+ runtime: Golang + Python
+
+ port: 9305
+
+ description: "SEO metadata, structured data, keyword optimization"
+
+
+
+brand_voice:
+
+ id: SVC-CF-BRV
+
+ runtime: Python (NLP)
+
+ port: 9306
+
+ description: "Tone enforcement, style guide compliance, readability optimization"
+
+
+
+translation_service:
+
+ id: SVC-CF-TRN
+
+ runtime: Python (LLM)
+
+ port: 9307
+
+ description: "Multi-language translation, localization, cultural adaptation"
+
+
+
+multimedia_factory:
+
+ id: SVC-CF-MMF
+
+ runtime: Python (LLM)
+
+ port: 9308
+
+ description: "Video scripts, podcast scripts, image prompts, infographic data"
+
+
+
+social_content_generator:
+
+ id: SVC-CF-SOC
+
+ runtime: Golang + Python
+
+ port: 9309
+
+ description: "Platform-native social media content generation"
+
+
+
+content_packager:
+
+ id: SVC-CF-PKG
+
+ runtime: Golang
+
+ port: 9310
+
+ description: "Content package assembly for Distribution Engine"
+
+ quality_assurance:
+
+      id: SVC-CF-QAS
+
+      runtime: Python (ML/NLP)
+
+      port: 9311
+
+      description: "AI quality checks, hallucination detection, plagiarism detection"
+
+```
+
+
+
+1.3 Content Generation State Machine
+
+
+
+```
+
+CONTENT GENERATION LIFECYCLE:
+
+
+
+                   ┌──────────┐
+
+                   │ STORY │ Verified story received
+
+                   │ RECEIVED │ from Truth Engine
+
+                   └────┬─────┘
+
+                     │
+
+               ┌─────────▼─────────┐
+
+               │ FACT LOCKING │ Extract immutable facts
+
+               └────────┬──────────┘
+
+                     │
+
+               ┌────────▼────────┐
+
+               │ PLANNING       │ Determine content types, formats
+
+               └────────┬────────┘
+
+                     │
+
+   ┌───────────────────┼───────────────────┐
+
+   │           │           │
+
+┌──────▼──────┐ ┌──────▼──────┐ ┌──────▼──────┐
+
+│ ARTICLE │ │ MULTIMEDIA │ │ PLATFORM │
+
+│ GENERATION │ │ GENERATION │ │ ADAPTATION │
+
+└──────┬──────┘ └──────┬──────┘ └──────┬──────┘
+
+   │           │           │
+
+   └───────────────────┼───────────────────┘
+
+               │
+
+           ┌────────▼────────┐
+
+           │ QUALITY CHECK │
+
+           └────────┬────────┘
+
+               │
+
+       ┌──────────────┼──────────────┐
+
+       │       │       │
+
+  ┌──────▼──────┐ ┌─────▼─────┐ ┌─────▼─────┐
+
+  │ PASSED │ │ RETRY │ │ REJECTED │
+
+  └──────┬──────┘ └─────┬─────┘ └───────────┘
+
+       │       │
+
+       │   ┌────────▼────────┐
+
+       │   │ AUTO-CORRECT │──    Regenerate failed sections
+
+       │   └─────────────────┘
+
+       │
+
+  ┌──────▼──────┐
+
+  │ PACKAGING │
+
+  └──────┬──────┘
+
+          │
+
+      ┌──────▼──────┐
+
+      │ DISTRIBUTION│──   Distribution Engine (Vol 17)
+
+      │ HANDOFF │
+
+      └─────────────┘
+
+
+
+STATES:
+
+ STORY_RECEIVED → FACT_LOCKING → PLANNING → GENERATING → QUALITY_CHECK
+
+ → PASSED | RETRYING | REJECTED → PACKAGING → READY → DISTRIBUTED
+
+
+
+RETRY LOGIC:
+
+ QUALITY_CHECK failed → RETRYING (max 3 attempts)
+
+ RETRYING → Auto-correct specific issues → QUALITY_CHECK
+
+ After 3 failures → REJECTED (human review required)
+
+```
+
+
+
+---
+
+
+
+PART II — CONTENT ASSEMBLER SERVICE
+
+
+
+Service ID: SVC-CF-CAS
+
+Runtime: Golang 1.22+
+
+gRPC Port: 9301
+
+
+
+2.1 Domain Model
+
+```go
+
+// services/content-factory/content-assembler/internal/domain/model.go
+
+package domain
+
+
+
+// ContentJob represents a content generation job
+
+type ContentJob struct {
+
+    JobID         uuid.UUID     `json:"job_id"`
+
+    StoryID       uuid.UUID        `json:"story_id"`
+
+    TenantID       uuid.UUID        `json:"tenant_id"`
+
+    LockedFacts     *LockedFactSet `json:"locked_facts"`
+
+    GenerationPlan *GenerationPlan `json:"generation_plan"`
+
+    Status        JobStatus     `json:"status"`
+
+    ContentPackage *ContentPackage `json:"content_package,omitempty"`
+
+    CreatedAt       time.Time       `json:"created_at"`
+
+    UpdatedAt       time.Time        `json:"updated_at"`
+
+    CompletedAt       *time.Time       `json:"completed_at,omitempty"`
+
+}
+
+
+
+type JobStatus string
+
+const (
+
+    JobStatusReceived     JobStatus = "RECEIVED"
+
+    JobStatusPlanning     JobStatus = "PLANNING"
+
+    JobStatusGenerating JobStatus = "GENERATING"
+
+    JobStatusQualityCheck JobStatus = "QUALITY_CHECK"
+
+    JobStatusPassed      JobStatus = "PASSED"
+
+    JobStatusRetrying    JobStatus = "RETRYING"
+
+    JobStatusRejected         JobStatus = "REJECTED"
+
+    JobStatusPackaging JobStatus = "PACKAGING"
+
+    JobStatusReady            JobStatus = "READY"
+
+)
+
+
+
+// LockedFactSet contains immutable facts for generation
+
+type LockedFactSet struct {
+
+    LockID           string         `json:"lock_id"`
+
+    StoryID          string         `json:"story_id"`
+
+    LockedAt           time.Time           `json:"locked_at"`
+
+    CoreFacts          []LockedFact         `json:"core_facts"`
+
+    VerifiedClaims       []LockedClaim         `json:"verified_claims"`
+
+    AttributedQuotes []LockedQuote                `json:"attributed_quotes"`
+
+    Statistics       []LockedStatistic `json:"statistics"`
+
+    Entities         []LockedEntity        `json:"entities"`
+
+    Timeline          []LockedTimelineEvent `json:"timeline"`
+
+    SourceAttributions []SourceAttribution `json:"source_attributions"`
+
+    RequiredAttributions []string             `json:"required_attributions"`
+
+    ForbiddenPhrases []string                `json:"forbidden_phrases"`
+
+    Hash             string         `json:"hash"` // Cryptographic hash for integrity
+
+}
+
+
+
+type LockedFact struct {
+
+    FactID       string `json:"fact_id"`
+
+    FactText string `json:"fact_text"`
+
+    FactType string `json:"fact_type"`            // WHO, WHAT, WHERE, WHEN, WHY, HOW
+
+    MustInclude bool `json:"must_include"`
+
+    IsSensitive bool `json:"is_sensitive"`
+
+}
+
+
+
+type LockedQuote struct {
+
+    QuoteID         string `json:"quote_id"`
+
+    QuoteText        string `json:"quote_text"`         // VERBATIM — never alter
+
+    AttributedTo     string `json:"attributed_to"`
+
+    Attribution     string `json:"attribution"`       // Exact attribution text
+
+    CannotBeParaphrased bool `json:"cannot_be_paraphrased"`
+
+}
+
+
+
+// GenerationPlan determines what content to produce
+
+type GenerationPlan struct {
+
+    PlanID         uuid.UUID       `json:"plan_id"`
+
+    StoryID        uuid.UUID        `json:"story_id"`
+
+    StoryArchetype     StoryArchetype        `json:"story_archetype"`
+
+    ContentTypes       []ContentType      `json:"content_types"`
+
+    TargetPlatforms []string         `json:"target_platforms"`
+
+    TargetLanguages []string           `json:"target_languages"`
+
+    ToneProfile      ToneProfile       `json:"tone_profile"`
+
+    ModelTier        ModelTier         `json:"model_tier"`
+
+    Priority       GenerationPriority `json:"priority"`
+
+    CreatedAt        time.Time       `json:"created_at"`
+
+}
+
+type StoryArchetype string
+
+const (
+
+    ArchetypeBreakingNews StoryArchetype = "BREAKING_NEWS"
+
+    ArchetypeDevelopingStory StoryArchetype = "DEVELOPING_STORY"
+
+    ArchetypeFeatureAnalysis StoryArchetype = "FEATURE_ANALYSIS"
+
+    ArchetypeExplainer     StoryArchetype = "EXPLAINER"
+
+    ArchetypeHumanInterest StoryArchetype = "HUMAN_INTEREST"
+
+    ArchetypeInvestigative StoryArchetype = "INVESTIGATIVE"
+
+    ArchetypeLiveBlog      StoryArchetype = "LIVE_BLOG"
+
+)
+
+
+
+type ContentType string
+
+const (
+
+    CTLongArticle   ContentType = "LONG_ARTICLE"
+
+    CTShortArticle ContentType = "SHORT_ARTICLE"
+
+    CTBreakingUpdate ContentType = "BREAKING_UPDATE"
+
+    CTHeadline      ContentType = "HEADLINE"
+
+    CTSummary        ContentType = "SUMMARY"
+
+    CTSEOMetadata       ContentType = "SEO_METADATA"
+
+    CTVideoScript   ContentType = "VIDEO_SCRIPT"
+
+    CTPodcastScript ContentType = "PODCAST_SCRIPT"
+
+    CTSocialPost    ContentType = "SOCIAL_POST"
+
+    CTNewsletter    ContentType = "NEWSLETTER"
+
+    CTTranslation   ContentType = "TRANSLATION"
+
+)
+
+type ModelTier string
+
+const (
+
+      ModelTierCritical ModelTier = "CRITICAL" // Claude-3-Opus
+
+      ModelTierStandard ModelTier = "STANDARD" // Claude-3-Sonnet
+
+      ModelTierLightweight ModelTier = "LIGHTWEIGHT" // Claude-3-Haiku
+
+)
+
+
+
+type GenerationPriority string
+
+const (
+
+      PriorityBreaking GenerationPriority = "BREAKING" // <30s target
+
+      PriorityHigh    GenerationPriority = "HIGH"    // <2min target
+
+      PriorityStandard GenerationPriority = "STANDARD" // <5min target
+
+      PriorityBatch   GenerationPriority = "BATCH"    // No strict SLA
+
+)
+
+```
+
+
+
+2.2 Fact Locker Implementation
+
+
+
+```go
+
+// services/content-factory/content-assembler/internal/domain/fact_locker.go
+
+package domain
+
+
+
+// FactLocker extracts and cryptographically seals all verified facts
+
+type FactLocker struct {
+
+      truthEngine TruthEngineClient
+
+      storyGraph StoryGraphClient
+
+}
+
+
+
+// LockFacts creates an immutable fact set for generation
+
+func (fl *FactLocker) LockFacts(ctx context.Context, storyID uuid.UUID) (*LockedFactSet, error) {
+
+
+
+    // 1. Retrieve verified story from Truth Engine
+
+    verifiedStory, err := fl.truthEngine.GetVerifiedStory(ctx, storyID)
+
+    if err != nil {
+
+        return nil, fmt.Errorf("get verified story: %w", err)
+
+    }
+
+
+
+    // 2. Verify story has passed Truth Engine verification
+
+    if verifiedStory.VerificationStatus != "VERIFIED" {
+
+        return nil, ErrStoryNotVerified
+
+    }
+
+
+
+    locked := &LockedFactSet{
+
+        LockID: uuid.NewV7().String(),
+
+        StoryID: storyID,
+
+        LockedAt: time.Now(),
+
+    }
+
+
+
+    // 3. Extract core facts (5W1H)
+
+    locked.CoreFacts = fl.extractCoreFacts(verifiedStory)
+
+
+
+    // 4. Lock verified claims — MUST NOT be altered
+
+locked.VerifiedClaims = fl.lockClaims(verifiedStory.VerifiedClaims)
+
+
+
+// 5. Lock quotes VERBATIM
+
+locked.AttributedQuotes = fl.lockQuotes(verifiedStory.Quotes)
+
+
+
+// 6. Lock statistics with exact values
+
+locked.Statistics = fl.lockStatistics(verifiedStory.Statistics)
+
+
+
+// 7. Lock entity references with canonical names
+
+locked.Entities = fl.lockEntities(verifiedStory.Entities)
+
+
+
+// 8. Lock timeline events in chronological order
+
+locked.Timeline = fl.lockTimeline(verifiedStory.Timeline)
+
+
+
+// 9. Lock source attributions
+
+locked.SourceAttributions = fl.lockAttributions(verifiedStory.Sources)
+
+
+
+// 10. Generate required attributions based on sources
+
+locked.RequiredAttributions = fl.generateRequiredAttributions(verifiedStory)
+
+
+
+// 11. Generate forbidden phrases (clickbait, sensationalism)
+
+locked.ForbiddenPhrases = fl.generateForbiddenPhrases(verifiedStory)
+
+
+
+// 12. Calculate cryptographic hash for integrity verification
+
+locked.Hash = fl.calculateHash(locked)
+
+      return locked, nil
+
+}
+
+
+
+func (fl *FactLocker) lockQuotes(quotes []VerifiedQuote) []LockedQuote {
+
+      locked := make([]LockedQuote, len(quotes))
+
+      for i, q := range quotes {
+
+          locked[i] = LockedQuote{
+
+              QuoteID:        q.ID,
+
+              QuoteText:      q.Text,    // VERBATIM — exact text preserved
+
+              AttributedTo:    q.AttributedTo,
+
+              Attribution:    q.Attribution, // Exact attribution preserved
+
+              CannotBeParaphrased: true,         // CRITICAL: quotes cannot be paraphrased
+
+          }
+
+      }
+
+      return locked
+
+}
+
+
+
+func (fl *FactLocker) calculateHash(facts *LockedFactSet) string {
+
+      // Create canonical representation for hashing
+
+      data, _ := json.Marshal(facts.CoreFacts)
+
+      data = append(data, []byte(facts.LockedAt.String())...)
+
+
+
+      hash := sha256.Sum256(data)
+
+      return hex.EncodeToString(hash[:])
+
+}
+
+```
+
+2.3 Generation Planner
+
+
+
+```go
+
+// services/content-factory/content-assembler/internal/domain/planner.go
+
+package domain
+
+
+
+// GenerationPlanner determines what content to produce
+
+type GenerationPlanner struct {
+
+    archetypeRules map[StoryArchetype]ArchetypeRules
+
+}
+
+
+
+type ArchetypeRules struct {
+
+    DefaultContentTypes []ContentType
+
+    DefaultPlatforms []string
+
+    RecommendedTone      ToneProfile
+
+    ArticleLengthRange [2]int // Min, Max words
+
+    ModelTier      ModelTier
+
+    Priority     GenerationPriority
+
+    TimeTarget     time.Duration
+
+}
+
+
+
+var ArchetypeRulesConfig = map[StoryArchetype]ArchetypeRules{
+
+    ArchetypeBreakingNews: {
+
+      DefaultContentTypes: []ContentType{
+
+        CTShortArticle, CTHeadline, CTSummary, CTSocialPost,
+
+     },
+
+     DefaultPlatforms: []string{"website", "twitter", "facebook", "push"},
+
+     RecommendedTone: ToneProfile{Primary: "URGENT", Secondary: "INFORMATIVE"},
+
+     ArticleLengthRange: [2]int{200, 500},
+
+     ModelTier:        ModelTierCritical,
+
+     Priority:       PriorityBreaking,
+
+     TimeTarget:       30 * time.Second,
+
+},
+
+ArchetypeFeatureAnalysis: {
+
+     DefaultContentTypes: []ContentType{
+
+          CTLongArticle, CTHeadline, CTSummary, CTSEOMetadata,
+
+          CTVideoScript, CTPodcastScript, CTSocialPost, CTNewsletter,
+
+     },
+
+     DefaultPlatforms: []string{"website", "twitter", "facebook", "linkedin", "youtube"},
+
+     RecommendedTone: ToneProfile{Primary: "ANALYTICAL", Secondary: "ENGAGING"},
+
+     ArticleLengthRange: [2]int{800, 2000},
+
+     ModelTier:        ModelTierStandard,
+
+     Priority:       PriorityStandard,
+
+     TimeTarget:       5 * time.Minute,
+
+},
+
+ArchetypeExplainer: {
+
+     DefaultContentTypes: []ContentType{
+
+          CTLongArticle, CTHeadline, CTSummary, CTSEOMetadata,
+
+          CTVideoScript, CTSocialPost,
+
+     },
+
+     DefaultPlatforms: []string{"website", "twitter", "facebook", "youtube"},
+
+         RecommendedTone: ToneProfile{Primary: "EDUCATIONAL", Secondary: "CLEAR"},
+
+         ArticleLengthRange: [2]int{600, 1500},
+
+         ModelTier:        ModelTierStandard,
+
+         Priority:      PriorityStandard,
+
+         TimeTarget:       3 * time.Minute,
+
+    },
+
+    ArchetypeLiveBlog: {
+
+         DefaultContentTypes: []ContentType{
+
+              CTBreakingUpdate, CTHeadline, CTSocialPost,
+
+         },
+
+         DefaultPlatforms: []string{"website", "twitter"},
+
+         RecommendedTone: ToneProfile{Primary: "LIVE", Secondary: "CONCISE"},
+
+         ArticleLengthRange: [2]int{50, 200},
+
+         ModelTier:        ModelTierLightweight,
+
+         Priority:      PriorityHigh,
+
+         TimeTarget:       1 * time.Minute,
+
+    },
+
+}
+
+
+
+// CreatePlan generates a content generation plan for a story
+
+func (gp *GenerationPlanner) CreatePlan(
+
+    ctx context.Context,
+
+    story *VerifiedStory,
+
+    lockedFacts *LockedFactSet,
+
+    overrides *PlanOverrides,
+
+) (*GenerationPlan, error) {
+
+// Determine story archetype
+
+archetype := gp.classifyArchetype(story)
+
+
+
+// Get archetype rules
+
+rules := ArchetypeRulesConfig[archetype]
+
+
+
+plan := &GenerationPlan{
+
+    PlanID:        uuid.NewV7(),
+
+    StoryID:       story.ID,
+
+    StoryArchetype: archetype,
+
+    ContentTypes: rules.DefaultContentTypes,
+
+    TargetPlatforms: rules.DefaultPlatforms,
+
+    TargetLanguages: []string{story.Language}, // Source language default
+
+    ToneProfile:     rules.RecommendedTone,
+
+    ModelTier:       rules.ModelTier,
+
+    Priority:      rules.Priority,
+
+    CreatedAt:       time.Now(),
+
+}
+
+
+
+// Apply overrides
+
+if overrides != nil {
+
+    if len(overrides.AdditionalContentTypes) > 0 {
+
+        plan.ContentTypes = append(plan.ContentTypes, overrides.AdditionalContentTypes...)
+
+    }
+
+    if len(overrides.TargetLanguages) > 0 {
+
+            plan.TargetLanguages = append(plan.TargetLanguages, overrides.TargetLanguages...)
+
+        }
+
+        if overrides.ModelTier != "" {
+
+            plan.ModelTier = overrides.ModelTier
+
+        }
+
+    }
+
+
+
+    // For breaking news, add translation if global story
+
+    if archetype == ArchetypeBreakingNews && story.GeographicScope == "GLOBAL" {
+
+        plan.TargetLanguages = append(plan.TargetLanguages, "es", "fr", "ar", "zh")
+
+    }
+
+
+
+    return plan, nil
+
+}
+
+
+
+func (gp *GenerationPlanner) classifyArchetype(story *VerifiedStory) StoryArchetype {
+
+    switch {
+
+    case story.State == "BREAKING" && time.Since(story.CreatedAt) < 2*time.Hour:
+
+        return ArchetypeBreakingNews
+
+    case story.State == "DEVELOPING":
+
+        return ArchetypeDevelopingStory
+
+    case story.Category == "EXPLAINER" || story.Category == "SCIENCE":
+
+        return ArchetypeExplainer
+
+    case story.Category == "INVESTIGATIVE":
+
+        return ArchetypeInvestigative
+
+    case story.Category == "HUMAN_INTEREST":
+
+          return ArchetypeHumanInterest
+
+      case story.IsLiveBlog:
+
+          return ArchetypeLiveBlog
+
+      default:
+
+          return ArchetypeFeatureAnalysis
+
+      }
+
+}
+
+```
+
+
+
+2.4 Content Job Orchestrator
+
+
+
+```go
+
+// services/content-factory/content-assembler/internal/application/orchestrator.go
+
+package application
+
+
+
+// ContentOrchestrator coordinates the entire content generation pipeline
+
+type ContentOrchestrator struct {
+
+      factLocker     *domain.FactLocker
+
+      planner       *domain.GenerationPlanner
+
+      articleGen     ArticleGeneratorClient
+
+      headlineGen      HeadlineGeneratorClient
+
+      summaryGen        SummaryGeneratorClient
+
+      seoEngine       SEOEngineClient
+
+      multimediaFactory MultimediaFactoryClient
+
+      socialGen      SocialContentGeneratorClient
+
+      translationSvc TranslationServiceClient
+
+    brandVoice       BrandVoiceClient
+
+    qualityAssurance QualityAssuranceClient
+
+    packager        ContentPackagerClient
+
+    jobRepo         JobRepository
+
+    eventBus        EventBus
+
+}
+
+
+
+// ProcessStory orchestrates the full content generation pipeline
+
+func (co *ContentOrchestrator) ProcessStory(
+
+    ctx context.Context,
+
+    storyID uuid.UUID,
+
+    overrides *domain.PlanOverrides,
+
+) (*domain.ContentJob, error) {
+
+
+
+    startTime := time.Now()
+
+
+
+    // Create job
+
+    job := &domain.ContentJob{
+
+        JobID: uuid.NewV7(),
+
+        StoryID: storyID,
+
+        Status: domain.JobStatusReceived,
+
+        CreatedAt: time.Now(),
+
+    }
+
+
+
+    co.jobRepo.Save(ctx, job)
+
+// Phase 1: Lock Facts
+
+lockedFacts, err := co.factLocker.LockFacts(ctx, storyID)
+
+if err != nil {
+
+    job.Status = domain.JobStatusRejected
+
+    co.jobRepo.Save(ctx, job)
+
+    return nil, fmt.Errorf("fact locking: %w", err)
+
+}
+
+job.LockedFacts = lockedFacts
+
+
+
+// Phase 2: Create Generation Plan
+
+plan, err := co.planner.CreatePlan(ctx, storyID, lockedFacts, overrides)
+
+if err != nil {
+
+    job.Status = domain.JobStatusRejected
+
+    co.jobRepo.Save(ctx, job)
+
+    return nil, fmt.Errorf("planning: %w", err)
+
+}
+
+job.GenerationPlan = plan
+
+job.Status = domain.JobStatusPlanning
+
+co.jobRepo.Save(ctx, job)
+
+
+
+// Phase 3: Parallel Generation
+
+job.Status = domain.JobStatusGenerating
+
+co.jobRepo.Save(ctx, job)
+
+
+
+content := &domain.ContentPackage{
+
+    PackageID: uuid.NewV7(),
+
+    StoryID: storyID,
+
+}
+
+
+
+// Launch all generation tasks in parallel
+
+var wg sync.WaitGroup
+
+var mu sync.Mutex
+
+errors := make(chan error, len(plan.ContentTypes))
+
+
+
+for _, ct := range plan.ContentTypes {
+
+    wg.Add(1)
+
+    go func(contentType domain.ContentType) {
+
+      defer wg.Done()
+
+
+
+      result, err := co.generateContent(ctx, contentType, storyID, lockedFacts, plan)
+
+      if err != nil {
+
+            errors <- fmt.Errorf("%s: %w", contentType, err)
+
+            return
+
+      }
+
+
+
+      mu.Lock()
+
+      co.mergeContent(content, contentType, result)
+
+      mu.Unlock()
+
+    }(ct)
+
+}
+
+
+
+wg.Wait()
+
+close(errors)
+
+
+
+// Check for errors
+
+var genErrors []error
+
+for err := range errors {
+
+    genErrors = append(genErrors, err)
+
+}
+
+
+
+if len(genErrors) > 0 && len(genErrors) == len(plan.ContentTypes) {
+
+    // All generation failed
+
+    job.Status = domain.JobStatusRejected
+
+    co.jobRepo.Save(ctx, job)
+
+    return nil, fmt.Errorf("all generation failed: %v", genErrors)
+
+}
+
+
+
+job.ContentPackage = content
+
+
+
+// Phase 4: Quality Assurance
+
+job.Status = domain.JobStatusQualityCheck
+
+co.jobRepo.Save(ctx, job)
+
+
+
+qaResult, err := co.qualityAssurance.RunFullQA(ctx, content, lockedFacts)
+
+if err != nil {
+
+    job.Status = domain.JobStatusRejected
+
+    co.jobRepo.Save(ctx, job)
+
+    return nil, fmt.Errorf("QA failed: %w", err)
+
+}
+
+
+
+if !qaResult.Passed {
+
+    // Retry failed components
+
+    if qaResult.RetryableIssues > 0 {
+
+        job.Status = domain.JobStatusRetrying
+
+        co.jobRepo.Save(ctx, job)
+
+
+
+        // Auto-correct and retry
+
+        content, err = co.autoCorrectAndRetry(ctx, content, qaResult, lockedFacts, plan)
+
+        if err != nil {
+
+            job.Status = domain.JobStatusRejected
+
+            co.jobRepo.Save(ctx, job)
+
+            return nil, fmt.Errorf("retry failed: %w", err)
+
+        }
+
+    } else {
+
+        job.Status = domain.JobStatusRejected
+
+        co.jobRepo.Save(ctx, job)
+
+        return nil, fmt.Errorf("QA critical issues: %v", qaResult.CriticalIssues)
+
+    }
+
+}
+
+
+
+// Phase 5: Packaging
+
+job.Status = domain.JobStatusPackaging
+
+packagedContent, err := co.packager.Package(ctx, content, plan)
+
+if err != nil {
+
+           return nil, fmt.Errorf("packaging: %w", err)
+
+      }
+
+      job.ContentPackage = packagedContent
+
+
+
+      job.Status = domain.JobStatusReady
+
+      job.CompletedAt = timePtr(time.Now())
+
+      co.jobRepo.Save(ctx, job)
+
+
+
+      // Publish event
+
+      co.eventBus.Publish(ctx, &ContentReadyEvent{
+
+           JobID:     job.JobID,
+
+           StoryID:   storyID,
+
+           PackageID: packagedContent.PackageID,
+
+           ContentTypes: plan.ContentTypes,
+
+           Duration: time.Since(startTime),
+
+           GeneratedAt: time.Now(),
+
+      })
+
+
+
+      return job, nil
+
+}
+
+```
+
+
+
+---
+
+
+
+PART III — ARTICLE GENERATION SERVICE
+
+Service ID: SVC-CF-ARG
+
+Runtime: Python (LLM) + Golang (orchestration)
+
+gRPC Port: 9302
+
+
+
+3.1 Multi-Pass Article Generation
+
+
+
+```python
+
+# services/content-factory/article-generator/src/generator/pipeline.py
+
+"""
+
+Multi-Pass Article Generation Pipeline.
+
+Pass 1: Structure & Outline
+
+Pass 2: Full Draft
+
+Pass 3: Editorial Refinement
+
+"""
+
+
+
+from dataclasses import dataclass, field
+
+from typing import List, Optional, Dict, Any
+
+from enum import Enum
+
+import structlog
+
+
+
+logger = structlog.get_logger(__name__)
+
+
+
+
+class ArticleArchetype(Enum):
+
+  BREAKING_NEWS = "BREAKING_NEWS"
+
+  FEATURE_ANALYSIS = "FEATURE_ANALYSIS"
+
+  EXPLAINER = "EXPLAINER"
+
+  INVESTIGATIVE = "INVESTIGATIVE"
+
+  HUMAN_INTEREST = "HUMAN_INTEREST"
+
+  LIVE_BLOG = "LIVE_BLOG"
+
+
+
+
+@dataclass
+
+class ArticleOutline:
+
+  """Generated article structure."""
+
+  headline_candidates: List[str]
+
+  sections: List[SectionPlan]
+
+  key_takeaways: List[str]
+
+  flow: str # Narrative flow description
+
+
+
+@dataclass
+
+class SectionPlan:
+
+  section_id: str
+
+  heading: str
+
+  purpose: str # What this section should accomplish
+
+  key_facts_to_include: List[str]
+
+  quotes_to_include: List[str]
+
+  target_word_count: int
+
+  order: int
+
+
+
+
+@dataclass
+
+class GeneratedArticle:
+
+  """Complete generated article."""
+
+  article_id: str
+
+  story_id: str
+
+  archetype: ArticleArchetype
+
+  headlines: List[str]
+
+  summary: str
+
+  sections: List[ArticleSection]
+
+  word_count: int
+
+  reading_time_minutes: int
+
+  quotes_included: List[str]
+
+  sources_cited: List[str]
+
+  generation_metadata: Dict[str, Any]
+
+  quality_scores: Dict[str, float]
+
+
+
+
+class ArticleGenerationPipeline:
+
+  """Three-pass article generation system."""
+
+
+
+  def __init__(self, llm_gateway, prompt_library, quality_scorer, brand_voice):
+
+    self.llm = llm_gateway
+
+    self.prompts = prompt_library
+
+    self.scorer = quality_scorer
+
+    self.brand_voice = brand_voice
+
+
+
+  async def generate_article(
+
+  self,
+
+  locked_facts: LockedFactSet,
+
+  plan: GenerationPlan,
+
+  config: ArticleConfig,
+
+) -> GeneratedArticle:
+
+  """
+
+  Generate article using three-pass architecture.
+
+  """
+
+
+
+  article_id = str(uuid.uuid4())
+
+
+
+  # ============================================================
+
+  # PASS 1: Generate Structure & Outline
+
+  # ============================================================
+
+  logger.info("pass1_outline_generation", article_id=article_id)
+
+
+
+  outline = await self.generate_outline(locked_facts, plan, config)
+
+
+
+  # Score outline quality
+
+  outline_score = await self.scorer.score_outline(outline, plan)
+
+  if outline_score < config.min_outline_score:
+
+    logger.warning("outline_score_low", score=outline_score)
+
+    # Retry with adjusted parameters
+
+    outline = await self.retry_outline(locked_facts, plan, config)
+
+
+
+  # ============================================================
+
+# PASS 2: Generate Full Draft
+
+# ============================================================
+
+logger.info("pass2_draft_generation", article_id=article_id)
+
+
+
+sections = await self.generate_sections_parallel(
+
+    locked_facts, outline, plan, config
+
+)
+
+
+
+# Verify fact adherence
+
+fact_check = await self.verify_fact_adherence(sections, locked_facts)
+
+if not fact_check.passes:
+
+    logger.warning("fact_adherence_failed", violations=len(fact_check.violations))
+
+    # Regenerate violating sections
+
+    sections = await self.correct_fact_violations(
+
+        sections, fact_check.violations, locked_facts, plan, config
+
+    )
+
+
+
+# ============================================================
+
+# PASS 3: Editorial Refinement
+
+# ============================================================
+
+logger.info("pass3_editorial_refinement", article_id=article_id)
+
+
+
+refined_sections = await self.refine_article(
+
+    sections, locked_facts, plan, config
+
+)
+
+# Apply brand voice
+
+branded_sections = await self.brand_voice.apply(
+
+    refined_sections, plan.PublicationID
+
+)
+
+
+
+# Generate headlines based on completed article
+
+headlines = await self.generate_headlines_from_article(
+
+    branded_sections, locked_facts, config
+
+)
+
+
+
+# Generate summary
+
+summary = await self.generate_summary(
+
+    branded_sections, locked_facts, config
+
+)
+
+
+
+# Final quality scoring
+
+final_scores = await self.scorer.score_final_article(
+
+    branded_sections, headlines, summary, locked_facts
+
+)
+
+
+
+article = GeneratedArticle(
+
+    article_id=article_id,
+
+    story_id=locked_facts.story_id,
+
+    archetype=plan.story_archetype,
+
+    headlines=headlines,
+
+    summary=summary,
+
+      sections=branded_sections,
+
+      word_count=sum(s.word_count for s in branded_sections),
+
+      reading_time_minutes=self.calculate_reading_time(branded_sections),
+
+      quotes_included=self.extract_included_quotes(branded_sections),
+
+      sources_cited=self.extract_cited_sources(branded_sections),
+
+      generation_metadata={
+
+           "model": config.model,
+
+           "passes": 3,
+
+           "tokens_used": self.llm.get_token_count(),
+
+           "generation_time_ms": self.get_elapsed_ms(),
+
+      },
+
+      quality_scores=final_scores,
+
+  )
+
+
+
+  return article
+
+
+
+async def generate_outline(
+
+  self,
+
+  locked_facts: LockedFactSet,
+
+  plan: GenerationPlan,
+
+  config: ArticleConfig,
+
+) -> ArticleOutline:
+
+  """PASS 1: Generate article structure and outline."""
+
+
+
+  prompt = self.prompts.get_outline_prompt(
+
+      locked_facts=locked_facts,
+
+      archetype=plan.story_archetype,
+
+      tone=plan.tone_profile,
+
+      target_length=config.target_word_count,
+
+  )
+
+
+
+  response = await self.llm.generate(
+
+      prompt=prompt,
+
+      model=config.model or "claude-3-sonnet",
+
+      temperature=0.3, # Lower temperature for structure
+
+      max_tokens=2000,
+
+      response_format={"type": "json_object"},
+
+  )
+
+
+
+  outline = ArticleOutline.parse(response)
+
+
+
+  # Validate outline includes all must-include facts
+
+  self.validate_outline_coverage(outline, locked_facts)
+
+
+
+  return outline
+
+
+
+async def generate_section(
+
+  self,
+
+  locked_facts: LockedFactSet,
+
+  section_plan: SectionPlan,
+
+  outline: ArticleOutline,
+
+  plan: GenerationPlan,
+
+  config: ArticleConfig,
+
+) -> ArticleSection:
+
+  """PASS 2: Generate a single article section."""
+
+
+
+  # Get context from previous sections
+
+  previous_context = self.get_previous_section_summaries(
+
+      outline, section_plan
+
+  )
+
+
+
+  prompt = self.prompts.get_section_prompt(
+
+      locked_facts=locked_facts,
+
+      section_plan=section_plan,
+
+      previous_context=previous_context,
+
+      tone=plan.tone_profile,
+
+      target_words=section_plan.target_word_count,
+
+  )
+
+
+
+  # Inject CRITICAL constraints
+
+  prompt += f"""
+
+
+
+       CRITICAL CONSTRAINTS — VIOLATION WILL CAUSE REGENERATION:
+
+
+
+  1. ONLY use facts from the provided fact set above
+
+  2. DO NOT invent, embellish, or assume any facts
+
+  3. Quotes MUST be reproduced VERBATIM exactly as provided
+
+  4. All statistics MUST match exactly as provided
+
+  5. All attributions MUST use the exact attribution text provided
+
+  6. If a fact is not in the fact set, write "according to available information"
+
+      rather than fabricating details
+
+  7. DO NOT use any of these phrases: {', '.join(locked_facts.forbidden_phrases[:10])}
+
+  """
+
+
+
+  response = await self.llm.generate(
+
+      prompt=prompt,
+
+      model=config.model or "claude-3-sonnet",
+
+      temperature=config.creativity or 0.7,
+
+      max_tokens=section_plan.target_word_count * 3,
+
+  )
+
+
+
+  section = ArticleSection(
+
+      section_id=section_plan.section_id,
+
+      heading=section_plan.heading,
+
+      content=response.text,
+
+      word_count=len(response.text.split()),
+
+      order=section_plan.order,
+
+  )
+
+
+
+  return section
+
+
+
+async def refine_article(
+
+  self,
+
+  sections: List[ArticleSection],
+
+  locked_facts: LockedFactSet,
+
+  plan: GenerationPlan,
+
+  config: ArticleConfig,
+
+) -> List[ArticleSection]:
+
+  """PASS 3: Editorial refinement of the full article."""
+
+
+
+  full_draft = self.assemble_draft(sections)
+
+
+
+  prompt = self.prompts.get_refinement_prompt(
+
+      draft=full_draft,
+
+      locked_facts=locked_facts,
+
+      tone=plan.tone_profile,
+
+      publication_style=plan.publication_style,
+
+  )
+
+
+
+  response = await self.llm.generate(
+
+      prompt=prompt,
+
+      model="claude-3-opus", # Best model for refinement
+
+      temperature=0.3,
+
+      max_tokens=4000,
+
+  )
+
+
+
+  # Parse refined sections from response
+
+  refined_sections = self.parse_refined_sections(response, sections)
+
+
+
+  return refined_sections
+
+```
+
+
+
+3.2 Fact Adherence Verification
+
+
+
+```python
+
+# services/content-factory/article-generator/src/generator/fact_checker.py
+
+"""
+
+Fact adherence verification — ensures generated content doesn't deviate from locked facts.
+
+"""
+
+
+
+class FactAdherenceChecker:
+
+      """Verifies generated content matches locked facts exactly."""
+
+
+
+      async def verify_fact_adherence(
+
+        self,
+
+        sections: List[ArticleSection],
+
+        locked_facts: LockedFactSet,
+
+      ) -> FactAdherenceReport:
+
+        """Check all generated content against locked facts."""
+
+
+
+        report = FactAdherenceReport()
+
+        full_text = " ".join([s.content for s in sections])
+
+
+
+        # Check 1: All must-include facts present
+
+        for fact in locked_facts.core_facts:
+
+          if fact.must_include:
+
+    found = self.find_fact_in_text(fact, full_text)
+
+    if not found:
+
+      report.add_violation(FactViolation(
+
+           severity="CRITICAL",
+
+           fact_id=fact.fact_id,
+
+           issue="MISSING_REQUIRED_FACT",
+
+           detail=f"Required fact not found: {fact.fact_text[:100]}",
+
+      ))
+
+
+
+# Check 2: All quotes are verbatim
+
+for quote in locked_facts.attributed_quotes:
+
+  if quote.cannot_be_paraphrased:
+
+    exact_match = self.verify_quote_verbatim(quote.quote_text, full_text)
+
+    if not exact_match:
+
+      report.add_violation(FactViolation(
+
+           severity="CRITICAL",
+
+           quote_id=quote.quote_id,
+
+           issue="QUOTE_ALTERED",
+
+           detail=f"Quote text modified from verified original",
+
+      ))
+
+
+
+# Check 3: No hallucinated claims (claims not in locked facts)
+
+generated_claims = await self.extract_claims_from_text(full_text)
+
+for claim in generated_claims:
+
+  if not self.claim_in_locked_set(claim, locked_facts):
+
+    report.add_violation(FactViolation(
+
+         severity="CRITICAL",
+
+         issue="HALLUCINATED_CLAIM",
+
+         detail=f"Claim not in verified fact set: {claim[:100]}",
+
+    ))
+
+
+
+# Check 4: Required attributions present
+
+for attr in locked_facts.required_attributions:
+
+  if attr.lower() not in full_text.lower():
+
+    report.add_violation(FactViolation(
+
+         severity="HIGH",
+
+         issue="MISSING_ATTRIBUTION",
+
+         detail=f"Required attribution missing: {attr}",
+
+    ))
+
+
+
+# Check 5: Forbidden phrases absent
+
+for phrase in locked_facts.forbidden_phrases:
+
+  if phrase.lower() in full_text.lower():
+
+    report.add_violation(FactViolation(
+
+         severity="MEDIUM",
+
+         issue="FORBIDDEN_PHRASE",
+
+         detail=f"Forbidden phrase found: {phrase}",
+
+    ))
+
+
+
+report.passes = len([v for v in report.violations if v.severity == "CRITICAL"]) == 0
+
+
+
+return report
+
+```
+
+
+
+3.3 Prompt Template Example
+
+
+
+```python
+
+# ai/prompts/article-generation/v1.2.0/feature_analysis.yaml
+
+prompts:
+
+ outline:
+
+      model: claude-3-sonnet
+
+      temperature: 0.3
+
+      template: |
+
+       You are a Pulitzer Prize-winning journalist and editorial director for {publication_name}.
+
+
+
+       STORY FACTS (LOCKED — DO NOT MODIFY):
+
+       {locked_facts_summary}
+
+
+
+       KEY ENTITIES:
+
+       {entities}
+
+
+
+       VERIFIED QUOTES (MUST USE VERBATIM):
+
+       {quotes}
+
+
+
+       KEY STATISTICS (MUST USE EXACT VALUES):
+
+       {statistics}
+
+
+
+       TASK: Create a detailed article outline for a {archetype} piece.
+
+  TONE: {tone_primary} with {tone_secondary} elements
+
+  TARGET LENGTH: {target_words} words
+
+
+
+  OUTLINE STRUCTURE:
+
+  1. Compelling lede that hooks readers
+
+  2. Background/context section
+
+  3. Main story narrative (2-3 sections)
+
+  4. Analysis/implications section
+
+  5. Key takeaways
+
+  6. Forward-looking conclusion
+
+
+
+  FOR EACH SECTION PROVIDE:
+
+  - Section heading
+
+  - Purpose (what this section should accomplish)
+
+  - Key facts to include (from provided fact set only)
+
+  - Quotes to include (from provided quotes only)
+
+  - Target word count
+
+
+
+  FORMAT: Return as JSON with sections array.
+
+
+
+section_generation:
+
+ model: claude-3-sonnet
+
+ temperature: 0.7
+
+ template: |
+
+  You are an expert journalist writing for {publication_name}.
+
+      STORY FACTS (LOCKED):
+
+      {section_facts}
+
+
+
+      SECTION: {section_heading}
+
+      SECTION PURPOSE: {section_purpose}
+
+      TARGET LENGTH: {target_words} words
+
+      TONE: {tone}
+
+
+
+      PREVIOUS SECTIONS CONTEXT:
+
+      {previous_context}
+
+
+
+          CRITICAL CONSTRAINTS:
+
+      1. ONLY use facts from the provided fact set
+
+      2. DO NOT invent any details
+
+      3. Quotes MUST be VERBATIM: {section_quotes}
+
+      4. Statistics MUST be exact: {section_statistics}
+
+      5. Attribute all claims to their sources
+
+      6. DO NOT use: {forbidden_phrases}
+
+
+
+      Write the section content now.
+
+```
+
+
+
+---
+
+
+
+PART IV — HEADLINE INTELLIGENCE SERVICE
+
+Service ID: SVC-CF-HDL
+
+Runtime: Python (LLM)
+
+gRPC Port: 9303
+
+
+
+4.1 Headline Generation Engine
+
+
+
+```python
+
+# services/content-factory/headline-engine/src/generator/headline_engine.py
+
+"""
+
+Headline Intelligence Engine — Generates multiple headline variants
+
+optimized for different platforms and purposes.
+
+"""
+
+
+
+class HeadlineGenerationEngine:
+
+  """Generates platform-optimized headlines with factual constraint enforcement."""
+
+
+
+  HEADLINE_TYPES = {
+
+      "primary": {
+
+           "max_chars": 100,
+
+           "purpose": "Main article headline",
+
+           "requirements": ["include_key_entity", "include_key_action", "informative"],
+
+           "forbidden": ["clickbait", "question_format_unless_investigative"],
+
+      },
+
+      "seo": {
+
+           "max_chars": 70,
+
+     "purpose": "Search engine optimization",
+
+     "requirements": ["primary_keyword_frontloaded", "include_entity", "descriptive"],
+
+     "forbidden": ["keyword_stuffing"],
+
+},
+
+"social_twitter": {
+
+     "max_chars": 100,
+
+     "purpose": "X (Twitter) engagement",
+
+     "requirements": ["hook_first", "entity_prominent", "shareable"],
+
+     "forbidden": ["misleading_truncation"],
+
+},
+
+"social_facebook": {
+
+     "max_chars": 100,
+
+     "purpose": "Facebook engagement",
+
+     "requirements": ["conversational", "entity_prominent"],
+
+     "forbidden": ["engagement_bait"],
+
+},
+
+"mobile": {
+
+     "max_chars": 60,
+
+     "purpose": "Mobile app notification",
+
+     "requirements": ["concise", "entity_prominent"],
+
+     "forbidden": ["truncation_likely"],
+
+},
+
+"push_notification": {
+
+     "max_chars": 65,
+
+     "purpose": "Push notification",
+
+     "requirements": ["urgency_if_breaking", "key_takeaway", "action_driving"],
+
+         "forbidden": ["vague", "clickbait"],
+
+    },
+
+}
+
+
+
+async def generate_headlines(
+
+    self,
+
+    locked_facts: LockedFactSet,
+
+    article: Optional[GeneratedArticle],
+
+    plan: GenerationPlan,
+
+    requested_types: List[str],
+
+) -> List[Headline]:
+
+    """Generate headline variants for all requested types."""
+
+
+
+    headlines = []
+
+
+
+    for headline_type in requested_types:
+
+         rules = self.HEADLINE_TYPES.get(headline_type)
+
+         if not rules:
+
+            continue
+
+
+
+         # Generate multiple candidates
+
+         candidates = await self.generate_candidates(
+
+            locked_facts=locked_facts,
+
+            article=article,
+
+            headline_type=headline_type,
+
+            rules=rules,
+
+       count=5,
+
+  )
+
+
+
+  # Score each candidate
+
+  scored = []
+
+  for candidate in candidates:
+
+       scores = await self.score_headline(
+
+           candidate, locked_facts, rules, headline_type
+
+       )
+
+       scored.append((candidate, scores))
+
+
+
+  # Select best
+
+  scored.sort(key=lambda x: x[1].overall_score, reverse=True)
+
+  best_text, best_scores = scored[0]
+
+
+
+  headlines.append(Headline(
+
+       headline_id=str(uuid.uuid4()),
+
+       text=best_text,
+
+       headline_type=headline_type,
+
+       character_count=len(best_text),
+
+       scores=best_scores,
+
+       alternatives=[t for t, _ in scored[1:3]],
+
+  ))
+
+
+
+return headlines
+
+async def score_headline(
+
+  self,
+
+  headline: str,
+
+  locked_facts: LockedFactSet,
+
+  rules: dict,
+
+  headline_type: str,
+
+) -> HeadlineScores:
+
+  """Score a headline across multiple dimensions."""
+
+
+
+  scores = HeadlineScores()
+
+
+
+  # 1. Factual accuracy (CRITICAL — must not distort facts)
+
+  scores.factual_accuracy = await self.check_factual_accuracy(headline, locked_facts)
+
+
+
+  # 2. Clickbait detection (lower is better)
+
+  scores.clickbait_risk = self.detect_clickbait(headline)
+
+
+
+  # 3. Entity inclusion
+
+  scores.entity_coverage = self.check_entity_inclusion(headline, locked_facts)
+
+
+
+  # 4. Readability
+
+  scores.readability = self.calculate_readability(headline)
+
+
+
+  # 5. Length compliance
+
+  scores.length_compliance = 1.0 if len(headline) <= rules["max_chars"] else 0.5
+
+  # 6. Click-through prediction (ML model)
+
+  scores.predicted_ctr = await self.predict_ctr(headline, headline_type)
+
+
+
+  # 7. Forbidden pattern check
+
+  scores.forbidden_check = self.check_forbidden_patterns(
+
+      headline, rules.get("forbidden", [])
+
+  )
+
+
+
+  # Weighted overall score
+
+  scores.overall_score = (
+
+      scores.factual_accuracy * 0.35 +       # Highest weight
+
+      (1.0 - scores.clickbait_risk) * 0.20 +
+
+      scores.entity_coverage * 0.15 +
+
+      scores.readability * 0.10 +
+
+      scores.length_compliance * 0.05 +
+
+      scores.predicted_ctr * 0.10 +
+
+      scores.forbidden_check * 0.05
+
+  )
+
+
+
+  return scores
+
+
+
+def detect_clickbait(self, headline: str) -> float:
+
+  """Detect clickbait patterns. Returns 0-1 risk score."""
+
+
+
+  clickbait_patterns = [
+
+      (r"you won'?t believe", 0.9),
+
+          (r"what happens next", 0.8),
+
+          (r"this will shock you", 0.9),
+
+          (r"mind.?\s*blowing", 0.7),
+
+          (r"doctors hate", 0.9),
+
+          (r"one weird trick", 0.9),
+
+          (r"secret .+ don'?t want you to know", 0.8),
+
+          (r"number \d+ will", 0.7),
+
+          (r"changed my life", 0.6),
+
+          (r"you need to see", 0.5),
+
+      ]
+
+
+
+      risk = 0.0
+
+      headline_lower = headline.lower()
+
+
+
+      for pattern, weight in clickbait_patterns:
+
+          if re.search(pattern, headline_lower):
+
+            risk = max(risk, weight)
+
+
+
+      return risk
+
+```
+
+
+
+---
+
+
+
+PART V — SUMMARY GENERATION SERVICE
+
+
+
+Service ID: SVC-CF-SUM
+
+Runtime: Python (LLM)
+
+gRPC Port: 9304
+
+
+
+```python
+
+# services/content-factory/summary-generator/src/generator/summaries.py
+
+"""
+
+Summary Generation Service — Generates summaries at multiple lengths.
+
+"""
+
+
+
+class SummaryGenerator:
+
+  """Generates multi-length summaries for different contexts."""
+
+
+
+  SUMMARY_CONFIGS = {
+
+      "short_30": {
+
+           "max_words": 30,
+
+           "purpose": "Card previews, social snippets",
+
+           "style": "concise_essential",
+
+      },
+
+      "medium_60": {
+
+           "max_words": 60,
+
+           "purpose": "Article previews, search snippets",
+
+           "style": "informative_engaging",
+
+      },
+
+      "standard_100": {
+
+           "max_words": 100,
+
+           "purpose": "Standard article summary",
+
+         "style": "comprehensive_informative",
+
+    },
+
+    "executive": {
+
+         "max_words": 200,
+
+         "purpose": "Executive briefings, newsletters",
+
+         "style": "analytical_comprehensive",
+
+    },
+
+    "voice_assistant": {
+
+         "max_words": 50,
+
+         "purpose": "Alexa, Google Assistant, Siri",
+
+         "style": "conversational_natural",
+
+    },
+
+    "bullet_points": {
+
+         "max_bullets": 5,
+
+         "purpose": "Quick scan, mobile",
+
+         "style": "scannable_key_points",
+
+    },
+
+}
+
+
+
+async def generate_summaries(
+
+    self,
+
+    locked_facts: LockedFactSet,
+
+    article: Optional[GeneratedArticle],
+
+    requested_types: List[str],
+
+) -> Dict[str, Summary]:
+
+    """Generate summaries for all requested types."""
+
+summaries = {}
+
+
+
+for summary_type in requested_types:
+
+  config = self.SUMMARY_CONFIGS.get(summary_type)
+
+  if not config:
+
+      continue
+
+
+
+  prompt = self.build_summary_prompt(
+
+      locked_facts=locked_facts,
+
+      article=article,
+
+      config=config,
+
+  )
+
+
+
+  response = await self.llm.generate(
+
+      prompt=prompt,
+
+      model="claude-3-haiku", # Fast, cheap model for summaries
+
+      temperature=0.3,
+
+      max_tokens=config.get("max_words", 100) * 3,
+
+  )
+
+
+
+  summaries[summary_type] = Summary(
+
+      summary_type=summary_type,
+
+      text=response.text.strip(),
+
+      word_count=len(response.text.split()),
+
+      generated_at=datetime.utcnow(),
+
+         )
+
+
+
+       return summaries
+
+```
+
+
+
+---
+
+
+
+PART VI — SEO INTELLIGENCE SERVICE
+
+
+
+Service ID: SVC-CF-SEO
+
+Runtime: Golang + Python
+
+gRPC Port: 9305
+
+
+
+6.1 SEO Metadata Generation
+
+
+
+```go
+
+// services/content-factory/seo-engine/internal/domain/seo.go
+
+package domain
+
+
+
+// SEOEngine generates comprehensive SEO metadata
+
+type SEOEngine struct {
+
+      keywordResearch KeywordResearchService
+
+      schemaGenerator SchemaOrgGenerator
+
+      slugGenerator SlugGenerator
+
+}
+
+type SEOContent struct {
+
+  ArticleID      string            `json:"article_id"`
+
+
+
+  // Meta tags
+
+  MetaTitle       string            `json:"meta_title"`
+
+  MetaDescription string                `json:"meta_description"`
+
+  FocusKeyword           string         `json:"focus_keyword"`
+
+  SecondaryKeywords []string               `json:"secondary_keywords"`
+
+
+
+  // URLs
+
+  Slug          string            `json:"slug"`
+
+  CanonicalURL       string            `json:"canonical_url"`
+
+
+
+  // Structured data
+
+  SchemaOrg         json.RawMessage           `json:"schema_org"`
+
+  OpenGraph         OpenGraphData             `json:"open_graph"`
+
+  TwitterCard      TwitterCardData         `json:"twitter_card"`
+
+
+
+  // Internal
+
+  Breadcrumbs        []Breadcrumb           `json:"breadcrumbs"`
+
+  InternalLinks []InternalLink           `json:"internal_links"`
+
+
+
+  // Technical
+
+  RobotsDirectives string              `json:"robots_directives"`
+
+
+
+  // Quality
+
+    SEOQualityScore float64             `json:"seo_quality_score"`
+
+}
+
+
+
+type OpenGraphData struct {
+
+    Title    string `json:"og:title"`
+
+    Description string `json:"og:description"`
+
+    Image      string `json:"og:image"`
+
+    ImageWidth int `json:"og:image:width"`
+
+    ImageHeight int `json:"og:image:height"`
+
+    URL      string `json:"og:url"`
+
+    Type      string `json:"og:type"`
+
+    SiteName string `json:"og:site_name"`
+
+    Locale    string `json:"og:locale"`
+
+}
+
+
+
+type TwitterCardData struct {
+
+    Card      string `json:"twitter:card"`
+
+    Title    string `json:"twitter:title"`
+
+    Description string `json:"twitter:description"`
+
+    Image      string `json:"twitter:image"`
+
+    Site     string `json:"twitter:site"`
+
+}
+
+
+
+// GenerateSEO generates complete SEO metadata
+
+func (se *SEOEngine) GenerateSEO(
+
+    ctx context.Context,
+
+  article *GeneratedArticle,
+
+  lockedFacts *LockedFactSet,
+
+) (*SEOContent, error) {
+
+
+
+  seo := &SEOContent{
+
+      ArticleID: article.ArticleID,
+
+  }
+
+
+
+  // 1. Keyword research
+
+  focusKW, secondaryKWs := se.keywordResearch.Research(
+
+      ctx, article.Headlines[0], lockedFacts,
+
+  )
+
+  seo.FocusKeyword = focusKW
+
+  seo.SecondaryKeywords = secondaryKWs
+
+
+
+  // 2. Generate slug
+
+  seo.Slug = se.slugGenerator.Generate(article.Headlines[0])
+
+  seo.CanonicalURL = fmt.Sprintf("https://agbofa.com/story/%s", seo.Slug)
+
+
+
+  // 3. Generate meta title (SEO-optimized)
+
+  seo.MetaTitle = se.generateMetaTitle(article, focusKW)
+
+
+
+  // 4. Generate meta description
+
+  seo.MetaDescription = se.generateMetaDescription(article, focusKW, secondaryKWs)
+
+
+
+  // 5. Generate Schema.org structured data
+
+seo.SchemaOrg = se.schemaGenerator.GenerateNewsArticle(article, lockedFacts)
+
+
+
+// 6. Generate Open Graph tags
+
+seo.OpenGraph = OpenGraphData{
+
+    Title:    article.Headlines[0],
+
+    Description: article.Summary,
+
+    Image:     article.FeaturedImageURL,
+
+    ImageWidth: 1200,
+
+    ImageHeight: 630,
+
+    URL:      seo.CanonicalURL,
+
+    Type:     "article",
+
+    SiteName: "Agbofa Nexus AI",
+
+    Locale:    article.Language,
+
+}
+
+
+
+// 7. Generate Twitter Card
+
+seo.TwitterCard = TwitterCardData{
+
+    Card:     "summary_large_image",
+
+    Title:    article.Headlines[0],
+
+    Description: article.Summary,
+
+    Image:     article.FeaturedImageURL,
+
+    Site:     "@AgbofaNexus",
+
+}
+
+
+
+// 8. Generate breadcrumbs
+
+seo.Breadcrumbs = se.generateBreadcrumbs(lockedFacts)
+
+      // 9. Calculate SEO quality score
+
+      seo.SEOQualityScore = se.calculateQualityScore(seo)
+
+
+
+      return seo, nil
+
+}
+
+```
+
+
+
+6.2 Schema.org Generation
+
+
+
+```go
+
+func (sog *SchemaOrgGenerator) GenerateNewsArticle(
+
+      article *GeneratedArticle,
+
+      lockedFacts *LockedFactSet,
+
+) json.RawMessage {
+
+
+
+      schema := map[string]interface{}{
+
+        "@context": "https://schema.org",
+
+        "@type": "NewsArticle",
+
+        "mainEntityOfPage": map[string]string{
+
+             "@type": "WebPage",
+
+             "@id": article.CanonicalURL,
+
+        },
+
+        "headline": article.Headlines[0],
+
+        "description": article.Summary,
+
+        "image": map[string]interface{}{
+
+         "@type": "ImageObject",
+
+         "url": article.FeaturedImageURL,
+
+         "width": 1200,
+
+         "height": 630,
+
+    },
+
+    "datePublished": article.PublishedAt.Format(time.RFC3339),
+
+    "dateModified": article.UpdatedAt.Format(time.RFC3339),
+
+    "author": map[string]interface{}{
+
+         "@type": "Organization",
+
+         "name": "Agbofa Nexus AI",
+
+         "url": "https://agbofa.com",
+
+    },
+
+    "publisher": map[string]interface{}{
+
+         "@type": "Organization",
+
+         "name": "Agbofa Technologies",
+
+         "logo": map[string]string{
+
+              "@type": "ImageObject",
+
+              "url": "https://agbofa.com/logo.png",
+
+         },
+
+    },
+
+    "wordCount": article.WordCount,
+
+    "articleSection": article.Category,
+
+    "keywords": strings.Join(article.Keywords, ","),
+
+    "inLanguage": article.Language,
+
+}
+
+      // Add FactCheck schema if applicable
+
+      if len(lockedFacts.VerifiedClaims) > 0 {
+
+          schema["claimReviewed"] = sog.generateClaimReviewSchema(lockedFacts.VerifiedClaims)
+
+      }
+
+
+
+      // Add corrections if applicable
+
+      if article.HasCorrections {
+
+          schema["correction"] = sog.generateCorrectionSchema(article.Corrections)
+
+      }
+
+
+
+      data, _ := json.Marshal(schema)
+
+      return data
+
+}
+
+```
+
+
+
+---
+
+
+
+PART VII — BRAND VOICE SERVICE
+
+
+
+Service ID: SVC-CF-BRV
+
+Runtime: Python (NLP)
+
+gRPC Port: 9306
+
+
+
+```python
+
+# services/content-factory/brand-voice/src/enforcer/voice.py
+
+"""
+
+Brand Voice Service — Enforces editorial style and tone consistency.
+
+"""
+
+
+
+class BrandVoiceEnforcer:
+
+  """Enforces publication-specific brand voice and style guide rules."""
+
+
+
+  def __init__(self, publication_configs: Dict[str, PublicationStyle]):
+
+      self.publications = publication_configs
+
+      self.grammar_checker = GrammarChecker()
+
+      self.tone_analyzer = ToneAnalyzer()
+
+      self.readability_scorer = ReadabilityScorer()
+
+      self.banned_terms = self.load_banned_terms()
+
+
+
+  async def apply(
+
+      self,
+
+      content: str,
+
+      publication_id: str,
+
+      content_type: str,
+
+  ) -> Tuple[str, VoiceComplianceReport]:
+
+      """Apply brand voice rules and return compliance report."""
+
+
+
+      config = self.publications[publication_id]
+
+      report = VoiceComplianceReport()
+
+
+
+      # 1. Grammar check and correction
+
+      grammar_issues = self.grammar_checker.check(content)
+
+if grammar_issues:
+
+  content = self.grammar_checker.correct(content)
+
+  report.grammar_corrections = len(grammar_issues)
+
+
+
+# 2. Style guide enforcement
+
+content = self.apply_style_rules(content, config.style_rules)
+
+
+
+# 3. Tone verification and adjustment
+
+expected_tone = config.content_tones.get(content_type)
+
+if expected_tone:
+
+  actual_tone = self.tone_analyzer.analyze(content)
+
+  if actual_tone.dominant != expected_tone:
+
+    content = await self.adjust_tone(content, actual_tone, expected_tone)
+
+    report.tone_adjusted = True
+
+
+
+# 4. Banned term replacement
+
+found_banned = self.check_banned_terms(content)
+
+for term, alternative in found_banned.items():
+
+  content = content.replace(term, alternative)
+
+report.banned_terms_replaced = len(found_banned)
+
+
+
+# 5. Readability optimization
+
+readability = self.readability_scorer.score(content)
+
+target = config.readability_targets.get(content_type, 60)
+
+if readability < target:
+
+  content = await self.improve_readability(content, target)
+
+     report.readability_improved = True
+
+
+
+  # 6. Calculate compliance score
+
+  report.compliance_score = self.calculate_compliance(report, config)
+
+
+
+  return content, report
+
+
+
+async def adjust_tone(
+
+  self,
+
+  content: str,
+
+  current: ToneAnalysis,
+
+  target: str,
+
+) -> str:
+
+  """Adjust content tone to match target using LLM."""
+
+
+
+  prompt = f"""
+
+  Adjust the following text to match the target tone profile.
+
+  Maintain all factual information exactly.
+
+  Do not add or remove any facts.
+
+
+
+  CURRENT TONE: {current.dominant} (confidence: {current.confidence})
+
+  TARGET TONE: {target}
+
+
+
+  TEXT:
+
+  {content}
+
+  ADJUSTED TEXT:
+
+  """
+
+
+
+  response = await self.llm.generate(
+
+      prompt=prompt,
+
+      model="claude-3-haiku",
+
+      temperature=0.2,
+
+  )
+
+
+
+  return response.text
+
+
+
+# Style rules for a publication
+
+def apply_style_rules(self, content: str, rules: StyleRules) -> str:
+
+  """Apply editorial style rules."""
+
+
+
+  if rules.oxford_comma:
+
+      content = self.ensure_oxford_commas(content)
+
+
+
+  if rules.em_dash_spacing == "no_spaces":
+
+      content = self.fix_em_dash_spacing(content)
+
+
+
+  if rules.quote_style == "double":
+
+      content = self.normalize_quotes(content, "double")
+
+
+
+  if rules.numbers_under_10 == "spell_out":
+
+      content = self.spell_out_numbers(content, threshold=10)
+
+      if rules.percentages == "symbol":
+
+        content = self.normalize_percentages(content, use_symbol=True)
+
+
+
+      if rules.attribution_verb == "said":
+
+        content = self.normalize_attribution_verbs(content, preferred="said")
+
+
+
+      return content
+
+```
+
+
+
+---
+
+
+
+PART VIII — TRANSLATION & LOCALISATION SERVICE
+
+
+
+Service ID: SVC-CF-TRN
+
+Runtime: Python (LLM)
+
+gRPC Port: 9307
+
+
+
+```python
+
+# services/content-factory/translation-service/src/translator/engine.py
+
+"""
+
+Translation & Localisation Service — Multi-language content generation
+
+with cultural adaptation and terminology management.
+
+"""
+
+
+
+class TranslationEngine:
+
+"""Translates content with cultural adaptation and quality assurance."""
+
+
+
+SUPPORTED_LANGUAGES = {
+
+    "en": "English",
+
+    "es": "Spanish",
+
+    "fr": "French",
+
+    "de": "German",
+
+    "ar": "Arabic",
+
+    "zh": "Chinese (Simplified)",
+
+    "ja": "Japanese",
+
+    "pt": "Portuguese",
+
+    "hi": "Hindi",
+
+    "sw": "Swahili",
+
+    "ru": "Russian",
+
+    "ko": "Korean",
+
+    "it": "Italian",
+
+    "nl": "Dutch",
+
+    "tr": "Turkish",
+
+    # ... 30+ more languages
+
+}
+
+
+
+def __init__(self, llm_gateway, terminology_manager, quality_checker):
+
+    self.llm = llm_gateway
+
+    self.terminology = terminology_manager
+
+    self.quality = quality_checker
+
+async def translate_content(
+
+  self,
+
+  content: ContentPackage,
+
+  target_languages: List[str],
+
+  config: TranslationConfig,
+
+) -> Dict[str, TranslatedContent]:
+
+  """Translate all content components to target languages."""
+
+
+
+  translations = {}
+
+
+
+  # Translate in parallel
+
+  tasks = []
+
+  for lang in target_languages:
+
+    if lang == content.source_language:
+
+          continue
+
+    task = self.translate_single_language(content, lang, config)
+
+    tasks.append((lang, task))
+
+
+
+  for lang, task in tasks:
+
+    try:
+
+          translated = await task
+
+          translations[lang] = translated
+
+    except Exception as e:
+
+          logger.error("translation_failed", language=lang, error=str(e))
+
+
+
+  return translations
+
+async def translate_single_language(
+
+  self,
+
+  content: ContentPackage,
+
+  target_lang: str,
+
+  config: TranslationConfig,
+
+) -> TranslatedContent:
+
+  """Translate all content components to a single language."""
+
+
+
+  # Get language-specific glossary
+
+  glossary = self.terminology.get_glossary(target_lang)
+
+
+
+  # Translate article
+
+  translated_article = await self.translate_article(
+
+      content.article, target_lang, glossary
+
+  )
+
+
+
+  # Translate headlines (preserve entity names where appropriate)
+
+  translated_headlines = await self.translate_headlines(
+
+      content.headlines, target_lang, glossary
+
+  )
+
+
+
+  # Translate summary
+
+  translated_summary = await self.translate_summary(
+
+      content.summary, target_lang, glossary
+
+  )
+
+# Cultural adaptation
+
+adapted_article = await self.cultural_adaptation(
+
+    translated_article, target_lang, content.category
+
+)
+
+
+
+# Quality check
+
+quality_report = await self.quality.check_translation(
+
+    original=content,
+
+    translated=adapted_article,
+
+    target_lang=target_lang,
+
+)
+
+
+
+if quality_report.score < config.minimum_quality:
+
+    if config.retry_on_low_quality:
+
+      return await self.translate_single_language(content, target_lang, config)
+
+    quality_report.requires_human_review = True
+
+
+
+return TranslatedContent(
+
+    translation_id=str(uuid.uuid4()),
+
+    target_language=target_lang,
+
+    article=adapted_article,
+
+    headlines=translated_headlines,
+
+    summary=translated_summary,
+
+    quality_report=quality_report,
+
+)
+
+      async def cultural_adaptation(
+
+        self,
+
+        content: str,
+
+        target_lang: str,
+
+        category: str,
+
+      ) -> str:
+
+        """Adapt content for cultural context of target language."""
+
+
+
+        cultural_rules = self.get_cultural_rules(target_lang, category)
+
+
+
+        # Replace culturally-specific references
+
+        content = self.replace_cultural_references(content, target_lang, cultural_rules)
+
+
+
+        # Adjust measurements/units
+
+        content = self.localize_measurements(content, target_lang)
+
+
+
+        # Adjust date/time formats
+
+        content = self.localize_datetime_formats(content, target_lang)
+
+
+
+        # Add local context if needed
+
+        if cultural_rules.get("add_local_context"):
+
+           content = await self.add_local_context(content, target_lang)
+
+
+
+        return content
+
+```
+
+---
+
+
+
+PART IX — MEDIA SCRIPT GENERATION
+
+
+
+Service ID: SVC-CF-MMF
+
+Runtime: Python (LLM)
+
+gRPC Port: 9308
+
+
+
+```python
+
+# services/content-factory/multimedia-factory/src/generator/scripts.py
+
+"""
+
+Media Script Generation — Video scripts, podcast scripts, image prompts.
+
+"""
+
+
+
+class MediaScriptGenerator:
+
+  """Generates scripts for various media formats."""
+
+
+
+  PLATFORM_SPECS = {
+
+      "youtube_long": {
+
+           "duration_seconds": (480, 900),
+
+           "structure": ["hook", "intro", "main_story", "analysis", "implications", "cta"],
+
+           "tone": "professional_engaging",
+
+           "visual_requirements": ["b-roll", "lower_thirds", "chapter_markers"],
+
+      },
+
+      "youtube_shorts": {
+
+         "duration_seconds": (15, 60),
+
+         "structure": ["instant_hook", "key_moment", "cta"],
+
+         "tone": "fast_energetic",
+
+         "visual_requirements": ["text_overlay", "subtitles_required"],
+
+    },
+
+    "tiktok": {
+
+         "duration_seconds": (15, 180),
+
+         "structure": ["pattern_interrupt", "rapid_story", "trend_link", "cta"],
+
+         "tone": "trendy_authentic",
+
+         "visual_requirements": ["text_overlay", "trend_audio_sync"],
+
+    },
+
+    "podcast": {
+
+         "duration_minutes": (5, 30),
+
+         "structure": ["cold_open", "intro", "main_narrative", "analysis", "takeaways", "outro"],
+
+         "tone": "conversational_informative",
+
+         "audio_requirements": ["intro_music", "transitions", "outro_music"],
+
+    },
+
+}
+
+
+
+async def generate_video_script(
+
+    self,
+
+    locked_facts: LockedFactSet,
+
+    article: GeneratedArticle,
+
+    platform: str,
+
+) -> VideoScript:
+
+    """Generate platform-optimized video script."""
+
+specs = self.PLATFORM_SPECS[platform]
+
+
+
+# Generate script structure
+
+structure = await self.generate_script_structure(
+
+    locked_facts, article, specs, platform
+
+)
+
+
+
+# Generate each segment
+
+segments = []
+
+for segment_plan in structure.segments:
+
+    segment = await self.generate_script_segment(
+
+        locked_facts=locked_facts,
+
+        article=article,
+
+        segment_plan=segment_plan,
+
+        platform=platform,
+
+        specs=specs,
+
+    )
+
+    segments.append(segment)
+
+
+
+# Generate visual directions
+
+visual_plan = await self.generate_visual_plan(
+
+    locked_facts, article, segments, platform
+
+)
+
+
+
+# Generate thumbnail concepts
+
+  thumbnails = await self.generate_thumbnail_concepts(
+
+      locked_facts, platform, count=3
+
+  )
+
+
+
+  script = VideoScript(
+
+      script_id=str(uuid.uuid4()),
+
+      story_id=locked_facts.story_id,
+
+      platform=platform,
+
+      total_duration_seconds=sum(s.duration for s in segments),
+
+      segments=segments,
+
+      visual_plan=visual_plan,
+
+      thumbnail_concepts=thumbnails,
+
+      subtitles=self.generate_subtitles(segments),
+
+      accessibility=self.generate_accessibility_notes(visual_plan),
+
+  )
+
+
+
+  return script
+
+
+
+async def generate_thumbnail_concepts(
+
+  self,
+
+  locked_facts: LockedFactSet,
+
+  platform: str,
+
+  count: int,
+
+) -> List[ThumbnailConcept]:
+
+  """Generate thumbnail/cover image concepts."""
+
+concepts = []
+
+for i in range(count):
+
+  prompt = f"""
+
+  Design a thumbnail concept for {platform}:
+
+
+
+  STORY: {locked_facts.core_facts[0].fact_text if locked_facts.core_facts else 'News story'}
+
+  ENTITIES: {', '.join(e.name for e in locked_facts.entities[:3])}
+
+  MOOD: Engaging, professional
+
+
+
+  PROVIDE:
+
+  1. Main visual element
+
+  2. Text overlay (3-5 words max)
+
+  3. Color scheme (3 colors)
+
+  4. Composition
+
+  5. Image generation prompt for DALL-E/Midjourney
+
+  """
+
+
+
+  response = await self.llm.generate(
+
+      prompt=prompt,
+
+      model="claude-3-haiku",
+
+      temperature=0.8,
+
+  )
+
+
+
+  concepts.append(ThumbnailConcept.parse(response))
+
+
+
+return concepts
+
+```
+
+
+
+---
+
+
+
+PART X — SOCIAL CONTENT GENERATION
+
+
+
+Service ID: SVC-CF-SOC
+
+Runtime: Golang + Python
+
+gRPC Port: 9309
+
+
+
+```go
+
+// services/content-factory/social-content-generator/internal/domain/generator.go
+
+package domain
+
+
+
+// SocialContentGenerator creates platform-native social media content
+
+type SocialContentGenerator struct {
+
+      platformRules map[string]PlatformRules
+
+      llmGateway LLMGateway
+
+      hashtagEngine HashtagEngine
+
+}
+
+
+
+type PlatformRules struct {
+
+      Platform   string `json:"platform"`
+
+      MaxChars     int `json:"max_chars"`
+
+      MaxHashtags int `json:"max_hashtags"`
+
+      MaxMediaItems int `json:"max_media_items"`
+
+    EmojiPolicy string `json:"emoji_policy"`
+
+    LinkBehavior string `json:"link_behavior"`
+
+    BestPractices []string `json:"best_practices"`
+
+}
+
+
+
+var PlatformRulesConfig = map[string]PlatformRules{
+
+    "twitter": {
+
+         Platform:      "X (Twitter)",
+
+         MaxChars:       280,
+
+         MaxHashtags: 2,
+
+         MaxMediaItems: 4,
+
+         EmojiPolicy: "ENCOURAGED",
+
+         LinkBehavior: "AUTO_SHORTEN",
+
+         BestPractices: []string{
+
+              "Front-load key information",
+
+              "Use 1-2 relevant hashtags",
+
+              "Include visual when possible",
+
+              "Thread for longer content",
+
+         },
+
+    },
+
+    "facebook": {
+
+         Platform:      "Facebook",
+
+         MaxChars:       63206,
+
+         MaxHashtags: 2,
+
+         MaxMediaItems: 10,
+
+         EmojiPolicy: "ENCOURAGED",
+
+     LinkBehavior: "LARGE_CARD_PREVIEW",
+
+     BestPractices: []string{
+
+          "Ask questions to drive engagement",
+
+          "Use native video uploads",
+
+     },
+
+},
+
+"linkedin": {
+
+     Platform:      "LinkedIn",
+
+     MaxChars:       3000,
+
+     MaxHashtags: 3,
+
+     MaxMediaItems: 9,
+
+     EmojiPolicy: "MODERATE",
+
+     LinkBehavior: "FULL_PREVIEW",
+
+     BestPractices: []string{
+
+          "Professional tone required",
+
+          "First 3 lines are preview — make them count",
+
+          "Industry-relevant hashtags",
+
+     },
+
+},
+
+"instagram": {
+
+     Platform:      "Instagram",
+
+     MaxChars:       2200,
+
+     MaxHashtags: 5,
+
+     MaxMediaItems: 10,
+
+     EmojiPolicy: "ENCOURAGED",
+
+     LinkBehavior: "LINK_IN_BIO",
+
+         BestPractices: []string{
+
+              "First sentence crucial (appears in feed)",
+
+              "Use line breaks for readability",
+
+              "Call-to-action in first comment",
+
+         },
+
+    },
+
+    "tiktok": {
+
+         Platform:      "TikTok",
+
+         MaxChars:        2200,
+
+         MaxHashtags: 3,
+
+         MaxMediaItems: 1,
+
+         EmojiPolicy: "ENCOURAGED",
+
+         LinkBehavior: "LINK_IN_BIO",
+
+         BestPractices: []string{
+
+              "Hook in first 3 seconds",
+
+              "Trending sounds recommended",
+
+              "Text overlays essential",
+
+         },
+
+    },
+
+}
+
+
+
+// GenerateSocialPost creates a platform-optimized social media post
+
+func (scg *SocialContentGenerator) GenerateSocialPost(
+
+    ctx context.Context,
+
+    lockedFacts *LockedFactSet,
+
+    article *GeneratedArticle,
+
+  platform string,
+
+) (*SocialPost, error) {
+
+
+
+  rules, exists := PlatformRulesConfig[platform]
+
+  if !exists {
+
+       return nil, fmt.Errorf("unknown platform: %s", platform)
+
+  }
+
+
+
+  // Build platform-specific prompt
+
+  prompt := scg.buildPlatformPrompt(lockedFacts, article, platform, rules)
+
+
+
+  // Generate post text
+
+  response, err := scg.llmGateway.Generate(ctx, LLMRequest{
+
+       Prompt:      prompt,
+
+       Model:       "claude-3-haiku",
+
+       Temperature: 0.5,
+
+       MaxTokens: 300,
+
+  })
+
+  if err != nil {
+
+       return nil, fmt.Errorf("LLM generation: %w", err)
+
+  }
+
+
+
+  postText := response.Text
+
+
+
+  // Enforce character limit
+
+  if len(postText) > rules.MaxChars {
+
+          postText = scg.truncateIntelligently(postText, rules.MaxChars)
+
+      }
+
+
+
+      // Generate hashtags
+
+      hashtags := scg.hashtagEngine.GenerateForPlatform(
+
+          lockedFacts, article, platform, rules.MaxHashtags,
+
+      )
+
+
+
+      // Build final post
+
+      post := &SocialPost{
+
+          PostID: uuid.NewV7().String(),
+
+          Platform: platform,
+
+          Text:   postText,
+
+          Hashtags: hashtags,
+
+          URL:    article.CanonicalURL,
+
+          MediaURLs: scg.selectMediaForPlatform(article.MediaURLs, platform),
+
+          GeneratedAt: time.Now(),
+
+      }
+
+
+
+      return post, nil
+
+}
+
+```
+
+
+
+---
+
+
+
+PART XI — CONTENT PACKAGING SERVICE
+
+Service ID: SVC-CF-PKG
+
+Runtime: Golang
+
+gRPC Port: 9310
+
+
+
+```go
+
+// services/content-factory/content-packager/internal/domain/packager.go
+
+package domain
+
+
+
+// ContentPackager assembles all generated content into distribution-ready packages
+
+type ContentPackager struct {
+
+    packageRepo PackageRepository
+
+    eventBus EventBus
+
+}
+
+
+
+type ContentPackage struct {
+
+    PackageID     uuid.UUID          `json:"package_id"`
+
+    StoryID     uuid.UUID           `json:"story_id"`
+
+    TenantID     uuid.UUID           `json:"tenant_id"`
+
+
+
+    // Core content
+
+    Article     *GeneratedArticle     `json:"article,omitempty"`
+
+    Headlines     []Headline        `json:"headlines"`
+
+    Summaries      map[string]Summary       `json:"summaries"`
+
+
+
+    // SEO
+
+    SEO           *SEOContent        `json:"seo,omitempty"`
+
+
+
+    // Multimedia
+
+    VideoScripts map[string]*VideoScript `json:"video_scripts,omitempty"`
+
+    PodcastScript *PodcastScript         `json:"podcast_script,omitempty"`
+
+    ImagePrompts []ImagePrompt              `json:"image_prompts,omitempty"`
+
+    ThumbnailConcepts []ThumbnailConcept `json:"thumbnail_concepts,omitempty"`
+
+
+
+    // Platform variants
+
+    SocialPosts     map[string]*SocialPost `json:"social_posts"`
+
+
+
+    // Translations
+
+    Translations map[string]*TranslatedContent `json:"translations,omitempty"`
+
+
+
+    // Metadata
+
+    PlatformTargets []PlatformTarget       `json:"platform_targets"`
+
+    DistributionConfig DistributionConfig `json:"distribution_config"`
+
+
+
+    // Quality
+
+    QualityReport *QualityReport          `json:"quality_report"`
+
+    PublicationReady bool              `json:"publication_ready"`
+
+
+
+    // Timing
+
+    CreatedAt       time.Time         `json:"created_at"`
+
+    ScheduledFor *time.Time             `json:"scheduled_for,omitempty"`
+
+}
+
+type PlatformTarget struct {
+
+    Platform      string          `json:"platform"`
+
+    ContentType string               `json:"content_type"`
+
+    Priority     string          `json:"priority"`
+
+    ScheduleOverride *time.Time            `json:"schedule_override,omitempty"`
+
+}
+
+
+
+// Package assembles all content into a ContentPackage
+
+func (cp *ContentPackager) Package(
+
+    ctx context.Context,
+
+    content *AssembledContent,
+
+    plan *GenerationPlan,
+
+) (*ContentPackage, error) {
+
+
+
+    pkg := &ContentPackage{
+
+      PackageID:          uuid.NewV7(),
+
+      StoryID:        content.StoryID,
+
+      TenantID:           content.TenantID,
+
+      Article:       content.Article,
+
+      Headlines:          content.Headlines,
+
+      Summaries:           content.Summaries,
+
+      SEO:           content.SEO,
+
+      VideoScripts: content.VideoScripts,
+
+      PodcastScript: content.PodcastScript,
+
+      ImagePrompts: content.ImagePrompts,
+
+    ThumbnailConcepts: content.ThumbnailConcepts,
+
+    SocialPosts:     content.SocialPosts,
+
+    Translations: content.Translations,
+
+    QualityReport: content.QualityReport,
+
+    PublicationReady: content.QualityReport.Passed,
+
+    CreatedAt:       time.Now(),
+
+}
+
+
+
+// Determine platform targets based on plan
+
+pkg.PlatformTargets = cp.determinePlatformTargets(plan)
+
+
+
+// Set distribution config
+
+pkg.DistributionConfig = DistributionConfig{
+
+    Priority:      string(plan.Priority),
+
+    PublishImmediately: plan.Priority == PriorityBreaking,
+
+}
+
+
+
+// Store package
+
+cp.packageRepo.Save(ctx, pkg)
+
+
+
+// Publish ready event
+
+cp.eventBus.Publish(ctx, &ContentPackageReadyEvent{
+
+    PackageID: pkg.PackageID,
+
+    StoryID:     pkg.StoryID,
+
+    PlatformCount: len(pkg.PlatformTargets),
+
+    ReadyAt:       time.Now(),
+
+      })
+
+
+
+      return pkg, nil
+
+}
+
+```
+
+
+
+---
+
+
+
+PART XII — AI QUALITY ASSURANCE
+
+
+
+Service ID: SVC-CF-QAS
+
+Runtime: Python (ML/NLP)
+
+gRPC Port: 9311
+
+
+
+```python
+
+# services/content-factory/quality-assurance/src/qa/pipeline.py
+
+"""
+
+AI Quality Assurance Pipeline — Validates all generated content
+
+before packaging and distribution.
+
+"""
+
+
+
+class QualityAssurancePipeline:
+
+      """Multi-stage quality validation for AI-generated content."""
+
+
+
+      def __init__(self):
+
+           self.checks = [
+
+      FactConsistencyCheck(),
+
+      HallucinationDetectionCheck(),
+
+      GrammarCheck(),
+
+      StyleComplianceCheck(),
+
+      PlagiarismCheck(),
+
+      ToxicityCheck(),
+
+      BiasCheck(),
+
+      ReadabilityCheck(),
+
+      QuoteAccuracyCheck(),
+
+      AttributionCheck(),
+
+      SEOValidationCheck(),
+
+  ]
+
+
+
+async def run_full_qa(
+
+  self,
+
+  content: ContentPackage,
+
+  locked_facts: LockedFactSet,
+
+) -> QualityReport:
+
+  """Run all QA checks on generated content."""
+
+
+
+  report = QualityReport(content_id=content.package_id)
+
+
+
+  # Run all checks in parallel
+
+  tasks = [check.run(content, locked_facts) for check in self.checks]
+
+  results = await asyncio.gather(*tasks, return_exceptions=True)
+
+critical_issues = []
+
+high_issues = []
+
+
+
+for i, result in enumerate(results):
+
+  if isinstance(result, Exception):
+
+     report.add_error(f"Check {self.checks[i].__class__.__name__} failed: {result}")
+
+     continue
+
+
+
+  report.add_check_result(result)
+
+
+
+  if not result.passes:
+
+     if result.severity == "CRITICAL":
+
+       critical_issues.append(result)
+
+     elif result.severity == "HIGH":
+
+       high_issues.append(result)
+
+
+
+# Determine pass/fail
+
+report.passes = len(critical_issues) == 0
+
+report.retryable = len(high_issues) > 0 and len(critical_issues) == 0
+
+
+
+# Calculate overall score
+
+report.overall_score = self.calculate_overall_score(report)
+
+
+
+# Generate publication readiness
+
+report.publication_ready = (
+
+  report.passes and
+
+      report.overall_score >= 85.0
+
+  )
+
+
+
+  return report
+
+
+
+def calculate_overall_score(self, report: QualityReport) -> float:
+
+  """Calculate weighted overall quality score."""
+
+
+
+  weights = {
+
+      "fact_consistency": 0.30,
+
+      "hallucination_detection": 0.25,
+
+      "grammar": 0.10,
+
+      "style_compliance": 0.10,
+
+      "plagiarism": 0.10,
+
+      "toxicity": 0.05,
+
+      "bias": 0.05,
+
+      "readability": 0.03,
+
+      "quote_accuracy": 0.02,
+
+  }
+
+
+
+  total = 0.0
+
+  total_weight = 0.0
+
+
+
+  for check_result in report.check_results:
+
+      weight = weights.get(check_result.check_name, 0.01)
+
+      total += check_result.score * weight
+
+          total_weight += weight
+
+
+
+        if total_weight == 0:
+
+          return 0.0
+
+
+
+        return total / total_weight
+
+```
+
+
+
+---
+
+
+
+PART XIII — APIS
+
+
+
+13.1 gRPC Service Definition
+
+
+
+```protobuf
+
+// api/protobuf/content_factory/v1/content_factory.proto
+
+syntax = "proto3";
+
+package content_factory.v1;
+
+
+
+service ContentFactoryService {
+
+      // Content Generation
+
+      rpc GenerateContent(GenerateContentRequest) returns (GenerateContentResponse);
+
+      rpc GetContentJob(GetContentJobRequest) returns (ContentJob);
+
+      rpc RegenerateContent(RegenerateContentRequest) returns (GenerateContentResponse);
+
+
+
+      // Article Generation
+
+    rpc GenerateArticle(GenerateArticleRequest) returns (Article);
+
+    rpc GenerateHeadlines(GenerateHeadlinesRequest) returns (GenerateHeadlinesResponse);
+
+  rpc GenerateSummaries(GenerateSummariesRequest) returns
+(GenerateSummariesResponse);
+
+
+
+    // SEO
+
+    rpc GenerateSEO(GenerateSEORequest) returns (SEOContent);
+
+
+
+    // Multimedia
+
+    rpc GenerateVideoScript(GenerateVideoScriptRequest) returns (VideoScript);
+
+    rpc GeneratePodcastScript(GeneratePodcastScriptRequest) returns (PodcastScript);
+
+  rpc GenerateImagePrompts(GenerateImagePromptsRequest) returns
+(ImagePromptsResponse);
+
+
+
+    // Platform Content
+
+    rpc GenerateSocialPost(GenerateSocialPostRequest) returns (SocialPost);
+
+    rpc GenerateAllSocialContent(GenerateAllSocialContentRequest) returns (stream SocialPost);
+
+
+
+    // Translation
+
+    rpc TranslateContent(TranslateContentRequest) returns (TranslateContentResponse);
+
+
+
+    // Packaging
+
+    rpc PackageContent(PackageContentRequest) returns (ContentPackage);
+
+    rpc GetContentPackage(GetContentPackageRequest) returns (ContentPackage);
+
+}
+
+
+
+message GenerateContentRequest {
+
+      string tenant_id = 1;
+
+      string story_id = 2;
+
+      ContentGenerationConfig config = 3;
+
+      string idempotency_key = 4;
+
+}
+
+
+
+message ContentGenerationConfig {
+
+      repeated string content_types = 1;
+
+      repeated string platforms = 2;
+
+      repeated string target_languages = 3;
+
+      string tone_override = 4;
+
+      string model_tier_override = 5;
+
+}
+
+
+
+message GenerateContentResponse {
+
+      string job_id = 1;
+
+      string story_id = 2;
+
+      ContentPackage content_package = 3;
+
+      QualityReport quality_report = 4;
+
+      int64 generation_time_ms = 5;
+
+}
+
+```
+
+
+
+13.2 Kafka Events
+
+
+
+```yaml
+
+topics:
+
+ content_factory.job.created:
+
+  partitions: 12
+
+  replication_factor: 3
+
+  retention_ms: 604800000
+
+
+
+ content_factory.article.generated:
+
+  partitions: 12
+
+  replication_factor: 3
+
+  retention_ms: 2592000000
+
+
+
+ content_factory.headlines.generated:
+
+  partitions: 6
+
+  replication_factor: 3
+
+  retention_ms: 604800000
+
+
+
+ content_factory.content.packaged:
+
+  partitions: 12
+
+  replication_factor: 3
+
+  retention_ms: 604800000
+
+
+
+ content_factory.qa.completed:
+
+  partitions: 6
+
+  replication_factor: 3
+
+  retention_ms: 2592000000
+
+ content_factory.translation.completed:
+
+      partitions: 6
+
+      replication_factor: 3
+
+      retention_ms: 2592000000
+
+
+
+ content_factory.content.ready:
+
+      partitions: 12
+
+      replication_factor: 3
+
+      retention_ms: 604800000
+
+```
+
+
+
+---
+
+
+
+PART XIV — DATABASE SPECIFICATION
+
+
+
+14.1 PostgreSQL Schema
+
+
+
+```sql
+
+-- Content Factory Database
+
+
+
+CREATE TABLE content_jobs (
+
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+      job_id UUID UNIQUE NOT NULL,
+
+      story_id UUID NOT NULL,
+
+      tenant_id UUID NOT NULL,
+
+      status VARCHAR(30) NOT NULL DEFAULT 'RECEIVED',
+
+     locked_facts_hash VARCHAR(64),
+
+     generation_plan JSONB,
+
+     article_id UUID,
+
+     package_id UUID,
+
+     quality_score DECIMAL(5,2),
+
+     error_message TEXT,
+
+     retry_count INT DEFAULT 0,
+
+     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+     completed_at TIMESTAMPTZ
+
+);
+
+
+
+CREATE INDEX idx_content_jobs_story ON content_jobs(story_id, created_at DESC);
+
+CREATE INDEX idx_content_jobs_status ON content_jobs(status, created_at);
+
+
+
+CREATE TABLE generated_articles (
+
+     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+     article_id UUID UNIQUE NOT NULL,
+
+     story_id UUID NOT NULL,
+
+     tenant_id UUID NOT NULL,
+
+     headline_primary TEXT NOT NULL,
+
+     summary_short TEXT,
+
+     word_count INT NOT NULL,
+
+     reading_time_minutes INT,
+
+     archetype VARCHAR(50),
+
+     language VARCHAR(10) DEFAULT 'en',
+
+     quality_score DECIMAL(5,2),
+
+     generation_model VARCHAR(100),
+
+     generation_version VARCHAR(20),
+
+     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+);
+
+
+
+CREATE TABLE article_sections (
+
+     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+     article_id UUID NOT NULL REFERENCES generated_articles(article_id),
+
+     section_order INT NOT NULL,
+
+     section_type VARCHAR(50),
+
+     heading VARCHAR(500),
+
+     content TEXT NOT NULL,
+
+     word_count INT NOT NULL,
+
+     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+);
+
+
+
+CREATE TABLE headlines (
+
+     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+     article_id UUID NOT NULL REFERENCES generated_articles(article_id),
+
+     headline_text VARCHAR(500) NOT NULL,
+
+     headline_type VARCHAR(30) NOT NULL,
+
+     character_count INT NOT NULL,
+
+     readability_score DECIMAL(5,2),
+
+     clickbait_risk DECIMAL(5,4),
+
+     predicted_ctr DECIMAL(5,4),
+
+     is_primary BOOLEAN DEFAULT false,
+
+     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+);
+
+
+
+CREATE TABLE content_packages (
+
+     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+     package_id UUID UNIQUE NOT NULL,
+
+     story_id UUID NOT NULL,
+
+     tenant_id UUID NOT NULL,
+
+     article_id UUID REFERENCES generated_articles(article_id),
+
+     platform_targets JSONB DEFAULT '[]',
+
+     publication_ready BOOLEAN DEFAULT false,
+
+     quality_score DECIMAL(5,2),
+
+     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+     distributed_at TIMESTAMPTZ
+
+);
+
+
+
+CREATE TABLE translations (
+
+     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+     translation_id UUID UNIQUE NOT NULL,
+
+     article_id UUID NOT NULL REFERENCES generated_articles(article_id),
+
+     target_language VARCHAR(10) NOT NULL,
+
+     translated_headline TEXT NOT NULL,
+
+     translated_content TEXT,
+
+     quality_score DECIMAL(5,2),
+
+      requires_human_review BOOLEAN DEFAULT false,
+
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+
+
+      UNIQUE(article_id, target_language)
+
+);
+
+
+
+CREATE TABLE qa_reports (
+
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+      report_id UUID UNIQUE NOT NULL,
+
+      content_package_id UUID REFERENCES content_packages(package_id),
+
+      overall_score DECIMAL(5,2) NOT NULL,
+
+      fact_consistency_score DECIMAL(5,2),
+
+      hallucination_score DECIMAL(5,2),
+
+      grammar_score DECIMAL(5,2),
+
+      style_score DECIMAL(5,2),
+
+      plagiarism_score DECIMAL(5,2),
+
+      passed BOOLEAN NOT NULL,
+
+      critical_issues JSONB DEFAULT '[]',
+
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+);
+
+```
+
+
+
+14.2 MongoDB Collections
+
+
+
+```json
+
+// article_full_content collection
+
+{
+
+    "_id": ObjectId,
+
+    "article_id": "uuid-string",
+
+    "story_id": "uuid-string",
+
+    "full_content": {
+
+         "html": "<article>Full HTML content...</article>",
+
+         "plain_text": "Full plain text...",
+
+         "markdown": "Markdown version..."
+
+    },
+
+    "sections": [
+
+         {
+
+             "section_id": "uuid",
+
+             "order": 1,
+
+             "heading": "Section Heading",
+
+             "content_html": "<p>Content...</p>",
+
+             "content_text": "Content...",
+
+             "word_count": 250,
+
+             "quotes_included": ["quote-1"],
+
+             "sources_cited": ["source-1"]
+
+         }
+
+    ],
+
+    "prompt_metadata": {
+
+         "model": "claude-3-sonnet",
+
+         "temperature": 0.7,
+
+         "prompt_version": "1.2.0",
+
+         "tokens_used": 4500,
+
+           "generation_time_ms": 3500
+
+      },
+
+      "created_at": "ISO datetime",
+
+      "updated_at": "ISO datetime"
+
+}
+
+```
+
+
+
+14.3 Redis Caching
+
+
+
+```yaml
+
+redis_keys:
+
+    locked_facts_cache:
+
+      pattern: "locked_facts:{story_id}"
+
+      type: string (JSON)
+
+      ttl: 1 hour
+
+
+
+    article_cache:
+
+      pattern: "article:{article_id}"
+
+      type: string (JSON)
+
+      ttl: 24 hours
+
+
+
+    headline_cache:
+
+      pattern: "headlines:{article_id}:{type}"
+
+      type: string (JSON)
+
+      ttl: 1 hour
+
+ translation_cache:
+
+      pattern: "translation:{article_id}:{lang}"
+
+      type: string (JSON)
+
+      ttl: 24 hours
+
+
+
+ generation_locks:
+
+      pattern: "genlock:{story_id}"
+
+      type: string
+
+      value: "job_id"
+
+      ttl: 5 minutes # Prevent duplicate generation
+
+
+
+ rate_limit:
+
+      pattern: "ratelimit:llm:{tenant_id}"
+
+      type: counter
+
+      ttl: 1 minute
+
+```
+
+
+
+---
+
+
+
+PART XV — SECURITY
+
+
+
+```yaml
+
+security:
+
+ authentication:
+
+      service_identity: SPIFFE/SPIRE
+
+      user_auth: JWT (from Foundation)
+
+authorization:
+
+ rbac:
+
+  CONTENT_FACTORY_ADMIN:
+
+   - manage_templates
+
+   - override_generation
+
+   - configure_brand_voice
+
+  CONTENT_FACTORY_EDITOR:
+
+   - generate_content
+
+   - review_content
+
+   - approve_content
+
+  CONTENT_FACTORY_AI:
+
+   - generate_article
+
+   - generate_headlines
+
+   - generate_social
+
+   - translate_content
+
+
+
+content_integrity:
+
+ fact_locking_hash: SHA-256 for locked fact sets
+
+ content_signing: Ed25519 signatures on generated content
+
+ version_tracking: Immutable version history
+
+
+
+data_protection:
+
+ pii_handling: Never include PII in generated content
+
+ content_encryption: AES-256 at rest
+
+ transmission: TLS 1.3
+
+ audit:
+
+      generation_audit: All generation decisions logged
+
+      prompt_audit: All prompts versioned and logged
+
+      content_audit: All content versions preserved
+
+```
+
+
+
+---
+
+
+
+PART XVI — OBSERVABILITY
+
+
+
+```yaml
+
+metrics:
+
+ content_factory:
+
+      articles_generated_total:
+
+       type: counter
+
+       labels: [archetype, model, status]
+
+
+
+      generation_duration_seconds:
+
+       type: histogram
+
+       buckets: [1, 5, 10, 30, 60, 120, 300]
+
+       labels: [content_type]
+
+
+
+      fact_adherence_score:
+
+       type: gauge
+
+       labels: [content_type]
+
+  hallucination_rate:
+
+   type: gauge
+
+
+
+  qa_pass_rate:
+
+   type: gauge
+
+   labels: [content_type]
+
+
+
+  llm_tokens_used:
+
+   type: counter
+
+   labels: [model, operation]
+
+
+
+  llm_cost_usd:
+
+   type: counter
+
+   labels: [model]
+
+
+
+  translation_count:
+
+   type: counter
+
+   labels: [target_language, status]
+
+
+
+slos:
+
+ article_generation:
+
+  availability: 99.9%
+
+  latency_p95: 120s (standard), 30s (breaking)
+
+  error_rate: <1%
+
+ headline_generation:
+
+      availability: 99.95%
+
+      latency_p99: 5s
+
+
+
+ social_content:
+
+      availability: 99.9%
+
+      latency_p95: 10s
+
+
+
+ translation:
+
+      availability: 99.5%
+
+      latency_p95: 60s per language
+
+```
+
+
+
+---
+
+
+
+PART XVII — TESTING
+
+
+
+```yaml
+
+testing_strategy:
+
+ unit_tests:
+
+      coverage_target: >85%
+
+      focus: Domain logic, fact locking, planning, quality scoring
+
+
+
+ integration_tests:
+
+      focus: LLM gateway integration, database operations, event publishing
+
+      tools: testcontainers, pytest-asyncio
+
+ ai_evaluation:
+
+      focus: Article quality, headline effectiveness, fact adherence
+
+      metrics: BLEU, ROUGE, factual accuracy, editor acceptance rate
+
+      dataset: 1000 labeled stories with editor-approved content
+
+
+
+ contract_tests:
+
+      focus: gRPC API contracts, Kafka event schemas
+
+      tool: Pact
+
+
+
+ performance_tests:
+
+      target: 100 articles/minute sustained
+
+      breaking_news: 500 articles/minute burst
+
+
+
+ chaos_tests:
+
+      scenarios:
+
+       - LLM gateway failure
+
+       - Database connection loss
+
+       - Kafka broker failure
+
+```
+
+
+
+---
+
+
+
+PART XVIII — IMPLEMENTATION ROADMAP
+
+
+
+```yaml
+
+roadmap:
+
+mvp:
+
+ timeline: Weeks 1-4
+
+ deliverables:
+
+  - Content Assembler (fact locking, planning)
+
+  - Article Generator (single archetype: breaking news)
+
+  - Headline Engine (3 types: primary, SEO, social)
+
+  - Summary Generator (2 lengths)
+
+  - Basic SEO metadata
+
+  - Content Packager (basic)
+
+  - QA Pipeline (fact check, grammar)
+
+ infrastructure:
+
+  - Single LLM model (Claude-3-Sonnet)
+
+  - PostgreSQL only
+
+  - No translation
+
+  - No multimedia
+
+
+
+growth:
+
+ timeline: Weeks 5-12
+
+ deliverables:
+
+  - All article archetypes
+
+  - Full headline variants (all platforms)
+
+  - Complete summary types
+
+  - Full SEO with Schema.org
+
+  - Brand Voice enforcer
+
+  - Translation (10 languages)
+
+  - Social content (Twitter, Facebook, LinkedIn)
+
+  - Video scripts (YouTube)
+
+  - Podcast scripts
+
+  - Image prompts
+
+  - Advanced QA (hallucination, plagiarism, bias)
+
+ infrastructure:
+
+  - Model tiering (Claude-3-Opus/Haiku)
+
+  - MongoDB for content storage
+
+  - Redis caching
+
+  - Multi-language support
+
+
+
+enterprise:
+
+ timeline: Weeks 13-24
+
+ deliverables:
+
+  - Custom fine-tuned models
+
+  - All 30+ languages
+
+  - All social platforms (Instagram, TikTok, Threads)
+
+  - Live blog generation
+
+  - A/B testing framework
+
+  - Automated content optimization
+
+  - Custom brand voices per publication
+
+  - Real-time content updates
+
+  - Content performance analytics feedback
+
+ infrastructure:
+
+  - Multi-region deployment
+
+  - GPU-accelerated inference
+
+      - Custom model serving
+
+      - Full observability
+
+```
+
+
+
+---
+
+
+
+EXECUTIVE SUMMARY
+
+
+
+Volume 26 delivers the complete, production-ready specification for the Agbofa Nexus AI
+Content Factory — the engine that transforms verified stories into platform-native content
+across all formats. Every service has been specified to implementation-ready detail with
+complete API contracts, data models, event schemas, and business rules.
+
+
+
+Key Deliverables:
+
+
+
+· Content Assembler: Fact locking with cryptographic integrity, generation planning with
+archetype-based rules
+
+· Article Generator: Three-pass architecture (outline → draft → refinement) with strict fact
+constraint enforcement
+
+· Headline Intelligence: Multi-variant generation with clickbait detection, factual accuracy
+scoring, and A/B testing
+
+· SEO Engine: Complete Schema.org, Open Graph, Twitter Cards, keyword optimization
+
+· Brand Voice: Publication-specific style enforcement, tone adjustment, readability optimization
+
+· Translation: Multi-language with cultural adaptation, terminology management, quality
+assurance
+
+· Multimedia Factory: Video scripts, podcast scripts, image prompts, thumbnail concepts
+
+· Social Content: Platform-native generation for all major platforms
+
+· Quality Assurance: Multi-stage validation (fact consistency, hallucination, grammar, plagiarism,
+toxicity, bias)
+
+· Content Packaging: Distribution-ready packages with platform targeting
+
+
+
+The Content Factory is ready for implementation. Volume 27 will build upon this to implement
+the Story Graph & Knowledge Intelligence Engine.
+
+
+
+---
+
+
+
+END OF VOLUME 26
+
+
+
+Date: 2026-08-07
+
+Version: 1.0.0 — Implementation-Ready
+
+Next Volume: Volume 27 — Story Graph & Knowledge Intelligence Code Specification
+

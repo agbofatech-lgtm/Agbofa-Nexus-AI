@@ -394,7 +394,7 @@
       "name": "Content Origination Workflow",
       "workflow_type": "Content Workflow",
       "owner": "Content Intelligence",
-      "status": "Extracted from Batch 2 — Pending Review Approval",
+      "status": "Batch 2 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 12",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:109710-113231",
       "related_adrs": [],
@@ -432,7 +432,7 @@
       "name": "Breaking News Fast Path",
       "workflow_type": "Editorial Workflow",
       "owner": "Content Intelligence",
-      "status": "Extracted from Batch 2 — Pending Review Approval",
+      "status": "Batch 2 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 12",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:111155-111321",
       "related_adrs": [],
@@ -462,7 +462,7 @@
       "name": "Truth Engine Verification Workflow",
       "workflow_type": "Trust Workflow",
       "owner": "Trust",
-      "status": "Extracted from Batch 2 — Pending Review Approval",
+      "status": "Batch 2 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 13",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:113879-113986",
       "related_adrs": [],
@@ -505,7 +505,7 @@
       "name": "Story Graph Versioning Workflow",
       "workflow_type": "Knowledge Workflow",
       "owner": "Trust",
-      "status": "Extracted from Batch 2 — Pending Review Approval",
+      "status": "Batch 2 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 13",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:116732-117297",
       "related_adrs": [],
@@ -533,7 +533,7 @@
       "name": "Content Factory Generation Workflow",
       "workflow_type": "Content Workflow",
       "owner": "Content Production",
-      "status": "Extracted from Batch 2 — Pending Review Approval",
+      "status": "Batch 2 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 14",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:121409-126388",
       "related_adrs": [],
@@ -567,7 +567,7 @@
       "name": "Content Factory Human Review Workflow",
       "workflow_type": "Editorial Workflow",
       "owner": "Editorial Operations",
-      "status": "Extracted from Batch 2 — Pending Review Approval",
+      "status": "Batch 2 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 15",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:131406-131736",
       "related_adrs": [],
@@ -596,7 +596,7 @@
       "name": "Compliance Gatekeeper Workflow",
       "workflow_type": "Compliance Workflow",
       "owner": "Compliance",
-      "status": "Extracted from Batch 2 — Pending Review Approval",
+      "status": "Batch 2 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 16",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:132506-137342",
       "related_adrs": [],
@@ -631,7 +631,7 @@
       "name": "Distribution Publication Workflow",
       "workflow_type": "Distribution Workflow",
       "owner": "Distribution",
-      "status": "Extracted from Batch 2 — Pending Review Approval",
+      "status": "Batch 2 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 17",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:138439-142859",
       "related_adrs": [],
@@ -673,7 +673,7 @@
       "name": "Analytics and Insights Workflow",
       "workflow_type": "Analytics Workflow",
       "owner": "Analytics",
-      "status": "Extracted from Batch 2 — Pending Review Approval",
+      "status": "Batch 2 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volumes 18-19",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:144819-147575",
       "related_adrs": [],
@@ -715,7 +715,7 @@
       "name": "Enterprise Operations Production Readiness Workflow",
       "workflow_type": "Operations Workflow",
       "owner": "Platform Operations",
-      "status": "Extracted from Batch 2 — Pending Review Approval",
+      "status": "Batch 2 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 20",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:148302-152661",
       "related_adrs": [],
@@ -741,6 +741,325 @@
       "ui_screens": [],
       "security_controls": "RBAC, audit, policy, observability and human approval where applicable",
       "tests_required": "Workflow state, integration, failure, security and observability tests required",
+      "implementation_status": "Not started"
+    },
+    {
+      "id": "WF-026",
+      "name": "AI-Assisted Development Workflow",
+      "workflow_type": "Engineering Workflow",
+      "owner": "Engineering",
+      "status": "Extracted from Batch 3 — Pending Review Approval",
+      "primary_volume": "Volume 21",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:154746-155136",
+      "related_adrs": [],
+      "trigger": "Detailed in source; implementation card required",
+      "participants": "Services, agents and human roles as specified",
+      "services_involved": [
+        "SVC-089"
+      ],
+      "apis_used": [],
+      "events_produced_consumed": [],
+      "databases_used": [],
+      "ui_screens": [],
+      "security_controls": "RBAC, audit, policy enforcement, validation and human approval where applicable",
+      "tests_required": "Workflow state, integration, failure, security, observability and performance tests required",
+      "implementation_status": "Not started"
+    },
+    {
+      "id": "WF-027",
+      "name": "Repository Code Generation Workflow",
+      "workflow_type": "Repository Workflow",
+      "owner": "Engineering",
+      "status": "Extracted from Batch 3 — Pending Review Approval",
+      "primary_volume": "Volume 22",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:160849-160989",
+      "related_adrs": [],
+      "trigger": "Detailed in source; implementation card required",
+      "participants": "Services, agents and human roles as specified",
+      "services_involved": [
+        "SVC-090"
+      ],
+      "apis_used": [],
+      "events_produced_consumed": [],
+      "databases_used": [],
+      "ui_screens": [],
+      "security_controls": "RBAC, audit, policy enforcement, validation and human approval where applicable",
+      "tests_required": "Workflow state, integration, failure, security, observability and performance tests required",
+      "implementation_status": "Not started"
+    },
+    {
+      "id": "WF-028",
+      "name": "Identity Authentication and Authorization Workflow",
+      "workflow_type": "Security Workflow",
+      "owner": "Platform",
+      "status": "Extracted from Batch 3 — Pending Review Approval",
+      "primary_volume": "Volume 23",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:161595-164745",
+      "related_adrs": [],
+      "trigger": "Detailed in source; implementation card required",
+      "participants": "Services, agents and human roles as specified",
+      "services_involved": [
+        "SVC-091",
+        "SVC-092",
+        "SVC-093"
+      ],
+      "apis_used": [
+        "API-028"
+      ],
+      "events_produced_consumed": [
+        "EVT-038"
+      ],
+      "databases_used": [
+        "DB-025"
+      ],
+      "ui_screens": [],
+      "security_controls": "RBAC, audit, policy enforcement, validation and human approval where applicable",
+      "tests_required": "Workflow state, integration, failure, security, observability and performance tests required",
+      "implementation_status": "Not started"
+    },
+    {
+      "id": "WF-029",
+      "name": "Content Origination Code Workflow",
+      "workflow_type": "Code Workflow",
+      "owner": "Content Intelligence",
+      "status": "Extracted from Batch 3 — Pending Review Approval",
+      "primary_volume": "Volume 24",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:165637-169766",
+      "related_adrs": [],
+      "trigger": "Detailed in source; implementation card required",
+      "participants": "Services, agents and human roles as specified",
+      "services_involved": [
+        "SVC-094",
+        "SVC-095",
+        "SVC-096",
+        "SVC-097",
+        "SVC-098"
+      ],
+      "apis_used": [
+        "API-029"
+      ],
+      "events_produced_consumed": [
+        "EVT-039"
+      ],
+      "databases_used": [
+        "DB-026"
+      ],
+      "ui_screens": [],
+      "security_controls": "RBAC, audit, policy enforcement, validation and human approval where applicable",
+      "tests_required": "Workflow state, integration, failure, security, observability and performance tests required",
+      "implementation_status": "Not started"
+    },
+    {
+      "id": "WF-030",
+      "name": "Truth Engine Code Workflow",
+      "workflow_type": "Code Workflow",
+      "owner": "Trust",
+      "status": "Extracted from Batch 3 — Pending Review Approval",
+      "primary_volume": "Volume 25",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:169917-180268",
+      "related_adrs": [],
+      "trigger": "Detailed in source; implementation card required",
+      "participants": "Services, agents and human roles as specified",
+      "services_involved": [
+        "SVC-099",
+        "SVC-100",
+        "SVC-101",
+        "SVC-102",
+        "SVC-103",
+        "SVC-104",
+        "SVC-105",
+        "SVC-106",
+        "SVC-107",
+        "SVC-108"
+      ],
+      "apis_used": [
+        "API-030"
+      ],
+      "events_produced_consumed": [
+        "EVT-040"
+      ],
+      "databases_used": [
+        "DB-027"
+      ],
+      "ui_screens": [],
+      "security_controls": "RBAC, audit, policy enforcement, validation and human approval where applicable",
+      "tests_required": "Workflow state, integration, failure, security, observability and performance tests required",
+      "implementation_status": "Not started"
+    },
+    {
+      "id": "WF-031",
+      "name": "Content Factory Code Workflow",
+      "workflow_type": "Code Workflow",
+      "owner": "Content Production",
+      "status": "Extracted from Batch 3 — Pending Review Approval",
+      "primary_volume": "Volume 26",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:180448-185993",
+      "related_adrs": [],
+      "trigger": "Detailed in source; implementation card required",
+      "participants": "Services, agents and human roles as specified",
+      "services_involved": [
+        "SVC-109",
+        "SVC-110",
+        "SVC-111",
+        "SVC-112",
+        "SVC-113",
+        "SVC-114",
+        "SVC-115",
+        "SVC-116",
+        "SVC-117",
+        "SVC-118",
+        "SVC-119"
+      ],
+      "apis_used": [
+        "API-031"
+      ],
+      "events_produced_consumed": [
+        "EVT-041"
+      ],
+      "databases_used": [
+        "DB-028"
+      ],
+      "ui_screens": [],
+      "security_controls": "RBAC, audit, policy enforcement, validation and human approval where applicable",
+      "tests_required": "Workflow state, integration, failure, security, observability and performance tests required",
+      "implementation_status": "Not started"
+    },
+    {
+      "id": "WF-032",
+      "name": "Story Graph Code Workflow",
+      "workflow_type": "Code Workflow",
+      "owner": "Knowledge Intelligence",
+      "status": "Extracted from Batch 3 — Pending Review Approval",
+      "primary_volume": "Volume 27",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:186281-191752",
+      "related_adrs": [],
+      "trigger": "Detailed in source; implementation card required",
+      "participants": "Services, agents and human roles as specified",
+      "services_involved": [
+        "SVC-120",
+        "SVC-121",
+        "SVC-122",
+        "SVC-123",
+        "SVC-124",
+        "SVC-125",
+        "SVC-126"
+      ],
+      "apis_used": [
+        "API-032"
+      ],
+      "events_produced_consumed": [
+        "EVT-042"
+      ],
+      "databases_used": [
+        "DB-029"
+      ],
+      "ui_screens": [],
+      "security_controls": "RBAC, audit, policy enforcement, validation and human approval where applicable",
+      "tests_required": "Workflow state, integration, failure, security, observability and performance tests required",
+      "implementation_status": "Not started"
+    },
+    {
+      "id": "WF-033",
+      "name": "Distribution Engine Code Workflow",
+      "workflow_type": "Code Workflow",
+      "owner": "Distribution",
+      "status": "Extracted from Batch 3 — Pending Review Approval",
+      "primary_volume": "Volume 28",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:192065-195850",
+      "related_adrs": [],
+      "trigger": "Detailed in source; implementation card required",
+      "participants": "Services, agents and human roles as specified",
+      "services_involved": [
+        "SVC-127",
+        "SVC-128",
+        "SVC-129",
+        "SVC-130",
+        "SVC-131",
+        "SVC-132",
+        "SVC-133"
+      ],
+      "apis_used": [
+        "API-033"
+      ],
+      "events_produced_consumed": [
+        "EVT-043"
+      ],
+      "databases_used": [],
+      "ui_screens": [],
+      "security_controls": "RBAC, audit, policy enforcement, validation and human approval where applicable",
+      "tests_required": "Workflow state, integration, failure, security, observability and performance tests required",
+      "implementation_status": "Not started"
+    },
+    {
+      "id": "WF-034",
+      "name": "Analytics and Continuous Learning Code Workflow",
+      "workflow_type": "Code Workflow",
+      "owner": "Analytics",
+      "status": "Extracted from Batch 3 — Pending Review Approval",
+      "primary_volume": "Volume 29",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:196010-199893",
+      "related_adrs": [],
+      "trigger": "Detailed in source; implementation card required",
+      "participants": "Services, agents and human roles as specified",
+      "services_involved": [
+        "SVC-134",
+        "SVC-135",
+        "SVC-136",
+        "SVC-137",
+        "SVC-138",
+        "SVC-139",
+        "SVC-140",
+        "SVC-141",
+        "SVC-142"
+      ],
+      "apis_used": [
+        "API-034"
+      ],
+      "events_produced_consumed": [
+        "EVT-044"
+      ],
+      "databases_used": [
+        "DB-030"
+      ],
+      "ui_screens": [],
+      "security_controls": "RBAC, audit, policy enforcement, validation and human approval where applicable",
+      "tests_required": "Workflow state, integration, failure, security, observability and performance tests required",
+      "implementation_status": "Not started"
+    },
+    {
+      "id": "WF-035",
+      "name": "Autonomous Runtime Workflow",
+      "workflow_type": "Runtime Workflow",
+      "owner": "Operations",
+      "status": "Extracted from Batch 3 — Pending Review Approval",
+      "primary_volume": "Volume 30",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:200143-203428",
+      "related_adrs": [],
+      "trigger": "Detailed in source; implementation card required",
+      "participants": "Services, agents and human roles as specified",
+      "services_involved": [
+        "SVC-143",
+        "SVC-144",
+        "SVC-145",
+        "SVC-146",
+        "SVC-147",
+        "SVC-148",
+        "SVC-149"
+      ],
+      "apis_used": [
+        "API-035"
+      ],
+      "events_produced_consumed": [
+        "EVT-045",
+        "EVT-046"
+      ],
+      "databases_used": [
+        "DB-031",
+        "DB-032"
+      ],
+      "ui_screens": [],
+      "security_controls": "RBAC, audit, policy enforcement, validation and human approval where applicable",
+      "tests_required": "Workflow state, integration, failure, security, observability and performance tests required",
       "implementation_status": "Not started"
     }
   ]

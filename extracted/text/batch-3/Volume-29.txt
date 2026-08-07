@@ -1,0 +1,4132 @@
+VOLUME 29: ANALYTICS, AUDIENCE INTELLIGENCE & CONTINUOUS LEARNING CODE
+SPECIFICATION
+
+
+
+Document Reference: AGBA-NEXUS-VOL29-CODE-1.0
+
+Status: Implementation-Ready — Production Specification
+
+Phase: 3 — Production Engineering Specifications
+
+Approved Baseline: Volumes 1–28 (Immutable)
+
+Purpose: Analytics, Audience Intelligence & Continuous Learning Platform
+
+Quality Level: US$50M Enterprise Platform Standard
+
+
+
+---
+
+
+
+SERVICE DECISION RECORDS (SDR)
+
+
+
+SDR-ANA-001: Unified Analytics Data Lake with Iceberg
+
+
+
+Decision: All analytics events flow into S3 via Kafka Connect (Iceberg sink), with Apache Iceberg
+as the table format. Real-time analytics use ClickHouse; batch processing uses Apache Spark.
+PostgreSQL stores operational metadata and pre-computed aggregations.
+
+Rationale: Iceberg provides schema evolution, time travel, and partition evolution — essential
+for evolving analytics schemas. ClickHouse provides sub-second query performance for
+dashboards. Spark handles complex aggregations and ML training.
+
+Alternatives: Snowflake (rejected — vendor lock-in, higher cost at scale); BigQuery (rejected —
+GCP dependency); ClickHouse-only (rejected — limited for complex batch ML pipelines).
+
+Trade-offs: Multiple query engines to manage, but each optimized for its workload. Iceberg
+provides unified storage layer.
+
+
+
+SDR-ANA-002: Real-Time + Batch Lambda Architecture
+
+Decision: Implement a Lambda architecture with real-time stream processing (Kafka Streams →
+ClickHouse) for sub-second dashboards and alerts, and batch processing (Spark on Iceberg) for
+deep analytics, ML training, and historical reporting.
+
+Rationale: Breaking news analytics require sub-second latency. ML training requires hours of
+historical data. Lambda architecture serves both needs with appropriate tools.
+
+Alternatives: Kappa architecture (streaming only — rejected, batch still needed for ML); pure
+batch (rejected — too slow for real-time dashboards).
+
+Trade-offs: Two code paths for similar logic, but necessary for latency requirements.
+
+
+
+SDR-ANA-003: Feature Store for ML Features
+
+
+
+Decision: Implement a centralized Feature Store (Feast) for all ML features used across
+recommendation, personalization, and optimization models. Features are computed in batch
+and served in real-time via Redis.
+
+Rationale: Consistent feature definitions across training and serving prevent training-serving
+skew. Feature reuse across models reduces duplication.
+
+Alternatives: Inline feature computation per model (rejected — inconsistency, duplication);
+custom feature store (rejected — reinventing the wheel).
+
+Trade-offs: Additional infrastructure (Feast + Redis), but significant improvement in ML quality
+and velocity.
+
+
+
+SDR-ANA-004: Closed-Loop AI Optimization
+
+
+
+Decision: All content performance data flows back to AI agents via structured feedback events
+on Kafka. Each AI agent subscribes to performance metrics for content it generated.
+Optimization signals trigger prompt refinement, model selection changes, and parameter
+tuning.
+
+Rationale: AI-generated content quality improves only with feedback. Closed-loop enables
+continuous improvement without manual intervention.
+
+Alternatives: Manual feedback collection (rejected — doesn't scale); periodic batch updates
+(rejected — too slow for breaking news optimization).
+
+Trade-offs: Risk of feedback loops amplifying biases, mitigated by diversity constraints and
+human oversight.
+
+
+
+---
+
+
+
+PART I — ANALYTICS PLATFORM ARCHITECTURE
+
+
+
+1.1 Analytics Ecosystem Overview
+
+
+
+```
+
+ANALYTICS, AUDIENCE INTELLIGENCE & CONTINUOUS LEARNING PLATFORM:
+
+
+
+┌─────────────────────────────────────────────────────────────────────────────
+┐
+
+│           ANALYTICS & LEARNING PLATFORM                         │
+
+├
+─────────────────────────────────────────────────────────────────────────────
+┤
+
+│                                             │
+
+│ DATA INGESTION LAYER                                    │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ PLATFORM APIs │ WEBHOOKS │ SDK EVENTS │ KAFKA (Internal)                 ││
+
+│ │ (Pull hourly) │ (Push) │ (Real-time) │ (All service events) │ │
+
+│ └───────────────────────────────┬─────────────────────────────────────────┘
+│
+
+│                       │                              │
+
+│ ┌───────────────────────────────▼─────────────────────────────────────────┐
+│
+
+│ │            EVENT NORMALIZATION & ENRICHMENT                                   ││
+
+│ │ • Schema validation • Deduplication • Tenant/Story enrichment                      ││
+
+│ │ • Session stitching • Bot filtering • Geo-IP resolution                  ││
+
+│ └───────────────────────────────┬─────────────────────────────────────────┘
+│
+
+│                       │                              │
+
+│ ┌───────────────────────────────▼─────────────────────────────────────────┐
+│
+
+│ │                DATA LAKE (S3 + Apache Iceberg)                      ││
+
+│ │ • Raw events • Normalized events • Aggregations • ML Features                      ││
+
+│ └────────┬──────────────────────────────────┬
+─────────────────────────────┘ │
+
+│      │                         │                     │
+
+│ ┌────────▼──────────┐                       ┌────────▼──────────────────────────────┐ │
+
+│ │ REAL-TIME           │            │        BATCH                ││
+
+│ │ ANALYTICS           │            │       ANALYTICS              ││
+
+│ │ (ClickHouse) │                   │      (Apache Spark)              ││
+
+│ │            │            │                          ││
+
+│ │ • Dashboards        │            │ • ML Training                    ││
+
+│ │ • Alerts        │           │ • Deep Analysis                  ││
+
+│ │ • Live Metrics │                 │ • Historical Reports             ││
+
+│ │ • Breaking News │                    │ • Feature Engineering             ││
+
+│ └────────┬──────────┘                       └────────┬──────────────────────────────┘ │
+
+│      │                         │                     │
+
+│
+┌────────▼──────────────────────────────────▼──────────────────────────────┐
+│
+
+│ │                INSIGHTS LAYER                  ││
+
+│ │ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────────────┐ │ │
+
+│ │ │ AUDIENCE │ │ CONTENT │ │ AI        │ │ EDITORIAL│ │ RECOMMENDATION │ │ │
+
+│ │ │INSIGHTS │ │INSIGHTS │ │LEARNING │ │INSIGHTS │ │ ENGINE            │ ││
+
+│ │ └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ └───────┬────────┘
+││
+
+│ └───────┼────────────┼────────────┼────────────┼───────────────┼
+──────────┘ │
+
+│     │        │        │     │      │         │
+
+│
+┌───────▼────────────▼────────────▼────────────▼───────────────▼─────────
+─┐ │
+
+│ │             FEEDBACK & OPTIMIZATION LAYER              ││
+
+│ │ • AI Feedback Events • Prompt Optimization • Model Selection        ││
+
+│ │ • Schedule Optimization • Content Strategy • Revenue Optimization    ││
+
+│ └──────────────────────────────────────────────────────────────────────────┘
+│
+
+└─────────────────────────────────────────────────────────────────────────────
+┘
+
+```
+
+
+
+1.2 Service Inventory
+
+
+
+```yaml
+
+analytics_services:
+
+event_collector:
+
+ id: SVC-ANA-EVT
+
+ runtime: Golang 1.22+
+
+ port: 9601
+
+ description: "Event ingestion, validation, normalization, enrichment"
+
+
+
+realtime_analytics:
+
+ id: SVC-ANA-RTA
+
+ runtime: Golang + ClickHouse
+
+ port: 9602
+
+ description: "Real-time metrics computation, dashboard data, alerts"
+
+
+
+batch_analytics:
+
+ id: SVC-ANA-BAT
+
+ runtime: Python (PySpark)
+
+ port: 9603
+
+ description: "Batch processing, ML training, historical analysis"
+
+
+
+audience_intelligence:
+
+ id: SVC-ANA-AUD
+
+ runtime: Golang + Python
+
+ port: 9604
+
+ description: "Audience profiling, segmentation, behavior analysis"
+
+
+
+recommendation_engine:
+
+ id: SVC-ANA-REC
+
+ runtime: Golang + Python (ML)
+
+ port: 9605
+
+ description: "Content recommendations, personalization, ranking"
+
+
+
+ai_learning_engine:
+
+ id: SVC-ANA-AIL
+
+ runtime: Python (ML)
+
+ port: 9606
+
+ description: "AI performance analysis, feedback loops, prompt optimization"
+
+
+
+editorial_intelligence:
+
+ id: SVC-ANA-EDI
+
+ runtime: Golang + Python
+
+ port: 9607
+
+ description: "Editorial KPIs, quality scoring, content analysis"
+
+
+
+seo_intelligence:
+
+ id: SVC-ANA-SEO
+
+ runtime: Golang + Python
+
+ port: 9608
+
+ description: "Search performance, keyword tracking, ranking analysis"
+
+
+
+revenue_intelligence:
+
+ id: SVC-ANA-REV
+
+ runtime: Golang
+
+ port: 9609
+
+      description: "Revenue attribution, forecasting, monetization analytics"
+
+
+
+ optimization_feedback:
+
+      id: SVC-ANA-OPT
+
+      runtime: Golang + Python
+
+      port: 9610
+
+      description: "Feedback loop orchestration, optimization signal generation"
+
+
+
+ feature_store:
+
+      id: SVC-ANA-FTS
+
+      runtime: Golang + Redis
+
+      port: 9611
+
+      description: "ML feature storage and serving (Feast-based)"
+
+
+
+ dashboard_api:
+
+      id: SVC-ANA-DSH
+
+      runtime: Golang
+
+      port: 9612
+
+      description: "Dashboard data API, export, scheduled reports"
+
+```
+
+
+
+---
+
+
+
+PART II — EVENT COLLECTION ENGINE
+
+
+
+Service ID: SVC-ANA-EVT
+
+Runtime: Golang 1.22+
+
+gRPC Port: 9601
+
+
+
+2.1 Event Collection Architecture
+
+
+
+```go
+
+// services/analytics/event-collector/internal/domain/collector.go
+
+package domain
+
+
+
+// EventCollector ingests, validates, and normalizes all analytics events
+
+type EventCollector struct {
+
+    kafkaConsumer kafka.Consumer
+
+    kafkaProducer kafka.Producer
+
+    clickhouse     *clickhouse.Client
+
+    schemaRegistry *SchemaRegistry
+
+    normalizer     *EventNormalizer
+
+    deduplicator *Deduplicator
+
+}
+
+
+
+// AnalyticsEvent is the base type for all analytics events
+
+type AnalyticsEvent struct {
+
+    EventID      string        `json:"event_id"`
+
+    EventType string             `json:"event_type"`
+
+    EventVersion string           `json:"event_version"`
+
+    TenantID      string        `json:"tenant_id"`
+
+    StoryID      string        `json:"story_id,omitempty"`
+
+    ContentID string           `json:"content_id,omitempty"`
+
+    Platform   string         `json:"platform,omitempty"`
+
+    UserID     string         `json:"user_id,omitempty"`
+
+    SessionID string           `json:"session_id,omitempty"`
+
+    Timestamp time.Time             `json:"timestamp"`
+
+    IngestedAt time.Time            `json:"ingested_at"`
+
+    Metrics    map[string]float64     `json:"metrics"`
+
+    Dimensions map[string]string       `json:"dimensions"`
+
+    Metadata     map[string]interface{} `json:"metadata,omitempty"`
+
+}
+
+
+
+// Event types
+
+const (
+
+    EventTypeStoryImpression = "story.impression"
+
+    EventTypeStoryClick      = "story.click"
+
+    EventTypeStoryEngagement = "story.engagement"
+
+    EventTypeStoryShare       = "story.share"
+
+    EventTypeStoryComment        = "story.comment"
+
+    EventTypeStoryReadComplete = "story.read_complete"
+
+    EventTypeAIGeneration      = "ai.generation"
+
+    EventTypeAIQuality       = "ai.quality"
+
+    EventTypeAIOptimization     = "ai.optimization"
+
+    EventTypeDistribution     = "distribution.publish"
+
+    EventTypeRevenue          = "revenue.impression"
+
+    EventTypeRevenueClick      = "revenue.click"
+
+    EventTypeSubscription     = "revenue.subscription"
+
+    EventTypeUserSession        = "user.session"
+
+    EventTypeUserSignup         = "user.signup"
+
+    EventTypeSearchQuery         = "search.query"
+
+    EventTypeSearchClick       = "search.click"
+
+)
+
+
+
+// ProcessEvent validates and enriches an incoming event
+
+func (ec *EventCollector) ProcessEvent(
+
+    ctx context.Context,
+
+    rawEvent []byte,
+
+) error {
+
+
+
+    // 1. Parse event
+
+    var event AnalyticsEvent
+
+    if err := json.Unmarshal(rawEvent, &event); err != nil {
+
+        return fmt.Errorf("parse event: %w", err)
+
+    }
+
+
+
+    // 2. Validate against schema
+
+    if err := ec.schemaRegistry.Validate(event.EventType, event.EventVersion, rawEvent); err != nil
+{
+
+        return fmt.Errorf("schema validation: %w", err)
+
+    }
+
+
+
+    // 3. Deduplicate (idempotency)
+
+    if ec.deduplicator.IsDuplicate(event.EventID) {
+
+        return nil // Already processed
+
+    }
+
+
+
+    // 4. Normalize and enrich
+
+    enriched := ec.normalizer.Enrich(ctx, &event)
+
+
+
+    // 5. Write to ClickHouse for real-time querying
+
+    if err := ec.writeToClickHouse(ctx, enriched); err != nil {
+
+        return fmt.Errorf("clickhouse write: %w", err)
+
+    }
+
+
+
+    // 6. Forward to Kafka for downstream consumers
+
+    if err := ec.forwardToKafka(ctx, enriched); err != nil {
+
+        return fmt.Errorf("kafka forward: %w", err)
+
+    }
+
+
+
+    // 7. Mark as processed
+
+    ec.deduplicator.MarkProcessed(event.EventID)
+
+
+
+    return nil
+
+}
+
+
+
+// writeToClickHouse inserts the event into ClickHouse for real-time analytics
+
+func (ec *EventCollector) writeToClickHouse(ctx context.Context, event *AnalyticsEvent) error {
+
+    return ec.clickhouse.Exec(ctx, `
+
+        INSERT INTO analytics_events (
+
+             event_id, event_type, event_version, tenant_id, story_id,
+
+             content_id, platform, user_id, session_id, timestamp,
+
+             ingested_at, metrics, dimensions, metadata
+
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+
+      `,
+
+           event.EventID, event.EventType, event.EventVersion, event.TenantID,
+
+           event.StoryID, event.ContentID, event.Platform, event.UserID,
+
+           event.SessionID, event.Timestamp, event.IngestedAt,
+
+           event.Metrics, event.Dimensions, event.Metadata,
+
+      )
+
+}
+
+```
+
+
+
+2.2 Event Normalization
+
+
+
+```go
+
+// EventNormalizer enriches events with derived data
+
+type EventNormalizer struct {
+
+      geoIP        *GeoIPResolver
+
+      userAgent *UserAgentParser
+
+      tenantCache *redis.Client
+
+}
+
+
+
+func (en *EventNormalizer) Enrich(ctx context.Context, event *AnalyticsEvent) *AnalyticsEvent {
+
+      // Add geo information from IP
+
+      if ip, exists := event.Dimensions["ip_address"]; exists {
+
+      geo := en.geoIP.Resolve(ip)
+
+      event.Dimensions["country"] = geo.Country
+
+      event.Dimensions["region"] = geo.Region
+
+      event.Dimensions["city"] = geo.City
+
+      event.Dimensions["timezone"] = geo.Timezone
+
+  }
+
+
+
+  // Parse user agent
+
+  if ua, exists := event.Dimensions["user_agent"]; exists {
+
+      parsed := en.userAgent.Parse(ua)
+
+      event.Dimensions["browser"] = parsed.Browser
+
+      event.Dimensions["browser_version"] = parsed.BrowserVersion
+
+      event.Dimensions["os"] = parsed.OS
+
+      event.Dimensions["device_type"] = parsed.DeviceType // mobile, desktop, tablet
+
+  }
+
+
+
+  // Add tenant metadata from cache
+
+  if tenantMeta, err := en.tenantCache.Get(ctx, fmt.Sprintf("tenant:%s",
+event.TenantID)).Result(); err == nil {
+
+      var meta map[string]string
+
+      json.Unmarshal([]byte(tenantMeta), &meta)
+
+      event.Dimensions["tenant_tier"] = meta["tier"]
+
+      event.Dimensions["tenant_region"] = meta["region"]
+
+  }
+
+
+
+  return event
+
+}
+
+```
+
+
+
+2.3 ClickHouse Schema
+
+
+
+```sql
+
+-- ClickHouse: Real-time Analytics Events Table
+
+CREATE TABLE analytics_events (
+
+      -- Identifiers
+
+      event_id String,
+
+      event_type LowCardinality(String),
+
+      event_version String,
+
+      tenant_id String,
+
+      story_id String,
+
+      content_id String,
+
+      platform LowCardinality(String),
+
+      user_id String,
+
+      session_id String,
+
+
+
+      -- Timestamps
+
+      timestamp DateTime64(3),
+
+      ingested_at DateTime64(3) DEFAULT now64(3),
+
+
+
+      -- Metrics (flexible key-value)
+
+      metrics Map(String, Float64),
+
+  -- Dimensions (flexible key-value)
+
+  dimensions Map(String, String),
+
+
+
+  -- Additional metadata
+
+  metadata String DEFAULT '{}', -- JSON
+
+
+
+  -- Indexes
+
+  INDEX idx_story story_id TYPE bloom_filter GRANULARITY 1,
+
+  INDEX idx_event_type event_type TYPE set(0) GRANULARITY 1,
+
+  INDEX idx_platform platform TYPE set(0) GRANULARITY 1
+
+) ENGINE = MergeTree()
+
+PARTITION BY toYYYYMM(timestamp)
+
+ORDER BY (tenant_id, event_type, platform, timestamp)
+
+TTL timestamp + INTERVAL 90 DAY DELETE
+
+SETTINGS index_granularity = 8192;
+
+
+
+-- Materialized View: Hourly Story Metrics
+
+CREATE MATERIALIZED VIEW story_metrics_hourly
+
+ENGINE = SummingMergeTree()
+
+PARTITION BY toYYYYMM(hour)
+
+ORDER BY (tenant_id, story_id, platform, hour)
+
+AS SELECT
+
+  tenant_id,
+
+  story_id,
+
+  platform,
+
+  toStartOfHour(timestamp) as hour,
+
+  countIf(event_type = 'story.impression') as impressions,
+
+  countIf(event_type = 'story.click') as clicks,
+
+  countIf(event_type = 'story.engagement') as engagements,
+
+  countIf(event_type = 'story.share') as shares,
+
+  countIf(event_type = 'story.comment') as comments,
+
+  countIf(event_type = 'story.read_complete') as read_completions,
+
+  sum(metrics['read_depth']) as total_read_depth,
+
+  sum(metrics['time_on_page']) as total_time_on_page,
+
+  sum(metrics['revenue']) as total_revenue
+
+FROM analytics_events
+
+WHERE event_type LIKE 'story.%'
+
+GROUP BY tenant_id, story_id, platform, hour;
+
+
+
+-- Materialized View: AI Performance Metrics
+
+CREATE MATERIALIZED VIEW ai_performance_hourly
+
+ENGINE = SummingMergeTree()
+
+PARTITION BY toYYYYMM(hour)
+
+ORDER BY (tenant_id, ai_agent_id, model, hour)
+
+AS SELECT
+
+  tenant_id,
+
+  dimensions['ai_agent_id'] as ai_agent_id,
+
+  dimensions['model'] as model,
+
+  dimensions['content_type'] as content_type,
+
+  toStartOfHour(timestamp) as hour,
+
+  count() as total_generations,
+
+  countIf(event_type = 'ai.quality' AND metrics['passed'] = 1) as passed_generations,
+
+      avg(metrics['quality_score']) as avg_quality_score,
+
+      avg(metrics['generation_time_ms']) as avg_generation_time_ms,
+
+      sum(metrics['tokens_used']) as total_tokens,
+
+      sum(metrics['cost_usd']) as total_cost_usd
+
+FROM analytics_events
+
+WHERE event_type LIKE 'ai.%'
+
+GROUP BY tenant_id, ai_agent_id, model, content_type, hour;
+
+```
+
+
+
+2.4 Kafka Event Topics
+
+
+
+```yaml
+
+topics:
+
+ analytics.events.raw:
+
+      partitions: 60
+
+      replication_factor: 3
+
+      retention_ms: 604800000 # 7 days
+
+      description: "Raw analytics events from all sources"
+
+
+
+ analytics.events.normalized:
+
+      partitions: 30
+
+      replication_factor: 3
+
+      retention_ms: 2592000000 # 30 days
+
+      description: "Normalized and enriched events"
+
+
+
+ analytics.metrics.story:
+
+ partitions: 12
+
+ replication_factor: 3
+
+ retention_ms: 86400000 # 24 hours
+
+ description: "Story performance metrics (real-time)"
+
+
+
+analytics.metrics.platform:
+
+ partitions: 12
+
+ replication_factor: 3
+
+ retention_ms: 86400000
+
+ description: "Platform performance metrics"
+
+
+
+analytics.metrics.ai:
+
+ partitions: 6
+
+ replication_factor: 3
+
+ retention_ms: 2592000000 # 30 days
+
+ description: "AI performance metrics"
+
+
+
+analytics.audience.profile:
+
+ partitions: 6
+
+ replication_factor: 3
+
+ retention_ms: 2592000000
+
+ description: "Audience profile updates"
+
+
+
+analytics.recommendations:
+
+ partitions: 6
+
+ replication_factor: 3
+
+      retention_ms: 604800000
+
+      description: "Recommendation events and feedback"
+
+
+
+ analytics.optimization.signal:
+
+      partitions: 6
+
+      replication_factor: 3
+
+      retention_ms: 604800000
+
+      description: "AI optimization signals"
+
+
+
+ analytics.revenue:
+
+      partitions: 6
+
+      replication_factor: 3
+
+      retention_ms: 2592000000
+
+      description: "Revenue events"
+
+```
+
+
+
+---
+
+
+
+PART III — PERFORMANCE ANALYTICS ENGINE
+
+
+
+Service ID: SVC-ANA-RTA
+
+Runtime: Golang + ClickHouse
+
+gRPC Port: 9602
+
+
+
+3.1 Story Performance Analytics
+
+```go
+
+// services/analytics/realtime-analytics/internal/domain/story_performance.go
+
+package domain
+
+
+
+// StoryPerformanceAnalyzer computes real-time story metrics
+
+type StoryPerformanceAnalyzer struct {
+
+    clickhouse *clickhouse.Client
+
+    redis     *redis.Client
+
+}
+
+
+
+type StoryPerformance struct {
+
+    StoryID         string             `json:"story_id"`
+
+    Headline         string             `json:"headline"`
+
+    PublishedAt       time.Time             `json:"published_at"`
+
+
+
+    // Aggregate Metrics
+
+    TotalImpressions int64                  `json:"total_impressions"`
+
+    TotalClicks     int64               `json:"total_clicks"`
+
+    TotalEngagements int64                   `json:"total_engagements"`
+
+    TotalShares       int64              `json:"total_shares"`
+
+    TotalComments        int64              `json:"total_comments"`
+
+    TotalReadCompletions int64                  `json:"total_read_completions"`
+
+
+
+    // Derived Metrics
+
+    CTR           float64              `json:"ctr"`         // Click-Through Rate
+
+    EngagementRate           float64          `json:"engagement_rate"`
+
+    ShareRate        float64             `json:"share_rate"`
+
+    AvgReadDepth         float64            `json:"avg_read_depth"`     // 0-100%
+
+    AvgTimeOnPage           float64          `json:"avg_time_on_page"` // seconds
+
+    CompletionRate       float64            `json:"completion_rate"`
+
+
+
+    // Platform Breakdown
+
+    PlatformMetrics map[string]*PlatformStoryMetrics `json:"platform_metrics"`
+
+
+
+    // Velocity
+
+    EngagementsPerMinute float64                 `json:"engagements_per_minute"`
+
+    Trend          string             `json:"trend"`       // rising, stable, falling
+
+    ViralScore      float64             `json:"viral_score"`    // 0-100
+
+
+
+    // Revenue
+
+    TotalRevenue        float64           `json:"total_revenue"`
+
+    RevenuePerImpression float64                `json:"revenue_per_impression"`
+
+
+
+    // AI Attribution
+
+    AIAgentID        string             `json:"ai_agent_id,omitempty"`
+
+    AIModel         string             `json:"ai_model,omitempty"`
+
+    AIGenerationScore float64                `json:"ai_generation_score,omitempty"`
+
+}
+
+
+
+// GetStoryPerformance retrieves comprehensive story performance metrics
+
+func (spa *StoryPerformanceAnalyzer) GetStoryPerformance(
+
+    ctx context.Context,
+
+  storyID string,
+
+  timeWindow time.Duration,
+
+) (*StoryPerformance, error) {
+
+
+
+  // Try cache first
+
+  cacheKey := fmt.Sprintf("story_perf:%s:%s", storyID, timeWindow)
+
+  if cached, err := spa.redis.Get(ctx, cacheKey).Result(); err == nil {
+
+      var perf StoryPerformance
+
+      json.Unmarshal([]byte(cached), &perf)
+
+      return &perf, nil
+
+  }
+
+
+
+  // Query ClickHouse
+
+  query := `
+
+      SELECT
+
+        story_id,
+
+        platform,
+
+        countIf(event_type = 'story.impression') as impressions,
+
+        countIf(event_type = 'story.click') as clicks,
+
+        countIf(event_type = 'story.engagement') as engagements,
+
+        countIf(event_type = 'story.share') as shares,
+
+        countIf(event_type = 'story.comment') as comments,
+
+        countIf(event_type = 'story.read_complete') as completions,
+
+        avg(metrics['read_depth']) as avg_read_depth,
+
+        avg(metrics['time_on_page']) as avg_time,
+
+        sum(metrics['revenue']) as revenue
+
+    FROM analytics_events
+
+    WHERE story_id = ?
+
+    AND timestamp >= now() - INTERVAL ?
+
+    GROUP BY story_id, platform
+
+`
+
+
+
+rows, err := spa.clickhouse.Query(ctx, query, storyID, timeWindow)
+
+if err != nil {
+
+    return nil, fmt.Errorf("clickhouse query: %w", err)
+
+}
+
+defer rows.Close()
+
+
+
+perf := &StoryPerformance{
+
+    StoryID:      storyID,
+
+    PlatformMetrics: make(map[string]*PlatformStoryMetrics),
+
+}
+
+
+
+for rows.Next() {
+
+    var platform string
+
+    var impressions, clicks, engagements, shares, comments, completions int64
+
+    var avgReadDepth, avgTime, revenue float64
+
+
+
+    rows.Scan(&perf.StoryID, &platform, &impressions, &clicks, &engagements,
+
+      &shares, &comments, &completions, &avgReadDepth, &avgTime, &revenue)
+
+
+
+    pm := &PlatformStoryMetrics{
+
+    Platform:        platform,
+
+    Impressions:       impressions,
+
+    Clicks:        clicks,
+
+    Engagements:         engagements,
+
+    Shares:         shares,
+
+    Comments:          comments,
+
+    ReadCompletions: completions,
+
+    AvgReadDepth:        avgReadDepth,
+
+    AvgTimeOnPage:           avgTime,
+
+    Revenue:          revenue,
+
+}
+
+
+
+if impressions > 0 {
+
+    pm.CTR = float64(clicks) / float64(impressions) * 100
+
+    pm.EngagementRate = float64(engagements) / float64(impressions) * 100
+
+}
+
+
+
+perf.PlatformMetrics[platform] = pm
+
+
+
+// Aggregate totals
+
+perf.TotalImpressions += impressions
+
+perf.TotalClicks += clicks
+
+perf.TotalEngagements += engagements
+
+perf.TotalShares += shares
+
+perf.TotalComments += comments
+
+perf.TotalReadCompletions += completions
+
+        perf.TotalRevenue += revenue
+
+    }
+
+
+
+    // Calculate derived metrics
+
+    if perf.TotalImpressions > 0 {
+
+        perf.CTR = float64(perf.TotalClicks) / float64(perf.TotalImpressions) * 100
+
+        perf.EngagementRate = float64(perf.TotalEngagements) / float64(perf.TotalImpressions) *
+100
+
+        perf.ShareRate = float64(perf.TotalShares) / float64(perf.TotalImpressions) * 100
+
+        perf.RevenuePerImpression = perf.TotalRevenue / float64(perf.TotalImpressions)
+
+    }
+
+
+
+    // Calculate velocity and viral score
+
+    perf.EngagementsPerMinute = spa.calculateVelocity(ctx, storyID)
+
+    perf.ViralScore = spa.calculateViralScore(perf)
+
+    perf.Trend = spa.determineTrend(ctx, storyID, timeWindow)
+
+
+
+    // Cache for 5 minutes
+
+    data, _ := json.Marshal(perf)
+
+    spa.redis.Set(ctx, cacheKey, data, 5*time.Minute)
+
+
+
+    return perf, nil
+
+}
+
+
+
+// calculateViralScore computes a viral score based on engagement velocity and sharing
+patterns
+
+func (spa *StoryPerformanceAnalyzer) calculateViralScore(perf *StoryPerformance) float64 {
+
+weights := map[string]float64{
+
+    "share_velocity": 0.35,
+
+    "engagement_rate": 0.25,
+
+    "growth_rate":     0.20,
+
+    "external_referrers": 0.20,
+
+}
+
+
+
+score := 0.0
+
+
+
+// Share velocity (shares per impression)
+
+if perf.TotalImpressions > 0 {
+
+    shareRate := float64(perf.TotalShares) / float64(perf.TotalImpressions)
+
+    score += math.Min(shareRate*1000, 100) * weights["share_velocity"]
+
+}
+
+
+
+// Engagement rate
+
+score += perf.EngagementRate * weights["engagement_rate"]
+
+
+
+// Growth rate (velocity trend)
+
+if perf.EngagementsPerMinute > 10 {
+
+    score += 80 * weights["growth_rate"]
+
+} else if perf.EngagementsPerMinute > 1 {
+
+    score += 40 * weights["growth_rate"]
+
+}
+
+
+
+return math.Min(100, score)
+
+}
+
+```
+
+
+
+---
+
+
+
+PART IV — AUDIENCE INTELLIGENCE ENGINE
+
+
+
+Service ID: SVC-ANA-AUD
+
+Runtime: Golang + Python (ML)
+
+gRPC Port: 9604
+
+
+
+4.1 Audience Profiling
+
+
+
+```go
+
+// services/analytics/audience-intelligence/internal/domain/profile.go
+
+package domain
+
+
+
+// AudienceProfileEngine builds and maintains audience profiles
+
+type AudienceProfileEngine struct {
+
+      clickhouse *clickhouse.Client
+
+      redis    *redis.Client
+
+      segmentation *SegmentationEngine
+
+      featureStore FeatureStoreClient
+
+}
+
+
+
+type AudienceProfile struct {
+
+ProfileID       string         `json:"profile_id"`
+
+SegmentName          string         `json:"segment_name"`
+
+SegmentSize        int64          `json:"segment_size"`
+
+
+
+// Demographics
+
+Demographics        DemographicProfile     `json:"demographics"`
+
+
+
+// Behavior
+
+Behavior        BehaviorProfile      `json:"behavior"`
+
+
+
+// Content Preferences
+
+ContentPreferences ContentPreferenceProfile `json:"content_preferences"`
+
+
+
+// Platform Usage
+
+PlatformUsage       PlatformUsageProfile `json:"platform_usage"`
+
+
+
+// Engagement
+
+Engagement         EngagementProfile      `json:"engagement"`
+
+
+
+// Predictive
+
+ChurnRisk        float64          `json:"churn_risk"`
+
+SubscriptionProbability float64        `json:"subscription_probability"`
+
+LifetimeValue     float64          `json:"lifetime_value"`
+
+NextBestAction      string         `json:"next_best_action"`
+
+
+
+LastUpdated        time.Time         `json:"last_updated"`
+
+}
+
+
+
+type DemographicProfile struct {
+
+    AgeGroups         map[string]float64      `json:"age_groups"`
+
+    GenderDistribution map[string]float64        `json:"gender_distribution"`
+
+    TopCountries      []CountryAffinity      `json:"top_countries"`
+
+    TopLanguages       []LanguageAffinity      `json:"top_languages"`
+
+    DeviceTypes       map[string]float64      `json:"device_types"`
+
+}
+
+
+
+type BehaviorProfile struct {
+
+    AvgSessionDuration float64              `json:"avg_session_duration_seconds"`
+
+    AvgPagesPerSession float64               `json:"avg_pages_per_session"`
+
+    PeakActivityHours []int               `json:"peak_activity_hours"`
+
+    PeakActivityDays []int            `json:"peak_activity_days"`
+
+    AvgReadDepth        float64            `json:"avg_read_depth"`
+
+    BounceRate        float64         `json:"bounce_rate"`
+
+    ReturnFrequency      float64            `json:"return_frequency_days"`
+
+    SharingBehavior     string            `json:"sharing_behavior"`
+
+}
+
+
+
+type ContentPreferenceProfile struct {
+
+    TopCategories      []CategoryAffinity     `json:"top_categories"`
+
+    TopTopics       []TopicAffinity       `json:"top_topics"`
+
+    PreferredContentTypes []ContentTypeAffinity `json:"preferred_content_types"`
+
+    PreferredLength     string            `json:"preferred_length"`
+
+    PreferredTone        string        `json:"preferred_tone"`
+
+    AvoidedTopics        []string      `json:"avoided_topics"`
+
+    ReadingLevel        string        `json:"reading_level"`
+
+}
+
+
+
+// BuildProfile constructs an audience profile from behavioral data
+
+func (ape *AudienceProfileEngine) BuildProfile(
+
+    ctx context.Context,
+
+    segmentID string,
+
+    filters ProfileFilters,
+
+) (*AudienceProfile, error) {
+
+
+
+    profile := &AudienceProfile{
+
+        ProfileID: uuid.NewV7().String(),
+
+        SegmentName: filters.SegmentName,
+
+        LastUpdated: time.Now(),
+
+    }
+
+
+
+    // 1. Demographics analysis
+
+    demographics, err := ape.analyzeDemographics(ctx, filters)
+
+    if err != nil {
+
+        return nil, fmt.Errorf("demographics: %w", err)
+
+    }
+
+    profile.Demographics = *demographics
+
+
+
+    // 2. Behavior analysis
+
+behavior, err := ape.analyzeBehavior(ctx, filters)
+
+if err != nil {
+
+    return nil, fmt.Errorf("behavior: %w", err)
+
+}
+
+profile.Behavior = *behavior
+
+
+
+// 3. Content preferences
+
+preferences, err := ape.analyzeContentPreferences(ctx, filters)
+
+if err != nil {
+
+    return nil, fmt.Errorf("preferences: %w", err)
+
+}
+
+profile.ContentPreferences = *preferences
+
+
+
+// 4. Platform usage
+
+platformUsage, err := ape.analyzePlatformUsage(ctx, filters)
+
+if err != nil {
+
+    return nil, fmt.Errorf("platform usage: %w", err)
+
+}
+
+profile.PlatformUsage = *platformUsage
+
+
+
+// 5. Engagement metrics
+
+engagement, err := ape.analyzeEngagement(ctx, filters)
+
+if err != nil {
+
+    return nil, fmt.Errorf("engagement: %w", err)
+
+}
+
+profile.Engagement = *engagement
+
+    // 6. Predictive modeling
+
+    profile.ChurnRisk = ape.predictChurnRisk(ctx, filters)
+
+    profile.SubscriptionProbability = ape.predictSubscription(ctx, filters)
+
+    profile.LifetimeValue = ape.calculateLTV(profile)
+
+    profile.NextBestAction = ape.recommendAction(profile)
+
+
+
+    // 7. Cache profile
+
+    ape.cacheProfile(ctx, profile)
+
+
+
+    return profile, nil
+
+}
+
+
+
+// analyzeDemographics extracts demographic patterns from event data
+
+func (ape *AudienceProfileEngine) analyzeDemographics(
+
+    ctx context.Context,
+
+    filters ProfileFilters,
+
+) (*DemographicProfile, error) {
+
+
+
+    query := `
+
+      SELECT
+
+         dimensions['country'] as country,
+
+         dimensions['device_type'] as device_type,
+
+         dimensions['language'] as language,
+
+         count(DISTINCT user_id) as user_count
+
+      FROM analytics_events
+
+    WHERE tenant_id = ?
+
+    AND timestamp >= now() - INTERVAL 30 DAY
+
+    GROUP BY country, device_type, language
+
+    ORDER BY user_count DESC
+
+`
+
+
+
+rows, err := ape.clickhouse.Query(ctx, query, filters.TenantID)
+
+if err != nil {
+
+    return nil, err
+
+}
+
+defer rows.Close()
+
+
+
+profile := &DemographicProfile{
+
+    TopCountries: make([]CountryAffinity, 0),
+
+    TopLanguages: make([]LanguageAffinity, 0),
+
+    DeviceTypes: make(map[string]float64),
+
+}
+
+
+
+totalUsers := 0.0
+
+
+
+for rows.Next() {
+
+    var country, deviceType, language string
+
+    var userCount int64
+
+    rows.Scan(&country, &deviceType, &language, &userCount)
+
+
+
+    totalUsers += float64(userCount)
+
+          profile.DeviceTypes[deviceType] += float64(userCount)
+
+      }
+
+
+
+      // Normalize
+
+      for device, count := range profile.DeviceTypes {
+
+          profile.DeviceTypes[device] = count / totalUsers * 100
+
+      }
+
+
+
+      return profile, nil
+
+}
+
+```
+
+
+
+4.2 Segmentation Engine
+
+
+
+```python
+
+# services/analytics/audience-intelligence/src/segmentation/engine.py
+
+"""
+
+Audience Segmentation Engine — Clusters users into behavioral segments.
+
+"""
+
+
+
+class SegmentationEngine:
+
+      """Creates and manages audience segments."""
+
+
+
+      SEGMENT_DEFINITIONS = {
+
+          "power_readers": {
+
+            "description": "High-engagement daily readers",
+
+     "criteria": {
+
+          "return_frequency_days": (0, 2),
+
+          "avg_pages_per_session": (5, 100),
+
+          "avg_read_depth": (70, 100),
+
+     },
+
+     "priority": "HIGH",
+
+},
+
+"casual_readers": {
+
+     "description": "Regular but lighter readers",
+
+     "criteria": {
+
+          "return_frequency_days": (3, 14),
+
+          "avg_pages_per_session": (1, 5),
+
+          "avg_read_depth": (30, 70),
+
+     },
+
+     "priority": "MEDIUM",
+
+},
+
+"social_scrollers": {
+
+     "description": "Primarily consume via social media",
+
+     "criteria": {
+
+          "platform_usage": {"social": (70, 100)},
+
+          "avg_read_depth": (10, 50),
+
+     },
+
+     "priority": "MEDIUM",
+
+},
+
+"newsletter_loyalists": {
+
+     "description": "Primarily engage via email",
+
+         "criteria": {
+
+              "platform_usage": {"email": (50, 100)},
+
+              "return_frequency_days": (0, 7),
+
+         },
+
+         "priority": "HIGH",
+
+    },
+
+    "at_risk": {
+
+         "description": "Declining engagement, churn risk",
+
+         "criteria": {
+
+              "churn_risk": (60, 100),
+
+              "return_frequency_days": (14, 90),
+
+         },
+
+         "priority": "HIGH",
+
+    },
+
+    "new_users": {
+
+         "description": "First-time visitors in last 7 days",
+
+         "criteria": {
+
+              "days_since_first_visit": (0, 7),
+
+         },
+
+         "priority": "HIGH",
+
+    },
+
+}
+
+
+
+async def classify_user(
+
+    self,
+
+    user_id: str,
+
+  behavior: BehaviorProfile,
+
+  preferences: ContentPreferenceProfile,
+
+) -> List[SegmentAssignment]:
+
+  """Classify a user into audience segments."""
+
+
+
+  assignments = []
+
+
+
+  for segment_name, definition in self.SEGMENT_DEFINITIONS.items():
+
+     score = self._match_criteria(behavior, preferences, definition["criteria"])
+
+     if score > 0.5:
+
+          assignments.append(SegmentAssignment(
+
+               segment_name=segment_name,
+
+               score=score,
+
+               priority=definition["priority"],
+
+               description=definition["description"],
+
+          ))
+
+
+
+  return sorted(assignments, key=lambda x: x.score, reverse=True)
+
+
+
+def _match_criteria(
+
+  self,
+
+  behavior: BehaviorProfile,
+
+  preferences: ContentPreferenceProfile,
+
+  criteria: dict,
+
+) -> float:
+
+  """Calculate how well a user matches segment criteria."""
+
+      total_weight = 0.0
+
+      matched_weight = 0.0
+
+
+
+      for criterion, expected_range in criteria.items():
+
+        actual_value = self._get_criterion_value(criterion, behavior, preferences)
+
+        if actual_value is not None:
+
+          weight = 1.0
+
+          if isinstance(expected_range, tuple) and len(expected_range) == 2:
+
+             low, high = expected_range
+
+             if low <= actual_value <= high:
+
+               matched_weight += weight
+
+             else:
+
+               # Partial match based on proximity
+
+               distance = min(abs(actual_value - low), abs(actual_value - high))
+
+               max_distance = max(abs(low), abs(high))
+
+               if max_distance > 0:
+
+                 partial = 1.0 - (distance / max_distance)
+
+                 matched_weight += weight * max(0, partial)
+
+          total_weight += weight
+
+
+
+      if total_weight == 0:
+
+        return 0.0
+
+      return matched_weight / total_weight
+
+```
+
+
+
+---
+
+PART V — RECOMMENDATION INTELLIGENCE
+
+
+
+Service ID: SVC-ANA-REC
+
+Runtime: Golang + Python (ML)
+
+gRPC Port: 9605
+
+
+
+5.1 Recommendation Engine
+
+
+
+```go
+
+// services/analytics/recommendation-engine/internal/domain/recommender.go
+
+package domain
+
+
+
+// RecommendationEngine generates personalized content recommendations
+
+type RecommendationEngine struct {
+
+    clickhouse *clickhouse.Client
+
+    redis       *redis.Client
+
+    featureStore FeatureStoreClient
+
+    modelRegistry *ModelRegistry
+
+}
+
+
+
+type RecommendationRequest struct {
+
+    UserID       string           `json:"user_id,omitempty"`
+
+    SessionID      string           `json:"session_id,omitempty"`
+
+    Context       RecommendationContext `json:"context"`
+
+    Limit       int             `json:"limit"`
+
+    ExcludeIDs    []string      `json:"exclude_ids,omitempty"`
+
+}
+
+
+
+type RecommendationContext struct {
+
+    CurrentStoryID string `json:"current_story_id,omitempty"`
+
+    Platform     string `json:"platform,omitempty"`
+
+    DeviceType     string `json:"device_type,omitempty"`
+
+    TimeOfDay      int `json:"time_of_day,omitempty"` // 0-23
+
+    Location     string `json:"location,omitempty"`
+
+}
+
+
+
+type Recommendation struct {
+
+    StoryID      string `json:"story_id"`
+
+    Headline      string `json:"headline"`
+
+    Summary         string `json:"summary"`
+
+    Score        float64 `json:"score"`
+
+    Reason        string `json:"reason"`
+
+    RecommendationType string `json:"recommendation_type"`
+
+}
+
+
+
+// GetRecommendations generates personalized content recommendations
+
+func (re *RecommendationEngine) GetRecommendations(
+
+    ctx context.Context,
+
+    request *RecommendationRequest,
+
+) ([]*Recommendation, error) {
+
+// 1. Get user profile if available
+
+var userProfile *AudienceProfile
+
+if request.UserID != "" {
+
+    profile, err := re.getUserProfile(ctx, request.UserID)
+
+    if err == nil {
+
+        userProfile = profile
+
+    }
+
+}
+
+
+
+// 2. Multi-strategy recommendation generation
+
+strategies := []RecommendationStrategy{
+
+    &CollaborativeFiltering{weight: 0.30},
+
+    &ContentBasedFiltering{weight: 0.25},
+
+    &TrendingBoost{weight: 0.15},
+
+    &FreshnessBoost{weight: 0.10},
+
+    &PersonalizedRelevance{weight: 0.10},
+
+    &ExplorationDiversification{weight: 0.10},
+
+}
+
+
+
+// 3. Generate candidates from each strategy in parallel
+
+var allCandidates []*Recommendation
+
+var mu sync.Mutex
+
+var wg sync.WaitGroup
+
+
+
+for _, strategy := range strategies {
+
+    wg.Add(1)
+
+    go func(s RecommendationStrategy) {
+
+      defer wg.Done()
+
+
+
+      candidates, err := s.GetCandidates(ctx, userProfile, request, request.Limit*3)
+
+      if err != nil {
+
+          return
+
+      }
+
+
+
+      // Apply strategy weight
+
+      for _, c := range candidates {
+
+          c.Score *= s.GetWeight()
+
+      }
+
+
+
+      mu.Lock()
+
+      allCandidates = append(allCandidates, candidates...)
+
+      mu.Unlock()
+
+    }(strategy)
+
+}
+
+
+
+wg.Wait()
+
+
+
+// 4. Merge and deduplicate
+
+merged := re.mergeAndDeduplicate(allCandidates)
+
+
+
+// 5. Re-rank with ML model
+
+ranked, err := re.rankWithML(ctx, userProfile, merged, request.Context)
+
+    if err != nil {
+
+        // Fall back to score-based ranking
+
+        sort.Slice(merged, func(i, j int) bool {
+
+             return merged[i].Score > merged[j].Score
+
+        })
+
+        ranked = merged
+
+    }
+
+
+
+    // 6. Apply diversity constraints
+
+    diversified := re.ensureDiversity(ranked, request.Limit)
+
+
+
+    // 7. Apply business rules
+
+    filtered := re.applyBusinessRules(ctx, diversified, request)
+
+
+
+    if len(filtered) > request.Limit {
+
+        filtered = filtered[:request.Limit]
+
+    }
+
+
+
+    return filtered, nil
+
+}
+
+
+
+// CollaborativeFiltering finds recommendations based on similar users
+
+type CollaborativeFiltering struct {
+
+    weight float64
+
+}
+
+func (cf *CollaborativeFiltering) GetCandidates(
+
+  ctx context.Context,
+
+  userProfile *AudienceProfile,
+
+  request *RecommendationRequest,
+
+  limit int,
+
+) ([]*Recommendation, error) {
+
+
+
+  // Find users with similar reading patterns
+
+  // Recommend stories they engaged with that the current user hasn't seen
+
+
+
+  recommendations := make([]*Recommendation, 0)
+
+
+
+  if userProfile == nil {
+
+      return recommendations, nil
+
+  }
+
+
+
+  // Query ClickHouse for similar user behavior
+
+  query := `
+
+      SELECT
+
+        e2.story_id,
+
+        count(DISTINCT e2.user_id) as similar_user_count,
+
+        avg(e2.metrics['engagement_score']) as avg_engagement
+
+      FROM analytics_events e1
+
+      JOIN analytics_events e2
+
+        ON e1.user_id != e2.user_id
+
+        AND e1.story_id = e2.story_id
+
+        AND e1.event_type = 'story.engagement'
+
+        AND e2.event_type = 'story.engagement'
+
+    WHERE e1.user_id = ?
+
+    AND e1.timestamp >= now() - INTERVAL 30 DAY
+
+    AND e2.story_id NOT IN (
+
+        SELECT story_id FROM analytics_events
+
+        WHERE user_id = ? AND event_type = 'story.impression'
+
+        AND timestamp >= now() - INTERVAL 7 DAY
+
+    )
+
+    GROUP BY e2.story_id
+
+    ORDER BY similar_user_count DESC, avg_engagement DESC
+
+    LIMIT ?
+
+`
+
+
+
+// Execute and build recommendations
+
+rows, _ := cf.clickhouse.Query(ctx, query, userProfile.UserID, userProfile.UserID, limit)
+
+defer rows.Close()
+
+
+
+for rows.Next() {
+
+    var storyID string
+
+    var similarCount int64
+
+    var avgEngagement float64
+
+    rows.Scan(&storyID, &similarCount, &avgEngagement)
+
+
+
+    recommendations = append(recommendations, &Recommendation{
+
+        StoryID:     storyID,
+
+               Score:     float64(similarCount) * avgEngagement,
+
+               Reason:      "Readers like you enjoyed this",
+
+               RecommendationType: "COLLABORATIVE",
+
+          })
+
+      }
+
+
+
+      return recommendations, nil
+
+}
+
+
+
+func (cf *CollaborativeFiltering) GetWeight() float64 {
+
+      return cf.weight
+
+}
+
+```
+
+
+
+5.2 Trending Detection
+
+
+
+```go
+
+// TrendingBoost identifies currently trending stories
+
+type TrendingBoost struct {
+
+      weight float64
+
+      redis *redis.Client
+
+}
+
+
+
+func (tb *TrendingBoost) GetCandidates(
+
+      ctx context.Context,
+
+      userProfile *AudienceProfile,
+
+  request *RecommendationRequest,
+
+  limit int,
+
+) ([]*Recommendation, error) {
+
+
+
+  recommendations := make([]*Recommendation, 0)
+
+
+
+  // Get trending stories from Redis sorted set
+
+  trending, err := tb.redis.ZRevRangeWithScores(ctx, "trending:stories", 0, int64(limit-
+1)).Result()
+
+  if err != nil {
+
+      return recommendations, err
+
+  }
+
+
+
+  for _, item := range trending {
+
+      storyID := item.Member.(string)
+
+      trendingScore := item.Score
+
+
+
+      recommendations = append(recommendations, &Recommendation{
+
+           StoryID:    storyID,
+
+           Score:     trendingScore / 100.0, // Normalize
+
+           Reason:     "Trending now",
+
+           RecommendationType: "TRENDING",
+
+      })
+
+  }
+
+
+
+  return recommendations, nil
+
+}
+
+
+
+// UpdateTrendingScores refreshes trending story scores (called by background job)
+
+func (tb *TrendingBoost) UpdateTrendingScores(ctx context.Context) error {
+
+    // Calculate trending score: weighted combination of recent velocity and engagement
+
+    query := `
+
+        SELECT
+
+          story_id,
+
+          count() as recent_views,
+
+          sum(metrics['engagement_score']) as total_engagement,
+
+          count(DISTINCT user_id) as unique_readers
+
+        FROM analytics_events
+
+        WHERE event_type IN ('story.impression', 'story.engagement')
+
+        AND timestamp >= now() - INTERVAL 1 HOUR
+
+        GROUP BY story_id
+
+        HAVING recent_views > 10
+
+        ORDER BY total_engagement DESC
+
+        LIMIT 100
+
+    `
+
+
+
+    rows, _ := tb.clickhouse.Query(ctx, query)
+
+    defer rows.Close()
+
+
+
+    pipe := tb.redis.Pipeline()
+
+
+
+    for rows.Next() {
+
+          var storyID string
+
+          var views, uniqueReaders int64
+
+          var engagement float64
+
+          rows.Scan(&storyID, &views, &engagement, &uniqueReaders)
+
+
+
+          // Trending score formula
+
+          score := math.Log1p(float64(views)) * engagement * math.Log1p(float64(uniqueReaders))
+
+
+
+          pipe.ZAdd(ctx, "trending:stories", &redis.Z{
+
+               Score: score,
+
+               Member: storyID,
+
+          })
+
+      }
+
+
+
+      // Set expiry on trending set
+
+      pipe.Expire(ctx, "trending:stories", 2*time.Hour)
+
+
+
+      _, err := pipe.Exec(ctx)
+
+      return err
+
+}
+
+```
+
+
+
+---
+
+
+
+PART VI — AI LEARNING ENGINE
+
+Service ID: SVC-ANA-AIL
+
+Runtime: Python (ML)
+
+gRPC Port: 9606
+
+
+
+6.1 AI Feedback Loop
+
+
+
+```python
+
+# services/analytics/ai-learning-engine/src/learning/feedback.py
+
+"""
+
+AI Learning Engine — Continuous feedback loop for AI optimization.
+
+"""
+
+
+
+class AILearningEngine:
+
+  """Analyzes AI performance and generates optimization signals."""
+
+
+
+  def __init__(self, clickhouse_client, kafka_producer, feature_store):
+
+      self.clickhouse = clickhouse_client
+
+      self.kafka = kafka_producer
+
+      self.feature_store = feature_store
+
+
+
+  async def analyze_ai_performance(
+
+      self,
+
+      time_window: timedelta = timedelta(hours=24),
+
+  ) -> List[OptimizationSignal]:
+
+      """Analyze AI performance and generate optimization signals."""
+
+signals = []
+
+
+
+# 1. Headline performance analysis
+
+headline_signals = await self.analyze_headline_performance(time_window)
+
+signals.extend(headline_signals)
+
+
+
+# 2. Content structure analysis
+
+structure_signals = await self.analyze_content_structure(time_window)
+
+signals.extend(structure_signals)
+
+
+
+# 3. Model performance comparison
+
+model_signals = await self.compare_model_performance(time_window)
+
+signals.extend(model_signals)
+
+
+
+# 4. Timing optimization
+
+timing_signals = await self.analyze_publishing_timing(time_window)
+
+signals.extend(timing_signals)
+
+
+
+# 5. Platform-specific optimization
+
+platform_signals = await self.analyze_platform_performance(time_window)
+
+signals.extend(platform_signals)
+
+
+
+# 6. Tone and style optimization
+
+tone_signals = await self.analyze_tone_effectiveness(time_window)
+
+signals.extend(tone_signals)
+
+  # Publish signals to Kafka for AI agents
+
+  for signal in signals:
+
+    await self.kafka.publish("analytics.optimization.signal", signal)
+
+
+
+  return signals
+
+
+
+async def analyze_headline_performance(
+
+  self,
+
+  time_window: timedelta,
+
+) -> List[OptimizationSignal]:
+
+  """Analyze which headline patterns perform best."""
+
+
+
+  query = """
+
+    SELECT
+
+          dimensions['headline_pattern'] as pattern,
+
+          dimensions['headline_type'] as headline_type,
+
+          count() as usage_count,
+
+          avg(metrics['ctr']) as avg_ctr,
+
+          avg(metrics['engagement_rate']) as avg_engagement,
+
+          avg(metrics['read_completion_rate']) as avg_completion
+
+    FROM analytics_events
+
+    WHERE event_type = 'story.impression'
+
+    AND timestamp >= now() - INTERVAL ?
+
+    AND dimensions['headline_pattern'] != ''
+
+    GROUP BY pattern, headline_type
+
+    HAVING usage_count >= 50
+
+  ORDER BY avg_ctr DESC
+
+"""
+
+
+
+rows = self.clickhouse.query(query, time_window)
+
+
+
+signals = []
+
+baseline_ctr = self._get_baseline_ctr(time_window)
+
+
+
+for row in rows:
+
+  if row['avg_ctr'] > baseline_ctr * 1.2: # 20% above baseline
+
+      signals.append(OptimizationSignal(
+
+           signal_type="HEADLINE_OPTIMIZATION",
+
+           target="headline_generation_prompt",
+
+           current_metric=row['avg_ctr'],
+
+           baseline_metric=baseline_ctr,
+
+           improvement_pct=(row['avg_ctr'] - baseline_ctr) / baseline_ctr * 100,
+
+           recommended_change=f"INCREASE usage of pattern: {row['pattern']}",
+
+           confidence=min(row['avg_ctr'] / baseline_ctr - 1, 1.0),
+
+           evidence={
+
+                "pattern": row['pattern'],
+
+                "usage_count": row['usage_count'],
+
+                "avg_ctr": row['avg_ctr'],
+
+           },
+
+      ))
+
+  elif row['avg_ctr'] < baseline_ctr * 0.5: # 50% below baseline
+
+      signals.append(OptimizationSignal(
+
+               signal_type="HEADLINE_OPTIMIZATION",
+
+               target="headline_generation_prompt",
+
+               current_metric=row['avg_ctr'],
+
+               baseline_metric=baseline_ctr,
+
+               improvement_pct=(baseline_ctr - row['avg_ctr']) / baseline_ctr * 100,
+
+               recommended_change=f"DECREASE usage of pattern: {row['pattern']}",
+
+               confidence=min(1 - row['avg_ctr'] / baseline_ctr, 1.0),
+
+               evidence={
+
+                    "pattern": row['pattern'],
+
+                    "usage_count": row['usage_count'],
+
+                    "avg_ctr": row['avg_ctr'],
+
+               },
+
+          ))
+
+
+
+  return signals
+
+
+
+async def compare_model_performance(
+
+  self,
+
+  time_window: timedelta,
+
+) -> List[OptimizationSignal]:
+
+  """Compare performance across different AI models."""
+
+
+
+  query = """
+
+    SELECT
+
+          dimensions['model'] as model,
+
+          dimensions['content_type'] as content_type,
+
+      count() as generation_count,
+
+      avg(metrics['quality_score']) as avg_quality,
+
+      avg(metrics['engagement_rate']) as avg_engagement,
+
+      avg(metrics['generation_time_ms']) as avg_latency,
+
+      sum(metrics['cost_usd']) as total_cost,
+
+      avg(metrics['cost_per_1k_tokens']) as avg_cost_per_1k
+
+  FROM analytics_events
+
+  WHERE event_type = 'ai.generation'
+
+  AND timestamp >= now() - INTERVAL ?
+
+  GROUP BY model, content_type
+
+  ORDER BY avg_quality DESC
+
+"""
+
+
+
+rows = self.clickhouse.query(query, time_window)
+
+
+
+signals = []
+
+
+
+for row in rows:
+
+  # Check if a cheaper model performs similarly to an expensive one
+
+  for other_row in rows:
+
+      if (row['model'] != other_row['model'] and
+
+        row['content_type'] == other_row['content_type']):
+
+
+
+        quality_diff = row['avg_quality'] - other_row['avg_quality']
+
+        cost_ratio = other_row['avg_cost_per_1k'] / row['avg_cost_per_1k']
+
+           # If cheaper model is within 5% quality but 50%+ cheaper
+
+           if abs(quality_diff) < 5.0 and cost_ratio > 1.5:
+
+             signals.append(OptimizationSignal(
+
+                  signal_type="MODEL_SELECTION",
+
+                  target="model_routing_config",
+
+                  recommended_change=(
+
+                       f"PREFER model {row['model']} over {other_row['model']} "
+
+                       f"for {row['content_type']}: {cost_ratio:.1f}x cheaper, "
+
+                       f"quality difference: {quality_diff:.1f}%"
+
+                  ),
+
+                  confidence=0.85,
+
+                  evidence={
+
+                       "preferred_model": row['model'],
+
+                       "alternative_model": other_row['model'],
+
+                       "cost_savings_ratio": cost_ratio,
+
+                       "quality_difference_pct": quality_diff,
+
+                  },
+
+             ))
+
+
+
+    return signals
+
+
+
+
+@dataclass
+
+class OptimizationSignal:
+
+  """Signal sent to AI agents for optimization."""
+
+  signal_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+
+      signal_type: str = ""
+
+      target: str = ""
+
+      current_metric: float = 0.0
+
+      baseline_metric: float = 0.0
+
+      improvement_pct: float = 0.0
+
+      recommended_change: str = ""
+
+      confidence: float = 0.0
+
+      evidence: Dict[str, Any] = field(default_factory=dict)
+
+      generated_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+
+```
+
+
+
+6.2 Continuous Evaluation Pipeline
+
+
+
+```python
+
+class ContinuousEvaluationPipeline:
+
+      """Continuously evaluates AI quality and triggers retraining."""
+
+
+
+      def __init__(self, feature_store, model_registry, kafka_producer):
+
+        self.feature_store = feature_store
+
+        self.model_registry = model_registry
+
+        self.kafka = kafka_producer
+
+
+
+      async def evaluate_models(self) -> Dict[str, ModelEvaluation]:
+
+        """Evaluate all active models against recent data."""
+
+
+
+        evaluations = {}
+
+active_models = await self.model_registry.list_active_models()
+
+
+
+for model in active_models:
+
+  # Get evaluation dataset (recent content with known outcomes)
+
+  eval_data = await self.feature_store.get_evaluation_data(
+
+      model_type=model.type,
+
+      time_window=timedelta(days=7),
+
+  )
+
+
+
+  # Run evaluation
+
+  metrics = await self.model_registry.evaluate(model.id, eval_data)
+
+
+
+  evaluation = ModelEvaluation(
+
+      model_id=model.id,
+
+      model_type=model.type,
+
+      metrics=metrics,
+
+      evaluated_at=datetime.utcnow(),
+
+  )
+
+
+
+  evaluations[model.id] = evaluation
+
+
+
+  # Check if model needs retraining
+
+  if self._should_retrain(evaluation, model):
+
+      await self._trigger_retraining(model)
+
+         # Check if model should be rolled back
+
+         if self._should_rollback(evaluation, model):
+
+           await self._trigger_rollback(model)
+
+
+
+       return evaluations
+
+
+
+  def _should_retrain(self, evaluation: ModelEvaluation, model: Model) -> bool:
+
+       """Determine if model quality has degraded enough to retrain."""
+
+
+
+       # Get baseline performance
+
+       baseline = model.baseline_metrics
+
+
+
+       # Check degradation thresholds
+
+       if evaluation.metrics.get('accuracy', 1.0) < baseline.get('accuracy', 1.0) * 0.95:
+
+         return True
+
+
+
+       if evaluation.metrics.get('hallucination_rate', 0.0) > baseline.get('hallucination_rate', 0.0) *
+1.5:
+
+         return True
+
+
+
+       # Check if enough new data has accumulated
+
+       new_samples = evaluation.metrics.get('new_training_samples', 0)
+
+       if new_samples > model.min_samples_for_retraining:
+
+         return True
+
+
+
+       return False
+
+      async def _trigger_retraining(self, model: Model):
+
+        """Trigger model retraining pipeline."""
+
+
+
+        await self.kafka.publish("ai.training.triggered", {
+
+             "model_id": model.id,
+
+             "model_type": model.type,
+
+             "reason": "PERFORMANCE_DEGRADATION",
+
+             "triggered_at": datetime.utcnow().isoformat(),
+
+        })
+
+
+
+        logger.info("retraining_triggered", model_id=model.id, model_type=model.type)
+
+```
+
+
+
+---
+
+
+
+PART VII — EDITORIAL INTELLIGENCE
+
+
+
+Service ID: SVC-ANA-EDI
+
+Runtime: Golang + Python
+
+gRPC Port: 9607
+
+
+
+7.1 Editorial KPIs
+
+
+
+```go
+
+// services/analytics/editorial-intelligence/internal/domain/editorial.go
+
+package domain
+
+
+
+// EditorialIntelligenceEngine measures editorial quality and effectiveness
+
+type EditorialIntelligenceEngine struct {
+
+    clickhouse *clickhouse.Client
+
+    redis   *redis.Client
+
+}
+
+
+
+type EditorialKPIs struct {
+
+    TimeWindow           string        `json:"time_window"`
+
+
+
+    // Publishing Volume
+
+    TotalStoriesPublished int64         `json:"total_stories_published"`
+
+    StoriesByCategory       map[string]int64 `json:"stories_by_category"`
+
+    StoriesByArchetype       map[string]int64 `json:"stories_by_archetype"`
+
+
+
+    // Quality Metrics
+
+    AverageConfidenceScore float64          `json:"average_confidence_score"`
+
+    FactCheckPassRate        float64     `json:"fact_check_pass_rate"`
+
+    HallucinationRate       float64     `json:"hallucination_rate"`
+
+    CorrectionRate        float64      `json:"correction_rate"`
+
+    RetractionRate        float64      `json:"retraction_rate"`
+
+
+
+    // Speed Metrics
+
+    AvgTimeToPublish        time.Duration `json:"avg_time_to_publish"`
+
+    P99TimeToPublish         time.Duration `json:"p99_time_to_publish"`
+
+    BreakingNewsSpeed          time.Duration `json:"breaking_news_speed"`
+
+
+
+    // Engagement Impact
+
+    AvgEngagementRate           float64        `json:"avg_engagement_rate"`
+
+    AvgCTR             float64         `json:"avg_ctr"`
+
+    AvgReadDepth             float64       `json:"avg_read_depth"`
+
+
+
+    // AI Performance
+
+    AIAutoApproveRate          float64        `json:"ai_auto_approve_rate"`
+
+    AIHumanReviewRate            float64       `json:"ai_human_review_rate"`
+
+    AIAccuracyVsHuman          float64        `json:"ai_accuracy_vs_human"`
+
+
+
+    // Source Intelligence
+
+    SourceDiversity        float64         `json:"source_diversity"`
+
+    TopSources          []SourceStats `json:"top_sources"`
+
+    NewSourcesAdded            int64         `json:"new_sources_added"`
+
+}
+
+
+
+// GetEditorialKPIs computes comprehensive editorial KPIs
+
+func (eie *EditorialIntelligenceEngine) GetEditorialKPIs(
+
+    ctx context.Context,
+
+    tenantID string,
+
+    timeWindow time.Duration,
+
+) (*EditorialKPIs, error) {
+
+
+
+    kpis := &EditorialKPIs{
+
+          TimeWindow: timeWindow.String(),
+
+      }
+
+
+
+      // Publishing volume
+
+      kpis.TotalStoriesPublished = eie.getStoryCount(ctx, tenantID, timeWindow)
+
+      kpis.StoriesByCategory = eie.getStoryCountByCategory(ctx, tenantID, timeWindow)
+
+      kpis.StoriesByArchetype = eie.getStoryCountByArchetype(ctx, tenantID, timeWindow)
+
+
+
+      // Quality metrics
+
+      kpis.AverageConfidenceScore = eie.getAverageConfidence(ctx, tenantID, timeWindow)
+
+      kpis.FactCheckPassRate = eie.getFactCheckPassRate(ctx, tenantID, timeWindow)
+
+      kpis.HallucinationRate = eie.getHallucinationRate(ctx, tenantID, timeWindow)
+
+      kpis.CorrectionRate = eie.getCorrectionRate(ctx, tenantID, timeWindow)
+
+
+
+      // Speed metrics
+
+      kpis.AvgTimeToPublish = eie.getAvgTimeToPublish(ctx, tenantID, timeWindow)
+
+      kpis.P99TimeToPublish = eie.getP99TimeToPublish(ctx, tenantID, timeWindow)
+
+
+
+      // AI performance
+
+      kpis.AIAutoApproveRate = eie.getAIAutoApproveRate(ctx, tenantID, timeWindow)
+
+      kpis.AIHumanReviewRate = eie.getAIHumanReviewRate(ctx, tenantID, timeWindow)
+
+
+
+      return kpis, nil
+
+}
+
+```
+
+---
+
+
+
+PART VIII — REVENUE INTELLIGENCE
+
+
+
+Service ID: SVC-ANA-REV
+
+Runtime: Golang
+
+gRPC Port: 9609
+
+
+
+8.1 Revenue Attribution
+
+
+
+```go
+
+// services/analytics/revenue-intelligence/internal/domain/revenue.go
+
+package domain
+
+
+
+// RevenueIntelligenceEngine tracks and attributes revenue
+
+type RevenueIntelligenceEngine struct {
+
+    clickhouse *clickhouse.Client
+
+    redis   *redis.Client
+
+}
+
+
+
+type RevenueReport struct {
+
+    TimeWindow         string         `json:"time_window"`
+
+
+
+    // Total Revenue
+
+    TotalRevenue       float64        `json:"total_revenue"`
+
+    RevenueBySource      map[string]float64   `json:"revenue_by_source"`
+
+    RevenueByPlatform map[string]float64          `json:"revenue_by_platform"`
+
+    RevenueByCategory map[string]float64           `json:"revenue_by_category"`
+
+
+
+    // Advertising
+
+    AdImpressions       int64           `json:"ad_impressions"`
+
+    AdClicks         int64          `json:"ad_clicks"`
+
+    AdCTR            float64         `json:"ad_ctr"`
+
+    AdCPM            float64          `json:"ad_cpm"`
+
+    AdRevenue          float64         `json:"ad_revenue"`
+
+
+
+    // Subscriptions
+
+    NewSubscriptions int64               `json:"new_subscriptions"`
+
+    CancelledSubscriptions int64           `json:"cancelled_subscriptions"`
+
+    NetSubscriptionChange int64              `json:"net_subscription_change"`
+
+    SubscriptionRevenue float64             `json:"subscription_revenue"`
+
+    AvgRevenuePerUser float64               `json:"avg_revenue_per_user"`
+
+    LifetimeValue      float64         `json:"lifetime_value"`
+
+
+
+    // Content ROI
+
+    TopPerformingStories []StoryRevenue           `json:"top_performing_stories"`
+
+    RevenuePerStory      float64          `json:"revenue_per_story"`
+
+    CostPerStory       float64         `json:"cost_per_story"`
+
+    ROI            float64         `json:"roi"`
+
+}
+
+
+
+type StoryRevenue struct {
+
+    StoryID        string `json:"story_id"`
+
+    Headline           string `json:"headline"`
+
+    TotalRevenue float64 `json:"total_revenue"`
+
+    AdRevenue           float64 `json:"ad_revenue"`
+
+    SubscriptionAttr float64 `json:"subscription_attribution"`
+
+    Cost         float64 `json:"cost"`
+
+    NetRevenue           float64 `json:"net_revenue"`
+
+}
+
+
+
+// AttributeRevenue attributes revenue to specific stories
+
+func (rie *RevenueIntelligenceEngine) AttributeRevenue(
+
+    ctx context.Context,
+
+    storyID string,
+
+    timeWindow time.Duration,
+
+) (*StoryRevenue, error) {
+
+
+
+    query := `
+
+      SELECT
+
+           story_id,
+
+           sum(metrics['ad_revenue']) as ad_revenue,
+
+           sum(metrics['subscription_value']) as subscription_attr,
+
+           countIf(event_type = 'revenue.impression') as ad_impressions,
+
+           countIf(event_type = 'revenue.click') as ad_clicks
+
+      FROM analytics_events
+
+      WHERE story_id = ?
+
+      AND event_type LIKE 'revenue.%'
+
+        AND timestamp >= now() - INTERVAL ?
+
+        GROUP BY story_id
+
+    `
+
+
+
+    row := rie.clickhouse.QueryRow(ctx, query, storyID, timeWindow)
+
+
+
+    var revenue StoryRevenue
+
+    var adImpressions, adClicks int64
+
+
+
+    row.Scan(&revenue.StoryID, &revenue.AdRevenue, &revenue.SubscriptionAttr,
+
+        &adImpressions, &adClicks)
+
+
+
+    revenue.TotalRevenue = revenue.AdRevenue + revenue.SubscriptionAttr
+
+
+
+    // Estimate cost based on AI generation cost
+
+    revenue.Cost = rie.getStoryCost(ctx, storyID)
+
+    revenue.NetRevenue = revenue.TotalRevenue - revenue.Cost
+
+
+
+    return &revenue, nil
+
+}
+
+
+
+// CalculateROI computes return on investment for content
+
+func (rie *RevenueIntelligenceEngine) CalculateROI(
+
+    ctx context.Context,
+
+    tenantID string,
+
+    timeWindow time.Duration,
+
+) (float64, error) {
+
+
+
+      query := `
+
+          SELECT
+
+            sum(metrics['revenue']) as total_revenue,
+
+            sum(metrics['cost']) as total_cost
+
+          FROM analytics_events
+
+          WHERE tenant_id = ?
+
+          AND event_type IN ('revenue.impression', 'revenue.click', 'ai.generation')
+
+          AND timestamp >= now() - INTERVAL ?
+
+      `
+
+
+
+      row := rie.clickhouse.QueryRow(ctx, query, tenantID, timeWindow)
+
+
+
+      var totalRevenue, totalCost float64
+
+      row.Scan(&totalRevenue, &totalCost)
+
+
+
+      if totalCost == 0 {
+
+          return 0, nil
+
+      }
+
+
+
+      roi := ((totalRevenue - totalCost) / totalCost) * 100
+
+      return roi, nil
+
+}
+
+```
+
+---
+
+
+
+PART IX — FEATURE STORE
+
+
+
+Service ID: SVC-ANA-FTS
+
+Runtime: Golang + Redis (Feast-based)
+
+gRPC Port: 9611
+
+
+
+9.1 Feature Store Service
+
+
+
+```go
+
+// services/analytics/feature-store/internal/domain/store.go
+
+package domain
+
+
+
+// FeatureStore provides consistent ML features for training and serving
+
+type FeatureStore struct {
+
+    redis   *redis.Client
+
+    clickhouse *clickhouse.Client
+
+    feastServer *feast.ServingService
+
+}
+
+
+
+type FeatureSet struct {
+
+    EntityID string          `json:"entity_id"`
+
+    EntityType string         `json:"entity_type"` // user, story, content
+
+    Features map[string]interface{} `json:"features"`
+
+    GeneratedAt time.Time           `json:"generated_at"`
+
+}
+
+
+
+// GetOnlineFeatures retrieves features for real-time inference
+
+func (fs *FeatureStore) GetOnlineFeatures(
+
+    ctx context.Context,
+
+    entityType string,
+
+    entityID string,
+
+    featureNames []string,
+
+) (*FeatureSet, error) {
+
+
+
+    // Check Redis cache first
+
+    cacheKey := fmt.Sprintf("features:%s:%s", entityType, entityID)
+
+    cached, err := fs.redis.Get(ctx, cacheKey).Result()
+
+    if err == nil {
+
+      var features FeatureSet
+
+      json.Unmarshal([]byte(cached), &features)
+
+
+
+      // Filter requested features
+
+      filtered := make(map[string]interface{})
+
+      for _, name := range featureNames {
+
+          if val, ok := features.Features[name]; ok {
+
+              filtered[name] = val
+
+          }
+
+      }
+
+      features.Features = filtered
+
+      return &features, nil
+
+    }
+
+
+
+    // Fetch from Feast
+
+    feastFeatures, err := fs.feastServer.GetOnlineFeatures(ctx, &feast.GetOnlineFeaturesRequest{
+
+         EntityType: entityType,
+
+         EntityID: entityID,
+
+         Features: featureNames,
+
+    })
+
+    if err != nil {
+
+         return nil, fmt.Errorf("feast fetch: %w", err)
+
+    }
+
+
+
+    features := &FeatureSet{
+
+         EntityID: entityID,
+
+         EntityType: entityType,
+
+         Features: feastFeatures.Features,
+
+         GeneratedAt: time.Now(),
+
+    }
+
+
+
+    // Cache for 5 minutes
+
+    data, _ := json.Marshal(features)
+
+    fs.redis.Set(ctx, cacheKey, data, 5*time.Minute)
+
+
+
+    return features, nil
+
+}
+
+// Common ML features
+
+var FeatureDefinitions = map[string]FeatureDef{
+
+  "user_engagement_score": {
+
+       Name:      "user_engagement_score",
+
+       Description: "User's overall engagement level (0-100)",
+
+       EntityType: "user",
+
+       ValueType: "float64",
+
+       RefreshInterval: 1 * time.Hour,
+
+  },
+
+  "user_churn_risk": {
+
+       Name:      "user_churn_risk",
+
+       Description: "Probability of user churning (0-1)",
+
+       EntityType: "user",
+
+       ValueType: "float64",
+
+       RefreshInterval: 6 * time.Hour,
+
+  },
+
+  "story_ctr_24h": {
+
+       Name:      "story_ctr_24h",
+
+       Description: "Story click-through rate in last 24 hours",
+
+       EntityType: "story",
+
+       ValueType: "float64",
+
+       RefreshInterval: 15 * time.Minute,
+
+  },
+
+  "story_viral_score": {
+
+       Name:      "story_viral_score",
+
+       Description: "Current viral score (0-100)",
+
+           EntityType: "story",
+
+           ValueType: "float64",
+
+           RefreshInterval: 5 * time.Minute,
+
+      },
+
+      "content_quality_score": {
+
+           Name:      "content_quality_score",
+
+           Description: "AI-generated content quality score (0-100)",
+
+           EntityType: "content",
+
+           ValueType: "float64",
+
+           RefreshInterval: 1 * time.Hour,
+
+      },
+
+      "platform_peak_hour": {
+
+           Name:      "platform_peak_hour",
+
+           Description: "Optimal publishing hour for platform",
+
+           EntityType: "platform",
+
+           ValueType: "int",
+
+           RefreshInterval: 24 * time.Hour,
+
+      },
+
+}
+
+```
+
+
+
+---
+
+
+
+PART X — DASHBOARDS & REPORTING
+
+
+
+Service ID: SVC-ANA-DSH
+
+Runtime: Golang
+
+gRPC Port: 9612
+
+
+
+10.1 Dashboard API
+
+
+
+```go
+
+// services/analytics/dashboard-api/internal/domain/dashboard.go
+
+package domain
+
+
+
+// DashboardService provides data for all analytics dashboards
+
+type DashboardService struct {
+
+    clickhouse *clickhouse.Client
+
+    redis     *redis.Client
+
+}
+
+
+
+type DashboardData struct {
+
+    DashboardID string              `json:"dashboard_id"`
+
+    Panels     []PanelData         `json:"panels"`
+
+    RefreshedAt time.Time             `json:"refreshed_at"`
+
+}
+
+
+
+type PanelData struct {
+
+    PanelID     string          `json:"panel_id"`
+
+    Title     string          `json:"title"`
+
+    Type      string           `json:"type"` // line, bar, gauge, stat, table
+
+    Data      json.RawMessage          `json:"data"`
+
+    QueryTime time.Duration          `json:"query_time_ms"`
+
+}
+
+
+
+// Executive Dashboard
+
+func (ds *DashboardService) GetExecutiveDashboard(
+
+    ctx context.Context,
+
+    tenantID string,
+
+) (*DashboardData, error) {
+
+
+
+    dashboard := &DashboardData{
+
+        DashboardID: "executive",
+
+        RefreshedAt: time.Now(),
+
+    }
+
+
+
+    // Panel 1: Stories published (24h)
+
+    stories24h, _ := ds.clickhouse.QueryRow(ctx, `
+
+        SELECT count(DISTINCT story_id)
+
+        FROM analytics_events
+
+        WHERE tenant_id = ? AND event_type = 'story.impression'
+
+        AND timestamp >= now() - INTERVAL 24 HOUR
+
+    `, tenantID)
+
+
+
+    // Panel 2: Total reach (24h)
+
+    reach24h, _ := ds.clickhouse.QueryRow(ctx, `
+
+        SELECT count(DISTINCT user_id)
+
+        FROM analytics_events
+
+  WHERE tenant_id = ? AND event_type = 'story.impression'
+
+  AND timestamp >= now() - INTERVAL 24 HOUR
+
+`, tenantID)
+
+
+
+// Panel 3: Revenue (24h)
+
+revenue24h, _ := ds.clickhouse.QueryRow(ctx, `
+
+  SELECT sum(metrics['revenue'])
+
+  FROM analytics_events
+
+  WHERE tenant_id = ? AND event_type LIKE 'revenue.%'
+
+  AND timestamp >= now() - INTERVAL 24 HOUR
+
+`, tenantID)
+
+
+
+// Panel 4: AI auto-approve rate
+
+aiRate, _ := ds.clickhouse.QueryRow(ctx, `
+
+  SELECT
+
+    countIf(metrics['auto_approved'] = 1) / count() * 100
+
+  FROM analytics_events
+
+  WHERE tenant_id = ? AND event_type = 'ai.generation'
+
+  AND timestamp >= now() - INTERVAL 24 HOUR
+
+`, tenantID)
+
+
+
+// Panel 5: Top 5 stories
+
+topStories, _ := ds.clickhouse.Query(ctx, `
+
+  SELECT story_id, count() as views, avg(metrics['engagement_score']) as engagement
+
+  FROM analytics_events
+
+  WHERE tenant_id = ? AND event_type = 'story.impression'
+
+          AND timestamp >= now() - INTERVAL 24 HOUR
+
+          GROUP BY story_id
+
+          ORDER BY views DESC
+
+          LIMIT 5
+
+      `, tenantID)
+
+
+
+      dashboard.Panels = []PanelData{
+
+    {PanelID: "stories_24h", Title: "Stories Published (24h)", Type: "stat", Data:
+jsonData(stories24h)},
+
+          {PanelID: "reach_24h", Title: "Total Reach (24h)", Type: "stat", Data: jsonData(reach24h)},
+
+          {PanelID: "revenue_24h", Title: "Revenue (24h)", Type: "stat", Data: jsonData(revenue24h)},
+
+          {PanelID: "ai_rate", Title: "AI Auto-Approve Rate", Type: "gauge", Data: jsonData(aiRate)},
+
+          {PanelID: "top_stories", Title: "Top Stories", Type: "table", Data: jsonData(topStories)},
+
+      }
+
+
+
+      return dashboard, nil
+
+}
+
+```
+
+
+
+---
+
+
+
+PART XI — DEPLOYMENT
+
+
+
+```yaml
+
+deployment:
+
+    kubernetes:
+
+clickhouse:
+
+ shards: 12
+
+ replicas: 3
+
+ storage: SSD (gp3), 2TB per node
+
+ backup: S3 export daily
+
+
+
+event_collector:
+
+ replicas: 5
+
+ resources:
+
+  requests: {cpu: 1, memory: 2Gi}
+
+  limits: {cpu: 4, memory: 8Gi}
+
+ autoscaling:
+
+  min: 3, max: 20
+
+  target_cpu: 70%
+
+
+
+realtime_analytics:
+
+ replicas: 3
+
+ resources:
+
+  requests: {cpu: 500m, memory: 1Gi}
+
+  limits: {cpu: 2, memory: 4Gi}
+
+
+
+batch_analytics:
+
+ type: Spark on Kubernetes
+
+ driver:
+
+  cores: 4, memory: 8Gi
+
+ executor:
+
+   instances: 10-50 (autoscaling)
+
+   cores: 4, memory: 16Gi
+
+
+
+ recommendation_engine:
+
+  replicas: 3
+
+  resources:
+
+   requests: {cpu: 1, memory: 2Gi}
+
+   limits: {cpu: 4, memory: 8Gi}
+
+
+
+ feature_store:
+
+  replicas: 2
+
+  resources:
+
+   requests: {cpu: 500m, memory: 2Gi}
+
+   limits: {cpu: 2, memory: 8Gi}
+
+
+
+ redis:
+
+  type: ElastiCache Cluster Mode
+
+  shards: 3
+
+  replicas_per_shard: 2
+
+  node_type: cache.r7g.xlarge
+
+
+
+disaster_recovery:
+
+ clickhouse_rpo: 1 hour
+
+ clickhouse_rto: 4 hours
+
+ redis_rpo: 5 minutes (snapshots)
+
+ redis_rto: 15 minutes
+
+```
+
+
+
+---
+
+
+
+
+EXECUTIVE SUMMARY
+
+
+
+Volume 29 delivers the complete, production-ready specification for the Agbofa Nexus AI
+Analytics, Audience Intelligence & Continuous Learning Platform — the measurement and
+optimization engine that powers continuous improvement across the entire autonomous
+newsroom.
+
+
+
+Key Deliverables:
+
+
+
+· Event Collection Engine: Unified event ingestion with validation, normalization, enrichment,
+and deduplication — processing millions of events per minute
+
+
+

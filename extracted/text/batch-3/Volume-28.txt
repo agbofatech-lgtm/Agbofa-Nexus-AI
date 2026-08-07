@@ -1,0 +1,3939 @@
+VOLUME 28: DISTRIBUTION ENGINE CODE SPECIFICATION
+
+
+
+Document Reference: AGBA-NEXUS-VOL28-CODE-1.0
+
+Status: Implementation-Ready — Production Specification
+
+Phase: 3 — Production Engineering Specifications
+
+Approved Baseline: Volumes 1–27 (Immutable)
+
+Purpose: Multi-Platform Publishing, Scheduling & Delivery Network
+
+Quality Level: US$50M Enterprise Platform Standard
+
+---
+
+
+
+SERVICE DECISION RECORDS (SDR)
+
+
+
+SDR-DST-001: Connector Plugin Architecture with Hot-Swap Support
+
+
+
+Decision: Each platform connector is an independent, hot-swappable plugin implementing a
+unified PublisherConnector interface. Connectors are deployed as separate Kubernetes
+deployments and communicate with the orchestrator via gRPC.
+
+Rationale: Platforms change APIs frequently and have different rate limits, authentication
+methods, and content requirements. Plugin architecture enables independent deployment,
+scaling, and updating of each connector without affecting others.
+
+Alternatives: Monolithic adapter layer (rejected — cannot scale independently, risky
+deployments); third-party social media management API (rejected — latency, cost, vendor lock-
+in).
+
+Trade-offs: More deployments to manage, but each is simpler and independently scalable.
+
+
+
+SDR-DST-002: Priority-Based Multi-Queue Architecture
+
+
+
+Decision: Four priority queues (CRITICAL, HIGH, MEDIUM, LOW) implemented as Redis Streams
+with Kafka for event sourcing. CRITICAL queue has dedicated workers for breaking news.
+Preemptive scheduling allows CRITICAL jobs to claim workers from lower queues.
+
+Rationale: Breaking news and corrections must publish immediately. Scheduled content can
+wait. Dedicated resources for critical paths prevent head-of-line blocking.
+
+Alternatives: Single queue with priority sorting (rejected — cannot preempt in-flight work);
+Kafka-only queues (rejected — Redis Streams provide lower latency for priority queuing).
+
+Trade-offs: More complex queue management, but essential for news platform requirements.
+
+SDR-DST-003: Idempotent Publishing with Content Hashing
+
+
+
+Decision: Every publication request includes a content hash (SHA-256 of canonical content).
+Connectors check platform for existing identical content before publishing. Duplicate requests
+are acknowledged without republishing.
+
+Rationale: Network failures and retries can cause duplicate publications across platforms.
+Content hashing enables safe exactly-once publishing semantics.
+
+Alternatives: Idempotency keys alone (rejected — cannot detect duplicates across sessions);
+platform-native dedup (rejected — inconsistent across platforms).
+
+Trade-offs: Hash computation overhead, but negligible compared to duplicate publication cost.
+
+
+
+SDR-DST-004: Event-Sourced Publication State
+
+
+
+Decision: All publication state transitions are recorded as immutable events in Kafka.
+Materialized views in PostgreSQL provide current state for queries. Event sourcing enables
+complete audit trail and replay for recovery.
+
+Rationale: Publishing is inherently event-driven. Event sourcing provides complete history,
+enables replay for disaster recovery, and supports real-time monitoring dashboards.
+
+Alternatives: Traditional CRUD state management (rejected — no audit trail, harder recovery);
+blockchain (rejected — unnecessary decentralization).
+
+Trade-offs: Additional Kafka storage, but essential for audit compliance.
+
+
+
+---
+
+
+
+PART I — DISTRIBUTION ENGINE OVERVIEW
+
+
+
+1.1 Distribution Architecture
+
+```
+
+DISTRIBUTION ENGINE — SYSTEM ARCHITECTURE:
+
+
+
+┌─────────────────────────────────────────────────────────────────────────────
+┐
+
+│            DISTRIBUTION ENGINE BOUNDARY                     │
+
+├
+─────────────────────────────────────────────────────────────────────────────
+┤
+
+│                                         │
+
+│ INBOUND: Content Packages from Content Factory (Vol 26)                │
+
+│                                         │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │          PUBLICATION ORCHESTRATOR                        ││
+
+│ │ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────────────┐ │ │
+
+│ │ │ JOB   │ │ SCHEDULER│ │ RETRY │ │ STATE MACHINE              │ ││
+
+│ │ │ RECEIVER │ │ ENGINE │ │ MANAGER │ │ (Event Sourced) │ │ │
+
+│ │ └────┬─────┘ └────┬─────┘ └────┬─────┘ └──────────┬───────────┘ │ │
+
+│ └───────┼─────────────┼─────────────┼───────────────────┼
+───────────────┘ │
+
+│     │       │       │          │            │
+
+│
+┌───────▼─────────────▼─────────────▼───────────────────▼───────────────┐
+│
+
+│ │           PRIORITY QUEUE SYSTEM                     ││
+
+│ │ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────────────┐ │ │
+
+│ │ │ CRITICAL │ │ HIGH │ │ MEDIUM │ │            LOW        │ ││
+
+│ │ │ (Redis) │ │ (Redis) │ │ (Redis) │ │       (Redis)        │ ││
+
+│ │ │ 10 workers│ │ 20 workers│ │ 30 workers│ │             10 workers    │ ││
+
+│ │ └────┬─────┘ └────┬─────┘ └────┬─────┘ └──────────┬───────────┘ │ │
+
+│ └───────┼─────────────┼─────────────┼───────────────────┼
+───────────────┘ │
+
+│     │       │        │            │               │
+
+│
+┌───────▼─────────────▼─────────────▼───────────────────▼───────────────┐
+│
+
+│ │           PLATFORM CONNECTOR FRAMEWORK                               ││
+
+│ │ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────────┐ │ │
+
+│ │ │Web │ │ FB │ │ IG │ │ X │ │ LI │ │ YT │ │ TT │ │RSS │ │CUSTOM │ │ │
+
+│ │ └──┬─┘ └──┬─┘ └──┬─┘ └──┬─┘ └──┬─┘ └──┬─┘ └──┬─┘ └──┬─┘ └───┬────┘ │ │
+
+│ └─────┼──────┼──────┼──────┼──────┼──────┼──────┼──────┼────────┼
+──────┘ │
+
+│     │   │   │   │    │   │    │       │   │           │
+
+│
+┌─────▼──────▼──────▼──────▼──────▼──────▼──────▼──────▼────────▼────
+───┐ │
+
+│ │           DELIVERY MONITORING                              ││
+
+│ │ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────────────┐ │ │
+
+│ │ │ STATUS │ │ ANALYTICS│ │ ALERT │ │ DEAD LETTER                      │ ││
+
+│ │ │ TRACKER │ │ FEEDBACK │ │ MANAGER │ │ QUEUE (Kafka)                      │ ││
+
+│ │ └──────────┘ └──────────┘ └──────────┘ └──────────────────────┘ │ │
+
+│ └───────────────────────────────────────────────────────────────────────┘ │
+
+│                                               │
+
+│ OUTBOUND: Published content to all platforms                            │
+
+└─────────────────────────────────────────────────────────────────────────────
+┘
+
+```
+
+
+
+1.2 Service Inventory
+
+
+
+```yaml
+
+distribution_services:
+
+ publication_orchestrator:
+
+      id: SVC-DST-ORC
+
+      runtime: Golang 1.22+
+
+      port: 9501
+
+      description: "Master publishing coordinator, job management, state machine"
+
+
+
+ scheduler_engine:
+
+      id: SVC-DST-SCH
+
+      runtime: Golang 1.22+
+
+      port: 9502
+
+      description: "Scheduling, calendar management, timezone optimization"
+
+
+
+ content_adapter:
+
+      id: SVC-DST-ADP
+
+      runtime: Golang + Python
+
+      port: 9503
+
+      description: "Platform-specific content transformation"
+
+queue_manager:
+
+ id: SVC-DST-QUE
+
+ runtime: Golang
+
+ port: 9504
+
+ description: "Priority queue management, worker coordination, back-pressure"
+
+
+
+platform_connectors:
+
+ runtime: Golang (per connector)
+
+ ports: 9510-9529
+
+ services:
+
+  - web_cms_connector (9510)
+
+  - facebook_connector (9511)
+
+  - instagram_connector (9512)
+
+  - twitter_connector (9513)
+
+  - linkedin_connector (9514)
+
+  - youtube_connector (9515)
+
+  - tiktok_connector (9516)
+
+  - rss_connector (9517)
+
+  - email_connector (9518)
+
+  - push_notification_connector (9519)
+
+  - webhook_connector (9520)
+
+  - syndication_connector (9521)
+
+
+
+delivery_monitor:
+
+ id: SVC-DST-MON
+
+ runtime: Golang
+
+      port: 9530
+
+      description: "Delivery status tracking, analytics feedback, alerting"
+
+
+
+ correction_engine:
+
+      id: SVC-DST-COR
+
+      runtime: Golang
+
+      port: 9531
+
+      description: "Correction and retraction workflow management"
+
+```
+
+
+
+1.3 Publication Pipeline Flow
+
+
+
+```
+
+PUBLICATION PIPELINE:
+
+
+
+Content Package ──          Orchestrator ──        Scheduler ──   Queue Manager ──   Connectors
+──        Platforms
+
+ (from Vol 26)          │          │           │       │
+
+                   │        │            │         │
+
+              ┌────▼────┐         ┌─────▼──────┐ ┌────▼────┐ ┌─────▼──────┐
+
+              │ Validate│    │ Determine │ │ Assign │ │ Transform │
+
+              │ Content │       │ Publish │ │ Priority│ │ Content │
+
+              │ Package │       │ Time       │ │ Queue │ │ per     │
+
+              └────┬────┘         └─────┬──────┘ └────┬────┘ │ Platform │
+
+                   │        │            │     └─────┬──────┘
+
+              ┌────▼────┐         ┌─────▼──────┐ ┌────▼────┐              │
+
+          │ Create │       │ Schedule │ │ Dequeue │ ┌────▼────┐
+
+          │ Publish │      │ or Execute │ │ by       │ │ Publish │
+
+          │ Job       │   │ Immediately│ │ Priority│ │ to         │
+
+          └────┬────┘          └─────┬──────┘ └────┬────┘ │ Platform│
+
+              │            │       │       └────┬────┘
+
+              └────────────────┴───────────────┘                      │
+
+                                           │
+
+          ┌───────────────────────────────────────────────────▼────┐
+
+          │               DELIVERY MONITORING                 │
+
+          │ ┌──────────┐ ┌──────────┐ ┌──────────────────────┐ │
+
+          │ │ Success │ │ Retry │ │ Dead Letter              │ │
+
+          │ │ Handler │ │ Handler │ │ Queue                  │ │
+
+          │ └────┬─────┘ └────┬─────┘ └──────────┬───────────┘ │
+
+          │       │        │           │         │
+
+          │ ┌────▼─────────────▼────────────────────▼──────────┐ │
+
+          │ │             ANALYTICS FEEDBACK                │ │
+
+          │ └───────────────────────────────────────────────────┘ │
+
+          └────────────────────────────────────────────────────────┘
+
+```
+
+
+
+---
+
+
+
+PART II — PUBLICATION ORCHESTRATOR SERVICE
+
+
+
+Service ID: SVC-DST-ORC
+
+Runtime: Golang 1.22+
+
+gRPC Port: 9501
+
+
+
+2.1 Domain Model
+
+
+
+```go
+
+// services/distribution/orchestrator/internal/domain/model.go
+
+package domain
+
+
+
+// PublicationJob represents a single publication request
+
+type PublicationJob struct {
+
+  JobID        uuid.UUID           `json:"job_id"`
+
+  ContentPackageID uuid.UUID              `json:"content_package_id"`
+
+  StoryID      uuid.UUID           `json:"story_id"`
+
+  TenantID        uuid.UUID         `json:"tenant_id"`
+
+  JobType        PublicationJobType     `json:"job_type"`
+
+  Priority     PublicationPriority `json:"priority"`
+
+  Status       PublicationStatus      `json:"status"`
+
+
+
+  // Targets
+
+  TargetPlatforms []PlatformTarget        `json:"target_platforms"`
+
+
+
+  // Timing
+
+  ScheduledFor      *time.Time          `json:"scheduled_for"`
+
+  EmbargoUntil      *time.Time          `json:"embargo_until"`
+
+  ExpiresAt      *time.Time         `json:"expires_at"`
+
+    // Content
+
+    ContentPackage *ContentPackage              `json:"content_package"`
+
+    AdaptedContent map[string]*PlatformContent `json:"adapted_content"`
+
+
+
+    // Execution
+
+    PlatformJobs      []*PlatformJob        `json:"platform_jobs"`
+
+    RetryCount        int             `json:"retry_count"`
+
+    MaxRetries        int             `json:"max_retries"`
+
+    LastError      string            `json:"last_error,omitempty"`
+
+
+
+    // Parent/Child
+
+    ParentJobID       *uuid.UUID           `json:"parent_job_id,omitempty"`
+
+    ChildJobIDs      []uuid.UUID          `json:"child_job_ids,omitempty"`
+
+
+
+    // Timestamps
+
+    CreatedAt        time.Time           `json:"created_at"`
+
+    UpdatedAt         time.Time           `json:"updated_at"`
+
+    StartedAt        *time.Time          `json:"started_at,omitempty"`
+
+    CompletedAt        *time.Time          `json:"completed_at,omitempty"`
+
+}
+
+
+
+type PublicationJobType string
+
+const (
+
+    JobTypeInitial          PublicationJobType = "INITIAL_PUBLISH"
+
+    JobTypeUpdate             PublicationJobType = "UPDATE"
+
+    JobTypeCorrection          PublicationJobType = "CORRECTION"
+
+    JobTypeRetraction     PublicationJobType = "RETRACTION"
+
+    JobTypeScheduled       PublicationJobType = "SCHEDULED"
+
+    JobTypeEmbargoRelease PublicationJobType = "EMBARGO_RELEASE"
+
+    JobTypeRepublish      PublicationJobType = "REPUBLISH"
+
+)
+
+
+
+type PublicationPriority string
+
+const (
+
+    PriorityCritical PublicationPriority = "CRITICAL" // Breaking news, corrections
+
+    PriorityHigh     PublicationPriority = "HIGH"    // Time-sensitive updates
+
+    PriorityMedium PublicationPriority = "MEDIUM"         // Standard news
+
+    PriorityLow      PublicationPriority = "LOW"     // Evergreen, scheduled
+
+)
+
+
+
+type PublicationStatus string
+
+const (
+
+    StatusReceived      PublicationStatus = "RECEIVED"
+
+    StatusValidating PublicationStatus = "VALIDATING"
+
+    StatusScheduled      PublicationStatus = "SCHEDULED"
+
+    StatusQueued        PublicationStatus = "QUEUED"
+
+    StatusAdapting      PublicationStatus = "ADAPTING"
+
+    StatusPublishing PublicationStatus = "PUBLISHING"
+
+    StatusPartialSuccess PublicationStatus = "PARTIAL_SUCCESS"
+
+    StatusPublished     PublicationStatus = "PUBLISHED"
+
+    StatusFailed      PublicationStatus = "FAILED"
+
+    StatusRetrying     PublicationStatus = "RETRYING"
+
+    StatusCancelled       PublicationStatus = "CANCELLED"
+
+    StatusRetracted       PublicationStatus = "RETRACTED"
+
+)
+
+
+
+type PlatformTarget struct {
+
+    Platform    string         `json:"platform"`
+
+    ConnectorID string           `json:"connector_id"`
+
+    Priority   PublicationPriority `json:"priority"`
+
+}
+
+
+
+// PlatformJob represents a single platform publication
+
+type PlatformJob struct {
+
+    PlatformJobID uuid.UUID          `json:"platform_job_id"`
+
+    PublicationJobID uuid.UUID       `json:"publication_job_id"`
+
+    Platform     string        `json:"platform"`
+
+    Status      PlatformJobStatus `json:"status"`
+
+    PlatformPostID string         `json:"platform_post_id,omitempty"`
+
+    PlatformURL string           `json:"platform_url,omitempty"`
+
+    AttemptCount int             `json:"attempt_count"`
+
+    MaxAttempts int              `json:"max_attempts"`
+
+    LastAttemptAt *time.Time         `json:"last_attempt_at"`
+
+    NextRetryAt *time.Time          `json:"next_retry_at,omitempty"`
+
+    ErrorMessage string           `json:"error_message,omitempty"`
+
+    ErrorCode     string        `json:"error_code,omitempty"`
+
+    PublishedAt *time.Time          `json:"published_at,omitempty"`
+
+    ContentHash string            `json:"content_hash"`
+
+}
+
+
+
+type PlatformJobStatus string
+
+const (
+
+      PlatformStatusPending PlatformJobStatus = "PENDING"
+
+      PlatformStatusPublishing PlatformJobStatus = "PUBLISHING"
+
+      PlatformStatusPublished PlatformJobStatus = "PUBLISHED"
+
+      PlatformStatusFailed   PlatformJobStatus = "FAILED"
+
+      PlatformStatusRetrying PlatformJobStatus = "RETRYING"
+
+)
+
+```
+
+
+
+2.2 Orchestrator Implementation
+
+
+
+```go
+
+// services/distribution/orchestrator/internal/application/orchestrator.go
+
+package application
+
+
+
+// PublicationOrchestrator coordinates the complete publication lifecycle
+
+type PublicationOrchestrator struct {
+
+      jobRepo     JobRepository
+
+      scheduler    SchedulingClient
+
+      queueManager QueueManagerClient
+
+      contentAdapter ContentAdapterClient
+
+      connectorManager *ConnectorManager
+
+      deliveryMonitor DeliveryMonitorClient
+
+    eventBus        EventBus
+
+    stateMachine *PublicationStateMachine
+
+}
+
+
+
+// SubmitPublicationJob receives a content package and initiates publishing
+
+func (po *PublicationOrchestrator) SubmitPublicationJob(
+
+    ctx context.Context,
+
+    contentPackage *ContentPackage,
+
+    config *PublicationConfig,
+
+) (*PublicationJob, error) {
+
+
+
+    // 1. Validate content package
+
+    if err := po.validateContentPackage(contentPackage); err != nil {
+
+        return nil, fmt.Errorf("validate content package: %w", err)
+
+    }
+
+
+
+    // 2. Create publication job
+
+    job := &PublicationJob{
+
+        JobID:       uuid.NewV7(),
+
+        ContentPackageID: contentPackage.PackageID,
+
+        StoryID:     contentPackage.StoryID,
+
+        TenantID:     contentPackage.TenantID,
+
+        JobType:      config.JobType,
+
+        Priority:    config.Priority,
+
+        Status:      StatusReceived,
+
+        TargetPlatforms: po.determinePlatforms(contentPackage, config),
+
+    MaxRetries:        3,
+
+    CreatedAt:        time.Now(),
+
+    UpdatedAt:         time.Now(),
+
+}
+
+
+
+// 3. Handle scheduling
+
+if config.ScheduledFor != nil {
+
+    job.ScheduledFor = config.ScheduledFor
+
+    job.Status = StatusScheduled
+
+    po.jobRepo.Save(ctx, job)
+
+    po.scheduler.Schedule(ctx, job.JobID, *config.ScheduledFor)
+
+
+
+    // Publish scheduled event
+
+    po.eventBus.Publish(ctx, &JobScheduledEvent{
+
+         JobID:     job.JobID,
+
+         StoryID:   job.StoryID,
+
+         ScheduledFor: *config.ScheduledFor,
+
+    })
+
+    return job, nil
+
+}
+
+
+
+// 4. Handle embargo
+
+if config.EmbargoUntil != nil {
+
+    job.EmbargoUntil = config.EmbargoUntil
+
+    job.ScheduledFor = config.EmbargoUntil
+
+    job.Status = StatusScheduled
+
+        po.jobRepo.Save(ctx, job)
+
+        po.scheduler.Schedule(ctx, job.JobID, *config.EmbargoUntil)
+
+        return job, nil
+
+    }
+
+
+
+    // 5. Immediate publishing — execute now
+
+    return po.executeJob(ctx, job)
+
+}
+
+
+
+// executeJob performs the actual publication
+
+func (po *PublicationOrchestrator) executeJob(
+
+    ctx context.Context,
+
+    job *PublicationJob,
+
+) (*PublicationJob, error) {
+
+
+
+    // Transition to validating
+
+    po.transitionState(ctx, job, StatusValidating)
+
+
+
+    // Validate all platform targets are available
+
+    for _, target := range job.TargetPlatforms {
+
+        if !po.connectorManager.IsAvailable(target.Platform) {
+
+            return nil, fmt.Errorf("platform unavailable: %s", target.Platform)
+
+        }
+
+    }
+
+
+
+    // Transition to adapting
+
+po.transitionState(ctx, job, StatusAdapting)
+
+
+
+// Adapt content for each platform
+
+adaptedContent, err := po.contentAdapter.AdaptForPlatforms(
+
+    ctx, job.ContentPackage, job.TargetPlatforms,
+
+)
+
+if err != nil {
+
+    job.Status = StatusFailed
+
+    job.LastError = err.Error()
+
+    po.jobRepo.Save(ctx, job)
+
+    return job, fmt.Errorf("content adaptation: %w", err)
+
+}
+
+job.AdaptedContent = adaptedContent
+
+
+
+// Transition to queued
+
+po.transitionState(ctx, job, StatusQueued)
+
+
+
+// Submit to queue manager
+
+if err := po.queueManager.Enqueue(ctx, job); err != nil {
+
+    job.Status = StatusFailed
+
+    job.LastError = err.Error()
+
+    po.jobRepo.Save(ctx, job)
+
+    return job, fmt.Errorf("queue enqueue: %w", err)
+
+}
+
+
+
+// Queue manager will handle the actual publishing
+
+    // Results will be reported back via events
+
+
+
+    return job, nil
+
+}
+
+
+
+// ProcessPlatformJob publishes to a single platform
+
+func (po *PublicationOrchestrator) ProcessPlatformJob(
+
+    ctx context.Context,
+
+    platformJob *PlatformJob,
+
+    adaptedContent *PlatformContent,
+
+) (*PlatformJob, error) {
+
+
+
+    platformJob.Status = PlatformStatusPublishing
+
+    platformJob.AttemptCount++
+
+    now := time.Now()
+
+    platformJob.LastAttemptAt = &now
+
+
+
+    // Get connector for platform
+
+    connector, err := po.connectorManager.GetConnector(platformJob.Platform)
+
+    if err != nil {
+
+        platformJob.Status = PlatformStatusFailed
+
+        platformJob.ErrorMessage = err.Error()
+
+        return platformJob, err
+
+    }
+
+
+
+    // Check rate limits
+
+if err := connector.CheckRateLimit(ctx); err != nil {
+
+    platformJob.Status = PlatformStatusRetrying
+
+    platformJob.ErrorMessage = err.Error()
+
+    platformJob.ErrorCode = "RATE_LIMITED"
+
+
+
+    // Schedule retry with backoff
+
+    retryAfter := po.calculateRetryDelay(platformJob.AttemptCount)
+
+    nextRetry := time.Now().Add(retryAfter)
+
+    platformJob.NextRetryAt = &nextRetry
+
+
+
+    return platformJob, ErrRateLimited
+
+}
+
+
+
+// Publish
+
+result, err := connector.Publish(ctx, adaptedContent)
+
+if err != nil {
+
+    platformJob.Status = PlatformStatusFailed
+
+    platformJob.ErrorMessage = err.Error()
+
+
+
+    if platformJob.AttemptCount < platformJob.MaxAttempts {
+
+        platformJob.Status = PlatformStatusRetrying
+
+        retryAfter := po.calculateRetryDelay(platformJob.AttemptCount)
+
+        nextRetry := time.Now().Add(retryAfter)
+
+        platformJob.NextRetryAt = &nextRetry
+
+    }
+
+         return platformJob, err
+
+    }
+
+
+
+    // Success
+
+    platformJob.Status = PlatformStatusPublished
+
+    platformJob.PlatformPostID = result.PlatformPostID
+
+    platformJob.PlatformURL = result.PlatformURL
+
+    now = time.Now()
+
+    platformJob.PublishedAt = &now
+
+
+
+    // Publish analytics event
+
+    po.eventBus.Publish(ctx, &PlatformPublishedEvent{
+
+         JobID:      platformJob.PublicationJobID,
+
+         PlatformJobID: platformJob.PlatformJobID,
+
+         Platform:    platformJob.Platform,
+
+         PlatformPostID: result.PlatformPostID,
+
+         PublishedAt: now,
+
+    })
+
+
+
+    return platformJob, nil
+
+}
+
+
+
+func (po *PublicationOrchestrator) calculateRetryDelay(attemptCount int) time.Duration {
+
+    // Exponential backoff: 1s, 5s, 30s, 2min, 10min
+
+    delays := []time.Duration{
+
+         1 * time.Second,
+
+          5 * time.Second,
+
+          30 * time.Second,
+
+          2 * time.Minute,
+
+          10 * time.Minute,
+
+      }
+
+
+
+      if attemptCount <= len(delays) {
+
+          return delays[attemptCount-1]
+
+      }
+
+      return 30 * time.Minute
+
+}
+
+```
+
+
+
+2.3 Publication State Machine
+
+
+
+```go
+
+// services/distribution/orchestrator/internal/domain/state_machine.go
+
+package domain
+
+
+
+type PublicationStateMachine struct {
+
+      transitions map[PublicationStatus]map[PublicationEvent]PublicationStatus
+
+}
+
+
+
+type PublicationEvent string
+
+const (
+
+      EventContentValidated PublicationEvent = "CONTENT_VALIDATED"
+
+    EventScheduled          PublicationEvent = "SCHEDULED"
+
+    EventScheduleReached        PublicationEvent = "SCHEDULE_REACHED"
+
+    EventAdaptationComplete PublicationEvent = "ADAPTATION_COMPLETE"
+
+    EventQueuedForPublishing PublicationEvent = "QUEUED_FOR_PUBLISHING"
+
+    EventPublishingStarted PublicationEvent = "PUBLISHING_STARTED"
+
+    EventAllPlatformsSuccess PublicationEvent = "ALL_PLATFORMS_SUCCESS"
+
+    EventPartialSuccess       PublicationEvent = "PARTIAL_SUCCESS"
+
+    EventPlatformFailed       PublicationEvent = "PLATFORM_FAILED"
+
+    EventRetryScheduled        PublicationEvent = "RETRY_SCHEDULED"
+
+    EventMaxRetriesExceeded PublicationEvent = "MAX_RETRIES_EXCEEDED"
+
+    EventCancelRequested        PublicationEvent = "CANCEL_REQUESTED"
+
+    EventRetractionRequested PublicationEvent = "RETRACTION_REQUESTED"
+
+    EventRetractionComplete PublicationEvent = "RETRACTION_COMPLETE"
+
+)
+
+
+
+func NewPublicationStateMachine() *PublicationStateMachine {
+
+    return &PublicationStateMachine{
+
+      transitions: map[PublicationStatus]map[PublicationEvent]PublicationStatus{
+
+        StatusReceived: {
+
+             EventContentValidated: StatusValidating,
+
+        },
+
+        StatusValidating: {
+
+             EventAdaptationComplete: StatusAdapting,
+
+        },
+
+        StatusAdapting: {
+
+             EventQueuedForPublishing: StatusQueued,
+
+},
+
+StatusScheduled: {
+
+     EventScheduleReached: StatusQueued,
+
+     EventCancelRequested: StatusCancelled,
+
+},
+
+StatusQueued: {
+
+     EventPublishingStarted: StatusPublishing,
+
+},
+
+StatusPublishing: {
+
+     EventAllPlatformsSuccess: StatusPublished,
+
+     EventPartialSuccess:   StatusPartialSuccess,
+
+     EventPlatformFailed:   StatusRetrying,
+
+},
+
+StatusPartialSuccess: {
+
+     EventRetryScheduled:    StatusRetrying,
+
+     EventAllPlatformsSuccess: StatusPublished,
+
+     EventMaxRetriesExceeded: StatusPartialSuccess, // Terminal partial
+
+},
+
+StatusRetrying: {
+
+     EventAllPlatformsSuccess: StatusPublished,
+
+     EventPartialSuccess:   StatusPartialSuccess,
+
+     EventMaxRetriesExceeded: StatusFailed,
+
+},
+
+StatusPublished: {
+
+     EventRetractionRequested: StatusRetracted,
+
+},
+
+               StatusFailed: {
+
+                    EventRetryScheduled: StatusRetrying,
+
+               },
+
+          },
+
+      }
+
+}
+
+```
+
+
+
+---
+
+
+
+PART III — PLATFORM ADAPTATION ENGINE
+
+
+
+Service ID: SVC-DST-ADP
+
+Runtime: Golang + Python
+
+gRPC Port: 9503
+
+
+
+3.1 Content Adapter
+
+
+
+```go
+
+// services/distribution/content-adapter/internal/domain/adapter.go
+
+package domain
+
+
+
+// ContentAdapter transforms content for platform-specific requirements
+
+type ContentAdapter struct {
+
+      transformers map[string]PlatformTransformer
+
+      mediaProcessor *MediaProcessor
+
+    hashtagEngine *HashtagEngine
+
+}
+
+
+
+type PlatformTransformer interface {
+
+    Transform(ctx context.Context, content *ContentPackage) (*PlatformContent, error)
+
+    GetPlatformRules() PlatformRules
+
+    ValidateContent(content *PlatformContent) []ValidationError
+
+}
+
+
+
+type PlatformContent struct {
+
+    Platform     string        `json:"platform"`
+
+    ContentType string            `json:"content_type"`
+
+    Title      string        `json:"title,omitempty"`
+
+    Body        string        `json:"body,omitempty"`
+
+    Description string          `json:"description,omitempty"`
+
+    Caption      string        `json:"caption,omitempty"`
+
+    Thread       []string      `json:"thread,omitempty"`
+
+    MediaURLs []string            `json:"media_urls,omitempty"`
+
+    ThumbnailURL string            `json:"thumbnail_url,omitempty"`
+
+    Hashtags      []string      `json:"hashtags,omitempty"`
+
+    Mentions      []string      `json:"mentions,omitempty"`
+
+    AltText     string        `json:"alt_text,omitempty"`
+
+    LinkPreview *LinkPreview         `json:"link_preview,omitempty"`
+
+    PlatformParams map[string]interface{} `json:"platform_params,omitempty"`
+
+    Accessibility AccessibilityMetadata `json:"accessibility"`
+
+}
+
+type PlatformRules struct {
+
+    Platform             string `json:"platform"`
+
+    MaxTitleLength           int        `json:"max_title_length"`
+
+    MaxBodyLength             int        `json:"max_body_length"`
+
+    MaxHashtags             int         `json:"max_hashtags"`
+
+    MaxMediaItems             int        `json:"max_media_items"`
+
+    SupportedImageFormats []string `json:"supported_image_formats"`
+
+    SupportedVideoFormats []string `json:"supported_video_formats"`
+
+    MaxVideoDuration              int     `json:"max_video_duration"`
+
+    EmojiPolicy           string `json:"emoji_policy"`
+
+    LinkHandling           string `json:"link_handling"`
+
+    ImageDimensions            []ImageDimension `json:"image_dimensions"`
+
+}
+
+
+
+var PlatformRulesConfig = map[string]PlatformRules{
+
+    "website": {
+
+         Platform:      "Web CMS",
+
+         MaxTitleLength: 70,
+
+         MaxBodyLength: 0, // Unlimited
+
+         SupportedImageFormats: []string{"jpg", "jpeg", "png", "webp", "avif"},
+
+         ImageDimensions: []ImageDimension{
+
+              {Name: "hero", Width: 1200, Height: 630},
+
+              {Name: "article_body", Width: 800, Height: 0},
+
+         },
+
+    },
+
+"twitter": {
+
+     Platform:      "X (Twitter)",
+
+     MaxTitleLength: 0,
+
+     MaxBodyLength: 280,
+
+     MaxHashtags: 2,
+
+     MaxMediaItems: 4,
+
+     SupportedImageFormats: []string{"jpg", "jpeg", "png", "gif"},
+
+     SupportedVideoFormats: []string{"mp4", "mov"},
+
+     MaxVideoDuration: 140,
+
+     EmojiPolicy: "ENCOURAGED",
+
+     LinkHandling: "AUTO_SHORTEN",
+
+},
+
+"facebook": {
+
+     Platform:      "Facebook",
+
+     MaxBodyLength: 63206,
+
+     MaxHashtags: 2,
+
+     MaxMediaItems: 10,
+
+     SupportedImageFormats: []string{"jpg", "jpeg", "png", "gif"},
+
+     ImageDimensions: []ImageDimension{
+
+          {Name: "feed", Width: 1200, Height: 630},
+
+     },
+
+},
+
+"instagram": {
+
+     Platform:      "Instagram",
+
+     MaxBodyLength: 2200,
+
+     MaxHashtags: 5,
+
+     MaxMediaItems: 10,
+
+     SupportedImageFormats: []string{"jpg", "jpeg", "png"},
+
+     ImageDimensions: []ImageDimension{
+
+          {Name: "square", Width: 1080, Height: 1080},
+
+          {Name: "portrait", Width: 1080, Height: 1350},
+
+          {Name: "story", Width: 1080, Height: 1920},
+
+     },
+
+},
+
+"linkedin": {
+
+     Platform:      "LinkedIn",
+
+     MaxTitleLength: 200,
+
+     MaxBodyLength: 3000,
+
+     MaxHashtags: 3,
+
+     MaxMediaItems: 9,
+
+     SupportedImageFormats: []string{"jpg", "jpeg", "png", "gif"},
+
+},
+
+"youtube": {
+
+     Platform:      "YouTube",
+
+     MaxTitleLength: 100,
+
+     MaxBodyLength: 5000,
+
+     SupportedImageFormats: []string{"jpg", "jpeg", "png"},
+
+     ImageDimensions: []ImageDimension{
+
+          {Name: "thumbnail", Width: 1280, Height: 720},
+
+     },
+
+},
+
+"tiktok": {
+
+           Platform:   "TikTok",
+
+           MaxBodyLength: 2200,
+
+           MaxHashtags: 3,
+
+           SupportedVideoFormats: []string{"mp4", "mov", "webm"},
+
+           MaxVideoDuration: 600,
+
+      },
+
+}
+
+```
+
+
+
+---
+
+
+
+PART IV — SCHEDULING ENGINE
+
+
+
+Service ID: SVC-DST-SCH
+
+Runtime: Golang 1.22+
+
+gRPC Port: 9502
+
+
+
+4.1 Scheduling Engine
+
+
+
+```go
+
+// services/distribution/scheduler/internal/domain/scheduler.go
+
+package domain
+
+
+
+// SchedulingEngine manages publication timing
+
+type SchedulingEngine struct {
+
+      redis       *redis.Client
+
+    timezoneService *TimezoneService
+
+    audienceOptimizer *AudienceTimeOptimizer
+
+}
+
+
+
+type ScheduleConfig struct {
+
+    Type        ScheduleType     `json:"type"`
+
+    PublishAt    *time.Time      `json:"publish_at,omitempty"`
+
+    Timezone      string       `json:"timezone"`
+
+    OptimalWindow *TimeWindow            `json:"optimal_window,omitempty"`
+
+    RecurrenceRule *RecurrenceRule `json:"recurrence_rule,omitempty"`
+
+    CampaignID     string       `json:"campaign_id,omitempty"`
+
+}
+
+
+
+type ScheduleType string
+
+const (
+
+    ScheduleImmediate ScheduleType = "IMMEDIATE"
+
+    ScheduleOnce       ScheduleType = "ONCE"
+
+    ScheduleOptimal ScheduleType = "OPTIMAL"
+
+    ScheduleRecurring ScheduleType = "RECURRING"
+
+    ScheduleCampaign ScheduleType = "CAMPAIGN"
+
+)
+
+
+
+// Schedule determines the optimal publication time
+
+func (se *SchedulingEngine) Schedule(
+
+    ctx context.Context,
+
+    jobID uuid.UUID,
+
+  config *ScheduleConfig,
+
+) (*ScheduleResult, error) {
+
+
+
+  result := &ScheduleResult{
+
+      JobID: jobID,
+
+  }
+
+
+
+  switch config.Type {
+
+  case ScheduleImmediate:
+
+      result.PublishAt = time.Now()
+
+      result.Immediate = true
+
+
+
+  case ScheduleOnce:
+
+      if config.PublishAt == nil {
+
+          return nil, ErrMissingPublishTime
+
+      }
+
+      result.PublishAt = *config.PublishAt
+
+
+
+  case ScheduleOptimal:
+
+      optimalTime, err := se.calculateOptimalTime(ctx, config)
+
+      if err != nil {
+
+          return nil, fmt.Errorf("calculate optimal time: %w", err)
+
+      }
+
+      result.PublishAt = optimalTime
+
+      result.OptimizedFor = config.OptimalWindow
+
+    case ScheduleCampaign:
+
+        campaignTime, err := se.getCampaignSlot(ctx, config.CampaignID)
+
+        if err != nil {
+
+             return nil, fmt.Errorf("get campaign slot: %w", err)
+
+        }
+
+        result.PublishAt = campaignTime
+
+    }
+
+
+
+    // Store scheduled job
+
+    if !result.Immediate {
+
+        score := float64(result.PublishAt.Unix())
+
+        se.redis.ZAdd(ctx, "distribution:scheduled_jobs", &redis.Z{
+
+             Score: score,
+
+             Member: jobID.String(),
+
+        })
+
+    }
+
+
+
+    return result, nil
+
+}
+
+
+
+// calculateOptimalTime determines the best publication time
+
+func (se *SchedulingEngine) calculateOptimalTime(
+
+    ctx context.Context,
+
+    config *ScheduleConfig,
+
+) (time.Time, error) {
+
+    // Get audience timezone distribution
+
+    audienceTZs := se.timezoneService.GetAudienceDistribution(ctx)
+
+
+
+    // Get platform peak times
+
+    platformPeaks := se.getPlatformPeakTimes(ctx)
+
+
+
+    // Generate candidate times
+
+    candidates := se.generateCandidateTimes(audienceTZs, platformPeaks, 48) // Next 48 hours
+
+
+
+    // Score each candidate
+
+    type scoredTime struct {
+
+        time time.Time
+
+        score float64
+
+    }
+
+
+
+    var best scoredTime
+
+    for _, candidate := range candidates {
+
+        score := se.scoreTimeSlot(candidate, audienceTZs, platformPeaks)
+
+        if score > best.score {
+
+            best = scoredTime{candidate, score}
+
+        }
+
+    }
+
+
+
+    return best.time, nil
+
+}
+
+// scoreTimeSlot evaluates a time slot for publication
+
+func (se *SchedulingEngine) scoreTimeSlot(
+
+  t time.Time,
+
+  audienceTZs *AudienceDistribution,
+
+  platformPeaks map[string][]PeakTime,
+
+) float64 {
+
+
+
+  weights := map[string]float64{
+
+      "audience_overlap": 0.40,
+
+      "platform_peak":      0.30,
+
+      "competition_gap":     0.15,
+
+      "recency":         0.15,
+
+  }
+
+
+
+  score := 0.0
+
+
+
+  // Audience overlap: how many audience members are in their peak hours?
+
+  overlap := audienceTZs.GetOverlap(t)
+
+  score += overlap * weights["audience_overlap"]
+
+
+
+  // Platform peak: is this a known high-engagement time?
+
+  if peaks, exists := platformPeaks["global"]; exists {
+
+      for _, peak := range peaks {
+
+        if t.Hour() >= peak.StartHour && t.Hour() <= peak.EndHour {
+
+            score += 1.0 * weights["platform_peak"]
+
+        }
+
+          }
+
+      }
+
+
+
+      // Competition gap: avoid publishing when many other publications are scheduled
+
+      competitionScore := se.calculateCompetitionGap(t)
+
+      score += competitionScore * weights["competition_gap"]
+
+
+
+      // Recency: prefer sooner rather than later
+
+      hoursFromNow := time.Until(t).Hours()
+
+      recencyScore := math.Max(0, 1.0-hoursFromNow/48.0)
+
+      score += recencyScore * weights["recency"]
+
+
+
+      return score
+
+}
+
+```
+
+
+
+---
+
+
+
+PART V — QUEUE MANAGEMENT
+
+
+
+Service ID: SVC-DST-QUE
+
+Runtime: Golang 1.22+
+
+gRPC Port: 9504
+
+
+
+5.1 Priority Queue System
+
+```go
+
+// services/distribution/queue-manager/internal/domain/queue.go
+
+package domain
+
+
+
+// QueueManager manages priority-based publication queues
+
+type QueueManager struct {
+
+    redis   *redis.Client
+
+    kafka   kafka.Producer
+
+    workerPools map[PublicationPriority]*WorkerPool
+
+}
+
+
+
+type WorkerPool struct {
+
+    Priority PublicationPriority
+
+    MaxWorkers int
+
+    ActiveWorkers int
+
+    jobChannel chan *PlatformJob
+
+    mu       sync.RWMutex
+
+}
+
+
+
+// Initialize worker pools
+
+func NewQueueManager(redisClient *redis.Client, kafkaProducer kafka.Producer)
+*QueueManager {
+
+    qm := &QueueManager{
+
+      redis: redisClient,
+
+      kafka: kafkaProducer,
+
+      workerPools: map[PublicationPriority]*WorkerPool{
+
+         PriorityCritical: {
+
+              Priority: PriorityCritical,
+
+              MaxWorkers: 10,
+
+              jobChannel: make(chan *PlatformJob, 100),
+
+         },
+
+         PriorityHigh: {
+
+              Priority: PriorityHigh,
+
+              MaxWorkers: 20,
+
+              jobChannel: make(chan *PlatformJob, 500),
+
+         },
+
+         PriorityMedium: {
+
+              Priority: PriorityMedium,
+
+              MaxWorkers: 30,
+
+              jobChannel: make(chan *PlatformJob, 1000),
+
+         },
+
+         PriorityLow: {
+
+              Priority: PriorityLow,
+
+              MaxWorkers: 10,
+
+              jobChannel: make(chan *PlatformJob, 2000),
+
+         },
+
+    },
+
+}
+
+
+
+// Start worker pools
+
+for _, pool := range qm.workerPools {
+
+    qm.startWorkerPool(pool)
+
+    }
+
+
+
+    // Start preemptive scheduler
+
+    go qm.preemptiveScheduler()
+
+
+
+    return qm
+
+}
+
+
+
+// Enqueue adds a job to the appropriate priority queue
+
+func (qm *QueueManager) Enqueue(ctx context.Context, job *PublicationJob) error {
+
+    // Create platform jobs for each target
+
+    for _, target := range job.TargetPlatforms {
+
+        platformJob := &PlatformJob{
+
+            PlatformJobID: uuid.NewV7(),
+
+            PublicationJobID: job.JobID,
+
+            Platform:      target.Platform,
+
+            Status:     PlatformStatusPending,
+
+            MaxAttempts:      3,
+
+            ContentHash:     job.AdaptedContent[target.Platform].ContentHash,
+
+        }
+
+
+
+        job.PlatformJobs = append(job.PlatformJobs, platformJob)
+
+
+
+        // Determine effective priority
+
+        effectivePriority := qm.determineEffectivePriority(job.Priority, target.Platform)
+
+        // Add to Redis Stream for the priority level
+
+        streamKey := fmt.Sprintf("distribution:queue:%s", strings.ToLower(string(effectivePriority)))
+
+        jobData, _ := json.Marshal(platformJob)
+
+
+
+        if err := qm.redis.XAdd(ctx, &redis.XAddArgs{
+
+            Stream: streamKey,
+
+            Values: map[string]interface{}{
+
+                 "job": string(jobData),
+
+            },
+
+        }).Err(); err != nil {
+
+            return fmt.Errorf("enqueue to redis stream: %w", err)
+
+        }
+
+    }
+
+
+
+    return nil
+
+}
+
+
+
+// startWorkerPool starts workers for a priority level
+
+func (qm *QueueManager) startWorkerPool(pool *WorkerPool) {
+
+    streamKey := fmt.Sprintf("distribution:queue:%s", strings.ToLower(string(pool.Priority)))
+
+    consumerGroup := fmt.Sprintf("workers-%s", strings.ToLower(string(pool.Priority)))
+
+
+
+    // Create consumer group if not exists
+
+    qm.redis.XGroupCreateMkStream(context.Background(), streamKey, consumerGroup, "0")
+
+
+
+    for i := 0; i < pool.MaxWorkers; i++ {
+
+        go qm.worker(pool, streamKey, consumerGroup, fmt.Sprintf("worker-%d", i))
+
+    }
+
+}
+
+
+
+// worker processes jobs from a queue
+
+func (qm *QueueManager) worker(pool *WorkerPool, streamKey, consumerGroup,
+consumerName string) {
+
+    for {
+
+        // Read from stream
+
+        results, err := qm.redis.XReadGroup(context.Background(), &redis.XReadGroupArgs{
+
+            Group: consumerGroup,
+
+            Consumer: consumerName,
+
+            Streams: []string{streamKey, ">"},
+
+            Count: 1,
+
+            Block: 5 * time.Second,
+
+        }).Result()
+
+
+
+        if err != nil || len(results) == 0 {
+
+            continue
+
+        }
+
+
+
+        for _, msg := range results[0].Messages {
+
+            jobData := msg.Values["job"].(string)
+
+
+
+            var platformJob PlatformJob
+
+            json.Unmarshal([]byte(jobData), &platformJob)
+
+            // Process the job
+
+            qm.processJob(&platformJob)
+
+
+
+            // Acknowledge
+
+            qm.redis.XAck(context.Background(), streamKey, consumerGroup, msg.ID)
+
+        }
+
+    }
+
+}
+
+
+
+// preemptiveScheduler allows CRITICAL workers to steal from lower queues
+
+func (qm *QueueManager) preemptiveScheduler() {
+
+    ticker := time.NewTicker(1 * time.Second)
+
+    defer ticker.Stop()
+
+
+
+    for range ticker.C {
+
+        // Check if CRITICAL queue has pending jobs
+
+        criticalLen, _ := qm.redis.XLen(context.Background(), "distribution:queue:critical").Result()
+
+
+
+        if criticalLen > 0 {
+
+            // Steal workers from LOW and MEDIUM pools
+
+            for _, priority := range []PublicationPriority{PriorityLow, PriorityMedium} {
+
+              pool := qm.workerPools[priority]
+
+              pool.mu.Lock()
+
+              if pool.ActiveWorkers > pool.MaxWorkers/2 {
+
+                // Temporarily redirect a worker to CRITICAL
+
+                      pool.ActiveWorkers--
+
+                      pool.mu.Unlock()
+
+
+
+                      go func() {
+
+                        // Process one CRITICAL job
+
+                        qm.worker(qm.workerPools[PriorityCritical],
+
+                             "distribution:queue:critical",
+
+                             "workers-critical",
+
+                             "preemptive-worker")
+
+
+
+                        // Return to original pool
+
+                        pool.mu.Lock()
+
+                        pool.ActiveWorkers++
+
+                        pool.mu.Unlock()
+
+                      }()
+
+                  } else {
+
+                      pool.mu.Unlock()
+
+                  }
+
+              }
+
+          }
+
+      }
+
+}
+
+```
+
+
+
+5.2 Dead Letter Queue
+
+```go
+
+// Dead Letter Queue handler
+
+type DeadLetterQueue struct {
+
+    kafka kafka.Producer
+
+    topic string
+
+    alertMgr AlertManager
+
+}
+
+
+
+func (dlq *DeadLetterQueue) Send(
+
+    ctx context.Context,
+
+    platformJob *PlatformJob,
+
+    reason string,
+
+) error {
+
+
+
+    dlqMessage := &DLQMessage{
+
+        MessageID:    uuid.NewV7().String(),
+
+        PlatformJobID: platformJob.PlatformJobID,
+
+        Platform:    platformJob.Platform,
+
+        AttemptCount: platformJob.AttemptCount,
+
+        ErrorMessage: platformJob.ErrorMessage,
+
+        Reason:      reason,
+
+        SentToDLQAt: time.Now(),
+
+        RequiresHuman: true,
+
+    }
+
+
+
+    data, _ := json.Marshal(dlqMessage)
+
+      if _, _, err := dlq.kafka.SendMessage(ctx, &kafka.Message{
+
+           Topic: dlq.topic,
+
+           Key: []byte(platformJob.PlatformJobID.String()),
+
+           Value: data,
+
+      }); err != nil {
+
+           return fmt.Errorf("send to DLQ: %w", err)
+
+      }
+
+
+
+      // Alert on DLQ entries
+
+      dlq.alertMgr.Trigger(ctx, Alert{
+
+           Severity: "WARNING",
+
+           Title: "Publication job sent to Dead Letter Queue",
+
+           Detail: fmt.Sprintf("Platform: %s, Attempts: %d, Error: %s",
+
+             platformJob.Platform, platformJob.AttemptCount, platformJob.ErrorMessage),
+
+      })
+
+
+
+      return nil
+
+}
+
+```
+
+
+
+---
+
+
+
+PART VI — PLATFORM CONNECTORS
+
+
+
+6.1 Connector Interface
+
+```go
+
+// services/distribution/connectors/connector-sdk/connector.go
+
+package connectorsdk
+
+
+
+// PublisherConnector defines the universal interface for all platform connectors
+
+type PublisherConnector interface {
+
+  // Identity
+
+  PlatformName() string
+
+  ConnectorVersion() string
+
+
+
+  // Lifecycle
+
+  Initialize(ctx context.Context, config ConnectorConfig) error
+
+  HealthCheck(ctx context.Context) (*HealthStatus, error)
+
+  Shutdown(ctx context.Context) error
+
+
+
+  // Publishing
+
+  Publish(ctx context.Context, content *PlatformContent) (*PublishResult, error)
+
+  Update(ctx context.Context, platformPostID string, content *PlatformContent)
+(*PublishResult, error)
+
+  Delete(ctx context.Context, platformPostID string) error
+
+  GetStatus(ctx context.Context, platformPostID string) (*PostStatus, error)
+
+
+
+  // Media
+
+  UploadMedia(ctx context.Context, media *MediaAsset) (*MediaUploadResult, error)
+
+    // Rate Limiting
+
+    CheckRateLimit(ctx context.Context) error
+
+    GetRateLimitStatus(ctx context.Context) (*RateLimitStatus, error)
+
+}
+
+
+
+type ConnectorConfig struct {
+
+    Platform string             `json:"platform"`
+
+    TenantID string             `json:"tenant_id"`
+
+    Credentials *PlatformCredentials `json:"credentials"`
+
+    RateLimits RateLimitConfig        `json:"rate_limits"`
+
+    RetryConfig RetryConfig         `json:"retry_config"`
+
+    BaseURL    string           `json:"base_url,omitempty"`
+
+}
+
+
+
+type PlatformCredentials struct {
+
+    AuthType    AuthType          `json:"auth_type"`
+
+    OAuth2     *OAuth2Credentials `json:"oauth2,omitempty"`
+
+    APIKey     string        `json:"api_key,omitempty"`
+
+    AccessToken string          `json:"access_token,omitempty"`
+
+    RefreshToken string          `json:"refresh_token,omitempty"`
+
+    ExpiresAt *time.Time         `json:"expires_at,omitempty"`
+
+}
+
+
+
+type PublishResult struct {
+
+    Success     bool      `json:"success"`
+
+    PlatformPostID string `json:"platform_post_id"`
+
+      PlatformURL string `json:"platform_url"`
+
+      PublishedAt time.Time `json:"published_at"`
+
+}
+
+
+
+type RateLimitStatus struct {
+
+      Limit     int   `json:"limit"`
+
+      Remaining int       `json:"remaining"`
+
+      ResetAt time.Time `json:"reset_at"`
+
+}
+
+```
+
+
+
+6.2 Twitter/X Connector
+
+
+
+```go
+
+// services/distribution/connectors/twitter-connector/internal/connector/twitter.go
+
+package connector
+
+
+
+// TwitterConnector implements PublisherConnector for X (Twitter)
+
+type TwitterConnector struct {
+
+      client     *twitter.Client
+
+      rateLimiter *rate.Limiter
+
+      config     ConnectorConfig
+
+      metrics     *ConnectorMetrics
+
+}
+
+
+
+func (tc *TwitterConnector) Publish(
+
+  ctx context.Context,
+
+  content *PlatformContent,
+
+) (*PublishResult, error) {
+
+
+
+  // Check rate limits
+
+  if err := tc.rateLimiter.Wait(ctx); err != nil {
+
+      return nil, fmt.Errorf("rate limit: %w", err)
+
+  }
+
+
+
+  // Handle threading for long content
+
+  if len(content.Body) > 280 {
+
+      return tc.publishThread(ctx, content)
+
+  }
+
+
+
+  // Upload media first
+
+  var mediaIDs []string
+
+  for _, mediaURL := range content.MediaURLs {
+
+      mediaID, err := tc.uploadMediaFromURL(ctx, mediaURL)
+
+      if err != nil {
+
+          tc.metrics.RecordError("media_upload")
+
+          continue
+
+      }
+
+      mediaIDs = append(mediaIDs, mediaID)
+
+  }
+
+
+
+  // Create tweet
+
+    tweet := &twitter.CreateTweetRequest{
+
+        Text: content.Body,
+
+    }
+
+
+
+    if len(mediaIDs) > 0 {
+
+        tweet.MediaIDs = mediaIDs
+
+    }
+
+
+
+    // Publish
+
+    result, err := tc.client.Tweets.Create(ctx, tweet)
+
+    if err != nil {
+
+        tc.metrics.RecordError("publish")
+
+        return nil, fmt.Errorf("twitter publish: %w", err)
+
+    }
+
+
+
+    tc.metrics.RecordSuccess()
+
+
+
+    return &PublishResult{
+
+        Success:      true,
+
+        PlatformPostID: result.ID,
+
+        PlatformURL: fmt.Sprintf("https://x.com/i/status/%s", result.ID),
+
+        PublishedAt: time.Now(),
+
+    }, nil
+
+}
+
+
+
+func (tc *TwitterConnector) publishThread(
+
+  ctx context.Context,
+
+  content *PlatformContent,
+
+) (*PublishResult, error) {
+
+
+
+  // Split content into 280-char chunks
+
+  chunks := tc.splitIntoThread(content.Body, 270) // Leave room for thread numbering
+
+
+
+  var previousTweetID string
+
+  var lastTweetID string
+
+
+
+  for i, chunk := range chunks {
+
+    tweet := &twitter.CreateTweetRequest{
+
+        Text: chunk,
+
+    }
+
+
+
+    // Add thread numbering
+
+    if len(chunks) > 1 {
+
+        tweet.Text = fmt.Sprintf("%s (%d/%d)", chunk, i+1, len(chunks))
+
+    }
+
+
+
+    // Reply to previous tweet in thread
+
+    if previousTweetID != "" {
+
+        tweet.ReplyTo = previousTweetID
+
+    }
+
+
+
+    // Upload media (first tweet only)
+
+          if i == 0 && len(content.MediaURLs) > 0 {
+
+               for _, mediaURL := range content.MediaURLs {
+
+                   mediaID, err := tc.uploadMediaFromURL(ctx, mediaURL)
+
+                   if err == nil {
+
+                       tweet.MediaIDs = append(tweet.MediaIDs, mediaID)
+
+                   }
+
+               }
+
+          }
+
+
+
+          result, err := tc.client.Tweets.Create(ctx, tweet)
+
+          if err != nil {
+
+               return nil, fmt.Errorf("tweet %d/%d failed: %w", i+1, len(chunks), err)
+
+          }
+
+
+
+          previousTweetID = result.ID
+
+          lastTweetID = result.ID
+
+      }
+
+
+
+      return &PublishResult{
+
+          Success:           true,
+
+          PlatformPostID: lastTweetID,
+
+          PlatformURL: fmt.Sprintf("https://x.com/i/status/%s", lastTweetID),
+
+          PublishedAt: time.Now(),
+
+      }, nil
+
+}
+
+```
+
+6.3 YouTube Connector
+
+
+
+```go
+
+// services/distribution/connectors/youtube-connector/internal/connector/youtube.go
+
+package connector
+
+
+
+type YouTubeConnector struct {
+
+    service        *youtube.Service
+
+    rateLimiter *rate.Limiter
+
+    config     ConnectorConfig
+
+}
+
+
+
+func (yc *YouTubeConnector) Publish(
+
+    ctx context.Context,
+
+    content *PlatformContent,
+
+) (*PublishResult, error) {
+
+
+
+    if err := yc.rateLimiter.Wait(ctx); err != nil {
+
+        return nil, fmt.Errorf("rate limit: %w", err)
+
+    }
+
+
+
+    // YouTube publishing requires video upload
+
+    video := &youtube.Video{
+
+        Snippet: &youtube.VideoSnippet{
+
+          Title:      content.Title,
+
+         Description: content.Body,
+
+         Tags:    content.Hashtags,
+
+         CategoryId: content.PlatformParams["category_id"].(string),
+
+    },
+
+    Status: &youtube.VideoStatus{
+
+         PrivacyStatus: content.PlatformParams["privacy"].(string),
+
+         MadeForKids: false,
+
+    },
+
+}
+
+
+
+// Open video file
+
+videoFile, err := os.Open(content.MediaURLs[0])
+
+if err != nil {
+
+    return nil, fmt.Errorf("open video file: %w", err)
+
+}
+
+defer videoFile.Close()
+
+
+
+// Upload with resumable upload
+
+call := yc.service.Videos.Insert([]string{"snippet", "status"}, video)
+
+call.Media(videoFile)
+
+
+
+uploadedVideo, err := call.Do()
+
+if err != nil {
+
+    return nil, fmt.Errorf("youtube upload: %w", err)
+
+}
+
+      // Set thumbnail
+
+      if content.ThumbnailURL != "" {
+
+          yc.service.Thumbnails.Set(uploadedVideo.Id, content.ThumbnailURL).Do()
+
+      }
+
+
+
+      return &PublishResult{
+
+          Success:    true,
+
+          PlatformPostID: uploadedVideo.Id,
+
+          PlatformURL: fmt.Sprintf("https://youtube.com/watch?v=%s", uploadedVideo.Id),
+
+          PublishedAt: time.Now(),
+
+      }, nil
+
+}
+
+```
+
+
+
+6.4 Credential Management
+
+
+
+```go
+
+// services/distribution/connectors/connector-sdk/credentials.go
+
+package connectorsdk
+
+
+
+// CredentialManager handles platform authentication
+
+type CredentialManager struct {
+
+      vault *vault.Client
+
+      cache *redis.Client
+
+}
+
+// GetValidToken retrieves a valid access token, refreshing if necessary
+
+func (cm *CredentialManager) GetValidToken(
+
+  ctx context.Context,
+
+  platform string,
+
+  tenantID uuid.UUID,
+
+) (*PlatformCredentials, error) {
+
+
+
+  cacheKey := fmt.Sprintf("token:%s:%s", platform, tenantID)
+
+
+
+  // Check cache
+
+  cached, err := cm.cache.Get(ctx, cacheKey).Result()
+
+  if err == nil {
+
+      var creds PlatformCredentials
+
+      json.Unmarshal([]byte(cached), &creds)
+
+
+
+      // Return if still valid (with 5-minute buffer)
+
+      if creds.ExpiresAt != nil && time.Now().Add(5*time.Minute).Before(*creds.ExpiresAt) {
+
+          return &creds, nil
+
+      }
+
+  }
+
+
+
+  // Retrieve from Vault
+
+  creds, err := cm.vault.GetCredentials(ctx, platform, tenantID.String())
+
+  if err != nil {
+
+      return nil, fmt.Errorf("vault retrieval: %w", err)
+
+  }
+
+// Refresh if expired
+
+if creds.ExpiresAt != nil && time.Now().After(*creds.ExpiresAt) {
+
+    refreshedCreds, err := cm.refreshToken(ctx, platform, creds)
+
+    if err != nil {
+
+        return nil, fmt.Errorf("token refresh: %w", err)
+
+    }
+
+
+
+    // Store refreshed credentials
+
+    cm.vault.StoreCredentials(ctx, platform, tenantID.String(), refreshedCreds)
+
+    creds = refreshedCreds
+
+}
+
+
+
+// Cache with appropriate TTL
+
+ttl := 5 * time.Minute
+
+if creds.ExpiresAt != nil {
+
+    timeUntilExpiry := time.Until(*creds.ExpiresAt)
+
+    if timeUntilExpiry < ttl {
+
+        ttl = timeUntilExpiry / 2
+
+    }
+
+}
+
+
+
+data, _ := json.Marshal(creds)
+
+cm.cache.Set(ctx, cacheKey, data, ttl)
+
+
+
+return creds, nil
+
+}
+
+
+
+func (cm *CredentialManager) refreshToken(
+
+      ctx context.Context,
+
+      platform string,
+
+      creds *PlatformCredentials,
+
+) (*PlatformCredentials, error) {
+
+
+
+      // Platform-specific refresh logic
+
+      switch platform {
+
+      case "twitter":
+
+          return cm.refreshTwitterToken(ctx, creds)
+
+      case "facebook":
+
+          return cm.refreshFacebookToken(ctx, creds)
+
+      case "youtube":
+
+          return cm.refreshYouTubeToken(ctx, creds)
+
+      default:
+
+          return nil, fmt.Errorf("unsupported platform for token refresh: %s", platform)
+
+      }
+
+}
+
+```
+
+
+
+---
+
+
+
+PART VII — CORRECTION & RETRACTION ENGINE
+
+Service ID: SVC-DST-COR
+
+Runtime: Golang 1.22+
+
+gRPC Port: 9531
+
+
+
+7.1 Correction Engine
+
+
+
+```go
+
+// services/distribution/correction-engine/internal/domain/correction.go
+
+package domain
+
+
+
+// CorrectionEngine manages corrections and retractions
+
+type CorrectionEngine struct {
+
+    orchestrator     OrchestratorClient
+
+    connectorManager *ConnectorManager
+
+    jobRepo         JobRepository
+
+    auditLogger      AuditLogger
+
+    eventBus        EventBus
+
+}
+
+
+
+type CorrectionRequest struct {
+
+    StoryID       uuid.UUID      `json:"story_id"`
+
+    CorrectionType CorrectionType `json:"correction_type"`
+
+    Severity       CorrectionSeverity `json:"severity"`
+
+    Description     string      `json:"description"`
+
+    CorrectedContent *ContentPackage `json:"corrected_content,omitempty"`
+
+    RequestedBy       string     `json:"requested_by"`
+
+}
+
+
+
+type CorrectionType string
+
+const (
+
+    CorrectionMinor        CorrectionType = "MINOR"    // Typo, formatting
+
+    CorrectionSubstantive CorrectionType = "SUBSTANTIVE" // Factual error
+
+    CorrectionRetraction CorrectionType = "RETRACTION" // Full retraction
+
+    CorrectionTakedown CorrectionType = "TAKEDOWN"          // Legal removal
+
+    CorrectionUpdate       CorrectionType = "UPDATE"   // New information
+
+)
+
+
+
+type CorrectionSeverity string
+
+const (
+
+    SeverityLow    CorrectionSeverity = "LOW"
+
+    SeverityMedium CorrectionSeverity = "MEDIUM"
+
+    SeverityHigh   CorrectionSeverity = "HIGH"
+
+    SeverityCritical CorrectionSeverity = "CRITICAL"
+
+)
+
+
+
+// IssueCorrection processes a correction request
+
+func (ce *CorrectionEngine) IssueCorrection(
+
+    ctx context.Context,
+
+    request *CorrectionRequest,
+
+) (*CorrectionResult, error) {
+
+
+
+    result := &CorrectionResult{
+
+    CorrectionID: uuid.NewV7(),
+
+    StoryID:      request.StoryID,
+
+    Type:         request.CorrectionType,
+
+    StartedAt: time.Now(),
+
+}
+
+
+
+// 1. Find all published versions of this story
+
+publishedJobs, err := ce.jobRepo.FindPublishedJobs(ctx, request.StoryID)
+
+if err != nil {
+
+    return nil, fmt.Errorf("find published jobs: %w", err)
+
+}
+
+
+
+result.AffectedPlatforms = make([]string, 0)
+
+result.PlatformUpdates = make(map[string]*PlatformUpdateResult)
+
+
+
+// 2. Process based on correction type
+
+switch request.CorrectionType {
+
+case CorrectionMinor, CorrectionSubstantive, CorrectionUpdate:
+
+    // Update content on all platforms
+
+    for _, job := range publishedJobs {
+
+      for _, platformJob := range job.PlatformJobs {
+
+        if platformJob.Status == PlatformStatusPublished {
+
+            updateResult, err := ce.updatePlatformContent(
+
+                ctx, platformJob, request,
+
+            )
+
+            if err != nil {
+
+                    result.PlatformUpdates[platformJob.Platform] = &PlatformUpdateResult{
+
+                        Success: false,
+
+                        Error: err.Error(),
+
+                    }
+
+                } else {
+
+                    result.PlatformUpdates[platformJob.Platform] = updateResult
+
+                }
+
+                result.AffectedPlatforms = append(result.AffectedPlatforms, platformJob.Platform)
+
+            }
+
+        }
+
+    }
+
+
+
+case CorrectionRetraction:
+
+    // Full retraction — post retraction notice and update content
+
+    result = ce.processRetraction(ctx, request, publishedJobs)
+
+
+
+case CorrectionTakedown:
+
+    // Legal takedown — remove from all platforms
+
+    result = ce.processTakedown(ctx, request, publishedJobs)
+
+}
+
+
+
+result.CompletedAt = time.Now()
+
+result.Status = "COMPLETED"
+
+
+
+// Audit log
+
+ce.auditLogger.LogCorrection(ctx, result)
+
+    // Publish event
+
+    ce.eventBus.Publish(ctx, &CorrectionIssuedEvent{
+
+         CorrectionID: result.CorrectionID,
+
+         StoryID:    request.StoryID,
+
+         Type:       string(request.CorrectionType),
+
+         Severity:    string(request.Severity),
+
+         PlatformCount: len(result.AffectedPlatforms),
+
+    })
+
+
+
+    return result, nil
+
+}
+
+
+
+// processRetraction handles full story retraction
+
+func (ce *CorrectionEngine) processRetraction(
+
+    ctx context.Context,
+
+    request *CorrectionRequest,
+
+    publishedJobs []*PublicationJob,
+
+) *CorrectionResult {
+
+
+
+    result := &CorrectionResult{
+
+         CorrectionID: uuid.NewV7(),
+
+         StoryID:    request.StoryID,
+
+         Type:       CorrectionRetraction,
+
+         StartedAt: time.Now(),
+
+         PlatformUpdates: make(map[string]*PlatformUpdateResult),
+
+}
+
+
+
+// Generate retraction notice
+
+notice := ce.generateRetractionNotice(request)
+
+
+
+for _, job := range publishedJobs {
+
+    for _, platformJob := range job.PlatformJobs {
+
+      if platformJob.Status != PlatformStatusPublished {
+
+          continue
+
+      }
+
+
+
+      connector, err := ce.connectorManager.GetConnector(platformJob.Platform)
+
+      if err != nil {
+
+          continue
+
+      }
+
+
+
+      switch platformJob.Platform {
+
+      case "website":
+
+          // Update article with retraction banner
+
+          updatedContent := job.ContentPackage
+
+          updatedContent.RetractionNotice = notice
+
+
+
+          _, err = connector.Update(ctx, platformJob.PlatformPostID,
+
+            ce.buildRetractionContent(platformJob.Platform, updatedContent))
+
+
+
+      case "twitter", "facebook", "linkedin":
+
+                // Post retraction notice as new post referencing original
+
+                retractionPost := ce.buildRetractionPost(platformJob.Platform, notice, platformJob)
+
+                _, err = connector.Publish(ctx, retractionPost)
+
+
+
+            case "youtube":
+
+                // Update video description and title
+
+                updatedContent := ce.buildVideoRetractionContent(notice)
+
+                _, err = connector.Update(ctx, platformJob.PlatformPostID, updatedContent)
+
+            }
+
+
+
+            result.PlatformUpdates[platformJob.Platform] = &PlatformUpdateResult{
+
+                Success: err == nil,
+
+                Error: errStr(err),
+
+            }
+
+            result.AffectedPlatforms = append(result.AffectedPlatforms, platformJob.Platform)
+
+        }
+
+    }
+
+
+
+    return result
+
+}
+
+
+
+func (ce *CorrectionEngine) generateRetractionNotice(request *CorrectionRequest)
+*RetractionNotice {
+
+    severityLabels := map[CorrectionSeverity]string{
+
+        SeverityLow:        "Correction",
+
+        SeverityMedium: "Correction",
+
+          SeverityHigh:    "Significant Correction",
+
+          SeverityCritical: "Retraction",
+
+      }
+
+
+
+      return &RetractionNotice{
+
+          Title:    fmt.Sprintf("%s: %s", severityLabels[request.Severity], request.Description),
+
+          Body:      request.Description,
+
+          Date:     time.Now(),
+
+          Reason:     string(request.CorrectionType),
+
+          EditorNote: request.EditorNote,
+
+      }
+
+}
+
+```
+
+
+
+---
+
+
+
+PART VIII — DELIVERY MONITORING
+
+
+
+Service ID: SVC-DST-MON
+
+Runtime: Golang 1.22+
+
+gRPC Port: 9530
+
+
+
+8.1 Delivery Tracker
+
+
+
+```go
+
+// services/distribution/delivery-monitor/internal/domain/monitor.go
+
+package domain
+
+
+
+// DeliveryMonitor tracks publication status across all platforms
+
+type DeliveryMonitor struct {
+
+    redis      *redis.Client
+
+    clickhouse *clickhouse.Client
+
+    alertMgr AlertManager
+
+}
+
+
+
+type DeliveryStatus struct {
+
+    JobID        uuid.UUID              `json:"job_id"`
+
+    StoryID       uuid.UUID              `json:"story_id"`
+
+    OverallStatus string                `json:"overall_status"`
+
+    PlatformStatuses []PlatformDeliveryStatus `json:"platform_statuses"`
+
+    StartedAt      time.Time             `json:"started_at"`
+
+    CompletedAt       *time.Time              `json:"completed_at"`
+
+    Duration       time.Duration           `json:"duration_ms"`
+
+}
+
+
+
+type PlatformDeliveryStatus struct {
+
+    Platform       string      `json:"platform"`
+
+    Status        string    `json:"status"`
+
+    PlatformPostID string         `json:"platform_post_id,omitempty"`
+
+    PlatformURL      string      `json:"platform_url,omitempty"`
+
+    AttemptCount int             `json:"attempt_count"`
+
+    LastAttemptAt *time.Time `json:"last_attempt_at"`
+
+     PublishedAt        *time.Time `json:"published_at,omitempty"`
+
+     ErrorMessage string          `json:"error_message,omitempty"`
+
+}
+
+
+
+// TrackDelivery monitors a publication job in real-time
+
+func (dm *DeliveryMonitor) TrackDelivery(
+
+     ctx context.Context,
+
+     job *PublicationJob,
+
+){
+
+
+
+     ticker := time.NewTicker(10 * time.Second)
+
+     defer ticker.Stop()
+
+
+
+     for {
+
+       select {
+
+       case <-ticker.C:
+
+             status := dm.assessDeliveryStatus(ctx, job)
+
+             dm.recordMetrics(status)
+
+
+
+             // Check for stalled deliveries
+
+             if dm.isStalled(status) {
+
+               dm.alertMgr.Trigger(ctx, Alert{
+
+                 Severity: "WARNING",
+
+                 Title: "Publication job stalled",
+
+                 Detail: fmt.Sprintf("Job %s has been publishing for %v",
+
+                    job.JobID, time.Since(job.CreatedAt)),
+
+                })
+
+            }
+
+
+
+            // Check completion
+
+            if status.OverallStatus == "COMPLETED" || status.OverallStatus == "FAILED" {
+
+                dm.finalizeDelivery(ctx, status)
+
+                return
+
+            }
+
+
+
+        case <-ctx.Done():
+
+            return
+
+        }
+
+    }
+
+}
+
+
+
+// assessDeliveryStatus evaluates the current state of all platform jobs
+
+func (dm *DeliveryMonitor) assessDeliveryStatus(
+
+    ctx context.Context,
+
+    job *PublicationJob,
+
+) *DeliveryStatus {
+
+
+
+    status := &DeliveryStatus{
+
+        JobID:       job.JobID,
+
+        StoryID: job.StoryID,
+
+        StartedAt: job.CreatedAt,
+
+    }
+
+completedCount := 0
+
+failedCount := 0
+
+
+
+for _, platformJob := range job.PlatformJobs {
+
+  platformStatus := PlatformDeliveryStatus{
+
+      Platform:    platformJob.Platform,
+
+      Status:     string(platformJob.Status),
+
+      AttemptCount: platformJob.AttemptCount,
+
+      ErrorMessage: platformJob.ErrorMessage,
+
+  }
+
+
+
+  if platformJob.PlatformPostID != "" {
+
+      platformStatus.PlatformPostID = platformJob.PlatformPostID
+
+      platformStatus.PlatformURL = platformJob.PlatformURL
+
+  }
+
+  if platformJob.PublishedAt != nil {
+
+      platformStatus.PublishedAt = platformJob.PublishedAt
+
+  }
+
+  if platformJob.LastAttemptAt != nil {
+
+      platformStatus.LastAttemptAt = platformJob.LastAttemptAt
+
+  }
+
+
+
+  switch platformJob.Status {
+
+  case PlatformStatusPublished:
+
+      completedCount++
+
+    case PlatformStatusFailed:
+
+        failedCount++
+
+    }
+
+
+
+    status.PlatformStatuses = append(status.PlatformStatuses, platformStatus)
+
+}
+
+
+
+totalPlatforms := len(job.PlatformJobs)
+
+
+
+if completedCount == totalPlatforms {
+
+    status.OverallStatus = "COMPLETED"
+
+    now := time.Now()
+
+    status.CompletedAt = &now
+
+    status.Duration = now.Sub(job.CreatedAt)
+
+} else if failedCount == totalPlatforms {
+
+    status.OverallStatus = "FAILED"
+
+    now := time.Now()
+
+    status.CompletedAt = &now
+
+    status.Duration = now.Sub(job.CreatedAt)
+
+} else if completedCount > 0 {
+
+    status.OverallStatus = "PARTIAL"
+
+} else {
+
+    status.OverallStatus = "IN_PROGRESS"
+
+}
+
+
+
+return status
+
+}
+
+```
+
+
+
+---
+
+
+
+PART IX — SECURITY
+
+
+
+```yaml
+
+security:
+
+    credential_storage:
+
+      provider: HashiCorp Vault Enterprise
+
+      encryption: AES-256-GCM
+
+      access_control: Vault policies per connector
+
+
+
+    api_key_rotation:
+
+      schedule: 90 days (automated)
+
+      notification: 14 days before expiry
+
+      fallback: Emergency rotation via Vault API
+
+
+
+    oauth_management:
+
+      token_refresh: Automatic, 5 minutes before expiry
+
+      refresh_failure: Alert + manual intervention
+
+      state_parameter: CSRF protection with state validation
+
+
+
+    encryption:
+
+      in_transit: TLS 1.3 (mTLS between services)
+
+      at_rest: AES-256
+
+      key_management: AWS KMS + Vault
+
+
+
+ audit:
+
+      all_publications: Immutable event log in Kafka
+
+      credential_access: Logged and alerted
+
+      emergency_overrides: Dual authorization required
+
+      retention: 7 years (compliance requirement)
+
+```
+
+
+
+---
+
+
+
+PART X — OBSERVABILITY
+
+
+
+```yaml
+
+metrics:
+
+ distribution:
+
+      publications_total:
+
+       type: counter
+
+       labels: [platform, status, priority]
+
+
+
+      publication_duration_seconds:
+
+       type: histogram
+
+       buckets: [0.5, 1, 5, 10, 30, 60, 120, 300]
+
+       labels: [platform]
+
+  queue_depth:
+
+   type: gauge
+
+   labels: [priority]
+
+
+
+  connector_health:
+
+   type: gauge
+
+   labels: [platform, status] # 1=healthy, 0=unhealthy
+
+
+
+  rate_limit_usage:
+
+   type: gauge
+
+   labels: [platform]
+
+
+
+  dlq_size:
+
+   type: gauge
+
+
+
+  corrections_total:
+
+   type: counter
+
+   labels: [correction_type, severity]
+
+
+
+  credential_expiry_days:
+
+   type: gauge
+
+   labels: [platform]
+
+
+
+slos:
+
+ publication_api: 99.95% availability
+
+ breaking_news_publishing_p99: 30s
+
+ standard_publication_p99: 120s
+
+ retraction_propagation_p99: 300s
+
+ connector_uptime: 99.9% per platform
+
+ credential_refresh_success: 99.99%
+
+
+
+alerts:
+
+ - alert: BreakingNewsSLABreach
+
+      expr: histogram_quantile(0.99, publication_duration_seconds{priority="CRITICAL"}) > 30
+
+      severity: critical
+
+
+
+ - alert: ConnectorUnhealthy
+
+      expr: connector_health == 0
+
+      for: 2m
+
+      severity: critical
+
+
+
+ - alert: DLQGrowning
+
+      expr: dlq_size > 100
+
+      for: 10m
+
+      severity: warning
+
+
+
+ - alert: CredentialExpiringSoon
+
+      expr: credential_expiry_days < 7
+
+      severity: warning
+
+```
+
+
+
+---
+
+PART XI — DEPLOYMENT
+
+
+
+```yaml
+
+deployment:
+
+ kubernetes:
+
+  orchestrator:
+
+   replicas: 3
+
+   resources:
+
+    requests: {cpu: 500m, memory: 512Mi}
+
+    limits: {cpu: 2000m, memory: 2Gi}
+
+   autoscaling:
+
+    min: 3, max: 10
+
+    target_cpu: 70%
+
+
+
+  connectors:
+
+   replicas: 2 per connector (min)
+
+   resources:
+
+    requests: {cpu: 250m, memory: 256Mi}
+
+    limits: {cpu: 1000m, memory: 1Gi}
+
+   autoscaling:
+
+    min: 2, max: 20
+
+    target_cpu: 60%
+
+
+
+  scheduler:
+
+   replicas: 2
+
+       resources:
+
+        requests: {cpu: 250m, memory: 256Mi}
+
+
+
+      queue_manager:
+
+       replicas: 3
+
+       resources:
+
+        requests: {cpu: 500m, memory: 1Gi}
+
+        limits: {cpu: 2000m, memory: 4Gi}
+
+
+
+ regional_deployment:
+
+      primary: us-east-1
+
+      secondary: eu-west-1 (for European platforms)
+
+      tertiary: ap-southeast-1 (for Asian platforms)
+
+
+
+ disaster_recovery:
+
+      rpo: 5 minutes (Kafka mirroring)
+
+      rto: 15 minutes (connector failover)
+
+```
+
+
+
+---
+
+
+
+EXECUTIVE SUMMARY
+
+
+
+Volume 28 delivers the complete, production-ready specification for the Agbofa Nexus AI
+Distribution Engine — the multi-platform publishing system that delivers content to every
+supported channel. Every service, connector, queue, and monitoring component has been
+specified to implementation-ready detail.
+
+Key Deliverables:
+
+
+
+· Publication Orchestrator: Master coordinator with event-sourced state machine, parallel
+platform publishing, and comprehensive retry logic
+
+· Priority Queue System: Four-tier priority queues with preemptive scheduling for breaking
+news, Redis Streams for low-latency, Kafka for event sourcing
+
+· Platform Adapters: 12+ platform connectors with unified interface, each handling platform-
+specific content transformation, rate limiting, and authentication
+
+· Scheduling Engine: Optimal time calculation using audience overlap, platform peaks, and
+competition avoidance
+
+· Correction Engine: Complete correction/retraction workflows with cross-platform
+synchronization
+
+· Delivery Monitoring: Real-time status tracking with analytics feedback and alerting
+
+· Credential Management: Automated OAuth token refresh, Vault integration, expiry monitoring
+
+
+
+The Distribution Engine is ready for implementation. Volume 29 will build upon this to
+implement the Analytics, Audience Intelligence & Continuous Learning Engine.
+
+
+
+---
+
+
+
+END OF VOLUME 28
+
+
+
+Date: 2026-08-07
+
+Version: 1.0.0 — Implementation-Ready
+
+Next Volume: Volume 29 — Analytics, Audience Intelligence & Continuous Learning Code
+Specification
+

@@ -21,3 +21,6 @@
 | Batch 1 Lock | Documentation governance | User approval with condition | Batch 1 Documentation Review | Locked for indexing only | Governance validation | Yes | a8565ba | Pass | Complete |
 | Global Architecture Reconciliation Register | Documentation governance | User condition to defer architecture decisions | Batch 1 Approval | Initialized | Governance validation | Yes | a8565ba | Pass | Active |
 | Batch 2 Documentation Review | Documentation review | Volumes 11–20 from uploaded source artifact | Batch 1 Lock | Review complete; awaiting approval | Governance validation | Yes | a8565ba | Pass | Awaiting approval |
+| Batch 2 Lock | Documentation governance | User approval with condition | Batch 2 Documentation Review | Locked for indexing only | Governance validation | Yes | Pending current commit | Pass | Complete |
+| Documentation Confidence Register | Documentation governance | User instruction | Batch 2 Approval | Initialized | Governance validation | Yes | Pending current commit | Pass | Active |
+| Batch 3 Documentation Review | Documentation review | Volumes 21–30 from uploaded source artifact | Batch 2 Lock | Review complete; awaiting approval | Governance validation | Yes | Pending current commit | Pass | Awaiting approval |

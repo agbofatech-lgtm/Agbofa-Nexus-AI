@@ -1,0 +1,4280 @@
+VOLUME 24: CONTENT ORIGINATION ENGINE CODE SPECIFICATION
+
+
+
+Document Reference: AGBA-NEXUS-VOL24-CODE-1.0
+
+Status: Implementation-Ready — Production Specification
+
+Phase: 3 — Production Engineering Specifications
+
+Approved Baseline: Volumes 1–23 (Immutable)
+
+Purpose: First AI Newsroom Domain Implementation
+
+Quality Level: US$50M Enterprise Platform Standard
+
+
+
+---
+
+SERVICE DECISION RECORDS (SDR)
+
+
+
+SDR-COR-001: Dual-Mode Ingestion Architecture
+
+
+
+Decision: Implement two ingestion modes: poll-based for RSS/API sources (configurable
+intervals) and stream-based for WebSocket/real-time sources. Both feed into a unified Kafka
+topic for downstream processing.
+
+Rationale: Different source types have different capabilities. Polling handles 80% of sources;
+streaming handles breaking news and real-time APIs. Unified Kafka topic normalizes all ingest
+into a single pipeline.
+
+Alternatives: Poll-only (rejected — too slow for breaking news); stream-only (rejected — most
+sources don't support streaming).
+
+Trade-offs: Two code paths to maintain, but necessary for comprehensive coverage.
+
+
+
+SDR-COR-002: pgvector for Story Embedding Similarity
+
+
+
+Decision: Use PostgreSQL with pgvector extension as the primary vector store for story
+similarity, deduplication, and clustering. Neo4j stores graph relationships.
+
+Rationale: Simplifies operational stack by using PostgreSQL for both relational and vector data.
+pgvector performance is sufficient for expected scale (500K documents/day). Neo4j handles
+graph-specific queries.
+
+Alternatives: Dedicated vector DB (Pinecone, Weaviate — rejected for operational simplicity);
+pgvector-only for graph (rejected — graph queries too complex for relational).
+
+Trade-offs: pgvector not as fast as dedicated vector DBs, but sufficient for our scale and simpler
+to operate.
+
+
+
+SDR-COR-003: Pluggable Source Connector Framework
+
+Decision: Source connectors implement a common SourceConnector interface with plugin
+registration. New source types added without modifying core ingestion engine.
+
+Rationale: 10,000+ sources across dozens of types. Plugin architecture enables independent
+development, testing, and deployment of connectors.
+
+Alternatives: Hardcoded source types (rejected — not scalable); external integration platform
+(rejected — latency, cost).
+
+Trade-offs: Plugin management complexity, but essential for scale.
+
+
+
+SDR-COR-004: Content Fingerprinting for Deduplication
+
+
+
+Decision: Generate content fingerprints using MinHash + LSH (Locality-Sensitive Hashing) for
+near-duplicate detection, combined with SHA-256 for exact deduplication.
+
+Rationale: News content often has minor variations (different headlines, formatting).
+MinHash+LSH catches near-duplicates that SHA-256 misses. Two-tier approach balances
+accuracy and performance.
+
+Alternatives: SHA-256 only (rejected — misses near-duplicates); full semantic comparison
+(rejected — too expensive for 500K docs/day).
+
+Trade-offs: Additional fingerprint computation, but 90%+ duplicate detection accuracy.
+
+
+
+---
+
+
+
+PART I — CONTENT ORIGINATION OVERVIEW
+
+
+
+1.1 Architecture Overview
+
+
+
+```
+
+CONTENT ORIGINATION ENGINE — SERVICE ARCHITECTURE:
+
+┌─────────────────────────────────────────────────────────────────────────────
+┐
+
+│           CONTENT ORIGINATION BOUNDARY                          │
+
+├
+─────────────────────────────────────────────────────────────────────────────
+┤
+
+│                                            │
+
+│ EXTERNAL SOURCES                                      │
+
+│ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────┐          │
+
+│ │ RSS │ │News APIs │ │ Gov Feeds│ │ Social │ │ Custom           │     │
+
+│ │ Feeds │ │(Reuters) │ │ (FEMA) │ │ Media │ │ Connectors │                │
+
+│ └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ └──────┬───────┘              │
+
+│     │      │       │        │         │        │
+
+│
+┌────▼────────────▼────────────▼────────────▼──────────────▼───────────┐
+│
+
+│ │              SOURCE CONNECTOR FRAMEWORK                       │ │
+
+│ │ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────────────────┐ │ │
+
+│ │ │ RSS │ │ API │ │ Web │ │ Social │ │ Custom Plugin │ │ │
+
+│ │ │Adapter │ │Adapter │ │Crawler │ │Adapter │ │ Interface           │ │ │
+
+│ │ └───┬────┘ └───┬────┘ └───┬────┘ └───┬────┘ └─────────┬──────────┘ │ │
+
+│ └──────┼──────────┼──────────┼──────────┼───────────────┼─────────────┘
+│
+
+│     │      │      │     │         │            │
+
+│ ┌──────▼──────────▼──────────▼──────────▼───────────────▼─────────────┐
+│
+
+│ │              INGESTION ORCHESTRATOR                     │ │
+
+│ │ • Poll scheduling • Rate limiting • Source health • Retry logic │ │
+
+│ └────────────────────────────┬────────────────────────────────────────┘ │
+
+│                 │                         │
+
+│ ┌────────────────────────────▼────────────────────────────────────────┐ │
+
+│ │            CONTENT NORMALIZATION PIPELINE                    │ │
+
+│ │ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ │ │
+
+│ │ │ Language │ │ Text │ │ Entity │ │ HTML │ │ Media │ │ │
+
+│ │ │Detection │ │Cleaning │ │Extraction│ │Stripping │ │Extraction│ │ │
+
+│ │ └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ │ │
+
+│ └───────┼────────────┼────────────┼────────────┼────────────┼────────┘
+│
+
+│     │       │       │       │       │         │
+
+│ ┌───────▼────────────▼────────────▼────────────▼────────────▼────────┐
+│
+
+│ │            STORY DETECTION ENGINE                     │ │
+
+│ │ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────────────┐ │ │
+
+│ │ │Duplicate │ │ Story │ │ Breaking │ │ Story Graph           │ │ │
+
+│ │ │Detection │ │Clustering│ │ News │ │ Initialization         │ │ │
+
+│ │ └────┬─────┘ └────┬─────┘ └────┬─────┘ └──────────┬───────────┘ │ │
+
+│ └───────┼────────────┼────────────┼───────────────────┼──────────────┘ │
+
+│     │       │       │           │          │
+
+│ ┌───────▼────────────▼────────────▼───────────────────▼──────────────┐ │
+
+│ │            KAFKA EVENT BUS                      │ │
+
+│ │ content_origination.raw_ingest │ .story.detected │ .story.clustered│ │
+
+│ └─────────────────────────────────────────────────────────────────────┘ │
+
+│                                           │
+
+│ DOWNSTREAM: Truth Engine (Volume 25)                                 │
+
+└─────────────────────────────────────────────────────────────────────────────
+┘
+
+```
+
+
+
+1.2 Service Inventory
+
+
+
+```yaml
+
+content_origination_services:
+
+ source_manager:
+
+      id: SVC-COR-SRC
+
+      runtime: Golang
+
+      port: 9101
+
+      description: "Source registry, health monitoring, credential management"
+
+
+
+ ingestion_orchestrator:
+
+      id: SVC-COR-ING
+
+      runtime: Golang
+
+      port: 9102
+
+      description: "Poll scheduling, rate limiting, connector coordination"
+
+
+
+ content_normalizer:
+
+      id: SVC-COR-NRM
+
+      runtime: Python (NLP) + Golang (orchestration)
+
+      port: 9103
+
+      description: "Language detection, text cleaning, entity extraction"
+
+ story_detection_engine:
+
+      id: SVC-COR-DET
+
+      runtime: Golang + Python (ML)
+
+      port: 9104
+
+      description: "Duplicate detection, story clustering, breaking news detection"
+
+
+
+ story_graph_initializer:
+
+      id: SVC-COR-SGI
+
+      runtime: Golang
+
+      port: 9105
+
+      description: "Story Graph node creation, relationship establishment"
+
+
+
+ editorial_intake:
+
+      id: SVC-COR-EDI
+
+      runtime: Golang
+
+      port: 9106
+
+      description: "Manual submission API, editorial queue management"
+
+```
+
+
+
+---
+
+
+
+PART II — SOURCE CONNECTOR FRAMEWORK
+
+
+
+2.1 Connector Interface
+
+
+
+```go
+
+// services/content-origination/ingestion-orchestrator/internal/domain/connector.go
+
+package domain
+
+
+
+import (
+
+    "context"
+
+    "time"
+
+)
+
+
+
+// SourceConnector defines the universal interface for all source connectors
+
+type SourceConnector interface {
+
+    // Identity
+
+    ID() string
+
+    Name() string
+
+    SourceType() SourceType
+
+    Version() string
+
+
+
+    // Lifecycle
+
+    Initialize(ctx context.Context, config SourceConfig) error
+
+    HealthCheck(ctx context.Context) (*SourceHealth, error)
+
+    Shutdown(ctx context.Context) error
+
+
+
+    // Data Fetching
+
+    Fetch(ctx context.Context, opts FetchOptions) (*FetchResult, error)
+
+    StreamResults(ctx context.Context) (<-chan *RawDocument, error) // For real-time sources
+
+
+
+    // Capabilities
+
+    SupportsStreaming() bool
+
+    SupportsScheduling() bool
+
+    RecommendedPollInterval() time.Duration
+
+}
+
+
+
+// SourceType categorizes the source
+
+type SourceType string
+
+const (
+
+    SourceTypeRSS         SourceType = "RSS"
+
+    SourceTypeRESTAPI       SourceType = "REST_API"
+
+    SourceTypeGraphQL        SourceType = "GRAPHQL"
+
+    SourceTypeWebSocket       SourceType = "WEBSOCKET"
+
+    SourceTypeWebCrawl        SourceType = "WEB_CRAWL"
+
+    SourceTypeGovernmentFeed SourceType = "GOVERNMENT_FEED"
+
+    SourceTypeSocialMedia SourceType = "SOCIAL_MEDIA"
+
+    SourceTypePressRelease SourceType = "PRESS_RELEASE"
+
+    SourceTypeManualEntry SourceType = "MANUAL_ENTRY"
+
+    SourceTypeCustom         SourceType = "CUSTOM"
+
+)
+
+
+
+// SourceConfig holds the configuration for a source
+
+type SourceConfig struct {
+
+    SourceID     string         `json:"source_id"`
+
+    TenantID     string         `json:"tenant_id"`
+
+    Name         string         `json:"name"`
+
+    SourceType     SourceType        `json:"source_type"`
+
+    BaseURL        string         `json:"base_url"`
+
+    AuthConfig      *AuthConfig        `json:"auth_config,omitempty"`
+
+    RateLimit     *RateLimitConfig      `json:"rate_limit,omitempty"`
+
+    PollInterval time.Duration         `json:"poll_interval"`
+
+    Timeout       time.Duration       `json:"timeout"`
+
+    RetryConfig *RetryConfig           `json:"retry_config,omitempty"`
+
+    CustomParams map[string]interface{} `json:"custom_params,omitempty"`
+
+}
+
+
+
+// AuthConfig handles authentication for sources
+
+type AuthConfig struct {
+
+    AuthType AuthType             `json:"auth_type"`
+
+    APIKey      string        `json:"api_key,omitempty"`        // Encrypted in Vault
+
+    OAuth2      *OAuth2Config        `json:"oauth2,omitempty"`
+
+    BasicAuth *BasicAuthConfig `json:"basic_auth,omitempty"`
+
+    Custom      map[string]string `json:"custom,omitempty"`
+
+}
+
+
+
+type AuthType string
+
+const (
+
+    AuthTypeNone         AuthType = "NONE"
+
+    AuthTypeAPIKey AuthType = "API_KEY"
+
+    AuthTypeOAuth2 AuthType = "OAUTH2"
+
+    AuthTypeBasic        AuthType = "BASIC"
+
+    AuthTypeCustom AuthType = "CUSTOM"
+
+)
+
+// FetchOptions controls how data is fetched
+
+type FetchOptions struct {
+
+    Since   *time.Time        // Fetch content since this time
+
+    Until   *time.Time        // Fetch content until this time
+
+    Limit   int           // Max items to fetch
+
+    Cursor string           // Pagination cursor
+
+    Filters map[string]string // Source-specific filters
+
+}
+
+
+
+// FetchResult contains the fetched data
+
+type FetchResult struct {
+
+    Documents []*RawDocument           `json:"documents"`
+
+    NextCursor string          `json:"next_cursor,omitempty"`
+
+    HasMore       bool        `json:"has_more"`
+
+    FetchedAt time.Time          `json:"fetched_at"`
+
+    Metadata FetchMetadata          `json:"metadata"`
+
+}
+
+
+
+type FetchMetadata struct {
+
+    ItemsFetched int          `json:"items_fetched"`
+
+    ItemsNew        int      `json:"items_new"`
+
+    Duration       time.Duration `json:"duration_ms"`
+
+    RateLimitRemaining int       `json:"rate_limit_remaining,omitempty"`
+
+}
+
+// RawDocument represents an unprocessed document from a source
+
+type RawDocument struct {
+
+    DocumentID        string         `json:"document_id"`       // Generated UUID
+
+    ExternalID      string         `json:"external_id"`     // ID from source
+
+    SourceID        string        `json:"source_id"`
+
+    TenantID        string        `json:"tenant_id"`
+
+    ContentType       string         `json:"content_type"`     // article, tweet, press_release
+
+    Title        string         `json:"title,omitempty"`
+
+    Body          string         `json:"body"`
+
+    RawHTML          string         `json:"raw_html,omitempty"`
+
+    URL          string         `json:"url,omitempty"`
+
+    PublishedAt      *time.Time        `json:"published_at,omitempty"`
+
+    FetchedAt       time.Time         `json:"fetched_at"`
+
+    Language        string         `json:"language,omitempty"`
+
+    Authors        []string       `json:"authors,omitempty"`
+
+    Categories      []string       `json:"categories,omitempty"`
+
+    Tags         []string       `json:"tags,omitempty"`
+
+    MediaURLs        []string        `json:"media_urls,omitempty"`
+
+    Metadata        map[string]interface{} `json:"metadata,omitempty"`
+
+    RawData         json.RawMessage       `json:"raw_data,omitempty"` // Original payload
+
+}
+
+
+
+// SourceHealth reports the health of a source
+
+type SourceHealth struct {
+
+    SourceID          string     `json:"source_id"`
+
+    Status          HealthStatus `json:"status"`
+
+      LastSuccess       *time.Time `json:"last_success,omitempty"`
+
+      LastFailure    *time.Time `json:"last_failure,omitempty"`
+
+      ConsecutiveFailures int       `json:"consecutive_failures"`
+
+      AverageLatency      time.Duration `json:"average_latency"`
+
+      SuccessRate       float64    `json:"success_rate"`    // 0.0 - 1.0
+
+      Message          string     `json:"message,omitempty"`
+
+}
+
+
+
+type HealthStatus string
+
+const (
+
+      HealthStatusHealthy HealthStatus = "HEALTHY"
+
+      HealthStatusDegraded HealthStatus = "DEGRADED"
+
+      HealthStatusUnhealthy HealthStatus = "UNHEALTHY"
+
+      HealthStatusDisabled HealthStatus = "DISABLED"
+
+)
+
+```
+
+
+
+2.2 RSS Connector Implementation
+
+
+
+```go
+
+// services/content-origination/ingestion-orchestrator/internal/infrastructure/connectors/rss.go
+
+package connectors
+
+
+
+import (
+
+      "context"
+
+      "crypto/sha256"
+
+    "encoding/hex"
+
+    "fmt"
+
+    "io"
+
+    "net/http"
+
+    "time"
+
+
+
+    "github.com/mmcdole/gofeed"
+
+    "github.com/agbofa/nexus-ai/libs/go/pkg/observability"
+
+)
+
+
+
+// RSSConnector implements SourceConnector for RSS/Atom feeds
+
+type RSSConnector struct {
+
+    id         string
+
+    name         string
+
+    config       SourceConfig
+
+    parser       *gofeed.Parser
+
+    httpClient *http.Client
+
+    tracer      trace.Tracer
+
+    metrics *ConnectorMetrics
+
+}
+
+
+
+func NewRSSConnector(config SourceConfig) (*RSSConnector, error) {
+
+    return &RSSConnector{
+
+         id:   fmt.Sprintf("rss-%s", config.SourceID),
+
+         name: config.Name,
+
+         config: config,
+
+       parser: gofeed.NewParser(),
+
+       httpClient: &http.Client{
+
+             Timeout: config.Timeout,
+
+             Transport: &http.Transport{
+
+                  MaxIdleConns: 10,
+
+                  IdleConnTimeout: 30 * time.Second,
+
+             },
+
+       },
+
+       tracer: otel.Tracer("connectors/rss"),
+
+       metrics: NewConnectorMetrics("rss"),
+
+    }, nil
+
+}
+
+
+
+func (rc *RSSConnector) ID() string                    { return rc.id }
+
+func (rc *RSSConnector) Name() string                     { return rc.name }
+
+func (rc *RSSConnector) SourceType() SourceType                  { return SourceTypeRSS }
+
+func (rc *RSSConnector) Version() string                  { return "1.0.0" }
+
+func (rc *RSSConnector) SupportsStreaming() bool                 { return false }
+
+func (rc *RSSConnector) SupportsScheduling() bool                { return true }
+
+func (rc *RSSConnector) RecommendedPollInterval() time.Duration {
+
+    return rc.config.PollInterval
+
+}
+
+
+
+// Fetch retrieves RSS feed items and converts them to RawDocuments
+
+func (rc *RSSConnector) Fetch(ctx context.Context, opts FetchOptions) (*FetchResult, error) {
+
+    ctx, span := rc.tracer.Start(ctx, "rss.Fetch")
+
+  defer span.End()
+
+
+
+  startTime := time.Now()
+
+
+
+  // Build request with conditional GET
+
+  req, err := http.NewRequestWithContext(ctx, "GET", rc.config.BaseURL, nil)
+
+  if err != nil {
+
+      return nil, fmt.Errorf("create request: %w", err)
+
+  }
+
+
+
+  req.Header.Set("User-Agent", "AgbofaNexusAI/1.0 (News Aggregator)")
+
+  req.Header.Set("Accept", "application/rss+xml, application/atom+xml, application/xml,
+text/xml")
+
+
+
+  // Add ETag/Last-Modified for conditional fetch
+
+  if opts.Since != nil {
+
+      req.Header.Set("If-Modified-Since", opts.Since.Format(http.TimeFormat))
+
+  }
+
+
+
+  // Execute request
+
+  resp, err := rc.httpClient.Do(req)
+
+  if err != nil {
+
+      rc.metrics.RecordError("fetch")
+
+      return nil, fmt.Errorf("http request: %w", err)
+
+  }
+
+  defer resp.Body.Close()
+
+// Handle rate limiting
+
+if resp.StatusCode == http.StatusTooManyRequests {
+
+    retryAfter := resp.Header.Get("Retry-After")
+
+    rc.metrics.RecordRateLimited()
+
+    return nil, fmt.Errorf("rate limited, retry after: %s", retryAfter)
+
+}
+
+
+
+// Not modified
+
+if resp.StatusCode == http.StatusNotModified {
+
+    return &FetchResult{
+
+       Documents: []*RawDocument{},
+
+       HasMore: false,
+
+       FetchedAt: time.Now(),
+
+       Metadata: FetchMetadata{
+
+             ItemsFetched: 0,
+
+             ItemsNew:    0,
+
+             Duration:   time.Since(startTime),
+
+       },
+
+    }, nil
+
+}
+
+
+
+if resp.StatusCode != http.StatusOK {
+
+    return nil, fmt.Errorf("unexpected status: %d", resp.StatusCode)
+
+}
+
+// Parse feed
+
+body, _ := io.ReadAll(resp.Body)
+
+feed, err := rc.parser.ParseString(string(body))
+
+if err != nil {
+
+    return nil, fmt.Errorf("parse feed: %w", err)
+
+}
+
+
+
+// Convert to RawDocuments
+
+documents := make([]*RawDocument, 0, len(feed.Items))
+
+newCount := 0
+
+
+
+for _, item := range feed.Items {
+
+    // Generate stable external ID from GUID or URL
+
+    externalID := rc.generateExternalID(item)
+
+
+
+    // Parse published date
+
+    var publishedAt *time.Time
+
+    if item.PublishedParsed != nil {
+
+        publishedAt = item.PublishedParsed
+
+    } else if item.UpdatedParsed != nil {
+
+        publishedAt = item.UpdatedParsed
+
+    }
+
+
+
+    // Skip if older than since time
+
+    if opts.Since != nil && publishedAt != nil && publishedAt.Before(*opts.Since) {
+
+        continue
+
+}
+
+
+
+doc := &RawDocument{
+
+    DocumentID: uuid.NewV7().String(),
+
+    ExternalID: externalID,
+
+    SourceID: rc.config.SourceID,
+
+    TenantID: rc.config.TenantID,
+
+    ContentType: "article",
+
+    Title:      item.Title,
+
+    Body:          rc.extractBody(item),
+
+    RawHTML:           item.Content,
+
+    URL:           item.Link,
+
+    PublishedAt: publishedAt,
+
+    FetchedAt: time.Now(),
+
+    Authors:        rc.extractAuthors(item),
+
+    Categories: item.Categories,
+
+    MediaURLs: rc.extractMediaURLs(item),
+
+    Metadata: map[string]interface{}{
+
+         "feed_title": feed.Title,
+
+         "guid":      item.GUID,
+
+    },
+
+}
+
+
+
+documents = append(documents, doc)
+
+newCount++
+
+        // Respect limit
+
+        if opts.Limit > 0 && len(documents) >= opts.Limit {
+
+             break
+
+        }
+
+    }
+
+
+
+    duration := time.Since(startTime)
+
+    rc.metrics.RecordFetch(duration, len(documents), newCount)
+
+
+
+    return &FetchResult{
+
+        Documents: documents,
+
+        HasMore: len(documents) >= opts.Limit,
+
+        FetchedAt: time.Now(),
+
+        Metadata: FetchMetadata{
+
+             ItemsFetched: len(documents),
+
+             ItemsNew:     newCount,
+
+             Duration:   duration,
+
+        },
+
+    }, nil
+
+}
+
+
+
+func (rc *RSSConnector) generateExternalID(item *gofeed.Item) string {
+
+    // Prefer GUID, fall back to URL hash
+
+    if item.GUID != "" {
+
+        hash := sha256.Sum256([]byte(item.GUID))
+
+        return hex.EncodeToString(hash[:16])
+
+    }
+
+    if item.Link != "" {
+
+        hash := sha256.Sum256([]byte(item.Link))
+
+        return hex.EncodeToString(hash[:16])
+
+    }
+
+    // Last resort: hash title + published date
+
+    data := item.Title
+
+    if item.PublishedParsed != nil {
+
+        data += item.PublishedParsed.String()
+
+    }
+
+    hash := sha256.Sum256([]byte(data))
+
+    return hex.EncodeToString(hash[:16])
+
+}
+
+
+
+func (rc *RSSConnector) extractBody(item *gofeed.Item) string {
+
+    if item.Content != "" {
+
+        return stripHTML(item.Content)
+
+    }
+
+    return item.Description
+
+}
+
+
+
+func (rc *RSSConnector) extractAuthors(item *gofeed.Item) []string {
+
+    authors := make([]string, 0, len(item.Authors))
+
+    for _, author := range item.Authors {
+
+        if author.Name != "" {
+
+          authors = append(authors, author.Name)
+
+          }
+
+      }
+
+      return authors
+
+}
+
+
+
+func (rc *RSSConnector) extractMediaURLs(item *gofeed.Item) []string {
+
+      urls := make([]string, 0)
+
+      if item.Image != nil && item.Image.URL != "" {
+
+          urls = append(urls, item.Image.URL)
+
+      }
+
+      // Extract from enclosures
+
+      for _, enc := range item.Enclosures {
+
+          if enc.URL != "" {
+
+              urls = append(urls, enc.URL)
+
+          }
+
+      }
+
+      return urls
+
+}
+
+```
+
+
+
+2.3 News API Connector
+
+
+
+```go
+
+// services/content-origination/ingestion-
+orchestrator/internal/infrastructure/connectors/newsapi.go
+
+package connectors
+
+// NewsAPIConnector implements SourceConnector for REST-based news APIs
+
+type NewsAPIConnector struct {
+
+    id       string
+
+    name        string
+
+    config     SourceConfig
+
+    httpClient *http.Client
+
+    tracer     trace.Tracer
+
+    metrics *ConnectorMetrics
+
+}
+
+
+
+func (nc *NewsAPIConnector) Fetch(ctx context.Context, opts FetchOptions) (*FetchResult,
+error) {
+
+    ctx, span := nc.tracer.Start(ctx, "newsapi.Fetch")
+
+    defer span.End()
+
+
+
+    // Build API request based on source configuration
+
+    reqURL := nc.buildRequestURL(opts)
+
+
+
+    req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
+
+    if err != nil {
+
+         return nil, fmt.Errorf("create request: %w", err)
+
+    }
+
+
+
+    // Add authentication
+
+    nc.addAuthentication(req)
+
+// Execute with retry
+
+var resp *http.Response
+
+for attempt := 0; attempt < 3; attempt++ {
+
+    resp, err = nc.httpClient.Do(req)
+
+    if err == nil && resp.StatusCode < 500 {
+
+        break
+
+    }
+
+    if attempt < 2 {
+
+        time.Sleep(time.Duration(1<<attempt) * time.Second)
+
+    }
+
+}
+
+if err != nil {
+
+    return nil, fmt.Errorf("api request failed after retries: %w", err)
+
+}
+
+defer resp.Body.Close()
+
+
+
+// Handle rate limiting
+
+nc.updateRateLimits(resp)
+
+
+
+// Parse response based on API format
+
+var documents []*RawDocument
+
+switch nc.config.CustomParams["response_format"] {
+
+case "reuters":
+
+    documents, err = nc.parseReutersResponse(resp.Body)
+
+case "associated_press":
+
+          documents, err = nc.parseAPResponse(resp.Body)
+
+      default:
+
+          documents, err = nc.parseGenericJSONResponse(resp.Body)
+
+      }
+
+
+
+      if err != nil {
+
+          return nil, fmt.Errorf("parse response: %w", err)
+
+      }
+
+
+
+      return &FetchResult{
+
+          Documents: documents,
+
+          HasMore: nc.hasMorePages(resp),
+
+          FetchedAt: time.Now(),
+
+      }, nil
+
+}
+
+```
+
+
+
+---
+
+
+
+PART III — INGESTION ORCHESTRATOR
+
+
+
+3.1 Orchestrator Service
+
+
+
+Service ID: SVC-COR-ING
+
+Runtime: Golang 1.22+
+
+gRPC Port: 9102
+
+```go
+
+// services/content-origination/ingestion-orchestrator/internal/application/orchestrator.go
+
+package application
+
+
+
+// IngestionOrchestrator coordinates all source connectors and manages the ingestion pipeline
+
+type IngestionOrchestrator struct {
+
+    sourceRepo         domain.SourceRepository
+
+    connectorReg *ConnectorRegistry
+
+    scheduler         *PollScheduler
+
+    normalizer        NormalizerClient
+
+    eventProducer events.Producer
+
+    healthMonitor *SourceHealthMonitor
+
+    rateLimiter       *RateLimiter
+
+}
+
+
+
+// Start begins the ingestion orchestration
+
+func (io *IngestionOrchestrator) Start(ctx context.Context) error {
+
+    // 1. Load all active sources
+
+    sources, err := io.sourceRepo.ListActive(ctx)
+
+    if err != nil {
+
+        return fmt.Errorf("list active sources: %w", err)
+
+    }
+
+
+
+    // 2. Initialize connectors for each source
+
+    for _, source := range sources {
+
+    connector, err := io.connectorReg.CreateConnector(source)
+
+    if err != nil {
+
+        io.healthMonitor.RecordFailure(source.ID, err)
+
+        continue
+
+    }
+
+
+
+    // Register connector
+
+    io.connectorReg.Register(source.ID, connector)
+
+
+
+    // Schedule polling if supported
+
+    if connector.SupportsScheduling() {
+
+        io.scheduler.Schedule(source.ID, source.PollInterval, func() {
+
+             io.pollSource(ctx, source.ID)
+
+        })
+
+    }
+
+
+
+    // Start streaming if supported
+
+    if connector.SupportsStreaming() {
+
+        go io.streamSource(ctx, source.ID, connector)
+
+    }
+
+}
+
+
+
+// 3. Start scheduler
+
+io.scheduler.Start(ctx)
+
+
+
+// 4. Start health monitor
+
+    go io.healthMonitor.Start(ctx)
+
+
+
+    return nil
+
+}
+
+
+
+// pollSource fetches content from a single source
+
+func (io *IngestionOrchestrator) pollSource(ctx context.Context, sourceID string) {
+
+    ctx, span := otel.Tracer("orchestrator").Start(ctx, "pollSource",
+
+        trace.WithAttributes(attribute.String("source_id", sourceID)))
+
+    defer span.End()
+
+
+
+    // Rate limiting check
+
+    if err := io.rateLimiter.Wait(ctx, sourceID); err != nil {
+
+        log.Warn().Err(err).Str("source_id", sourceID).Msg("Rate limit wait failed")
+
+        return
+
+    }
+
+
+
+    // Get connector
+
+    connector, err := io.connectorReg.Get(sourceID)
+
+    if err != nil {
+
+        log.Error().Err(err).Str("source_id", sourceID).Msg("Connector not found")
+
+        return
+
+    }
+
+
+
+    // Get last fetch time
+
+    lastFetch, _ := io.sourceRepo.GetLastFetchTime(ctx, sourceID)
+
+    // Fetch with since parameter
+
+    result, err := connector.Fetch(ctx, domain.FetchOptions{
+
+         Since: lastFetch,
+
+         Limit: 100, // Configurable per source
+
+    })
+
+
+
+    if err != nil {
+
+         io.healthMonitor.RecordFailure(sourceID, err)
+
+         io.handleFetchError(ctx, sourceID, err)
+
+         return
+
+    }
+
+
+
+    // Process fetched documents
+
+    for _, doc := range result.Documents {
+
+         if err := io.processDocument(ctx, doc); err != nil {
+
+             log.Error().Err(err).Str("doc_id", doc.DocumentID).Msg("Document processing failed")
+
+             continue
+
+         }
+
+    }
+
+
+
+    // Update last fetch time
+
+    io.sourceRepo.UpdateLastFetchTime(ctx, sourceID, result.FetchedAt)
+
+    io.healthMonitor.RecordSuccess(sourceID, result.Metadata.Duration)
+
+}
+
+// processDocument handles a single raw document through the pipeline
+
+func (io *IngestionOrchestrator) processDocument(ctx context.Context, doc
+*domain.RawDocument) error {
+
+    // 1. Normalize content
+
+    normalized, err := io.normalizer.Normalize(ctx, doc)
+
+    if err != nil {
+
+        return fmt.Errorf("normalize: %w", err)
+
+    }
+
+
+
+    // 2. Publish to raw ingest topic
+
+    event := &events.RawContentIngestedEvent{
+
+        BaseEvent: events.NewBaseEvent(doc.TenantID),
+
+        DocumentID: doc.DocumentID,
+
+        SourceID:     doc.SourceID,
+
+        NormalizedDoc: normalized,
+
+    }
+
+
+
+    if err := io.eventProducer.Publish(ctx, event); err != nil {
+
+        return fmt.Errorf("publish event: %w", err)
+
+    }
+
+
+
+    return nil
+
+}
+
+
+
+// handleFetchError processes fetch errors with appropriate retry/backoff
+
+func (io *IngestionOrchestrator) handleFetchError(ctx context.Context, sourceID string, err
+error) {
+
+      var retryable bool
+
+      var backoff time.Duration
+
+
+
+      switch {
+
+      case errors.Is(err, ErrRateLimited):
+
+          retryable = true
+
+          backoff = 5 * time.Minute
+
+      case errors.Is(err, ErrNetworkTimeout):
+
+          retryable = true
+
+          backoff = 1 * time.Minute
+
+      case errors.Is(err, ErrAuthenticationFailed):
+
+          retryable = false
+
+          io.healthMonitor.MarkUnhealthy(sourceID, "Authentication failed")
+
+      default:
+
+          retryable = true
+
+          backoff = 30 * time.Second
+
+      }
+
+
+
+      if retryable {
+
+          io.scheduler.ScheduleRetry(sourceID, backoff)
+
+      }
+
+}
+
+```
+
+
+
+3.2 Poll Scheduler
+
+```go
+
+// services/content-origination/ingestion-orchestrator/internal/infrastructure/scheduler.go
+
+package infrastructure
+
+
+
+// PollScheduler manages polling intervals for all sources
+
+type PollScheduler struct {
+
+    tasks   map[string]*ScheduledTask
+
+    redis   *redis.Client
+
+    mu      sync.RWMutex
+
+}
+
+
+
+type ScheduledTask struct {
+
+    SourceID string
+
+    Interval time.Duration
+
+    Handler func()
+
+    NextRun time.Time
+
+    RetryCount int
+
+}
+
+
+
+func (ps *PollScheduler) Schedule(sourceID string, interval time.Duration, handler func()) {
+
+    ps.mu.Lock()
+
+    defer ps.mu.Unlock()
+
+
+
+    ps.tasks[sourceID] = &ScheduledTask{
+
+      SourceID: sourceID,
+
+      Interval: interval,
+
+        Handler: handler,
+
+        NextRun: time.Now().Add(interval), // Stagger initial run
+
+    }
+
+}
+
+
+
+func (ps *PollScheduler) ScheduleRetry(sourceID string, backoff time.Duration) {
+
+    ps.mu.Lock()
+
+    defer ps.mu.Unlock()
+
+
+
+    if task, exists := ps.tasks[sourceID]; exists {
+
+        task.NextRun = time.Now().Add(backoff)
+
+        task.RetryCount++
+
+    }
+
+}
+
+
+
+func (ps *PollScheduler) Start(ctx context.Context) {
+
+    ticker := time.NewTicker(1 * time.Second)
+
+    defer ticker.Stop()
+
+
+
+    for {
+
+        select {
+
+        case <-ticker.C:
+
+            ps.runDueTasks(ctx)
+
+        case <-ctx.Done():
+
+            return
+
+        }
+
+    }
+
+}
+
+
+
+func (ps *PollScheduler) runDueTasks(ctx context.Context) {
+
+    ps.mu.RLock()
+
+    now := time.Now()
+
+    var dueTasks []*ScheduledTask
+
+
+
+    for _, task := range ps.tasks {
+
+        if now.After(task.NextRun) {
+
+            dueTasks = append(dueTasks, task)
+
+        }
+
+    }
+
+    ps.mu.RUnlock()
+
+
+
+    // Execute due tasks in parallel
+
+    var wg sync.WaitGroup
+
+    semaphore := make(chan struct{}, 10) // Max concurrent polls
+
+
+
+    for _, task := range dueTasks {
+
+        wg.Add(1)
+
+        go func(t *ScheduledTask) {
+
+            defer wg.Done()
+
+            semaphore <- struct{}{}
+
+            defer func() { <-semaphore }()
+
+            t.Handler()
+
+
+
+            // Schedule next run
+
+            ps.mu.Lock()
+
+            t.NextRun = time.Now().Add(t.Interval)
+
+            ps.mu.Unlock()
+
+          }(task)
+
+      }
+
+
+
+      wg.Wait()
+
+}
+
+```
+
+
+
+---
+
+
+
+PART IV — CONTENT NORMALIZATION
+
+
+
+4.1 Content Normalizer Service
+
+
+
+Service ID: SVC-COR-NRM
+
+Runtime: Python (NLP) + Golang (orchestration)
+
+gRPC Port: 9103
+
+
+
+```python
+
+# services/content-origination/content-normalizer/src/normalizer/pipeline.py
+
+"""
+
+Content Normalization Pipeline — Transforms raw documents into normalized,
+
+analysis-ready content for the story detection engine.
+
+"""
+
+
+
+from dataclasses import dataclass
+
+from typing import List, Optional
+
+import structlog
+
+
+
+logger = structlog.get_logger(__name__)
+
+
+
+
+@dataclass
+
+class NormalizedDocument:
+
+  """Fully normalized document ready for story detection."""
+
+  document_id: str
+
+  source_id: str
+
+  tenant_id: str
+
+
+
+  # Normalized text
+
+  title: str
+
+  body_plaintext: str
+
+  body_summary: str # First 500 chars
+
+
+
+  # Language
+
+  language: str # ISO 639-1
+
+  language_confidence: float
+
+  # Entities
+
+  entities: List[ExtractedEntity]
+
+
+
+  # Embeddings
+
+  title_embedding: List[float]
+
+  body_embedding: List[float]
+
+
+
+  # Metadata
+
+  published_at: Optional[str]
+
+  fetched_at: str
+
+  url: Optional[str]
+
+  content_type: str
+
+
+
+  # Fingerprints
+
+  exact_hash: str # SHA-256 for exact dedup
+
+  simhash: str      # SimHash for near-duplicate detection
+
+
+
+
+@dataclass
+
+class ExtractedEntity:
+
+  name: str
+
+  entity_type: str # PERSON, ORGANIZATION, LOCATION, EVENT, etc.
+
+  canonical_name: Optional[str]
+
+  confidence: float
+
+  metadata: dict
+
+class NormalizationPipeline:
+
+  """Multi-stage content normalization pipeline."""
+
+
+
+  def __init__(self, nlp_models, embedding_model):
+
+    self.language_detector = nlp_models["language_detection"]
+
+    self.text_cleaner = TextCleaner()
+
+    self.entity_extractor = nlp_models["entity_extraction"]
+
+    self.embedding_generator = embedding_model
+
+    self.fingerprint_generator = FingerprintGenerator()
+
+
+
+  async def normalize(self, raw_doc: RawDocument) -> NormalizedDocument:
+
+    """
+
+    Normalize a raw document through all processing stages.
+
+    """
+
+    logger.info("normalizing_document", document_id=raw_doc.document_id)
+
+
+
+    # Stage 1: Text cleaning
+
+    cleaned = await self.text_cleaner.clean(raw_doc)
+
+
+
+    # Stage 2: Language detection
+
+    language, lang_conf = await self.language_detector.detect(
+
+        f"{cleaned.title}\n{cleaned.body[:1000]}"
+
+    )
+
+# Stage 3: Entity extraction
+
+entities = await self.entity_extractor.extract(
+
+    cleaned.body,
+
+    language=language,
+
+)
+
+
+
+# Stage 4: Generate embeddings
+
+title_embedding = await self.embedding_generator.embed(cleaned.title)
+
+body_embedding = await self.embedding_generator.embed(
+
+    cleaned.body[:2000] # Truncate for embedding
+
+)
+
+
+
+# Stage 5: Generate fingerprints
+
+exact_hash, simhash = self.fingerprint_generator.generate(
+
+    f"{cleaned.title}\n{cleaned.body}"
+
+)
+
+
+
+return NormalizedDocument(
+
+    document_id=raw_doc.document_id,
+
+    source_id=raw_doc.source_id,
+
+    tenant_id=raw_doc.tenant_id,
+
+    title=cleaned.title,
+
+    body_plaintext=cleaned.body,
+
+    body_summary=cleaned.body[:500],
+
+    language=language,
+
+    language_confidence=lang_conf,
+
+        entities=entities,
+
+        title_embedding=title_embedding,
+
+        body_embedding=body_embedding,
+
+        published_at=raw_doc.published_at,
+
+        fetched_at=raw_doc.fetched_at,
+
+        url=raw_doc.url,
+
+        content_type=raw_doc.content_type,
+
+        exact_hash=exact_hash,
+
+        simhash=simhash,
+
+    )
+
+
+
+
+class TextCleaner:
+
+  """Cleans and normalizes raw text content."""
+
+
+
+  async def clean(self, raw_doc: RawDocument) -> CleanedText:
+
+    # Remove HTML tags
+
+    body = self.strip_html(raw_doc.body or raw_doc.raw_html or "")
+
+
+
+    # Remove extra whitespace
+
+    body = self.normalize_whitespace(body)
+
+
+
+    # Remove boilerplate (headers, footers, ads)
+
+    body = await self.remove_boilerplate(body)
+
+
+
+    # Clean title
+
+  title = self.normalize_whitespace(raw_doc.title or "")
+
+  title = self.decode_html_entities(title)
+
+
+
+  return CleanedText(title=title, body=body)
+
+
+
+def strip_html(self, html: str) -> str:
+
+  """Strip HTML tags and extract text content."""
+
+  from bs4 import BeautifulSoup
+
+  soup = BeautifulSoup(html, 'html.parser')
+
+
+
+  # Remove script and style elements
+
+  for script in soup(["script", "style", "nav", "footer", "header"]):
+
+    script.decompose()
+
+
+
+  return soup.get_text(separator=' ', strip=True)
+
+
+
+async def remove_boilerplate(self, text: str) -> str:
+
+  """Remove common boilerplate content."""
+
+  import re
+
+
+
+  # Remove common patterns
+
+  patterns = [
+
+    r'Advertisement\s*$',
+
+    r'Share this article',
+
+    r'Follow us on',
+
+    r'Copyright \d{4}',
+
+        r'All rights reserved',
+
+        r'Read more at',
+
+        r'Originally published',
+
+    ]
+
+
+
+    for pattern in patterns:
+
+        text = re.sub(pattern, '', text, flags=re.IGNORECASE)
+
+
+
+    return text.strip()
+
+
+
+  def normalize_whitespace(self, text: str) -> str:
+
+    """Normalize whitespace to single spaces."""
+
+    import re
+
+    return re.sub(r'\s+', ' ', text).strip()
+
+
+
+  def decode_html_entities(self, text: str) -> str:
+
+    """Decode HTML entities."""
+
+    import html
+
+    return html.unescape(text)
+
+
+
+
+class FingerprintGenerator:
+
+  """Generates content fingerprints for deduplication."""
+
+
+
+  def generate(self, text: str) -> tuple[str, str]:
+
+    """Generate exact hash and SimHash for a text."""
+
+        import hashlib
+
+        from simhash import Simhash
+
+
+
+        # Exact hash (SHA-256)
+
+        exact_hash = hashlib.sha256(text.encode('utf-8')).hexdigest()
+
+
+
+        # SimHash for near-duplicate detection
+
+        simhash = str(Simhash(text.split()).value)
+
+
+
+        return exact_hash, simhash
+
+```
+
+
+
+4.2 Language Detection Service
+
+
+
+```python
+
+# services/content-origination/content-normalizer/src/normalizer/language.py
+
+"""
+
+Language detection using multiple models for accuracy.
+
+"""
+
+
+
+class LanguageDetector:
+
+      """Multi-model language detection with confidence scoring."""
+
+
+
+      SUPPORTED_LANGUAGES = {
+
+        'en', 'es', 'fr', 'de', 'ar', 'zh', 'ja', 'pt', 'hi', 'sw',
+
+        'ru', 'it', 'nl', 'ko', 'tr', 'pl', 'vi', 'th', 'id', 'ms',
+
+    # ... 20+ more languages
+
+}
+
+
+
+def __init__(self):
+
+    self.fasttext_model = self.load_fasttext()
+
+    self.lingua_model = self.load_lingua()
+
+
+
+async def detect(self, text: str) -> tuple[str, float]:
+
+    """
+
+    Detect language with confidence score.
+
+    Uses ensemble of models for accuracy.
+
+    """
+
+    # FastText for primary detection
+
+    lang1, conf1 = self.detect_fasttext(text)
+
+
+
+    # If confidence is high enough, return immediately
+
+    if conf1 > 0.95:
+
+      return lang1, conf1
+
+
+
+    # Fall back to Lingua for ambiguous cases
+
+    lang2, conf2 = self.detect_lingua(text)
+
+
+
+    # Ensemble: if both agree, use higher confidence
+
+    if lang1 == lang2:
+
+      return lang1, max(conf1, conf2)
+
+        # Disagreement: use the higher confidence result
+
+        if conf1 >= conf2:
+
+           return lang1, conf1 * 0.9 # Penalize disagreement
+
+        return lang2, conf2 * 0.9
+
+
+
+      def detect_fasttext(self, text: str) -> tuple[str, float]:
+
+        """FastText-based language detection."""
+
+        import fasttext
+
+
+
+        # Use pre-trained language identification model
+
+        predictions = self.fasttext_model.predict(text.replace('\n', ' '), k=1)
+
+
+
+        lang = predictions[0][0].replace('__label__', '')
+
+        confidence = predictions[1][0]
+
+
+
+        return lang, confidence
+
+
+
+      def detect_lingua(self, text: str) -> tuple[str, float]:
+
+        """Lingua-based language detection (better for short text)."""
+
+        from lingua import LanguageDetectorBuilder
+
+
+
+        result = self.lingua_model.detect_language_of(text)
+
+        if result:
+
+           return result.iso_code_639_1.name.lower(), result.confidence
+
+        return 'en', 0.0 # Default to English
+
+```
+
+---
+
+
+
+PART V — STORY DETECTION ENGINE
+
+
+
+5.1 Deduplication Service
+
+
+
+Service ID: SVC-COR-DET
+
+Runtime: Golang + PostgreSQL (pgvector)
+
+
+
+```go
+
+// services/content-origination/story-detection/internal/domain/deduplication.go
+
+package domain
+
+
+
+// DeduplicationService detects duplicate and near-duplicate content
+
+type DeduplicationService struct {
+
+    vectorDB      *pgvector.Client
+
+    fingerprintDB *FingerprintStore
+
+    similarityThreshold float64
+
+}
+
+
+
+type DuplicateResult struct {
+
+    DocumentID       string       `json:"document_id"`
+
+    IsDuplicate    bool        `json:"is_duplicate"`
+
+    DuplicateType DuplicateType `json:"duplicate_type"`
+
+    MatchedDocID      string       `json:"matched_doc_id,omitempty"`
+
+    SimilarityScore float64         `json:"similarity_score,omitempty"`
+
+    MatchDetail      string        `json:"match_detail,omitempty"`
+
+}
+
+
+
+type DuplicateType string
+
+const (
+
+    DuplicateTypeNone            DuplicateType = "NONE"
+
+    DuplicateTypeExact        DuplicateType = "EXACT"       // SHA-256 match
+
+    DuplicateTypeNearExact DuplicateType = "NEAR_EXACT" // SimHash match
+
+    DuplicateTypeSemantic DuplicateType = "SEMANTIC"            // Vector similarity
+
+)
+
+
+
+// CheckDuplicates performs multi-tier duplicate detection
+
+func (ds *DeduplicationService) CheckDuplicates(
+
+    ctx context.Context,
+
+    doc *NormalizedDocument,
+
+) (*DuplicateResult, error) {
+
+
+
+    // Tier 1: Exact hash match (SHA-256)
+
+  if existing, err := ds.fingerprintDB.FindByExactHash(ctx, doc.ExactHash); err == nil && existing
+!= nil {
+
+      return &DuplicateResult{
+
+          DocumentID:      doc.DocumentID,
+
+          IsDuplicate:   true,
+
+          DuplicateType: DuplicateTypeExact,
+
+          MatchedDocID: existing.DocumentID,
+
+         SimilarityScore: 1.0,
+
+         MatchDetail:    "Exact content match (SHA-256)",
+
+      }, nil
+
+  }
+
+
+
+  // Tier 2: SimHash near-exact match
+
+  if matches, err := ds.fingerprintDB.FindBySimHash(ctx, doc.SimHash, 3); err == nil &&
+len(matches) > 0 {
+
+      // Hamming distance <= 3 means very similar content
+
+      return &DuplicateResult{
+
+         DocumentID:      doc.DocumentID,
+
+         IsDuplicate:   true,
+
+         DuplicateType: DuplicateTypeNearExact,
+
+         MatchedDocID: matches[0].DocumentID,
+
+         SimilarityScore: 0.95 + float64(3-matches[0].Distance)*0.015,
+
+     MatchDetail: fmt.Sprintf("Near-exact match (SimHash distance: %d)",
+matches[0].Distance),
+
+      }, nil
+
+  }
+
+
+
+  // Tier 3: Semantic similarity via vector search
+
+  similarDocs, err := ds.vectorDB.FindSimilar(ctx,
+
+      doc.BodyEmbedding,
+
+      ds.similarityThreshold,
+
+      5, // Top-K
+
+  )
+
+  if err != nil {
+
+          return nil, fmt.Errorf("vector similarity search: %w", err)
+
+      }
+
+
+
+      for _, match := range similarDocs {
+
+          if match.Similarity > 0.92 {
+
+               return &DuplicateResult{
+
+                  DocumentID:      doc.DocumentID,
+
+                  IsDuplicate:   true,
+
+                  DuplicateType: DuplicateTypeSemantic,
+
+                  MatchedDocID: match.DocumentID,
+
+                  SimilarityScore: match.Similarity,
+
+                  MatchDetail:    fmt.Sprintf("Semantic similarity: %.2f", match.Similarity),
+
+               }, nil
+
+          }
+
+      }
+
+
+
+      // Store fingerprints for future comparisons
+
+      ds.fingerprintDB.Store(ctx, doc)
+
+
+
+      return &DuplicateResult{
+
+          DocumentID: doc.DocumentID,
+
+          IsDuplicate: false,
+
+      }, nil
+
+}
+
+```
+
+5.2 Story Clustering Engine
+
+
+
+```go
+
+// services/content-origination/story-detection/internal/domain/clustering.go
+
+package domain
+
+
+
+// StoryCluster represents a group of documents about the same event
+
+type StoryCluster struct {
+
+    ClusterID    string         `json:"cluster_id"`
+
+    TenantID     string         `json:"tenant_id"`
+
+    Documents      []ClusterDocument `json:"documents"`
+
+    PrimaryTopic string           `json:"primary_topic"`
+
+    Entities    []EntitySummary      `json:"entities"`
+
+    CentroidEmbedding []float64         `json:"centroid_embedding"`
+
+    CreatedAt     time.Time        `json:"created_at"`
+
+    UpdatedAt     time.Time         `json:"updated_at"`
+
+    DocumentCount int               `json:"document_count"`
+
+    Status      ClusterStatus     `json:"status"`
+
+}
+
+
+
+type ClusterStatus string
+
+const (
+
+    ClusterStatusActive ClusterStatus = "ACTIVE"
+
+    ClusterStatusMerged ClusterStatus = "MERGED"
+
+    ClusterStatusPromoted ClusterStatus = "PROMOTED" // Promoted to Story
+
+)
+
+// ClusteringEngine groups related documents into story clusters
+
+type ClusteringEngine struct {
+
+    vectorDB          *pgvector.Client
+
+    clusterStore      ClusterStore
+
+    entityMatcher *EntityMatcher
+
+    temporalAnalyzer *TemporalAnalyzer
+
+}
+
+
+
+// FindOrCreateCluster assigns a document to an existing or new cluster
+
+func (ce *ClusteringEngine) FindOrCreateCluster(
+
+    ctx context.Context,
+
+    doc *NormalizedDocument,
+
+) (*StoryCluster, error) {
+
+
+
+    // 1. Find candidate clusters via vector similarity
+
+    candidates, err := ce.vectorDB.FindSimilarClusters(ctx,
+
+        doc.BodyEmbedding,
+
+        0.75, // Cluster similarity threshold
+
+        10, // Top-K candidates
+
+    )
+
+    if err != nil {
+
+        return nil, fmt.Errorf("find candidate clusters: %w", err)
+
+    }
+
+
+
+    // 2. Score each candidate
+
+var bestCluster *StoryCluster
+
+var bestScore float64
+
+
+
+for _, candidate := range candidates {
+
+    score := ce.scoreClusterMatch(ctx, doc, candidate)
+
+    if score > bestScore && score >= 0.70 { // Minimum match threshold
+
+        bestScore = score
+
+        bestCluster = &candidate
+
+    }
+
+}
+
+
+
+// 3. If good match found, add to existing cluster
+
+if bestCluster != nil {
+
+    if err := ce.addToCluster(ctx, bestCluster, doc); err != nil {
+
+        return nil, fmt.Errorf("add to cluster: %w", err)
+
+    }
+
+    return bestCluster, nil
+
+}
+
+
+
+// 4. Create new cluster
+
+cluster, err := ce.createCluster(ctx, doc)
+
+if err != nil {
+
+    return nil, fmt.Errorf("create cluster: %w", err)
+
+}
+
+
+
+return cluster, nil
+
+}
+
+
+
+// scoreClusterMatch calculates how well a document matches a cluster
+
+func (ce *ClusteringEngine) scoreClusterMatch(
+
+    ctx context.Context,
+
+    doc *NormalizedDocument,
+
+    cluster StoryCluster,
+
+) float64 {
+
+
+
+    weights := map[string]float64{
+
+        "vector_similarity": 0.40,
+
+        "entity_overlap": 0.30,
+
+        "temporal_proximity": 0.20,
+
+        "topic_similarity": 0.10,
+
+    }
+
+
+
+    scores := make(map[string]float64)
+
+
+
+    // 1. Vector similarity score
+
+  scores["vector_similarity"] = cosineSimilarity(doc.BodyEmbedding,
+cluster.CentroidEmbedding)
+
+
+
+    // 2. Entity overlap score
+
+    scores["entity_overlap"] = ce.entityMatcher.CalculateOverlap(doc.Entities, cluster.Entities)
+
+
+
+    // 3. Temporal proximity score
+
+      scores["temporal_proximity"] = ce.temporalAnalyzer.CalculateProximity(
+
+          doc.PublishedAt, cluster.CreatedAt,
+
+      )
+
+
+
+      // 4. Topic similarity (if available)
+
+      if doc.PrimaryTopic != "" && cluster.PrimaryTopic != "" {
+
+     scores["topic_similarity"] = ce.calculateTopicSimilarity(doc.PrimaryTopic,
+cluster.PrimaryTopic)
+
+      }
+
+
+
+      // Weighted combination
+
+      totalScore := 0.0
+
+      for metric, score := range scores {
+
+          totalScore += score * weights[metric]
+
+      }
+
+
+
+      return totalScore
+
+}
+
+```
+
+
+
+5.3 Breaking News Detection
+
+
+
+```go
+
+// services/content-origination/story-detection/internal/domain/breaking_news.go
+
+package domain
+
+// BreakingNewsDetector identifies potential breaking news stories
+
+type BreakingNewsDetector struct {
+
+    velocityTracker *VelocityTracker
+
+    sourceWeights map[string]float64
+
+    patternMatcher *BreakingPatternMatcher
+
+    mlModel       *BreakingNewsModel
+
+}
+
+
+
+type BreakingAssessment struct {
+
+    StoryID    string        `json:"story_id"`
+
+    ClusterID string          `json:"cluster_id"`
+
+    IsBreaking bool           `json:"is_breaking"`
+
+    UrgencyScore float64          `json:"urgency_score"`   // 0-100
+
+    Confidence float64          `json:"confidence"`
+
+    Factors    []BreakingFactor `json:"factors"`
+
+    RecommendedAction string           `json:"recommended_action"`
+
+}
+
+
+
+type BreakingFactor struct {
+
+    Factor    string `json:"factor"`
+
+    Score     float64 `json:"score"`
+
+    Weight     float64 `json:"weight"`
+
+    Evidence string `json:"evidence"`
+
+}
+
+
+
+// AssessBreakingNews evaluates if a cluster represents breaking news
+
+func (bnd *BreakingNewsDetector) AssessBreakingNews(
+
+  ctx context.Context,
+
+  cluster *StoryCluster,
+
+) (*BreakingAssessment, error) {
+
+
+
+  assessment := &BreakingAssessment{
+
+       StoryID: cluster.ClusterID, // Will be replaced with StoryID
+
+       ClusterID: cluster.ClusterID,
+
+  }
+
+
+
+  factors := make([]BreakingFactor, 0)
+
+
+
+  // Factor 1: Document velocity (how fast is this cluster growing?)
+
+  velocity := bnd.velocityTracker.CalculateVelocity(ctx, cluster.ClusterID)
+
+  velocityScore := bnd.scoreVelocity(velocity)
+
+  factors = append(factors, BreakingFactor{
+
+       Factor: "document_velocity",
+
+       Score: velocityScore,
+
+       Weight: 0.30,
+
+       Evidence: fmt.Sprintf("%.1f documents/minute in last 15 minutes", velocity),
+
+  })
+
+
+
+  // Factor 2: Source authority (are high-trust sources reporting?)
+
+  authorityScore := bnd.calculateSourceAuthority(cluster.Documents)
+
+  factors = append(factors, BreakingFactor{
+
+       Factor: "source_authority",
+
+     Score: authorityScore,
+
+     Weight: 0.25,
+
+     Evidence: fmt.Sprintf("Average source trust: %.1f", authorityScore),
+
+})
+
+
+
+// Factor 3: Geographic proximity to known hotspots
+
+geoScore := bnd.calculateGeographicRelevance(cluster)
+
+factors = append(factors, BreakingFactor{
+
+     Factor: "geographic_relevance",
+
+     Score: geoScore,
+
+     Weight: 0.15,
+
+})
+
+
+
+// Factor 4: Keyword/pattern matching
+
+patternScore := bnd.patternMatcher.Match(cluster)
+
+factors = append(factors, BreakingFactor{
+
+     Factor: "breaking_patterns",
+
+     Score: patternScore,
+
+     Weight: 0.15,
+
+     Evidence: bnd.patternMatcher.MatchedPatterns(),
+
+})
+
+
+
+// Factor 5: ML model prediction
+
+mlScore := bnd.mlModel.Predict(ctx, cluster)
+
+factors = append(factors, BreakingFactor{
+
+     Factor: "ml_prediction",
+
+     Score: mlScore,
+
+     Weight: 0.15,
+
+})
+
+
+
+// Calculate overall urgency score
+
+overallScore := 0.0
+
+for _, f := range factors {
+
+     overallScore += f.Score * f.Weight
+
+}
+
+
+
+assessment.UrgencyScore = overallScore
+
+assessment.Factors = factors
+
+assessment.IsBreaking = overallScore >= 75.0
+
+
+
+if overallScore >= 90.0 {
+
+     assessment.Confidence = 0.95
+
+     assessment.RecommendedAction = "IMMEDIATE_PUBLISH_FAST_PATH"
+
+} else if overallScore >= 75.0 {
+
+     assessment.Confidence = 0.80
+
+     assessment.RecommendedAction = "PRIORITY_VERIFICATION"
+
+} else if overallScore >= 50.0 {
+
+     assessment.RecommendedAction = "STANDARD_PROCESSING"
+
+} else {
+
+     assessment.RecommendedAction = "NORMAL_PROCESSING"
+
+}
+
+    return assessment, nil
+
+}
+
+
+
+// VelocityTracker calculates document velocity for clusters
+
+type VelocityTracker struct {
+
+    redis *redis.Client
+
+}
+
+
+
+func (vt *VelocityTracker) CalculateVelocity(ctx context.Context, clusterID string) float64 {
+
+    now := time.Now()
+
+
+
+    // Get document count in sliding windows
+
+    pipe := vt.redis.Pipeline()
+
+
+
+    // Last 5 minutes
+
+    fiveMinKey := fmt.Sprintf("cluster:%s:docs:5min", clusterID)
+
+    pipe.ZCount(ctx, fiveMinKey,
+
+        fmt.Sprintf("%d", now.Add(-5*time.Minute).Unix()),
+
+        fmt.Sprintf("%d", now.Unix()),
+
+    )
+
+
+
+    // Last 15 minutes
+
+    fifteenMinKey := fmt.Sprintf("cluster:%s:docs:15min", clusterID)
+
+    pipe.ZCount(ctx, fifteenMinKey,
+
+        fmt.Sprintf("%d", now.Add(-15*time.Minute).Unix()),
+
+        fmt.Sprintf("%d", now.Unix()),
+
+      )
+
+
+
+      // Last 60 minutes
+
+      sixtyMinKey := fmt.Sprintf("cluster:%s:docs:60min", clusterID)
+
+      pipe.ZCount(ctx, sixtyMinKey,
+
+          fmt.Sprintf("%d", now.Add(-60*time.Minute).Unix()),
+
+          fmt.Sprintf("%d", now.Unix()),
+
+      )
+
+
+
+      results, _ := pipe.Exec(ctx)
+
+
+
+      count5min := results[0].(*redis.IntCmd).Val()
+
+      count15min := results[1].(*redis.IntCmd).Val()
+
+      count60min := results[2].(*redis.IntCmd).Val()
+
+
+
+      // Weighted velocity: recent documents count more
+
+      velocity := float64(count5min)*0.5 + float64(count15min)*0.3 + float64(count60min)*0.2
+
+
+
+      // Normalize to documents per minute
+
+      velocityPerMin := velocity / 5.0
+
+
+
+      return velocityPerMin
+
+}
+
+```
+
+
+
+---
+
+PART VI — STORY GRAPH INITIALIZATION
+
+
+
+6.1 Story Graph Service
+
+
+
+Service ID: SVC-COR-SGI
+
+Runtime: Golang
+
+gRPC Port: 9105
+
+
+
+```go
+
+// services/content-origination/story-graph-initializer/internal/application/initializer.go
+
+package application
+
+
+
+// StoryGraphInitializer creates initial Story Graph entries from detected stories
+
+type StoryGraphInitializer struct {
+
+    neo4jClient neo4j.Driver
+
+    eventProducer events.Producer
+
+    storyRegistry StoryRegistry
+
+}
+
+
+
+// InitializeStory creates a new story in the Story Graph
+
+func (sgi *StoryGraphInitializer) InitializeStory(
+
+    ctx context.Context,
+
+    cluster *domain.StoryCluster,
+
+    breakingAssessment *domain.BreakingAssessment,
+
+) (*domain.CanonicalStory, error) {
+
+// 1. Generate story ID
+
+storyID := uuid.NewV7()
+
+
+
+// 2. Create canonical story
+
+story := &domain.CanonicalStory{
+
+     StoryID:      storyID.String(),
+
+     TenantID:      cluster.TenantID,
+
+     Headline:      sgi.generateHeadline(cluster),
+
+     Summary:        sgi.generateSummary(cluster),
+
+     State:       domain.StoryStateDiscovered,
+
+     Priority:    sgi.determinePriority(breakingAssessment),
+
+     Category:      sgi.determineCategory(cluster),
+
+     GeographicScope: sgi.determineGeographicScope(cluster),
+
+     Language:      cluster.Documents[0].Language,
+
+     SourceCount: cluster.DocumentCount,
+
+     FirstDetectedAt: cluster.CreatedAt,
+
+     CreatedAt:     time.Now(),
+
+     UpdatedAt:      time.Now(),
+
+}
+
+
+
+// 3. Create Story node in Neo4j
+
+session := sgi.neo4jClient.NewSession(ctx, neo4j.SessionConfig{
+
+     AccessMode: neo4j.AccessModeWrite,
+
+})
+
+defer session.Close(ctx)
+
+_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+
+  // Create Story node
+
+  _, err := tx.Run(ctx, `
+
+    CREATE (s:Story {
+
+         story_id: $storyID,
+
+         tenant_id: $tenantID,
+
+         headline: $headline,
+
+         summary: $summary,
+
+         state: $state,
+
+         priority: $priority,
+
+         category: $category,
+
+         language: $language,
+
+         source_count: $sourceCount,
+
+         created_at: datetime($createdAt),
+
+         updated_at: datetime($updatedAt),
+
+         version: 1
+
+    })
+
+    RETURN s
+
+  `, map[string]interface{}{
+
+    "storyID":        story.StoryID,
+
+    "tenantID": story.TenantID,
+
+    "headline": story.Headline,
+
+    "summary":          story.Summary,
+
+    "state":       string(story.State),
+
+    "priority": string(story.Priority),
+
+     "category": story.Category,
+
+     "language": story.Language,
+
+     "sourceCount": story.SourceCount,
+
+     "createdAt": story.CreatedAt.Format(time.RFC3339),
+
+     "updatedAt": story.UpdatedAt.Format(time.RFC3339),
+
+})
+
+if err != nil {
+
+     return nil, fmt.Errorf("create story node: %w", err)
+
+}
+
+
+
+// Create SOURCED_FROM relationships
+
+for _, doc := range cluster.Documents {
+
+     _, err := tx.Run(ctx, `
+
+       MATCH (s:Story {story_id: $storyID})
+
+       MERGE (src:Source {source_id: $sourceID})
+
+       ON CREATE SET src.name = $sourceName
+
+       CREATE (s)-[:SOURCED_FROM {
+
+          document_id: $documentID,
+
+          relevance: $relevance,
+
+          contributed_at: datetime($timestamp)
+
+       }]->(src)
+
+     `, map[string]interface{}{
+
+       "storyID":    story.StoryID,
+
+       "sourceID": doc.SourceID,
+
+       "sourceName": doc.SourceName,
+
+       "documentID": doc.DocumentID,
+
+         "relevance": 1.0,
+
+         "timestamp": time.Now().Format(time.RFC3339),
+
+    })
+
+    if err != nil {
+
+         return nil, fmt.Errorf("create source relationship: %w", err)
+
+    }
+
+}
+
+
+
+// Create INVOLVES_ENTITY relationships
+
+for _, entity := range cluster.Entities {
+
+    _, err := tx.Run(ctx, `
+
+         MATCH (s:Story {story_id: $storyID})
+
+         MERGE (e:Entity {canonical_name: $canonicalName})
+
+         ON CREATE SET e.name = $name, e.entity_type = $entityType
+
+         CREATE (s)-[:INVOLVES_ENTITY {role: $role}]->(e)
+
+    `, map[string]interface{}{
+
+         "storyID":    story.StoryID,
+
+         "canonicalName": entity.CanonicalName,
+
+         "name":       entity.Name,
+
+         "entityType": entity.Type,
+
+         "role":      "SUBJECT",
+
+    })
+
+    if err != nil {
+
+         return nil, fmt.Errorf("create entity relationship: %w", err)
+
+    }
+
+}
+
+           return nil, nil
+
+      })
+
+
+
+      if err != nil {
+
+           return nil, fmt.Errorf("execute neo4j transaction: %w", err)
+
+      }
+
+
+
+      // 4. Register story in PostgreSQL
+
+      if err := sgi.storyRegistry.Register(ctx, story); err != nil {
+
+           return nil, fmt.Errorf("register story: %w", err)
+
+      }
+
+
+
+      // 5. Publish event
+
+      sgi.eventProducer.Publish(ctx, &events.StoryCreatedEvent{
+
+           BaseEvent: events.NewBaseEvent(story.TenantID),
+
+           StoryID: story.StoryID,
+
+           ClusterID: cluster.ClusterID,
+
+           Headline: story.Headline,
+
+           Priority: string(story.Priority),
+
+           State:   string(story.State),
+
+      })
+
+
+
+      return story, nil
+
+}
+
+```
+
+---
+
+
+
+PART VII — DATABASE SCHEMA
+
+
+
+7.1 PostgreSQL Schema
+
+
+
+```sql
+
+-- Content Origination Database Objects
+
+
+
+-- Sources Registry
+
+CREATE TABLE source_registry (
+
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+  tenant_id UUID NOT NULL,
+
+  name VARCHAR(255) NOT NULL,
+
+  source_type VARCHAR(50) NOT NULL,
+
+  base_url TEXT NOT NULL,
+
+  auth_config JSONB,
+
+  rate_limit_config JSONB DEFAULT '{}',
+
+  poll_interval_seconds INT NOT NULL DEFAULT 300,
+
+  timeout_seconds INT NOT NULL DEFAULT 30,
+
+  reliability_score DECIMAL(5,2) DEFAULT 50.00,
+
+  status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+
+  health_status VARCHAR(20) DEFAULT 'UNKNOWN',
+
+  last_fetched_at TIMESTAMPTZ,
+
+  last_success_at TIMESTAMPTZ,
+
+     last_failure_at TIMESTAMPTZ,
+
+     consecutive_failures INT DEFAULT 0,
+
+     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+
+
+     UNIQUE(tenant_id, base_url)
+
+);
+
+
+
+-- Raw Ingest Documents
+
+CREATE TABLE raw_ingest_documents (
+
+     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+     tenant_id UUID NOT NULL,
+
+     source_id UUID NOT NULL REFERENCES source_registry(id),
+
+     external_id VARCHAR(255) NOT NULL,
+
+     content_hash VARCHAR(64) NOT NULL, -- SHA-256
+
+     content_type VARCHAR(50) NOT NULL,
+
+     title TEXT,
+
+     body TEXT,
+
+     raw_html TEXT,
+
+     url TEXT,
+
+     published_at TIMESTAMPTZ,
+
+     fetched_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+     language VARCHAR(10),
+
+     processing_status VARCHAR(30) DEFAULT 'PENDING',
+
+     error_message TEXT,
+
+     metadata JSONB DEFAULT '{}',
+
+     UNIQUE(tenant_id, source_id, external_id)
+
+);
+
+
+
+CREATE INDEX idx_raw_ingest_hash ON raw_ingest_documents(content_hash);
+
+CREATE INDEX idx_raw_ingest_status ON raw_ingest_documents(processing_status,
+fetched_at);
+
+
+
+-- Normalized Documents
+
+CREATE TABLE normalized_documents (
+
+     id UUID PRIMARY KEY,
+
+     raw_document_id UUID NOT NULL REFERENCES raw_ingest_documents(id),
+
+     tenant_id UUID NOT NULL,
+
+     source_id UUID NOT NULL,
+
+     title TEXT NOT NULL,
+
+     body_plaintext TEXT NOT NULL,
+
+     body_summary TEXT,
+
+     language VARCHAR(10) NOT NULL,
+
+     language_confidence DECIMAL(5,4),
+
+     title_embedding vector(1536), -- pgvector
+
+     body_embedding vector(1536), -- pgvector
+
+     exact_hash VARCHAR(64) NOT NULL,
+
+     simhash VARCHAR(64) NOT NULL,
+
+     entities JSONB DEFAULT '[]',
+
+     normalized_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+);
+
+-- IVFFlat index for vector similarity search
+
+CREATE INDEX idx_norm_body_embedding ON normalized_documents
+
+     USING ivfflat (body_embedding vector_cosine_ops) WITH (lists = 100);
+
+
+
+CREATE INDEX idx_norm_exact_hash ON normalized_documents(exact_hash);
+
+CREATE INDEX idx_norm_simhash ON normalized_documents(simhash);
+
+
+
+-- Story Clusters
+
+CREATE TABLE story_clusters (
+
+     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+     cluster_id VARCHAR(64) UNIQUE NOT NULL,
+
+     tenant_id UUID NOT NULL,
+
+     primary_topic VARCHAR(255),
+
+     document_count INT DEFAULT 1,
+
+     centroid_embedding vector(1536),
+
+     entities JSONB DEFAULT '[]',
+
+     status VARCHAR(20) DEFAULT 'ACTIVE',
+
+     first_document_at TIMESTAMPTZ NOT NULL,
+
+     last_document_at TIMESTAMPTZ NOT NULL,
+
+     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+);
+
+
+
+-- Cluster-Document mapping
+
+CREATE TABLE cluster_documents (
+
+     cluster_id VARCHAR(64) NOT NULL REFERENCES story_clusters(cluster_id),
+
+     document_id UUID NOT NULL REFERENCES normalized_documents(id),
+
+     similarity_score DECIMAL(5,4),
+
+     added_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+     PRIMARY KEY (cluster_id, document_id)
+
+);
+
+
+
+-- Story Registry (stories promoted from clusters)
+
+CREATE TABLE story_registry (
+
+     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+     story_id VARCHAR(64) UNIQUE NOT NULL,
+
+     tenant_id UUID NOT NULL,
+
+     cluster_id VARCHAR(64) REFERENCES story_clusters(cluster_id),
+
+     headline TEXT NOT NULL,
+
+     summary TEXT,
+
+     state VARCHAR(30) NOT NULL DEFAULT 'DISCOVERED',
+
+     priority VARCHAR(20) DEFAULT 'MEDIUM',
+
+     category VARCHAR(50),
+
+     geographic_scope VARCHAR(50),
+
+     language VARCHAR(10) NOT NULL,
+
+     source_count INT DEFAULT 0,
+
+     first_detected_at TIMESTAMPTZ NOT NULL,
+
+     published_at TIMESTAMPTZ,
+
+     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+);
+
+CREATE INDEX idx_story_state ON story_registry(tenant_id, state, created_at DESC);
+
+CREATE INDEX idx_story_priority ON story_registry(tenant_id, priority, created_at DESC);
+
+```
+
+
+
+7.2 Redis Schema
+
+
+
+```yaml
+
+redis_keys:
+
+ document_velocity:
+
+      pattern: "cluster:{cluster_id}:docs:{window}"
+
+      type: sorted_set
+
+      score: timestamp_unix
+
+      member: document_id
+
+      ttl: 2 hours
+
+
+
+ deduplication_cache:
+
+      pattern: "dedup:exact:{sha256_hash}"
+
+      type: string
+
+      value: document_id
+
+      ttl: 7 days
+
+
+
+ simhash_index:
+
+      pattern: "simhash:{simhash_prefix}"
+
+      type: set
+
+      members: [document_ids]
+
+      ttl: 7 days
+
+
+
+ source_rate_limits:
+
+      pattern: "ratelimit:source:{source_id}"
+
+      type: string (counter)
+
+      ttl: rate_limit_window
+
+
+
+ breaking_news_tracker:
+
+      pattern: "breaking:velocity:{cluster_id}"
+
+      type: hash
+
+      fields:
+
+       - count_5min
+
+       - count_15min
+
+       - count_60min
+
+       - velocity_score
+
+      ttl: 2 hours
+
+```
+
+
+
+---
+
+
+
+PART VIII — EVENT CONTRACTS
+
+
+
+8.1 Kafka Topics
+
+
+
+```yaml
+
+topics:
+
+content_origination.raw_ingest:
+
+ partitions: 30
+
+ replication_factor: 3
+
+ retention_ms: 604800000 # 7 days
+
+ description: "Raw ingested documents from all sources"
+
+
+
+content_origination.normalized:
+
+ partitions: 30
+
+ replication_factor: 3
+
+ retention_ms: 604800000
+
+ description: "Normalized documents ready for story detection"
+
+
+
+content_origination.story.detected:
+
+ partitions: 12
+
+ replication_factor: 3
+
+ retention_ms: 2592000000 # 30 days
+
+ description: "New stories detected from clusters"
+
+
+
+content_origination.story.clustered:
+
+ partitions: 12
+
+ replication_factor: 3
+
+ retention_ms: 2592000000
+
+ description: "Clusters updated with new documents"
+
+
+
+content_origination.breaking_news:
+
+ partitions: 6
+
+      replication_factor: 3
+
+      retention_ms: 86400000 # 24 hours
+
+      description: "Breaking news alerts"
+
+
+
+ content_origination.source.health:
+
+      partitions: 6
+
+      replication_factor: 3
+
+      retention_ms: 2592000000
+
+      description: "Source health status updates"
+
+```
+
+
+
+8.2 Event Definitions
+
+
+
+```go
+
+// libs/go/pkg/events/content_origination_events.go
+
+package events
+
+
+
+// RawContentIngestedEvent is emitted when raw content is ingested from a source
+
+type RawContentIngestedEvent struct {
+
+      BaseEvent
+
+      DocumentID string            `json:"document_id"`
+
+      SourceID    string        `json:"source_id"`
+
+      ExternalID string          `json:"external_id"`
+
+      ContentType string           `json:"content_type"`
+
+      Title    string         `json:"title,omitempty"`
+
+      BodyLength int             `json:"body_length"`
+
+    Language      string           `json:"language,omitempty"`
+
+    URL         string          `json:"url,omitempty"`
+
+    PublishedAt *time.Time             `json:"published_at,omitempty"`
+
+    FetchedAt time.Time               `json:"fetched_at"`
+
+    Metadata       map[string]interface{} `json:"metadata,omitempty"`
+
+}
+
+
+
+func (e *RawContentIngestedEvent) EventType() EventType {
+
+    return EventRawContentIngested
+
+}
+
+
+
+// StoryDetectedEvent is emitted when a new story is detected
+
+type StoryDetectedEvent struct {
+
+    BaseEvent
+
+    StoryID        string `json:"story_id"`
+
+    ClusterID      string `json:"cluster_id"`
+
+    Headline        string `json:"headline"`
+
+    Summary          string `json:"summary"`
+
+    Priority      string `json:"priority"`
+
+    Category        string `json:"category"`
+
+    Language        string `json:"language"`
+
+    SourceCount          int    `json:"source_count"`
+
+    EntityCount      int       `json:"entity_count"`
+
+    IsBreaking      bool       `json:"is_breaking"`
+
+    UrgencyScore float64 `json:"urgency_score"`
+
+    DetectedAt       time.Time `json:"detected_at"`
+
+}
+
+
+
+func (e *StoryDetectedEvent) EventType() EventType {
+
+      return EventStoryDetected
+
+}
+
+
+
+// BreakingNewsAlertEvent is emitted for breaking news
+
+type BreakingNewsAlertEvent struct {
+
+      BaseEvent
+
+      StoryID      string `json:"story_id"`
+
+      Headline      string `json:"headline"`
+
+      UrgencyScore float64 `json:"urgency_score"`
+
+      SourceCount     int   `json:"source_count"`
+
+      VelocityScore float64 `json:"velocity_score"`
+
+      DetectedAt     time.Time `json:"detected_at"`
+
+}
+
+
+
+func (e *BreakingNewsAlertEvent) EventType() EventType {
+
+      return EventBreakingNewsAlert
+
+}
+
+```
+
+
+
+---
+
+
+
+PART IX — OBSERVABILITY
+
+9.1 Key Metrics
+
+
+
+```yaml
+
+metrics:
+
+ ingestion:
+
+  - name: documents_ingested_total
+
+   type: counter
+
+   labels: [source_id, source_type, status]
+
+   description: "Total documents ingested from all sources"
+
+
+
+  - name: ingestion_duration_seconds
+
+   type: histogram
+
+   buckets: [0.1, 0.5, 1, 2, 5, 10, 30]
+
+   labels: [source_type]
+
+   description: "Ingestion fetch duration"
+
+
+
+  - name: source_health_status
+
+   type: gauge
+
+   labels: [source_id, status]
+
+   description: "Current source health status (0=unhealthy, 1=degraded, 2=healthy)"
+
+
+
+  - name: rate_limit_hits_total
+
+   type: counter
+
+   labels: [source_id]
+
+   description: "Number of rate limit hits"
+
+normalization:
+
+ - name: documents_normalized_total
+
+  type: counter
+
+  labels: [language, status]
+
+  description: "Documents processed through normalization"
+
+
+
+ - name: normalization_duration_seconds
+
+  type: histogram
+
+  buckets: [0.01, 0.05, 0.1, 0.5, 1, 2]
+
+  description: "Normalization processing time"
+
+
+
+story_detection:
+
+ - name: stories_detected_total
+
+  type: counter
+
+  labels: [priority, category, is_breaking]
+
+  description: "Total stories detected"
+
+
+
+ - name: duplicates_detected_total
+
+  type: counter
+
+  labels: [duplicate_type]
+
+  description: "Duplicate documents detected"
+
+
+
+ - name: cluster_document_count
+
+  type: histogram
+
+  buckets: [1, 2, 5, 10, 20, 50, 100]
+
+  description: "Documents per cluster"
+
+      - name: breaking_news_assessments_total
+
+       type: counter
+
+       labels: [is_breaking, urgency_level]
+
+       description: "Breaking news assessments"
+
+
+
+ story_graph:
+
+      - name: story_graph_nodes_created_total
+
+       type: counter
+
+       labels: [node_type]
+
+       description: "Story Graph nodes created"
+
+```
+
+
+
+9.2 SLO Definitions
+
+
+
+```yaml
+
+slos:
+
+ ingestion_pipeline:
+
+      availability: 99.95%
+
+      document_processing_latency_p99: 30s
+
+      source_poll_adherence: >99% # Sources polled on schedule
+
+
+
+ story_detection:
+
+      availability: 99.9%
+
+      detection_latency_p99: 60s
+
+      duplicate_detection_accuracy: >95%
+
+      cluster_precision: >90%
+
+
+
+ breaking_news:
+
+      detection_latency_p99: 30s
+
+      alert_delivery_p99: 5s
+
+      false_positive_rate: <5%
+
+```
+
+
+
+---
+
+
+
+PART X — PRODUCTION DEPLOYMENT
+
+
+
+10.1 Service Deployment Configuration
+
+
+
+```yaml
+
+# Kubernetes Deployment — Ingestion Orchestrator
+
+apiVersion: apps/v1
+
+kind: Deployment
+
+metadata:
+
+ name: ingestion-orchestrator
+
+ namespace: content-origination
+
+spec:
+
+ replicas: 3
+
+ strategy:
+
+      type: RollingUpdate
+
+      rollingUpdate:
+
+  maxUnavailable: 0
+
+  maxSurge: 1
+
+template:
+
+ spec:
+
+  serviceAccountName: content-origination
+
+  containers:
+
+   - name: ingestion-orchestrator
+
+    image: "{{ .Values.image.repo }}/ingestion-orchestrator:{{ .Values.image.tag }}"
+
+    ports:
+
+     - name: grpc
+
+         containerPort: 9102
+
+     - name: metrics
+
+         containerPort: 9192
+
+    env:
+
+     - name: DATABASE_URL
+
+         valueFrom:
+
+          secretKeyRef:
+
+           name: content-origination-db
+
+           key: url
+
+     - name: KAFKA_BROKERS
+
+         value: "kafka.foundation.svc.cluster.local:9092"
+
+     - name: REDIS_URL
+
+         value: "redis.foundation.svc.cluster.local:6379"
+
+    resources:
+
+     requests:
+
+         cpu: 500m
+
+           memory: 512Mi
+
+         limits:
+
+           cpu: 2000m
+
+           memory: 2Gi
+
+        livenessProbe:
+
+         httpGet:
+
+           path: /healthz
+
+           port: 9190
+
+        readinessProbe:
+
+         httpGet:
+
+           path: /readyz
+
+           port: 9190
+
+      affinity:
+
+       podAntiAffinity:
+
+        preferredDuringSchedulingIgnoredDuringExecution:
+
+         - weight: 100
+
+           podAffinityTerm:
+
+            topologyKey: kubernetes.io/hostname
+
+```
+
+
+
+10.2 Performance Targets
+
+
+
+```yaml
+
+performance:
+
+ ingestion:
+
+      documents_per_second: 100
+
+      sources_concurrent_polls: 50
+
+      max_poll_interval: 30 minutes
+
+
+
+ normalization:
+
+      documents_per_second: 200
+
+      embedding_generation_p99: 500ms
+
+      language_detection_p99: 100ms
+
+
+
+ story_detection:
+
+      documents_per_second: 300
+
+      duplicate_check_p99: 50ms
+
+      cluster_assignment_p99: 200ms
+
+      breaking_news_assessment_p99: 100ms
+
+
+
+ story_graph:
+
+      writes_per_second: 50
+
+      read_latency_p99: 100ms
+
+```
+
+
+
+---
+
+
+
+EXECUTIVE SUMMARY
+
+
+
+Volume 24 delivers the complete, production-ready specification for the Agbofa Nexus AI
+Content Origination Engine — the first operational AI newsroom domain. Every service,
+connector, pipeline, and data model has been specified to implementation-ready detail.
+
+Key Deliverables:
+
+
+
+· Source Connector Framework: Pluggable architecture supporting RSS, REST APIs, web crawling,
+social media, and custom sources with unified interface
+
+· Ingestion Orchestrator: Smart scheduling with rate limiting, source health monitoring, and
+automatic retry/backoff
+
+· Content Normalization Pipeline: Multi-stage processing with language detection, entity
+extraction, text cleaning, and embedding generation
+
+· Story Detection Engine: Three-tier deduplication (exact, near-exact, semantic), document
+clustering with multi-factor scoring, and ML-based breaking news detection
+
+· Story Graph Initializer: Neo4j graph creation with source relationships, entity relationships, and
+story metadata
+
+· Complete Event Architecture: 6 Kafka topics with standardized event schemas for full pipeline
+observability
+
+
+
+The Content Origination Engine is ready for implementation. Volume 25 will build upon this to
+implement the Truth Engine for source verification, fact-checking, and confidence scoring.
+
+
+
+---
+
+
+
+END OF VOLUME 24
+
+
+
+Date: 2026-08-07
+
+Version: 1.0.0 — Implementation-Ready
+
+Next Volume: Volume 25 — Truth Engine Code Specification (Source Verification, Fact Checking,
+Claim Analysis, Confidence Scoring & Editorial Validation Services)
+

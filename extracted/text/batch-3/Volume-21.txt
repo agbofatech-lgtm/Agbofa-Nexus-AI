@@ -1,0 +1,4206 @@
+VOLUME 21: ENTERPRISE IMPLEMENTATION GUIDE
+
+
+
+Coding Standards, AI Development Playbook & Engineering Governance
+
+
+
+Document Reference: AGBA-NEXUS-VOL21-IMPL-1.0
+
+Status: Implementation-Ready — Executive Playbook
+
+Approved Baseline: Volumes 1–20 (Immutable)
+
+Purpose: Master Engineering Implementation Guide
+
+Quality Level: US$50M Enterprise Platform Standard
+
+
+
+---
+
+
+
+ARCHITECTURE DECISION RECORDS (ADR)
+
+
+
+ADR-ENG-001: Monorepo with Domain-Based Structure
+
+
+
+Decision: Single monorepo with domain-based directory structure, shared libraries, and
+independent service deployment.
+
+Rationale: 60+ microservices require shared types, protobuf definitions, and utilities. Monorepo
+enables atomic changes across services, consistent versioning, and simplified dependency
+management.
+
+Alternatives Considered: Polyrepo per service (rejected — coordination overhead too high for
+60+ services); hybrid with shared libraries as separate repos (rejected — versioning complexity).
+
+Consequences: Larger clone size, but tooling (Bazel/Nx) mitigates build impact.
+
+
+
+ADR-ENG-002: Trunk-Based Development with Short-Lived Feature Branches
+
+
+
+Decision: Trunk-based development on main branch. Feature branches live maximum 2 days.
+Release branches created for production stabilization only.
+
+Rationale: AI-assisted development generates code rapidly. Long-lived branches create merge
+conflicts with AI-generated code. Trunk-based development ensures continuous integration.
+
+Alternatives Considered: GitFlow (rejected — too heavyweight for rapid AI development);
+GitHub Flow (adopted with modifications).
+
+Consequences: Requires high test coverage and feature flags for incomplete features.
+
+
+
+ADR-ENG-003: AI-First Development Workflow
+
+
+
+Decision: AI coding agents are first-class contributors. All AI-generated code must pass same CI
+checks as human code. AI pull requests follow identical review process.
+
+Rationale: Platform designed for AI-assisted development. Formalizing AI contribution workflow
+ensures quality and auditability.
+
+Consequences: CI must handle higher PR volume; review process must be efficient.
+
+
+
+ADR-ENG-004: Contract-First API Development
+
+
+
+Decision: All services define APIs in Protobuf/OpenAPI before implementation. API contracts are
+reviewed and approved before coding begins.
+
+Rationale: 60+ services require clear contracts. Contract-first prevents integration issues and
+enables parallel development.
+
+Consequences: Upfront API design effort, but significant reduction in integration issues.
+
+
+
+---
+
+
+
+PART I — ENGINEERING PRINCIPLES
+
+
+
+1.1 Engineering Philosophy
+
+
+
+```
+
+AGBOFA NEXUS AI — ENGINEERING PHILOSOPHY:
+
+
+
+┌─────────────────────────────────────────────────────────────────────────────
+┐
+
+│                CORE ENGINEERING TENETS                       │
+
+├
+─────────────────────────────────────────────────────────────────────────────
+┤
+
+│                                              │
+
+│ 1. CORRECTNESS OVER CLEVERNESS                                   │
+
+│     Write boring, predictable, testable code. Clever code is bug-prone.   │
+
+│                                              │
+
+│ 2. CONTRACTS FIRST, CODE SECOND                                  │
+
+│     Define interfaces before implementations. Protobuf/OpenAPI are truth. │
+
+│                                              │
+
+│ 3. OBSERVABILITY IS NOT OPTIONAL                                 │
+
+│   Every service emits metrics, traces, and structured logs by default.     │
+
+│                                             │
+
+│ 4. SECURITY IS EVERYONE'S RESPONSIBILITY                               │
+
+│   No code merges without security review. Secrets never in code.               │
+
+│                                             │
+
+│ 5. AI IS A TOOL, NOT A REPLACEMENT                                 │
+
+│   AI accelerates development. Human engineers own quality and decisions. │
+
+│                                              │
+
+│ 6. SHIP SMALL, SHIP OFTEN                                 │
+
+│   Small, frequent deployments reduce risk. Feature flags protect unfinished│
+
+│   work.                                          │
+
+│                                             │
+
+│ 7. YOU BUILD IT, YOU RUN IT                               │
+
+│   Service teams own operations. DevOps is culture, not a team.             │
+
+│                                             │
+
+│ 8. DOCUMENTATION IS CODE                                       │
+
+│   Documentation lives in the repo, reviewed like code, versioned with code.│
+
+│                                             │
+
+│ 9. FAIL FAST, RECOVER FASTER                               │
+
+│   Circuit breakers, timeouts, retries, and graceful degradation everywhere.│
+
+│                                             │
+
+│ 10. MEASURE EVERYTHING                                        │
+
+│   If you can't measure it, you can't improve it. SLOs drive decisions.     │
+
+│                                             │
+
+└─────────────────────────────────────────────────────────────────────────────
+┘
+
+```
+
+
+
+1.2 Domain-Driven Development Standards
+
+
+
+```yaml
+
+ddd_standards:
+
+ bounded_contexts:
+
+      naming: PascalCase, matches Volume names
+
+      examples:
+
+       - ContentOrigination
+
+       - TruthEngine
+
+       - ContentFactory
+
+       - ComplianceGatekeeper
+
+       - DistributionEngine
+
+
+
+      directory_convention: |
+
+       domain/{bounded-context}/
+
+        ├── api/          # Protobuf/OpenAPI definitions
+
+        ├── cmd/           # Service entry points
+
+        ├── internal/
+
+        │ ├── domain/ # Domain models, aggregates, value objects
+
+        │ ├── application/ # Use cases, application services
+
+        │ ├── infrastructure/ # Database, messaging, external APIs
+
+        │ └── interfaces/ # gRPC/REST handlers
+
+        ├── pkg/          # Public shared packages
+
+        └── test/       # Integration and contract tests
+
+ubiquitous_language:
+
+ enforcement: Code must use domain terms from Volumes 11-19
+
+ prohibited: Generic terms like "data", "info", "process", "handle"
+
+ examples:
+
+  correct: "VerifyClaim", "PublishStory", "LockFacts"
+
+  incorrect: "ProcessData", "HandleRequest", "DoStuff"
+
+
+
+aggregate_design:
+
+ rules:
+
+  - One aggregate root per transaction boundary
+
+  - Reference other aggregates by ID only
+
+  - Eventual consistency across aggregates
+
+  - Domain events for cross-aggregate communication
+
+
+
+ example: |
+
+  // CORRECT: Aggregate root with ID references
+
+  type Story struct {
+
+      ID       string      // Aggregate root
+
+      Claims     []Claim      // Part of aggregate
+
+      Sources     []SourceRef // Reference by ID
+
+      AuthorID string         // Reference by ID
+
+  }
+
+
+
+  // INCORRECT: Direct object references
+
+  type Story struct {
+
+            Author Author        // DO NOT DO THIS
+
+       }
+
+```
+
+
+
+1.3 Clean Architecture Rules
+
+
+
+```yaml
+
+clean_architecture:
+
+ layer_dependencies:
+
+      rule: Dependencies point inward. Outer layers depend on inner layers.
+
+
+
+      layers:
+
+       domain:
+
+           description: Enterprise business rules
+
+           dependencies: NONE (pure Go/Python)
+
+           contains: Entities, Value Objects, Domain Services, Repository Interfaces
+
+           rules:
+
+            - No framework imports
+
+            - No database imports
+
+            - No HTTP/gRPC imports
+
+            - Pure business logic only
+
+
+
+       application:
+
+           description: Application use cases
+
+           dependencies: domain
+
+           contains: Use Cases, Application Services, DTOs, Ports
+
+   rules:
+
+    - Orchestrates domain objects
+
+    - Implements application-specific logic
+
+    - No infrastructure concerns
+
+
+
+  infrastructure:
+
+   description: Technical implementations
+
+   dependencies: domain, application
+
+   contains: Repository implementations, API clients, Message brokers
+
+   rules:
+
+    - Implements interfaces defined in inner layers
+
+    - Contains all framework-specific code
+
+    - Database queries, HTTP clients, etc.
+
+
+
+  interfaces:
+
+   description: External APIs
+
+   dependencies: application, infrastructure
+
+   contains: gRPC handlers, HTTP handlers, Event consumers
+
+   rules:
+
+    - Thin layer, delegates to application services
+
+    - Request/Response mapping only
+
+    - Authentication/Authorization enforcement
+
+
+
+dependency_injection:
+
+ tool: Uber FX (Go), dependency-injector (Python)
+
+ pattern: Constructor injection
+
+      anti_pattern: Service locator, global state
+
+```
+
+
+
+1.4 Twelve-Factor Application Standards
+
+
+
+```yaml
+
+twelve_factor_compliance:
+
+ factor_1_codebase:
+
+      rule: One codebase per service, tracked in monorepo
+
+      compliance:      Monorepo with domain-based structure
+
+
+
+ factor_2_dependencies:
+
+      rule: Explicitly declare and isolate dependencies
+
+      go: go.mod with version pinning
+
+      python: pyproject.toml with locked dependencies
+
+      container: All dependencies in container image
+
+      anti_pattern: System-level dependencies assumed
+
+
+
+ factor_3_config:
+
+      rule: Store config in environment variables
+
+      implementation: |
+
+       # CORRECT
+
+       DB_HOST=${DB_HOST}
+
+       KAFKA_BROKERS=${KAFKA_BROKERS}
+
+
+
+       # INCORRECT
+
+  DB_HOST=localhost # Hardcoded
+
+ config_sources:
+
+  - Environment variables (Kubernetes ConfigMap/Secrets)
+
+  - HashiCorp Vault (secrets only)
+
+  - Never: Config files in repository
+
+
+
+factor_4_backing_services:
+
+ rule: Treat backing services as attached resources
+
+ implementation: Connection strings from environment
+
+ services: PostgreSQL, Neo4j, MongoDB, Redis, Kafka, S3
+
+
+
+factor_5_build_release_run:
+
+ rule: Strictly separate build and run stages
+
+ pipeline: Build → Test → Containerize → Deploy
+
+ immutable: Container images never modified after build
+
+
+
+factor_6_processes:
+
+ rule: Execute as stateless processes
+
+ state: All state in backing services (databases, caches)
+
+ sticky_sessions: Never
+
+
+
+factor_7_port_binding:
+
+ rule: Export services via port binding
+
+ implementation: Services bind to $PORT environment variable
+
+
+
+factor_8_concurrency:
+
+      rule: Scale out via process model
+
+      implementation: Horizontal Pod Autoscaling in Kubernetes
+
+
+
+ factor_9_disposability:
+
+      rule: Fast startup, graceful shutdown
+
+      startup_time: <10 seconds
+
+      shutdown: SIGTERM handling, drain connections, finish in-flight requests
+
+      health_checks: Readiness and liveness probes
+
+
+
+ factor_10_dev_prod_parity:
+
+      rule: Development, staging, production as similar as possible
+
+      implementation: Same container images, different configs
+
+      gap: Time (fast feedback), personnel (devs can deploy), tools (same stack)
+
+
+
+ factor_11_logs:
+
+      rule: Treat logs as event streams
+
+      implementation: stdout/stderr, structured JSON logging
+
+      aggregation: OpenTelemetry → Loki
+
+
+
+ factor_12_admin_processes:
+
+      rule: Run admin tasks as one-off processes
+
+      implementation: Kubernetes Jobs, same codebase, same config
+
+```
+
+
+
+---
+
+PART II — REPOSITORY ORGANISATION
+
+
+
+2.1 Monorepo Structure
+
+
+
+```
+
+agbofa-nexus-ai/
+
+│
+
+├── .github/
+
+│ ├── workflows/            # CI/CD pipelines
+
+│ │ ├── ci-pull-request.yml
+
+│ │ ├── ci-merge-main.yml
+
+│ │ ├── cd-staging.yml
+
+│ │ ├── cd-production.yml
+
+│ │ └── security-scan.yml
+
+│ ├── CODEOWNERS               # Required reviewers per domain
+
+│ ├── PULL_REQUEST_TEMPLATE.md
+
+│ └── dependabot.yml
+
+│
+
+├── api/              # API Definitions (Single Source of Truth)
+
+│ ├── protobuf/
+
+│ │ ├── foundation/
+
+│ │ │ └── v1/
+
+│ │ │      ├── tenant_identity.proto
+
+│ │ │      └── configuration.proto
+
+│ │ ├── content_origination/
+
+│ │ │ └── v1/
+
+│ │ │     ├── ingestion.proto
+
+│ │ │     └── story_detection.proto
+
+│ │ ├── truth_engine/
+
+│ │ │ └── v1/
+
+│ │ │     ├── verification.proto
+
+│ │ │     └── confidence.proto
+
+│ │ ├── content_factory/
+
+│ │ │ └── v1/
+
+│ │ │     ├── generation.proto
+
+│ │ │     └── multimedia.proto
+
+│ │ ├── compliance/
+
+│ │ │ └── v1/
+
+│ │ │     └── gatekeeper.proto
+
+│ │ ├── distribution/
+
+│ │ │ └── v1/
+
+│ │ │     └── orchestrator.proto
+
+│ │ └── analytics/
+
+│ │     └── v1/
+
+│ │       └── insights.proto
+
+│ ├── openapi/
+
+│ │ ├── public-api.yaml
+
+│ │ └── internal-api.yaml
+
+│ └── buf.gen.yaml          # Buf configuration for code generation
+
+│
+
+├── services/            # Microservices
+
+│ ├── foundation/
+
+│ │ ├── tenant-identity/
+
+│ │ │ ├── cmd/
+
+│ │ │ │ └── main.go
+
+│ │ │ ├── internal/
+
+│ │ │ │ ├── domain/
+
+│ │ │ │ ├── application/
+
+│ │ │ │ ├── infrastructure/
+
+│ │ │ │ └── interfaces/
+
+│ │ │ ├── Dockerfile
+
+│ │ │ └── go.mod
+
+│ │ └── configuration/
+
+│ │    ├── cmd/
+
+│ │    ├── internal/
+
+│ │    ├── Dockerfile
+
+│ │    └── go.mod
+
+│ │
+
+│ ├── content-origination/
+
+│ │ ├── ingestion/
+
+│ │ ├── story-detection/
+
+│ │ └── source-manager/
+
+│ │
+
+│ ├── truth-engine/
+
+│ │ ├── source-verifier/
+
+│ │ ├── claim-verifier/
+
+│ │ ├── cross-validator/
+
+│ │ ├── confidence-engine/
+
+│ │ ├── misinformation-detector/
+
+│ │ └── story-graph/
+
+│ │
+
+│ ├── content-factory/
+
+│ │ ├── article-generator/
+
+│ │ ├── headline-generator/
+
+│ │ ├── multimedia-factory/
+
+│ │ ├── platform-adapter/
+
+│ │ ├── seo-engine/
+
+│ │ └── translation/
+
+│ │
+
+│ ├── compliance/
+
+│ │ ├── rights-management/
+
+│ │ ├── plagiarism-detector/
+
+│ │ ├── legal-review/
+
+│ │ ├── privacy-protection/
+
+│ │ ├── ai-safety/
+
+│ │ └── scoring-engine/
+
+│ │
+
+│ ├── distribution/
+
+│ │ ├── orchestrator/
+
+│ │ ├── connectors/
+
+│ │ │ ├── twitter/
+
+│ │ │ ├── facebook/
+
+│ │ │ ├── instagram/
+
+│ │ │ ├── linkedin/
+
+│ │ │ ├── youtube/
+
+│ │ │ ├── tiktok/
+
+│ │ │ ├── web-cms/
+
+│ │ │ ├── email/
+
+│ │ │ └── rss/
+
+│ │ ├── adaptation-engine/
+
+│ │ └── scheduler/
+
+│ │
+
+│ └── analytics/
+
+│     ├── real-time-processor/
+
+│     ├── batch-analyzer/
+
+│     ├── audience-profiler/
+
+│     ├── recommendation-engine/
+
+│     └── optimization-feedback/
+
+│
+
+├── libs/             # Shared Libraries
+
+│ ├── go/
+
+│ │ ├── pkg/
+
+│ │ │ ├── events/           # Kafka event types & schemas
+
+│ │ │ ├── auth/          # JWT, SPIFFE helpers
+
+│ │ │ ├── observability/ # OpenTelemetry setup
+
+│ │ │ ├── resilience/        # Circuit breakers, retries
+
+│ │ │ ├── database/           # Connection pools, migrations
+
+│ │ │ ├── tenant/            # Tenant context propagation
+
+│ │ │ └── errors/          # Common error types
+
+│ │ └── go.mod
+
+│ │
+
+│ └── python/
+
+│     ├── agbofa/
+
+│     │ ├── llm/           # LLM gateway client
+
+│     │ ├── nlp/           # Shared NLP utilities
+
+│     │ ├── models/          # Shared ML model interfaces
+
+│     │ └── prompts/        # Prompt template library
+
+│     └── pyproject.toml
+
+│
+
+├── ai/                # AI Models & Prompts
+
+│ ├── prompts/
+
+│ │ ├── article-generation/
+
+│ │ ├── headline-generation/
+
+│ │ ├── verification/
+
+│ │ ├── multimedia/
+
+│ │ └── translation/
+
+│ ├── models/
+
+│ │ ├── fine-tuning/
+
+│ │ └── evaluation/
+
+│ └── datasets/
+
+│     ├── training/
+
+│     └── evaluation/
+
+│
+
+├── infrastructure/        # Infrastructure as Code
+
+│ ├── terraform/
+
+│ │ ├── environments/
+
+│ │ │ ├── production/
+
+│ │ │ ├── staging/
+
+│ │ │ └── development/
+
+│ │ └── modules/
+
+│ │     ├── eks/
+
+│ │     ├── rds/
+
+│ │     ├── msk/
+
+│ │     └── elasticache/
+
+│ ├── kubernetes/
+
+│ │ ├── base/
+
+│ │ │ ├── namespaces/
+
+│ │ │ ├── rbac/
+
+│ │ │ └── network-policies/
+
+│ │ └── overlays/
+
+│ │     ├── production/
+
+│ │     ├── staging/
+
+│ │     └── development/
+
+│ └── helm/
+
+│     └── charts/
+
+│
+
+├── docs/             # Documentation
+
+│ ├── architecture/
+
+│ │ └── adr/          # Architecture Decision Records
+
+│ │    ├── 0001-use-monorepo.md
+
+│ │    ├── 0002-trunk-based-dev.md
+
+│ │    └── ...
+
+│ ├── api/            # Generated API docs
+
+│ ├── runbooks/          # Operational runbooks
+
+│ └── guides/         # Developer guides
+
+│
+
+├── tests/            # End-to-end & Integration Tests
+
+│ ├── integration/
+
+│ ├── contract/
+
+│ ├── performance/
+
+│ └── chaos/
+
+│
+
+├── tools/            # Development Tools
+
+│ ├── dev-environment/
+
+│ │ ├── docker-compose.yml
+
+│ │ └── seed-data/
+
+│ └── scripts/
+
+│
+
+├── .cursorrules        # AI Coding Agent Rules
+
+├── .golangci.yml        # Go linter configuration
+
+├── .python-lint          # Python linter configuration
+
+├── Makefile             # Top-level build commands
+
+├── Taskfile.yml          # Task runner (alternative to Make)
+
+├── docker-compose.yml           # Local development
+
+├── buf.work.yaml           # Buf workspace
+
+└── README.md               # Repository overview
+
+```
+
+
+
+2.2 Service Internal Structure
+
+
+
+```
+
+services/{domain}/{service}/
+
+│
+
+├── cmd/
+
+│ └── main.go            # Entry point, dependency injection setup
+
+│
+
+├── internal/
+
+│ ├── domain/              # Domain layer (no external dependencies)
+
+│ │ ├── model.go            # Entities, Value Objects, Aggregates
+
+│ │ ├── repository.go        # Repository interfaces
+
+│ │ ├── service.go         # Domain services
+
+│ │ └── events.go         # Domain events
+
+│ │
+
+│ ├── application/         # Application layer
+
+│ │ ├── usecase.go          # Use case implementations
+
+│ │ ├── dto.go             # Data Transfer Objects
+
+│ │ └── ports.go           # Port interfaces
+
+│ │
+
+│ ├── infrastructure/         # Infrastructure layer
+
+│ │ ├── persistence/
+
+│ │ │ ├── postgres.go         # PostgreSQL implementation
+
+│ │ │ └── migrations/        # Database migrations
+
+│ │ ├── messaging/
+
+│ │ │ ├── kafka_producer.go
+
+│ │ │ └── kafka_consumer.go
+
+│ │ └── external/
+
+│ │     └── api_client.go # External API clients
+
+│ │
+
+│ └── interfaces/          # Interface layer
+
+│     ├── grpc/
+
+│     │ └── handler.go      # gRPC service implementation
+
+│     ├── rest/
+
+│     │ └── handler.go      # REST handler
+
+│     └── events/
+
+│       └── consumer.go      # Event consumers
+
+│
+
+├── pkg/                 # Public packages (if any)
+
+│ └── client/            # Generated client for this service
+
+│
+
+├── test/
+
+│ ├── unit/                   # Unit tests (alongside code in Go)
+
+│ ├── integration/               # Integration tests
+
+│ └── contract/               # Contract tests
+
+│
+
+├── Dockerfile                 # Multi-stage build
+
+├── go.mod                     # Go module definition
+
+├── go.sum                     # Dependency checksums
+
+└── README.md                    # Service-specific documentation
+
+```
+
+
+
+---
+
+
+
+PART III — CODING STANDARDS
+
+
+
+3.1 Go Coding Standards
+
+
+
+```yaml
+
+go_standards:
+
+ version: "1.22+"
+
+
+
+ style:
+
+      formatter: gofumpt (stricter than gofmt)
+
+      linter: golangci-lint
+
+      imports: goimports
+
+
+
+      naming:
+
+  packages: lowercase, single word, no underscores
+
+  interfaces: Single-method: Reader, Writer; Multi-method: Repository, Service
+
+  structs: PascalCase
+
+  functions: PascalCase (exported), camelCase (unexported)
+
+  variables: camelCase
+
+  constants: PascalCase (exported), camelCase (unexported)
+
+  acronyms: ID, URL, HTTP, JSON (all caps or all lowercase based on context)
+
+
+
+conventions:
+
+ error_handling: |
+
+  // CORRECT: Wrap errors with context
+
+  if err != nil {
+
+      return fmt.Errorf("failed to verify claim %s: %w", claimID, err)
+
+  }
+
+
+
+  // INCORRECT: Bare error return
+
+  if err != nil {
+
+      return err
+
+  }
+
+
+
+  // CORRECT: Custom error types
+
+  var ErrClaimNotFound = errors.New("claim not found")
+
+
+
+  // CORRECT: Error checking
+
+  if errors.Is(err, ErrClaimNotFound) { ... }
+
+context_propagation: |
+
+ // CORRECT: Context always first parameter
+
+ func (s *Service) VerifyClaim(ctx context.Context, claimID string) error
+
+
+
+ // INCORRECT: Missing context
+
+ func (s *Service) VerifyClaim(claimID string) error
+
+
+
+concurrency: |
+
+ // Use errgroup for parallel operations
+
+ g, ctx := errgroup.WithContext(ctx)
+
+ g.Go(func() error { return s.verifySource(ctx, id) })
+
+ g.Go(func() error { return s.verifyClaim(ctx, id) })
+
+ if err := g.Wait(); err != nil { ... }
+
+
+
+ // Use context for cancellation
+
+ // Never use time.Sleep for synchronization
+
+
+
+interfaces: |
+
+ // Define interfaces where they're used (consumer side)
+
+ // Keep interfaces small (1-3 methods preferred)
+
+ type ClaimVerifier interface {
+
+     Verify(ctx context.Context, claim *Claim) (*VerificationResult, error)
+
+ }
+
+
+
+performance:
+
+- Use sync.Pool for frequently allocated objects
+
+ - Pre-allocate slices when size is known
+
+ - Use strings.Builder for string concatenation
+
+ - Avoid reflection in hot paths
+
+ - Profile before optimizing
+
+
+
+testing:
+
+ framework: testify (assertions), go-mock (mocking)
+
+ patterns:
+
+  - Table-driven tests
+
+  - Parallel tests with t.Parallel()
+
+  - Test helpers with t.Helper()
+
+
+
+ example: |
+
+  func TestVerifyClaim(t *testing.T) {
+
+    t.Parallel()
+
+
+
+    tests := []struct {
+
+         name string
+
+         claim *Claim
+
+         want Verdict
+
+         wantErr bool
+
+    }{
+
+         {
+
+             name: "verified true claim",
+
+             claim: &Claim{Text: "Earth is round"},
+
+             want: VerdictTrue,
+
+                   wantErr: false,
+
+              },
+
+              // ... more cases
+
+          }
+
+
+
+          for _, tt := range tests {
+
+              tt := tt
+
+              t.Run(tt.name, func(t *testing.T) {
+
+                   t.Parallel()
+
+                   svc := NewService(mockVerifier)
+
+                   got, err := svc.VerifyClaim(context.Background(), tt.claim)
+
+                   if tt.wantErr {
+
+                       require.Error(t, err)
+
+                       return
+
+                   }
+
+                   require.NoError(t, err)
+
+                   assert.Equal(t, tt.want, got.Verdict)
+
+              })
+
+          }
+
+      }
+
+```
+
+
+
+3.2 Python Coding Standards
+
+
+
+```yaml
+
+python_standards:
+
+version: "3.12+"
+
+
+
+style:
+
+ formatter: black (line length 100)
+
+ linter: ruff
+
+ type_checker: mypy (strict mode)
+
+ import_sorter: isort
+
+
+
+ naming:
+
+  classes: PascalCase
+
+  functions: snake_case
+
+  variables: snake_case
+
+  constants: UPPER_SNAKE_CASE
+
+  private: _leading_underscore
+
+
+
+conventions:
+
+ type_hints: |
+
+  # CORRECT: All functions must have type hints
+
+  async def verify_claim(
+
+     self,
+
+     claim: Claim,
+
+     context: VerificationContext,
+
+  ) -> VerificationResult:
+
+     ...
+
+
+
+  # INCORRECT: Missing type hints
+
+ def verify_claim(self, claim, context):
+
+   ...
+
+
+
+async_io: |
+
+ # Use async/await for I/O-bound operations
+
+ # LLM calls, database queries, HTTP requests
+
+ async def generate_article(self, story: EnrichedStory) -> GeneratedArticle:
+
+   outline = await self.generate_outline(story)
+
+   sections = await asyncio.gather(*[
+
+         self.generate_section(story, sec) for sec in outline.sections
+
+   ])
+
+   return self.assemble(outline, sections)
+
+
+
+error_handling: |
+
+ # CORRECT: Specific exceptions
+
+ try:
+
+   result = await self.llm.generate(prompt)
+
+ except LLMRateLimitError as e:
+
+   await self.handle_rate_limit(e)
+
+ except LLMTimeoutError as e:
+
+   raise RetryableError(f"LLM timeout: {e}") from e
+
+
+
+ # INCORRECT: Bare except
+
+ try:
+
+   result = await self.llm.generate(prompt)
+
+ except:
+
+       pass
+
+
+
+ pydantic_models: |
+
+  from pydantic import BaseModel, Field
+
+
+
+  class ClaimVerification(BaseModel):
+
+       claim_id: str = Field(..., description="UUID of the claim")
+
+       verdict: Verdict
+
+       confidence: float = Field(ge=0.0, le=1.0)
+
+       evidence: list[Evidence] = Field(default_factory=list)
+
+
+
+testing:
+
+ framework: pytest + pytest-asyncio
+
+ fixtures: conftest.py at each level
+
+ mocking: pytest-mock, unittest.mock
+
+
+
+ example: |
+
+  @pytest.mark.asyncio
+
+  async def test_generate_article_success(
+
+       mock_llm_gateway,
+
+       sample_enriched_story,
+
+  ):
+
+       mock_llm_gateway.generate.return_value = sample_response
+
+       generator = ArticleGenerator(mock_llm_gateway)
+
+
+
+       article = await generator.generate_article(
+
+             sample_enriched_story,
+
+             ArticleConfig(archetype="BREAKING_NEWS"),
+
+         )
+
+
+
+         assert article.word_count > 0
+
+         assert len(article.headlines) >= 3
+
+         mock_llm_gateway.generate.assert_called()
+
+```
+
+
+
+3.3 gRPC & Protobuf Standards
+
+
+
+```yaml
+
+protobuf_standards:
+
+ version: proto3
+
+
+
+ file_structure:
+
+      naming: |
+
+       api/{domain}/v{version}/{service}.proto
+
+       Example: api/truth_engine/v1/verification.proto
+
+
+
+      header: |
+
+       syntax = "proto3";
+
+       package truth_engine.v1;
+
+       option go_package = "github.com/agbofa/nexus-api/truth_engine/v1";
+
+
+
+ naming:
+
+ services: PascalCase + "Service" suffix
+
+ rpcs: PascalCase, VerbNoun pattern
+
+ messages: PascalCase
+
+ fields: snake_case
+
+ enums: UPPER_SNAKE_CASE for values
+
+
+
+ examples: |
+
+  service ClaimVerificationService {
+
+      rpc VerifyClaim(VerifyClaimRequest) returns (VerifyClaimResponse);
+
+      rpc BatchVerifyClaims(BatchVerifyClaimsRequest) returns (stream ClaimVerification);
+
+  }
+
+
+
+  message VerifyClaimRequest {
+
+      string tenant_id = 1;
+
+      string claim_id = 2;
+
+      VerificationOptions options = 3;
+
+      string idempotency_key = 4;
+
+  }
+
+
+
+conventions:
+
+ field_numbers: Never reuse deleted field numbers
+
+ reserved: Mark deleted fields as reserved
+
+ breaking_changes: Never change field types or numbers
+
+ non_breaking_changes: Adding new fields (with appropriate defaults)
+
+
+
+ validation: |
+
+       Use buf.validate for proto validation
+
+       message VerifyClaimRequest {
+
+           string tenant_id = 1 [(buf.validate.field).string.uuid = true];
+
+           string claim_id = 2 [(buf.validate.field).string.uuid = true];
+
+       }
+
+
+
+ code_generation:
+
+      tool: buf (replaces protoc)
+
+      configuration: buf.gen.yaml
+
+
+
+      generated_code_location: |
+
+       api/gen/
+
+       ├── go/
+
+       │ └── truth_engine/v1/
+
+       │      ├── verification.pb.go
+
+       │      └── verification_grpc.pb.go
+
+       └── python/
+
+           └── truth_engine/v1/
+
+             └── verification_pb2.py
+
+```
+
+
+
+3.4 Error Handling Standards
+
+
+
+```yaml
+
+error_handling:
+
+ principles:
+
+ - Errors are values, not exceptions (Go)
+
+ - Always add context when propagating errors
+
+ - Never swallow errors silently
+
+ - Log errors at service boundaries only
+
+ - Use structured error types with error codes
+
+
+
+error_codes:
+
+ format: "DOMAIN-SUBSYSTEM-NUMBER"
+
+ examples:
+
+  - "TRUTH-VERIFY-001": Claim verification failed
+
+  - "DIST-PUB-002": Platform publishing timeout
+
+  - "COMPLY-COPY-003": Copyright check unavailable
+
+
+
+ implementation: |
+
+  type ErrorCode string
+
+
+
+  const (
+
+      ErrClaimVerificationFailed ErrorCode = "TRUTH-VERIFY-001"
+
+      ErrSourceTimeout          ErrorCode = "TRUTH-SRC-002"
+
+  )
+
+
+
+  type ServiceError struct {
+
+      Code   ErrorCode `json:"code"`
+
+      Message string `json:"message"`
+
+      Cause error      `json:"-"`
+
+      Retryable bool    `json:"retryable"`
+
+            Severity string `json:"severity"`
+
+    }
+
+
+
+    func (e *ServiceError) Error() string {
+
+            return fmt.Sprintf("[%s] %s", e.Code, e.Message)
+
+    }
+
+
+
+gRPC_error_mapping: |
+
+func MapToGRPC(err error) error {
+
+        var svcErr *ServiceError
+
+        if errors.As(err, &svcErr) {
+
+             switch {
+
+             case svcErr.Code.IsNotFound():
+
+                 return status.Error(codes.NotFound, svcErr.Message)
+
+             case svcErr.Code.IsInvalidArgument():
+
+                 return status.Error(codes.InvalidArgument, svcErr.Message)
+
+             case svcErr.Code.IsUnauthenticated():
+
+                 return status.Error(codes.Unauthenticated, svcErr.Message)
+
+             case svcErr.Code.IsRateLimited():
+
+                 return status.Error(codes.ResourceExhausted, svcErr.Message)
+
+             default:
+
+                 return status.Error(codes.Internal, svcErr.Message)
+
+             }
+
+        }
+
+        return status.Error(codes.Internal, "internal error")
+
+}
+
+```
+
+
+
+3.5 Logging Standards
+
+
+
+```yaml
+
+logging:
+
+ format: JSON structured logging
+
+
+
+ levels:
+
+      DEBUG: Development only, verbose diagnostic information
+
+      INFO: Normal operations, business events (service started, story published)
+
+      WARN: Retryable errors, degraded operations, approaching limits
+
+      ERROR: Service failures, data loss risks, failed operations
+
+      FATAL: Unrecoverable errors, service cannot continue
+
+
+
+ required_fields:
+
+      - timestamp: RFC3339 format
+
+      - level: DEBUG/INFO/WARN/ERROR/FATAL
+
+      - service: Service name
+
+      - trace_id: OpenTelemetry trace ID
+
+      - span_id: OpenTelemetry span ID
+
+      - tenant_id: Tenant identifier (if applicable)
+
+      - message: Human-readable message
+
+      - error: Error details (if applicable)
+
+
+
+ go_implementation: |
+
+import "github.com/rs/zerolog"
+
+
+
+func NewLogger(service string) zerolog.Logger {
+
+    return zerolog.New(os.Stdout).
+
+      With().
+
+      Str("service", service).
+
+      Timestamp().
+
+      Logger()
+
+}
+
+
+
+// Usage
+
+logger.Info().
+
+    Str("story_id", storyID).
+
+    Str("action", "publish").
+
+    Msg("Story published successfully")
+
+
+
+logger.Error().
+
+    Err(err).
+
+    Str("claim_id", claimID).
+
+    Msg("Claim verification failed")
+
+
+
+python_implementation: |
+
+import structlog
+
+
+
+logger = structlog.get_logger()
+
+      # Usage
+
+      await logger.info(
+
+          "story_published",
+
+          story_id=story_id,
+
+          platform="twitter",
+
+          duration_ms=elapsed_ms,
+
+      )
+
+
+
+      await logger.error(
+
+          "verification_failed",
+
+          claim_id=claim_id,
+
+          error=str(err),
+
+          exc_info=True,
+
+      )
+
+
+
+ anti_patterns:
+
+      - NO: Logging sensitive data (PII, credentials, tokens)
+
+      - NO: Using print() or fmt.Println() for logging
+
+      - NO: Logging at every function call (use tracing for that)
+
+      - NO: Inconsistent log formats between services
+
+```
+
+
+
+---
+
+
+
+PART IV — AI DEVELOPMENT STANDARDS
+
+4.1 AI-First Development Workflow
+
+
+
+```
+
+AI-ASSISTED DEVELOPMENT WORKFLOW:
+
+
+
+┌─────────────────────────────────────────────────────────────────────────────
+┐
+
+│             AI CODING AGENT WORKFLOW                               │
+
+├
+─────────────────────────────────────────────────────────────────────────────
+┤
+
+│                                                   │
+
+│ 1. TASK DEFINITION                                       │
+
+│     ┌──────────────────────────────────────────────────────────────────────┐ │
+
+│     │ • Engineer writes task specification in issue tracker            ││
+
+│     │ • Includes: Acceptance criteria, API contracts, test cases        ││
+
+│     │ • Links to relevant Volume/Section in implementation spec              ││
+
+│     └──────────────────────────────────────────────────────────────────────┘ │
+
+│                        │                          │
+
+│ 2. AI CODE GENERATION                │                        │
+
+│     ┌─────────────────────────────────▼────────────────────────────────────┐ │
+
+│     │ • AI agent reads specification, API contracts, existing code          ││
+
+│     │ • Generates implementation following coding standards                  ││
+
+│     │ • Generates unit tests, integration tests                   ││
+
+│     │ • Opens Pull Request with "AI-Generated" label                   ││
+
+│     └──────────────────────────────────────────────────────────────────────┘ │
+
+│                        │                          │
+
+│ 3. AUTOMATED VALIDATION                   │                               │
+
+│     ┌─────────────────────────────────▼────────────────────────────────────┐ │
+
+│     │ • CI runs: lint, test, security scan, contract test                 ││
+
+│     │ • AI-generated code must pass ALL checks                                ││
+
+│     │ • Failures auto-commented on PR                                 ││
+
+│     └──────────────────────────────────────────────────────────────────────┘ │
+
+│                         │                         │
+
+│ 4. HUMAN REVIEW                      │                           │
+
+│     ┌─────────────────────────────────▼────────────────────────────────────┐ │
+
+│     │ • Engineer reviews for: correctness, security, performance                   ││
+
+│     │ • Domain expert reviews business logic                              ││
+
+│     │ • Review checklist completed                                   ││
+
+│     │ • Engineer approves or requests changes                                 ││
+
+│     └──────────────────────────────────────────────────────────────────────┘ │
+
+│                         │                         │
+
+│ 5. MERGE & DEPLOY                                            │
+
+│     ┌─────────────────────────────────▼────────────────────────────────────┐ │
+
+│     │ • Merge to main                                       ││
+
+│     │ • CI builds, tests, deploys to staging                         ││
+
+│     │ • Canary deployment to production                                   ││
+
+│     │ • Metrics monitored                                    ││
+
+│     └──────────────────────────────────────────────────────────────────────┘ │
+
+└─────────────────────────────────────────────────────────────────────────────
+┘
+
+```
+
+4.2 AI Coding Agent Configuration
+
+
+
+```yaml
+
+# .cursorrules — AI Coding Agent Configuration
+
+cursor_rules:
+
+ project_context: |
+
+  Agbofa Nexus AI — Autonomous AI Media Company Platform
+
+  Reference: Volumes 1-21 implementation specifications
+
+  Repository: agbofa-nexus-ai monorepo
+
+
+
+ code_generation_rules:
+
+  go:
+
+   - Follow Go coding standards from Volume 21 Section 3.1
+
+   - Use Clean Architecture layer separation
+
+   - All public functions must have doc comments
+
+   - All errors must be wrapped with context
+
+   - Context must be first parameter
+
+   - Use errgroup for parallel operations
+
+
+
+  python:
+
+   - Follow Python coding standards from Volume 21 Section 3.2
+
+   - All functions must have type hints
+
+   - Use async/await for I/O operations
+
+   - Use Pydantic models for data validation
+
+   - Log with structlog
+
+      protobuf:
+
+       - Follow protobuf standards from Volume 21 Section 3.3
+
+       - Never reuse deleted field numbers
+
+       - Use buf.validate for input validation
+
+
+
+      general:
+
+       - Generate unit tests for all code
+
+       - Generate integration tests for service interactions
+
+       - Follow existing patterns in the codebase
+
+       - Do not generate code for Volumes not yet implemented
+
+       - Reference Volume/Section numbers in comments
+
+
+
+ security_rules:
+
+      - Never generate hardcoded credentials
+
+      - Never log PII or sensitive data
+
+      - Always validate input at boundaries
+
+      - Use parameterized queries, never string concatenation
+
+      - Implement rate limiting on all public endpoints
+
+
+
+ documentation_rules:
+
+      - Generate README.md for each new service
+
+      - Generate API documentation from protobuf comments
+
+      - Add Architecture Decision Records for new decisions
+
+      - Comment complex business logic with Volume references
+
+```
+
+4.3 LLM Gateway Usage Standards
+
+
+
+```yaml
+
+llm_gateway_standards:
+
+ client_library: |
+
+  # Python
+
+  from agbofa.llm import LLMGateway
+
+
+
+  gateway = LLMGateway(
+
+       default_model="claude-3-sonnet",
+
+       fallback_models=["claude-3-haiku", "gpt-4o-mini"],
+
+  )
+
+
+
+  # Go
+
+  import "github.com/agbofa/nexus-libs/go/pkg/llm"
+
+
+
+  gateway := llm.NewGateway(llm.Config{
+
+       DefaultModel: "claude-3-sonnet",
+
+       FallbackModels: []string{"claude-3-haiku", "gpt-4o-mini"},
+
+  })
+
+
+
+ model_tiering:
+
+  critical_operations:
+
+      model: claude-3-opus
+
+      examples:
+
+       - Full article generation
+
+  - Legal review analysis
+
+  - Complex verification
+
+ timeout: 60s
+
+
+
+standard_operations:
+
+ model: claude-3-sonnet
+
+ examples:
+
+  - Headline generation
+
+  - Summary generation
+
+  - Content classification
+
+ timeout: 30s
+
+
+
+lightweight_operations:
+
+ model: claude-3-haiku
+
+ examples:
+
+  - SEO metadata generation
+
+  - Hashtag suggestions
+
+  - Format validation
+
+ timeout: 10s
+
+
+
+prompt_management:
+
+storage: Git repository (ai/prompts/)
+
+versioning: Semantic versioning per prompt template
+
+testing: Automated prompt evaluation in CI
+
+
+
+example: |
+
+       # ai/prompts/article-generation/v1.2.0/breaking_news.yaml
+
+       name: breaking_news_article
+
+       version: 1.2.0
+
+       model: claude-3-opus
+
+       temperature: 0.4
+
+       max_tokens: 4000
+
+       template: |
+
+        You are a Pulitzer Prize-winning journalist...
+
+        {locked_facts}
+
+        {generation_plan}
+
+        ...
+
+
+
+ token_optimization:
+
+      strategies:
+
+       - Cache frequent LLM responses (Redis)
+
+       - Batch non-urgent requests
+
+       - Use smaller models for simple tasks
+
+       - Truncate context window when possible
+
+       - Summarize long histories before including
+
+
+
+      monitoring:
+
+       - Track tokens per request
+
+       - Track cost per story
+
+       - Alert on cost anomalies
+
+       - Daily cost reports per service
+
+```
+
+4.4 Hallucination Prevention Standards
+
+
+
+```yaml
+
+hallucination_prevention:
+
+ mandatory_patterns:
+
+  fact_locking: |
+
+   // ALWAYS lock facts before passing to LLM
+
+   lockedFacts := factLocker.LockFacts(ctx, storyID)
+
+   // Pass locked facts, not raw story, to LLM
+
+   response := llm.Generate(ctx, prompt, lockedFacts)
+
+
+
+  constraint_injection: |
+
+   // ALWAYS inject constraints into prompts
+
+   prompt := fmt.Sprintf(`
+
+    %s
+
+
+
+    CRITICAL CONSTRAINTS:
+
+    - Only use facts from the provided fact set
+
+    - Do not invent or embellish any details
+
+    - If information is not in the fact set, say "information not available"
+
+    - Quotes must be VERBATIM from: %s
+
+   `, basePrompt, lockedQuotes)
+
+
+
+  output_validation: |
+
+   // ALWAYS validate LLM output against facts
+
+       response := llm.Generate(ctx, prompt)
+
+       violations := factValidator.Validate(response, lockedFacts)
+
+       if len(violations) > 0 {
+
+           // Regenerate with stricter constraints
+
+           response = regenerateWithCorrections(ctx, prompt, violations)
+
+       }
+
+
+
+ testing:
+
+      automated: |
+
+       # Run hallucination detection test suite daily
+
+       make test-hallucination
+
+
+
+      metrics:
+
+       - Hallucination rate per model
+
+       - Hallucination rate per content type
+
+       - Regeneration success rate
+
+
+
+      thresholds:
+
+       critical: 0% hallucination rate (breaking news, legal)
+
+       standard: <0.1% hallucination rate
+
+       non_critical: <0.5% hallucination rate
+
+```
+
+
+
+---
+
+
+
+PART V — GIT & COLLABORATION
+
+5.1 Branching Strategy
+
+
+
+```
+
+TRUNK-BASED DEVELOPMENT:
+
+
+
+main
+
+├── feature/TICKET-123-verify-claim         (max 2 days)
+
+├── feature/TICKET-124-add-source-check         (max 2 days)
+
+├── feature/TICKET-125-fix-headline-bug        (max 2 days)
+
+│
+
+├── release/v1.0.0                 (stabilization only)
+
+├── release/v1.1.0
+
+│
+
+└── hotfix/TICKET-999-critical-security   (emergency only)
+
+
+
+RULES:
+
+1. All development on short-lived feature branches
+
+2. Merge to main at least daily
+
+3. main is always deployable
+
+4. Feature flags protect incomplete features
+
+5. Release branches for stabilization (max 2 days)
+
+6. Hotfix branches for critical production issues
+
+7. Delete branches after merge
+
+```
+
+5.2 Commit Standards
+
+
+
+```yaml
+
+commit_conventions:
+
+ format: "type(scope): description"
+
+
+
+ types:
+
+  feat: New feature
+
+  fix: Bug fix
+
+  refactor: Code restructuring without behavior change
+
+  test: Adding or updating tests
+
+  docs: Documentation changes
+
+  chore: Maintenance, dependencies, tooling
+
+  perf: Performance improvements
+
+  security: Security fixes
+
+  ai: AI model or prompt changes
+
+
+
+ scopes:
+
+  - truth-engine
+
+  - content-factory
+
+  - distribution
+
+  - compliance
+
+  - analytics
+
+  - infrastructure
+
+  - api
+
+  - ai-prompts
+
+ examples:
+
+      - "feat(truth-engine): add cross-source validation for breaking news"
+
+      - "fix(content-factory): correct headline truncation on mobile"
+
+      - "security(infrastructure): rotate TLS certificates"
+
+      - "ai(prompts): update article generation prompt v1.2.0"
+
+      - "test(distribution): add integration tests for Twitter connector"
+
+
+
+ requirements:
+
+      - Maximum 72 characters for subject line
+
+      - Body explains WHAT and WHY (not HOW)
+
+      - Reference ticket/issue number
+
+      - Breaking changes marked with "BREAKING CHANGE:"
+
+```
+
+
+
+5.3 Pull Request Standards
+
+
+
+```markdown
+
+# Pull Request Template
+
+
+
+## Description
+
+<!-- Brief description of changes -->
+
+
+
+## Type of Change
+
+- [ ] Feature
+
+- [ ] Bug Fix
+
+- [ ] Refactor
+
+- [ ] Performance
+
+- [ ] Security
+
+- [ ] AI Model/Prompt Update
+
+- [ ] Documentation
+
+
+
+## Related Issues
+
+Closes #ISSUE-NUMBER
+
+
+
+## Implementation Specification Reference
+
+<!-- Link to relevant Volume/Section -->
+
+Volume: ___, Section: ___, Page: ___
+
+
+
+## AI Generation
+
+- [ ] This PR was AI-generated (human review required)
+
+- [ ] This PR was human-written
+
+- [ ] This PR is a hybrid (AI + human)
+
+
+
+## Checklist
+
+- [ ] Code follows coding standards (Volume 21, Section 3)
+
+- [ ] Unit tests added/updated (coverage >80%)
+
+- [ ] Integration tests added for new features
+
+- [ ] API contracts updated (protobuf/OpenAPI)
+
+- [ ] Documentation updated
+
+- [ ] Security review completed (if applicable)
+
+- [ ] Performance impact assessed
+
+- [ ] Breaking changes documented
+
+
+
+## Testing
+
+<!-- How was this tested? -->
+
+- [ ] Unit tests
+
+- [ ] Integration tests
+
+- [ ] Manual testing
+
+- [ ] Performance testing
+
+- [ ] Security testing
+
+
+
+## Screenshots/Logs
+
+<!-- If applicable -->
+
+
+
+## Reviewer Checklist
+
+- [ ] Business logic correct per specification
+
+- [ ] Error handling appropriate
+
+- [ ] Logging and observability adequate
+
+- [ ] Security considerations addressed
+
+- [ ] Performance acceptable
+
+```
+
+
+
+5.4 Versioning Strategy
+
+
+
+```yaml
+
+versioning:
+
+ strategy: Semantic Versioning (SemVer)
+
+format: MAJOR.MINOR.PATCH
+
+
+
+rules:
+
+ MAJOR:
+
+  - Breaking API changes
+
+  - Database schema migrations that are not backward compatible
+
+  - Changes to Kafka event schemas (field removal/type change)
+
+
+
+ MINOR:
+
+  - New features (backward compatible)
+
+  - New API endpoints
+
+  - New event types
+
+  - Database additions (new tables, new columns with defaults)
+
+
+
+ PATCH:
+
+  - Bug fixes
+
+  - Performance improvements
+
+  - Security patches
+
+  - Documentation updates
+
+
+
+release_cadence:
+
+ PATCH: As needed (hotfixes)
+
+ MINOR: Weekly (every Wednesday)
+
+ MAJOR: Quarterly (planned, with migration guides)
+
+
+
+changelog:
+
+      format: Keep a Changelog (https://keepachangelog.com)
+
+      location: CHANGELOG.md at repo root
+
+      generation: Automated from conventional commits
+
+```
+
+
+
+---
+
+
+
+PART VI — DOCUMENTATION STANDARDS
+
+
+
+6.1 Documentation Requirements
+
+
+
+```yaml
+
+documentation_standards:
+
+ required_docs:
+
+      repository_level:
+
+       - README.md: Overview, setup, contributing
+
+       - CONTRIBUTING.md: How to contribute
+
+       - CHANGELOG.md: Version history
+
+       - LICENSE: License information
+
+       - SECURITY.md: Security policy
+
+       - CODE_OF_CONDUCT.md: Community standards
+
+
+
+      service_level:
+
+       - README.md: Service overview, dependencies, API, setup
+
+       - docs/architecture.md: Service architecture
+
+       - docs/api.md: API reference (generated from protobuf)
+
+ - docs/operations.md: Runbook for operations
+
+
+
+domain_level:
+
+ - docs/adr/: Architecture Decision Records
+
+ - docs/domain-model.md: Domain model documentation
+
+
+
+readme_template: |
+
+# Service Name
+
+
+
+## Overview
+
+Brief description of service purpose.
+
+
+
+## Architecture
+
+```mermaid
+
+graph TD
+
+      A[Service] --> B[Dependency 1]
+
+      A --> C[Dependency 2]
+
+```
+
+
+
+## API
+
+- gRPC: `api/{domain}/v1/{service}.proto`
+
+- REST: `/api/v1/{resource}`
+
+
+
+## Dependencies
+
+- PostgreSQL (for __)
+
+- Kafka (consumes __, produces __)
+
+- Redis (caches __)
+
+
+
+## Configuration
+
+| Variable | Description | Default |
+
+|----------|-------------|---------|
+
+| DB_HOST | PostgreSQL host | localhost |
+
+
+
+## Development
+
+```bash
+
+make dev
+
+```
+
+
+
+## Testing
+
+```bash
+
+make test
+
+```
+
+
+
+## Deployment
+
+See `infrastructure/kubernetes/overlays/production/`
+
+
+
+## Monitoring
+
+- Grafana: [Dashboard URL]
+
+- Alerts: [AlertManager URL]
+
+
+
+## Ownership
+
+Team: ___
+
+      On-call: ___
+
+```
+
+
+
+6.2 Architecture Decision Records
+
+
+
+```markdown
+
+# ADR Template
+
+
+
+## ADR-XXX: Title
+
+
+
+**Status:** Proposed | Accepted | Deprecated | Superseded
+
+
+
+**Date:** YYYY-MM-DD
+
+
+
+**Context:**
+
+What is the issue that we're seeing that is motivating this decision or change?
+
+
+
+**Decision:**
+
+What is the change that we're proposing and/or doing?
+
+
+
+**Alternatives Considered:**
+
+What other options were considered? Why weren't they chosen?
+
+
+
+**Consequences:**
+
+What becomes easier or more difficult to do because of this change?
+
+**References:**
+
+- Links to related ADRs, documents, issues
+
+```
+
+
+
+---
+
+
+
+PART VII — CI/CD ENGINEERING WORKFLOW
+
+
+
+7.1 CI/CD Pipeline
+
+
+
+```yaml
+
+ci_cd_pipeline:
+
+ pull_request:
+
+      triggers:
+
+       - opened
+
+       - synchronize
+
+       - reopened
+
+
+
+      jobs:
+
+       lint:
+
+        runs-on: ubuntu-latest
+
+        steps:
+
+         - checkout
+
+         - golangci-lint (Go services)
+
+         - ruff (Python services)
+
+         - buf lint (protobuf)
+
+ test:
+
+  runs-on: ubuntu-latest
+
+  strategy:
+
+   matrix:
+
+    service: ${{ steps.changed-services.outputs.list }}
+
+  steps:
+
+   - checkout
+
+   - setup-go / setup-python
+
+   - run: make test SERVICE=${{ matrix.service }}
+
+
+
+ security:
+
+  runs-on: ubuntu-latest
+
+  steps:
+
+   - trufflehog (secrets scan)
+
+   - semgrep (SAST)
+
+   - dependency-review
+
+
+
+ contract-test:
+
+  runs-on: ubuntu-latest
+
+  steps:
+
+   - buf breaking (API compatibility)
+
+   - run: make contract-test
+
+
+
+merge_to_main:
+
+triggers:
+
+ - push to main
+
+
+
+jobs:
+
+ build:
+
+  strategy:
+
+   matrix:
+
+    service: ${{ steps.changed-services.outputs.list }}
+
+  steps:
+
+   - checkout
+
+   - build container image
+
+   - trivy scan
+
+   - syft SBOM generation
+
+   - cosign image signing
+
+   - push to ECR
+
+
+
+ deploy-staging:
+
+  needs: build
+
+  steps:
+
+   - flux reconcile
+
+   - wait for rollout
+
+   - smoke tests
+
+
+
+ deploy-production:
+
+  needs: deploy-staging
+
+  environment: production
+
+  steps:
+
+         - approval gate (for MAJOR/MINOR)
+
+         - canary deployment (10% → 50% → 100%)
+
+         - metric validation
+
+         - auto-rollback on failure
+
+```
+
+
+
+---
+
+
+
+PART VIII — SECURITY IMPLEMENTATION STANDARDS
+
+
+
+8.1 Secure Coding Checklist
+
+
+
+```yaml
+
+secure_coding_checklist:
+
+ input_validation:
+
+      - [ ] All input validated at service boundary
+
+      - [ ] Protobuf validation rules defined (buf.validate)
+
+      - [ ] SQL injection prevented (parameterized queries)
+
+      - [ ] No dangerous deserialization
+
+
+
+ authentication:
+
+      - [ ] All endpoints require authentication
+
+      - [ ] JWT tokens validated (signature, expiry, audience)
+
+      - [ ] SPIFFE/SPIRE for service-to-service
+
+      - [ ] No hardcoded credentials
+
+ authorization:
+
+      - [ ] OPA policies defined for all endpoints
+
+      - [ ] Tenant isolation enforced
+
+      - [ ] Principle of least privilege applied
+
+
+
+ data_protection:
+
+      - [ ] PII detected and handled (see Volume 16)
+
+      - [ ] Encryption at rest (AES-256)
+
+      - [ ] Encryption in transit (TLS 1.3)
+
+      - [ ] Secrets in Vault, never in code
+
+
+
+ logging:
+
+      - [ ] No sensitive data in logs
+
+      - [ ] Audit events for all security-relevant actions
+
+      - [ ] Audit log immutable (see Volume 16)
+
+
+
+ dependencies:
+
+      - [ ] No known vulnerabilities (CRITICAL/HIGH)
+
+      - [ ] Dependencies regularly updated
+
+      - [ ] SBOM generated for all images
+
+```
+
+
+
+---
+
+
+
+PART IX — DEVELOPER EXPERIENCE
+
+9.1 Local Development Environment
+
+
+
+```yaml
+
+local_development:
+
+ prerequisites:
+
+  - Docker Desktop
+
+  - Go 1.22+
+
+  - Python 3.12+
+
+  - protoc + buf
+
+  - kubectl
+
+  - helm
+
+  - terraform
+
+
+
+ quick_start: |
+
+  # Clone repository
+
+  git clone https://github.com/agbofa/nexus-ai.git
+
+  cd nexus-ai
+
+
+
+  # Start local development environment
+
+  make dev-up
+
+
+
+  # This starts:
+
+  # - PostgreSQL (port 5432)
+
+  # - Neo4j (port 7474, 7687)
+
+  # - MongoDB (port 27017)
+
+  # - Redis (port 6379)
+
+ # - Kafka (port 9092)
+
+ # - Jaeger (port 16686)
+
+ # - MinIO (port 9000)
+
+
+
+ # Run a specific service
+
+ make run SERVICE=truth-engine/claim-verifier
+
+
+
+ # Run tests
+
+ make test SERVICE=truth-engine/claim-verifier
+
+
+
+ # View traces
+
+ open http://localhost:16686
+
+
+
+dev_containers:
+
+ tool: Visual Studio Code Dev Containers
+
+ configuration: .devcontainer/devcontainer.json
+
+
+
+ features:
+
+  - Go development tools
+
+  - Python development tools
+
+  - Docker-in-Docker
+
+  - kubectl + helm
+
+  - Pre-installed dependencies
+
+
+
+docker_compose: |
+
+ version: "3.9"
+
+services:
+
+ postgres:
+
+  image: pgvector/pgvector:pg16
+
+  ports: ["5432:5432"]
+
+  volumes: [postgres_data:/var/lib/postgresql/data]
+
+
+
+ neo4j:
+
+  image: neo4j:5-enterprise
+
+  ports: ["7474:7474", "7687:7687"]
+
+
+
+ mongodb:
+
+  image: mongo:7
+
+  ports: ["27017:27017"]
+
+
+
+ redis:
+
+  image: redis:7-alpine
+
+  ports: ["6379:6379"]
+
+
+
+ kafka:
+
+  image: confluentinc/cp-kafka:latest
+
+  ports: ["9092:9092"]
+
+
+
+ minio:
+
+  image: minio/minio
+
+  ports: ["9000:9000", "9001:9001"]
+
+       jaeger:
+
+        image: jaegertracing/all-in-one
+
+        ports: ["16686:16686", "4317:4317"]
+
+
+
+ seed_data:
+
+      location: tools/dev-environment/seed-data/
+
+      command: make seed-data
+
+      includes:
+
+       - Sample tenants
+
+       - Test sources
+
+       - Sample verified stories
+
+       - Test users with various roles
+
+```
+
+
+
+---
+
+
+
+PART X — PROJECT DELIVERY ROADMAP
+
+
+
+10.1 Implementation Phases
+
+
+
+```
+
+IMPLEMENTATION ROADMAP:
+
+
+
+PHASE 1: FOUNDATION (Weeks 1-4)
+
+├── Repository setup & CI/CD
+
+├── Infrastructure provisioning (Terraform)
+
+├── Kubernetes cluster setup
+
+├── Foundation services (Volume 11)
+
+│ ├── Tenant & Identity Service
+
+│ └── Configuration Service
+
+├── API Gateway setup (APISIX)
+
+└── Observability stack deployment
+
+
+
+PHASE 2: CORE PLATFORM (Weeks 5-12)
+
+├── Content Origination (Volume 12)
+
+│ ├── Source Manager
+
+│ ├── Ingestion Engine
+
+│ └── Story Detection
+
+├── Truth Engine (Volume 13)
+
+│ ├── Source Verification
+
+│ ├── Claim Verification
+
+│ ├── Cross-Source Validation
+
+│ └── Confidence Engine
+
+├── Story Graph (Volume 14)
+
+│ └── Neo4j Schema & Services
+
+└── Integration Testing
+
+
+
+PHASE 3: AI CONTENT SERVICES (Weeks 13-20)
+
+├── Content Factory (Volume 15)
+
+│ ├── Article Generation
+
+│ ├── Headline Generation
+
+│ ├── Multimedia Generation
+
+│ └── Platform Adaptation
+
+├── LLM Gateway Integration
+
+├── Prompt Template Library
+
+└── AI Quality Monitoring
+
+
+
+PHASE 4: DISTRIBUTION & COMPLIANCE (Weeks 21-28)
+
+├── Compliance Gatekeeper (Volume 16)
+
+│ ├── Rights Management
+
+│ ├── Plagiarism Detection
+
+│ ├── Legal Review
+
+│ └── Privacy Protection
+
+├── Distribution Engine (Volume 17)
+
+│ ├── Orchestrator
+
+│ ├── Platform Connectors
+
+│ └── Scheduling Engine
+
+└── End-to-End Content Pipeline Testing
+
+
+
+PHASE 5: ANALYTICS & OPTIMIZATION (Weeks 29-36)
+
+├── Analytics Engine (Volume 18-19)
+
+│ ├── Real-Time Analytics
+
+│ ├── Batch Analytics
+
+│ ├── Audience Profiling
+
+│ └── AI Optimization Feedback
+
+├── Dashboards & Reports
+
+└── A/B Testing Framework
+
+
+
+PHASE 6: PRODUCTION READINESS (Weeks 37-44)
+
+├── Security Hardening
+
+├── Performance Testing
+
+├── Chaos Engineering
+
+├── Disaster Recovery Testing
+
+├── Documentation Completion
+
+└── Go-Live Preparation
+
+
+
+PHASE 7: ENTERPRISE SCALING (Weeks 45-52)
+
+├── Multi-Region Deployment
+
+├── Enterprise Tenant Onboarding
+
+├── Custom Platform Connectors
+
+├── Advanced AI Model Fine-Tuning
+
+└── Continuous Improvement Cycle
+
+```
+
+
+
+10.2 Milestone Definitions
+
+
+
+```yaml
+
+milestones:
+
+ M1_DEVELOPMENT_ENVIRONMENT:
+
+      week: 2
+
+      criteria:
+
+ - Repository setup with CI/CD
+
+ - Local development environment working
+
+ - All engineers can run "make dev-up"
+
+
+
+M2_FOUNDATION_SERVICES:
+
+week: 4
+
+criteria:
+
+ - Foundation services deployed to staging
+
+ - API Gateway routing requests
+
+ - Tenant isolation working
+
+ - Observability stack healthy
+
+
+
+M3_CONTENT_PIPELINE_ALPHA:
+
+week: 12
+
+criteria:
+
+ - End-to-end content pipeline (ingestion → verification → story graph)
+
+ - Can process 100 stories/hour
+
+ - All unit tests passing (>80% coverage)
+
+
+
+M4_CONTENT_FACTORY_BETA:
+
+week: 20
+
+criteria:
+
+ - Article generation working for 3 archetypes
+
+ - Platform adaptation for Web, Twitter, Facebook
+
+ - AI quality monitoring active
+
+ - Beta users can create content
+
+ M5_FULL_PLATFORM_BETA:
+
+      week: 28
+
+      criteria:
+
+       - All bounded contexts deployed
+
+       - End-to-end publishing pipeline working
+
+       - Compliance checks passing
+
+       - Platform connectors for all target platforms
+
+
+
+ M6_PRODUCTION_READY:
+
+      week: 44
+
+      criteria:
+
+       - Security audit complete (no CRITICAL/HIGH findings)
+
+       - Performance tests passing at 10x expected load
+
+       - Disaster recovery tested
+
+       - All runbooks published
+
+       - Go-live checklist complete
+
+
+
+ M7_ENTERPRISE_LAUNCH:
+
+      week: 52
+
+      criteria:
+
+       - Multi-region active-active deployment
+
+       - 99.99% availability achieved
+
+       - Enterprise tenant onboarding complete
+
+       - Full operational capability
+
+```
+
+---
+
+
+
+PART XI — SPRINT PLANNING FRAMEWORK
+
+
+
+11.1 Team Structure & Responsibilities
+
+
+
+```yaml
+
+team_structure:
+
+ platform_team:
+
+  size: 6-8 engineers
+
+  ownership:
+
+      - Foundation services
+
+      - API Gateway
+
+      - Service mesh
+
+      - CI/CD pipelines
+
+      - Infrastructure
+
+
+
+ content_team:
+
+  size: 8-10 engineers
+
+  ownership:
+
+      - Content Origination
+
+      - Truth Engine
+
+      - Story Graph
+
+      - Content Factory
+
+distribution_team:
+
+ size: 6-8 engineers
+
+ ownership:
+
+  - Compliance Gatekeeper
+
+  - Distribution Engine
+
+  - Platform Connectors
+
+
+
+analytics_team:
+
+ size: 6-8 engineers
+
+ ownership:
+
+  - Analytics Engine
+
+  - Audience Intelligence
+
+  - AI Optimization Feedback
+
+  - Dashboards
+
+
+
+ai_team:
+
+ size: 4-6 engineers
+
+ ownership:
+
+  - LLM Gateway
+
+  - Prompt Engineering
+
+  - Model Evaluation
+
+  - AI Quality
+
+
+
+sprint_structure:
+
+ duration: 2 weeks
+
+ ceremonies:
+
+       daily_standup: 15 minutes, async option
+
+       sprint_planning: 2 hours, Monday Week 1
+
+       backlog_refinement: 1 hour, Wednesday Week 1
+
+       sprint_review: 1 hour, Friday Week 2
+
+       sprint_retrospective: 1 hour, Friday Week 2
+
+```
+
+
+
+11.2 Definition of Ready & Done
+
+
+
+```yaml
+
+definition_of_ready:
+
+ story_must_have:
+
+      - Clear title and description
+
+      - Acceptance criteria (Given/When/Then format)
+
+      - API contracts defined (if applicable)
+
+      - Dependencies identified
+
+      - Estimated (story points)
+
+      - No blockers
+
+
+
+ definition_of_done:
+
+      code:
+
+       - Code follows coding standards
+
+       - Unit tests written and passing (>80% coverage)
+
+       - Integration tests passing
+
+       - Code reviewed and approved
+
+       - No linting errors
+
+       - No security vulnerabilities (CRITICAL/HIGH)
+
+
+
+      documentation:
+
+       - Service README updated
+
+       - API documentation updated
+
+       - ADR created (if architectural decision)
+
+       - Changelog entry added
+
+
+
+      deployment:
+
+       - Deployed to staging
+
+       - Smoke tests passing in staging
+
+       - Feature flagged (if not ready for production)
+
+       - Monitoring dashboards updated
+
+
+
+      quality:
+
+       - QA acceptance criteria met
+
+       - Performance acceptable
+
+       - Accessibility validated (if frontend)
+
+       - Security review completed
+
+```
+
+
+
+---
+
+
+
+PART XII — ENTERPRISE CHECKLISTS
+
+
+
+12.1 Architecture Compliance Checklist
+
+```yaml
+
+architecture_compliance:
+
+ domain_design:
+
+  - [ ] Service boundaries match Volume specifications
+
+  - [ ] Ubiquitous language used consistently
+
+  - [ ] Aggregate roots properly defined
+
+  - [ ] Domain events for cross-aggregate communication
+
+
+
+ api_design:
+
+  - [ ] APIs defined in protobuf/OpenAPI before implementation
+
+  - [ ] API contracts reviewed and approved
+
+  - [ ] gRPC for internal, REST for external
+
+  - [ ] No breaking changes without MAJOR version bump
+
+
+
+ data_architecture:
+
+  - [ ] Each service owns its data store
+
+  - [ ] No direct database access across services
+
+  - [ ] Event sourcing for critical state changes
+
+  - [ ] CQRS where appropriate
+
+
+
+ messaging:
+
+  - [ ] Events use approved Kafka topics
+
+  - [ ] Event schemas versioned
+
+  - [ ] Idempotent consumers
+
+  - [ ] Dead letter queues configured
+
+ security:
+
+      - [ ] mTLS between all services
+
+      - [ ] OPA policies for authorization
+
+      - [ ] Secrets in Vault, never in code
+
+      - [ ] Audit logging for all sensitive operations
+
+```
+
+
+
+12.2 Production Readiness Checklist
+
+
+
+```yaml
+
+production_readiness:
+
+ infrastructure:
+
+      - [ ] Multi-AZ deployment
+
+      - [ ] Auto-scaling configured
+
+      - [ ] Load balancers health checks passing
+
+      - [ ] SSL certificates valid (>30 days)
+
+      - [ ] Backup strategy implemented and tested
+
+      - [ ] Disaster recovery plan tested
+
+
+
+ observability:
+
+      - [ ] Metrics being collected
+
+      - [ ] Dashboards created
+
+      - [ ] Alerts configured
+
+      - [ ] Logs aggregated
+
+      - [ ] Traces enabled
+
+ - [ ] SLOs defined and monitored
+
+
+
+reliability:
+
+ - [ ] Circuit breakers configured
+
+ - [ ] Retry policies defined
+
+ - [ ] Graceful degradation implemented
+
+ - [ ] Load testing completed
+
+ - [ ] Chaos testing completed
+
+
+
+security:
+
+ - [ ] Penetration test completed
+
+ - [ ] Vulnerability scan clean
+
+ - [ ] Dependency audit complete
+
+ - [ ] Secrets rotation configured
+
+ - [ ] WAF rules deployed
+
+
+
+operations:
+
+ - [ ] Runbooks published
+
+ - [ ] On-call rotation configured
+
+ - [ ] Escalation paths defined
+
+ - [ ] Incident response tested
+
+ - [ ] Status page configured
+
+
+
+documentation:
+
+ - [ ] API documentation current
+
+ - [ ] Architecture documentation current
+
+      - [ ] Developer guides published
+
+      - [ ] Operational runbooks complete
+
+```
+
+
+
+12.3 Go-Live Approval Checklist
+
+
+
+```yaml
+
+go_live_approval:
+
+ technical_sign_off:
+
+      - [ ] Architecture review: ___________
+
+      - [ ] Security review: ___________
+
+      - [ ] Performance review: ___________
+
+      - [ ] Code review (sample): ___________
+
+
+
+ operational_sign_off:
+
+      - [ ] SRE team: ___________
+
+      - [ ] Security operations: ___________
+
+      - [ ] Database operations: ___________
+
+
+
+ business_sign_off:
+
+      - [ ] Product owner: ___________
+
+      - [ ] Editorial team: ___________
+
+      - [ ] Legal/Compliance: ___________
+
+
+
+ executive_sign_off:
+
+      - [ ] VP Engineering: ___________
+
+      - [ ] CTO: ___________
+
+      - [ ] CISO: ___________
+
+
+
+ final_approval:
+
+      - [ ] All sign-offs obtained
+
+      - [ ] Rollback plan documented
+
+      - [ ] Communication plan ready
+
+      - [ ] GO/NO-GO decision: ___________
+
+      - [ ] Date: ___________
+
+      - [ ] Time: ___________
+
+```
+
+
+
+---
+
+
+
+PART XIII — EXECUTIVE SUMMARY
+
+
+
+13.1 Engineering Readiness Assessment
+
+
+
+```
+
+ENGINEERING READINESS:               READY FOR IMPLEMENTATION
+
+
+
+┌─────────────────────────────────────────────────────────────────────────────
+┐
+
+│                  READINESS ASSESSMENT                    │
+
+├
+─────────────────────────────────────────────────────────────────────────────
+┤
+
+│                                               │
+
+│ SPECIFICATION COMPLETENESS: ████████████████████ 100%                                             │
+
+│ Volumes 1-21 provide complete, unambiguous specifications                         │
+
+│                                               │
+
+│ ARCHITECTURE MATURITY:        ████████████████████ 100%                                       │
+
+│ All bounded contexts, APIs, events, data models defined                   │
+
+│                                               │
+
+│ CODING STANDARDS:          ████████████████████ 100%                                      │
+
+│ Go, Python, Protobuf, events, logging, error handling                 │
+
+│                                               │
+
+│ CI/CD READINESS:        ████████████████████ 100%                                     │
+
+│ Pipeline design, canary deployment, automated rollback                    │
+
+│                                               │
+
+│ SECURITY READINESS:        ████████████████████ 100%                                      │
+
+│ Zero trust, mTLS, OPA, Vault, audit logging                   │
+
+│                                               │
+
+│ OPERATIONAL READINESS:        ████████████████████ 100%                                       │
+
+│ Runbooks, DR plans, monitoring, alerting, SLOs                    │
+
+│                                               │
+
+│ AI DEVELOPMENT READINESS: ████████████████████ 100%                                               │
+
+│ AI coding workflow, LLM standards, hallucination prevention                   │
+
+│                                               │
+
+└─────────────────────────────────────────────────────────────────────────────
+┘
+
+```
+
+13.2 Final Engineering Recommendations
+
+
+
+1. Start with Foundation: Deploy infrastructure and foundation services first. Everything
+depends on them.
+
+2. Contract-First Development: Define all API contracts before coding. This enables parallel team
+work.
+
+3. AI as Accelerator: Use AI coding agents for initial implementation, but always with human
+review.
+
+4. Ship Incrementally: Deploy each service as it's ready. Don't wait for the full platform.
+
+5. Monitor from Day One: Don't defer observability. Every service must emit metrics and traces
+from the start.
+
+6. Test in Production (Safely): Use canary deployments and feature flags to validate in
+production.
+
+7. Document as You Go: Documentation is code. Review it, version it, keep it current.
+
+8. Security is Continuous: Integrate security scanning in CI/CD. Never defer security to a later
+phase.
+
+9. Own Your Services: Service teams own development, deployment, and operations.
+
+10. Measure and Improve: Use SLOs to drive decisions. Continuously improve based on data.
+
+
+
+13.3 Official Certification of Implementation Readiness
+
+
+
+```
+
+CERTIFICATION OF IMPLEMENTATION READINESS
+
+
+
+This document certifies that:
+
+
+
+1. The Agbofa Nexus AI platform has been fully specified across Volumes 1-21.
+
+2. All specifications are implementation-ready with complete:
+
+ - Architecture designs
+
+ - API contracts (Protobuf/OpenAPI)
+
+ - Event contracts (Kafka schemas)
+
+ - Data models (PostgreSQL, Neo4j, MongoDB, Redis, ClickHouse)
+
+ - Business rules and state machines
+
+ - Security requirements
+
+ - Observability requirements
+
+ - Testing strategies
+
+ - Deployment configurations
+
+ - Operational procedures
+
+
+
+3. Engineering teams can begin implementation immediately without ambiguity.
+
+
+
+4. AI coding agents have sufficient context for code generation.
+
+
+
+5. All architecture decisions are documented and approved.
+
+
+
+6. The platform is designed for:
+
+ - 99.99% availability
+
+ - Multi-region active-active deployment
+
+ - 500,000+ stories per day
+
+ - 10,000+ sources across 40+ languages
+
+ - Sub-30-second breaking news delivery
+
+
+
+PHASE 2 — ENTERPRISE ENGINEERING SPECIFICATIONS: COMPLETE
+
+PHASE 3 — AI-ASSISTED CODE GENERATION & PLATFORM IMPLEMENTATION: READY TO BEGIN
+
+
+
+_________________________________
+
+Enterprise Solution Architect
+
+
+
+_________________________________
+
+VP of Platform Engineering
+
+
+
+_________________________________
+
+Chief Technology Officer
+
+
+
+Date: 2026-08-07
+
+```
+
+
+
+---
+
+
+
+END OF VOLUME 21
+
+
+
+END OF PHASE 2 — ENTERPRISE ENGINEERING SPECIFICATIONS
+
+
+
+Agbofa Nexus AI is fully specified, implementation-ready, and certified for Phase 3 — Code
+Generation & Platform Implementation.
+
+
+
