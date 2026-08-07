@@ -74,12 +74,11 @@
 
 | Document | Detected Title / Reference | Line | Status |
 |---|---|---:|---|
-| Phase 5 Document 1 | Document 1: AI Coding Standards & Engineering Constitution | 220433 | Detected |
-| Phase 5 Document 2 | Document 1 of Phase 5 is complete. Proceed to Document 2: Repository, DevOps & Delivery | 221952 | Detected |
-| Phase 5 Document 3 | ## Document 3: AI Code Generation Playbook & Implementation Execution Guide | 221959 | Detected |
-| Phase 5 Document 1 | ├── Phase 5 Document 1: AI Coding Standards & Engineering Constitution | 225082 | Detected |
-| Phase 5 Document 2 | ├── Phase 5 Document 2: Repository, DevOps & Delivery Specification | 225084 | Detected |
-| Phase 5 Document 3 | └── Phase 5 Document 3: AI Code Generation Playbook & Execution Guide | 225086 | Detected |
+| Phase 5 Document 1 | Document 1: AI Coding Standards & Engineering Constitution | 220433 | Standalone heading detected |
+| Phase 5 Document 2 | Repository, DevOps & Delivery Specification | 221952, 225084 | Referenced, but standalone heading/content block not clearly detected |
+| Phase 5 Document 3 | ## Document 3: AI Code Generation Playbook & Implementation Execution Guide | 221959 | Standalone heading detected |
+| Phase 5 Document 1 | ├── Phase 5 Document 1: AI Coding Standards & Engineering Constitution | 225082 | Summary reference detected |
+| Phase 5 Document 3 | └── Phase 5 Document 3: AI Code Generation Playbook & Execution Guide | 225086 | Summary reference detected |
 
 ## 5. Intake Findings
 
