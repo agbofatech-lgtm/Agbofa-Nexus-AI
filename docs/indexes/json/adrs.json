@@ -1707,7 +1707,7 @@
     {
       "id": "ADR-122",
       "title": "IDR — Infrastructure Decision Records Set",
-      "status": "Extracted from Batch 4 — Pending Global Reconciliation",
+      "status": "Batch 4 Approved for Indexing — Not Implementation Authorization",
       "decision_area": "Infrastructure",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:203742",
       "related_volumes": [
@@ -1721,7 +1721,7 @@
     {
       "id": "ADR-123",
       "title": "TDR — Testing Decision Records Set",
-      "status": "Extracted from Batch 4 — Pending Global Reconciliation",
+      "status": "Batch 4 Approved for Indexing — Not Implementation Authorization",
       "decision_area": "Testing",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:207502",
       "related_volumes": [
@@ -1735,7 +1735,7 @@
     {
       "id": "ADR-124",
       "title": "FDR — Frontend Decision Records Set",
-      "status": "Extracted from Batch 4 — Pending Global Reconciliation",
+      "status": "Batch 4 Approved for Indexing — Not Implementation Authorization",
       "decision_area": "Frontend",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:211366",
       "related_volumes": [
@@ -1749,7 +1749,7 @@
     {
       "id": "ADR-125",
       "title": "FDR — Enterprise Frontend Decision Records Set",
-      "status": "Extracted from Batch 4 — Pending Global Reconciliation",
+      "status": "Batch 4 Approved for Indexing — Not Implementation Authorization",
       "decision_area": "Frontend",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:215235",
       "related_volumes": [
@@ -1763,7 +1763,7 @@
     {
       "id": "ADR-126",
       "title": "Final Architecture Decision Records Summary",
-      "status": "Extracted from Batch 4 — Pending Global Reconciliation",
+      "status": "Batch 4 Approved for Indexing — Not Implementation Authorization",
       "decision_area": "Certification",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:219827",
       "related_volumes": [
@@ -1777,7 +1777,7 @@
     {
       "id": "ADR-127",
       "title": "Phase 5 Document 1 — Engineering Constitution Binding Rule",
-      "status": "Extracted from Batch 4 — Pending Global Reconciliation",
+      "status": "Batch 4 Approved for Indexing — Not Implementation Authorization",
       "decision_area": "Engineering Constitution",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:220433-221952",
       "related_volumes": [
@@ -1791,7 +1791,7 @@
     {
       "id": "ADR-128",
       "title": "Phase 5 Document 3 — Implementation Execution Framework",
-      "status": "Extracted from Batch 4 — Pending Global Reconciliation",
+      "status": "Batch 4 Approved for Indexing — Not Implementation Authorization",
       "decision_area": "Implementation Execution",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:221955-225141",
       "related_volumes": [

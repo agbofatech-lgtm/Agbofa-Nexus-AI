@@ -35,13 +35,13 @@
 | V28 | High | Derived text high; OCR JSON not supplied | High | Approved for indexing only | No | Batch 3 locked; implementation deferred |
 | V29 | High | Derived text high; OCR JSON not supplied | High | Approved for indexing only | No | Batch 3 locked; implementation deferred |
 | V30 | High | Derived text high; OCR JSON not supplied | High | Approved for indexing only | No | Batch 3 locked; implementation deferred |
-| V31 | High | Derived text high; OCR JSON not supplied | Medium | Review complete — awaiting approval | No | Batch 4 recommendations produced; implementation deferred |
-| V32 | High | Derived text high; OCR JSON not supplied | Medium | Review complete — awaiting approval | No | Batch 4 recommendations produced; implementation deferred |
-| V33 | High | Derived text high; OCR JSON not supplied | Medium | Review complete — awaiting approval | No | Batch 4 recommendations produced; implementation deferred |
-| V34 | High | Derived text high; OCR JSON not supplied | Medium | Review complete — awaiting approval | No | Batch 4 recommendations produced; implementation deferred |
-| V35 | High | Derived text high; OCR JSON not supplied | Medium | Review complete — awaiting approval | No | Batch 4 recommendations produced; implementation deferred |
-| V36 | High | Derived text high; OCR JSON not supplied | Medium | Review complete — awaiting approval | No | Batch 4 recommendations produced; implementation deferred |
-| V37 | High | Derived text high; OCR JSON not supplied | Medium | Review complete — awaiting approval | No | Batch 4 recommendations produced; implementation deferred |
-| Phase 5 Doc 1 | Medium | Derived text medium; OCR JSON not supplied | Medium | Review complete — awaiting approval | No | Detected and reviewed; implementation deferred |
+| V31 | High | Derived text high; OCR JSON not supplied | Medium | Approved for indexing only | No | Batch 4 locked; implementation deferred |
+| V32 | High | Derived text high; OCR JSON not supplied | Medium | Approved for indexing only | No | Batch 4 locked; implementation deferred |
+| V33 | High | Derived text high; OCR JSON not supplied | Medium | Approved for indexing only | No | Batch 4 locked; implementation deferred |
+| V34 | High | Derived text high; OCR JSON not supplied | Medium | Approved for indexing only | No | Batch 4 locked; implementation deferred |
+| V35 | High | Derived text high; OCR JSON not supplied | Medium | Approved for indexing only | No | Batch 4 locked; implementation deferred |
+| V36 | High | Derived text high; OCR JSON not supplied | Medium | Approved for indexing only | No | Batch 4 locked; implementation deferred |
+| V37 | High | Derived text high; OCR JSON not supplied | Medium | Approved for indexing only | No | Batch 4 locked; implementation deferred |
+| Phase 5 Doc 1 | Medium | Derived text medium; OCR JSON not supplied | Medium | Approved for indexing only | No | Detected and reviewed; implementation deferred |
 | Phase 5 Doc 2 | Low | Unknown | Low | Source verification pending | No | Referenced but standalone content not clearly detected |
-| Phase 5 Doc 3 | Medium | Derived text medium; OCR JSON not supplied | Medium | Review complete — awaiting approval | No | Detected and reviewed; implementation deferred |
+| Phase 5 Doc 3 | Medium | Derived text medium; OCR JSON not supplied | Medium | Approved for indexing only | No | Detected and reviewed; implementation deferred |

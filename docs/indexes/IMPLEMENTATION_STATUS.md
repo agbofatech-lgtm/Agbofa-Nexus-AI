@@ -27,3 +27,6 @@
 | Batch 3 Lock | Documentation governance | User approval with condition | Batch 3 Documentation Review | Locked for indexing only | Governance validation | Yes | 75e1fc9 | Pass | Complete |
 | Implementation Readiness Register | Documentation governance | User instruction | Batch 3 Approval | Initialized | Governance validation | Yes | 75e1fc9 | Pass | Active |
 | Batch 4 Documentation Review | Documentation review | Volumes 31–37 + Phase 5 detected material | Batch 3 Lock | Review complete; awaiting approval | Governance validation | Yes | 75e1fc9 | Pass | Awaiting approval |
+| Batch 4 Lock | Documentation governance | User approval with condition | Batch 4 Documentation Review | Locked for indexing only | Governance validation | Yes | Pending current commit | Pass | Complete |
+| Implementation Sequence Register | Documentation governance | User recommendation | Implementation Readiness Register | Initialized | Governance validation | Yes | Pending current commit | Pass | Active |
+| M5.5 Global Architecture Reconciliation Review | Architecture reconciliation | GAR-001 through GAR-016 | All batch reviews | Initial review complete; awaiting approval/source disposition | Governance validation | Yes | Pending current commit | Pass | Awaiting approval |
