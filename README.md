@@ -151,3 +151,26 @@ docs/governance/PERMANENT_ENTERPRISE_ENGINEERING_AGENT_CHARTER.md
 
 The agent remains responsible for architectural integrity, engineering standards, traceability, documentation synchronization, repository consistency, testing, quality gates, release readiness, and architecture drift prevention for the duration of the project unless explicitly instructed otherwise.
 
+## Source Preservation Layer
+
+Original approved documents are preserved under `source/` and are never edited directly. Derived artifacts are stored under `extracted/`.
+
+```text
+source/original-pdfs/
+source/original-docx/
+source/original-images/
+source/original-diagrams/
+source/checksums/
+extracted/ocr-json/
+extracted/markdown/
+extracted/text/
+extracted/images/
+```
+
+Preferred pipeline:
+
+```text
+Original PDF → OCR JSON → Structured Markdown → Indexes & Manifest → Implementation Planning → Code Generation
+```
+
+Full governance: `docs/governance/SOURCE_PRESERVATION_LAYER.md`

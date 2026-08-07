@@ -406,3 +406,36 @@ As of this charter adoption:
 - Repository governance, permanent memory indexes, and enterprise operating rules are active.
 - Approved source documentation intake is still pending.
 
+## 16. Source Preservation Layer
+
+Original approved source documents must never be modified. The repository must preserve a source layer and a derived extraction layer:
+
+```text
+source/original-pdfs/
+source/original-docx/
+source/original-images/
+source/original-diagrams/
+source/checksums/
+extracted/ocr-json/
+extracted/markdown/
+extracted/text/
+extracted/images/
+```
+
+The preferred ingestion pipeline is:
+
+```text
+Original PDF
+  ↓
+OCR JSON with layout preserved
+  ↓
+Structured Markdown
+  ↓
+Indexes and Manifest
+  ↓
+Implementation Planning
+  ↓
+Code Generation
+```
+
+For full rules, see `docs/governance/SOURCE_PRESERVATION_LAYER.md`.

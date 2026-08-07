@@ -136,3 +136,19 @@ Pending source intake.
 ## 21. Acronyms
 
 Pending source intake.
+
+## 22. Source Preservation Layer
+
+| Layer | Repository Path | Purpose | Status |
+|---|---|---|---|
+| Original PDFs | `source/original-pdfs/` | Immutable approved PDF baseline | Awaiting upload |
+| Original DOCX | `source/original-docx/` | Immutable approved Word sources if supplied | Awaiting upload |
+| Original Images | `source/original-images/` | Immutable approved source images | Awaiting upload |
+| Original Diagrams | `source/original-diagrams/` | Immutable approved source diagrams | Awaiting upload |
+| Checksums | `source/checksums/` | File integrity verification | Awaiting source files |
+| OCR JSON | `extracted/ocr-json/` | Layout-preserved AI processing format | Pending extraction |
+| Structured Markdown | `extracted/markdown/` | Version-control and publication format | Pending extraction |
+| Plain Text | `extracted/text/` | Search and analysis extraction | Pending extraction |
+| Extracted Images | `extracted/images/` | Derived diagrams/images from source docs | Pending extraction |
+
+Original source files must never be modified. All transformations must be traceable to source filename, checksum, volume, page range, and extraction method where available.
