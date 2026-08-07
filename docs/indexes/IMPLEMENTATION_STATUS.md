@@ -36,3 +36,5 @@
 | Source Verification Impact Assessment | Impact assessment | Volume 11 and Phase 5 Document 2 source blockers | M5.5 Provisional Disposition | Complete; awaiting certification decision | Governance validation | Yes | f7bf86a | Pass | Complete |
 | Conditional Documentation Baseline Certification | Certification | User approval of Option 1 | Source Verification Impact Assessment | Conditionally certified for planning only | Governance validation | Yes | 45b1a2a | Pass | Active |
 | Implementation Planning Framework | Planning | Conditional certification decision | Conditional Baseline Certification | Initialized | Governance validation | Yes | 45b1a2a | Pass | Active |
+| Implementation Planning Package | Planning | User approved planning-only transition | Conditional Baseline Certification | Created | Governance validation | Yes | Pending current commit | Pass | Active — Planning Only |
+| Implementation Authorization Gate | Governance | User recommendation | Implementation Planning Package | Active | Governance/dependency validation | Yes | Pending current commit | Pass | Active |
