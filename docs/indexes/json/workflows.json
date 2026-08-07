@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "registry": "workflows",
+  "canonical_prefix": "WF",
+  "required_fields": [
+    "id",
+    "name",
+    "workflow_type",
+    "owner",
+    "status",
+    "primary_volume",
+    "source_reference"
+  ],
+  "items": []
+}

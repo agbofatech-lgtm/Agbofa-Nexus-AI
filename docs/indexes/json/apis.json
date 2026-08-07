@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "registry": "apis",
+  "canonical_prefix": "API",
+  "required_fields": [
+    "id",
+    "name",
+    "api_type",
+    "owning_service",
+    "status",
+    "primary_volume",
+    "source_reference"
+  ],
+  "items": []
+}

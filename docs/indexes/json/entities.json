@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "registry": "entities",
+  "canonical_prefix": "ENT",
+  "required_fields": [
+    "id",
+    "name",
+    "type",
+    "owner",
+    "status",
+    "primary_volume",
+    "source_reference"
+  ],
+  "items": []
+}

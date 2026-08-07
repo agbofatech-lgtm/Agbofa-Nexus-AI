@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "registry": "services",
+  "canonical_prefix": "SVC",
+  "required_fields": [
+    "id",
+    "name",
+    "owner",
+    "bounded_context",
+    "status",
+    "primary_volume",
+    "source_reference"
+  ],
+  "items": []
+}

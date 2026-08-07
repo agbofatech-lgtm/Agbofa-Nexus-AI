@@ -173,3 +173,15 @@ Original source files must never be modified. All transformations must be tracea
 | AI Retrieval Layer | `docs/governance/AI_RETRIEVAL_LAYER.md` | Retrieve relevant documentation subset before implementation | Active |
 | Architecture Validation Gate | `docs/governance/ARCHITECTURE_VALIDATION_GATE.md` | Mandatory pre-code validation checklist | Active |
 | Implementation Card Template | `templates/IMPLEMENTATION_CARD_TEMPLATE.md` | Standard implementation planning artifact | Active |
+
+## 25. Enterprise Automation Layer
+
+| Component | Path | Purpose | Status |
+|---|---|---|---|
+| Governance Validation Engine | `governance/validators/governance_validator.py` | Runs repository governance checks and writes validation reports | Active |
+| Validator Entry Points | `governance/validators/` | Per-domain validation commands for entities, ADRs, APIs, databases, workflows, traceability, documentation, and security | Active |
+| Machine-Readable Registries | `docs/indexes/json/` | JSON sources for automation and generated Markdown registries | Active |
+| Registry Generator | `scripts/generate_registries.py` | Generates Markdown registries from JSON and verifies synchronization | Active |
+| Documentation Pipeline Check | `scripts/documentation_pipeline.py` | Verifies source preservation directories and writes checksum/report artifacts | Active |
+| Retrieval Index Directories | `retrieval/` | Storage areas for future chunks, embeddings, metadata, and citations | Active |
+| CI Workflow | `.github/workflows/governance-validation.yml` | Runs governance validation on push and pull request | Active |

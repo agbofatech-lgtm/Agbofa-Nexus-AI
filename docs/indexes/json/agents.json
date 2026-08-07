@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "registry": "agents",
+  "canonical_prefix": "AGT",
+  "required_fields": [
+    "id",
+    "name",
+    "role",
+    "owning_service",
+    "status",
+    "primary_volume",
+    "source_reference"
+  ],
+  "items": []
+}

@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "registry": "databases",
+  "canonical_prefix": "DB",
+  "required_fields": [
+    "id",
+    "name",
+    "technology",
+    "owner_service",
+    "owner_domain",
+    "status",
+    "primary_volume",
+    "source_reference"
+  ],
+  "items": []
+}

@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "registry": "ui",
+  "canonical_prefix": "UI",
+  "required_fields": [
+    "id",
+    "name",
+    "application",
+    "route",
+    "user_role_audience",
+    "status",
+    "primary_volume",
+    "source_reference"
+  ],
+  "items": []
+}

@@ -12,3 +12,7 @@
 | Canonical Entity Registries | Repository governance | User-provided entity registry requirement | Source Preservation Layer | Initialized | Not applicable | Yes | 9aff600 | Pass | Complete |
 | AI Retrieval Layer | Repository governance | User-provided retrieval workflow | Canonical Entity Registries | Initialized | Not applicable | Yes | 9aff600 | Pass | Complete |
 | Architecture Validation Gate | Repository governance | User-provided pre-code validation checklist | AI Retrieval Layer | Initialized | Not applicable | Yes | 9aff600 | Pass | Complete |
+| Governance Validation Engine | Repository automation | User-provided enterprise automation layer | Canonical Entity Registries | Implemented | Self-validation script | Yes | Pending current commit | Pass | Complete |
+| Machine-Readable Registry Layer | Repository automation | User-provided JSON registry requirement | Canonical Entity Registries | Implemented | Registry sync validation | Yes | Pending current commit | Pass | Complete |
+| Documentation Pipeline Validation | Repository automation | User-provided documentation build pipeline | Source Preservation Layer | Implemented | Pipeline validation script | Yes | Pending current commit | Pass | Complete |
+| CI Governance Workflow | Repository automation | User-provided CI/CD enforcement requirement | Governance Validation Engine | Implemented | GitHub Actions workflow | Yes | Pending current commit | Pass | Complete |

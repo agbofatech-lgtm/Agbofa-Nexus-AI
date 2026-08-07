@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "registry": "adrs",
+  "canonical_prefix": "ADR",
+  "required_fields": [
+    "id",
+    "title",
+    "status",
+    "decision_area",
+    "source_reference"
+  ],
+  "items": []
+}

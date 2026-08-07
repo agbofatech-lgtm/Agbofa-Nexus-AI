@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "registry": "events",
+  "canonical_prefix": "EVT",
+  "required_fields": [
+    "id",
+    "name",
+    "topic_stream",
+    "producer",
+    "consumers",
+    "status",
+    "primary_volume",
+    "source_reference"
+  ],
+  "items": []
+}
