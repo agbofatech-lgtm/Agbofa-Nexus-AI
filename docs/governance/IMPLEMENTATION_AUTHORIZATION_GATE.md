@@ -87,15 +87,17 @@ The IAG must fail if any of the following are true:
 ## 5. Current Global IAG Status
 
 ```text
-Implementation Eligible = No for all implementation units
-Implementation Authorized = No for all implementation units
+IMP-001 Implementation Eligible = Yes
+IMP-001 Implementation Authorized = No
+IMP-002 through IMP-016 Implementation Authorized = No
 Production Code Generation = Blocked
 ```
 
 Reason:
 
-- Volume 11 source-boundary verification remains open.
-- Phase 5 Document 2 source verification remains open.
-- GAR-006, GAR-007, GAR-008, GAR-013, and GAR-014 remain open.
-- No implementation cards have been approved.
+- IMP-001 readiness validation passed, but formal human authorization has not been recorded.
+- IMP-002 through IMP-016 remain unauthorized.
+- Volume 11 source verification is resolved for governance/readiness but remains relevant to later foundation work.
+- Phase 5 Document 2 source has been provided and reviewed for IMP-001 readiness.
+- IAG-DECISION-IMP-001 records deferred authorization pending human decision authority.
 
