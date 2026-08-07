@@ -79,3 +79,44 @@ The following must not be changed by the documentation publishing process:
 - Indexes
 - Glossary and acronym normalization
 
+## Enterprise Engineering Operating Mode
+
+The Agbofa Nexus AI documentation is the single source of truth. All engineering work must follow:
+
+```text
+Documentation Review
+↓
+Dependency Analysis
+↓
+Implementation Card
+↓
+Recommendation
+↓
+Approval
+↓
+Implementation
+↓
+Testing
+↓
+Documentation Update
+↓
+Validation
+↓
+Commit
+```
+
+No production code may be generated from assumptions. Every implementation must preserve traceability and must update the permanent memory indexes when required.
+
+### Permanent Memory Artifacts
+
+- `MASTER_DOCUMENTATION_MANIFEST.md`
+- `TRACEABILITY_MATRIX.md`
+- `SERVICE_INDEX.md`
+- `API_INDEX.md`
+- `DATABASE_INDEX.md`
+- `AGENT_INDEX.md`
+- `EVENT_INDEX.md`
+- `SECURITY_INDEX.md`
+- `IMPLEMENTATION_STATUS.md`
+- `ARCHITECTURE_DRIFT_REGISTER.md`
+
