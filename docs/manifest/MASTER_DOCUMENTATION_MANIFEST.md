@@ -8,7 +8,7 @@
 
 ## 1. Executive Overview
 
-Pending source intake.
+Initial source intake has begun. See `docs/manifest/SOURCE_DOCUMENTATION_INVENTORY.md` for the preserved uploaded text artifact inventory. No architecture review or implementation has started.
 
 ## 2. Documentation Statistics
 
@@ -16,8 +16,8 @@ Pending source intake.
 |---|---:|---|
 | Total Volumes Expected | 37 | Plus Phase 5 documents |
 | Estimated Page Count | 4,500+ | User-provided baseline |
-| Source Files Received | 0 | Pending upload |
-| Volumes Inventoried | 0 | Pending upload |
+| Source Files Received | 1 | Uploaded text artifact preserved under Source Preservation Layer |
+| Volumes Inventoried | 37 | Mechanical heading inventory only; review pending |
 | ADRs Indexed | 0 | Pending review |
 | Services Indexed | 0 | Pending review |
 | APIs Indexed | 0 | Pending review |
@@ -185,3 +185,8 @@ Original source files must never be modified. All transformations must be tracea
 | Documentation Pipeline Check | `scripts/documentation_pipeline.py` | Verifies source preservation directories and writes checksum/report artifacts | Active |
 | Retrieval Index Directories | `retrieval/` | Storage areas for future chunks, embeddings, metadata, and citations | Active |
 | CI Workflow | `.github/workflows/governance-validation.yml` | Runs governance validation on push and pull request | Active |
+
+
+## 26. Source Documentation Inventory
+
+Current inventory: `docs/manifest/SOURCE_DOCUMENTATION_INVENTORY.md`

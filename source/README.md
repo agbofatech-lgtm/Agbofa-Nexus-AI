@@ -10,6 +10,7 @@ This directory stores immutable approved source artifacts for Agbofa Nexus AI.
 - Store DOCX files in `original-docx/`.
 - Store original images in `original-images/`.
 - Store original diagrams in `original-diagrams/`.
+- Store uploaded original text artifacts in `original-text/`.
 - Store checksums in `checksums/`.
 
 The original approved source files remain the verification baseline.

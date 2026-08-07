@@ -19,6 +19,7 @@ SOURCE_DIRS = [
     SOURCE / "original-docx",
     SOURCE / "original-images",
     SOURCE / "original-diagrams",
+    SOURCE / "original-text",
 ]
 EXTRACTED_DIRS = [
     EXTRACTED / "ocr-json",

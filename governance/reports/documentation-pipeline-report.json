@@ -1,8 +1,10 @@
 {
-  "source_files": 0,
+  "source_files": 1,
   "extracted_files": 0,
-  "checksums_recorded": 0,
+  "checksums_recorded": 1,
   "errors": [],
-  "source_paths": [],
+  "source_paths": [
+    "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt"
+  ],
   "extracted_paths": []
 }
