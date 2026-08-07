@@ -1,0 +1,24 @@
+# OS/editor noise
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
+
+# Generated local artifacts
+.cache/
+node_modules/
+dist/
+build/
+coverage/
+
+# Sensitive credentials
+.env
+.env.*
+!.env.example
+.git-credentials
+.netrc
+
+# Large temporary intake packages can be kept outside git if needed
+incoming/*.zip
+incoming/*.tar
+incoming/*.tar.gz
