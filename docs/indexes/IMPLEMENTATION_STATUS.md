@@ -33,4 +33,4 @@
 | M5.5 Provisional Disposition Record | Architecture reconciliation | User-approved non-source-blocked GAR dispositions | M5.5 Initial Review | Provisionally accepted; source-blocked GARs open | Governance validation | Yes | b3ed74d | Pass | Active |
 | Final Documentation Baseline Certification | Certification | User recommendation | M5.5 Provisional Disposition | Created; pending approval | Governance validation | Yes | b3ed74d | Pass | Pending |
 | Implementation Dependency Validator | Repository automation | User recommendation | Implementation Sequence Register | Implemented | Dependency validation | Yes | b3ed74d | Pass | Active |
-| Source Verification Impact Assessment | Impact assessment | Volume 11 and Phase 5 Document 2 source blockers | M5.5 Provisional Disposition | Complete; awaiting certification decision | Governance validation | Yes | Pending current commit | Pass | Complete |
+| Source Verification Impact Assessment | Impact assessment | Volume 11 and Phase 5 Document 2 source blockers | M5.5 Provisional Disposition | Complete; awaiting certification decision | Governance validation | Yes | f7bf86a | Pass | Complete |
