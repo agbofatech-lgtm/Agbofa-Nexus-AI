@@ -40,4 +40,4 @@
 | Implementation Authorization Gate | Governance | User recommendation | Implementation Planning Package | Active | Governance/dependency validation | Yes | ac99594 | Pass | Active |
 | Draft Implementation Cards CARD-IMP-007 through CARD-IMP-015 | Planning | User approved draft cards only | Implementation Planning Package | Draft cards created | Dependency/governance validation | Yes | 478edbe | Pass | Draft — Not Approved |
 | Planning Review CARD-IMP-007 | Planning review | CARD-IMP-007 Content Origination | Draft Implementation Cards | Accepted for Planning; card remains Draft | Dependency/governance validation | Yes | fd09f30 | Pass | Draft — Not Approved |
-| Planning Review CARD-IMP-008 | Planning review | CARD-IMP-008 Truth Engine | Draft Implementation Cards | Accepted for Planning; card remains Draft | Dependency/governance validation | Yes | Pending current commit | Pass | Draft — Not Approved |
+| Planning Review CARD-IMP-008 | Planning review | CARD-IMP-008 Truth Engine | Draft Implementation Cards | Accepted for Planning; card remains Draft | Dependency/governance validation | Yes | bcdba27 | Pass | Draft — Not Approved |
