@@ -2,7 +2,7 @@
 
 **Project:** Agbofa Nexus AI — Autonomous AI Media Company Platform  
 **Company:** Agbofa Technologies  
-**Certification Status:** Pending — not yet approved  
+**Certification Status:** Pending — conditional certification path available after impact-assessment approval  
 **Baseline Version:** Candidate Documentation Baseline v1.0-indexed  
 **Date:** 2026-08-07  
 
@@ -32,6 +32,9 @@ This document is currently **pending** and does not authorize implementation.
 ---
 
 ## 3. Source Integrity Status
+
+Formal impact assessment: `docs/assessment/SOURCE_VERIFICATION_IMPACT_ASSESSMENT.md`
+
 
 | Source Issue | Status | Impact | Required Resolution |
 |---|---|---|---|
@@ -112,7 +115,7 @@ The Agbofa Nexus AI documentation baseline has been indexed, reviewed in four ba
 
 However, this certification remains **pending** because Volume 11 and Phase 5 Document 2 source-verification issues remain open, and final baseline approval has not yet been granted.
 
-No production implementation is authorized by this document.
+No production implementation is authorized by this document. A conditional documentation baseline certification may be considered only with the limitations documented in `docs/assessment/SOURCE_VERIFICATION_IMPACT_ASSESSMENT.md`.
 
 ---
 
