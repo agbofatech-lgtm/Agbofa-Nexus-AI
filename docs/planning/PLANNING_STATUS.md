@@ -5,7 +5,7 @@
 | Conditional baseline certification | Approved | Planning/documentation only |
 | Implementation Planning Package | Created | Planning only; no code authorization |
 | Production implementation | Blocked | No code generation authorized |
-| Implementation cards | Queue defined | Drafting allowed only in Draft/Review/Blocked states |
+| Implementation cards | Draft cards created | CARD-IMP-007 through CARD-IMP-015 are Draft only |
 | Source verification | Open | Volume 11 and Phase 5 Document 2 |
 | Dependency validation | Active | Automation passing |
 | Architecture validation | Active | Required before card approval |

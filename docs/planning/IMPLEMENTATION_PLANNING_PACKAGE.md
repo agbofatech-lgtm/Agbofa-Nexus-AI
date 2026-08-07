@@ -207,3 +207,28 @@ This implementation planning package certifies that:
 - all implementation units remain implementation-ineligible;
 - this package is for planning and governance only.
 
+
+
+---
+
+## 9. Draft Cards Created
+
+Draft cards have been created under:
+
+```text
+implementation-cards/drafts/
+```
+
+Created draft cards:
+
+- CARD-IMP-007
+- CARD-IMP-008
+- CARD-IMP-009
+- CARD-IMP-010
+- CARD-IMP-011
+- CARD-IMP-012
+- CARD-IMP-013
+- CARD-IMP-014
+- CARD-IMP-015
+
+All cards remain in Draft state and do not authorize implementation.

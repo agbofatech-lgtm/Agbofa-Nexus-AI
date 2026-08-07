@@ -38,3 +38,4 @@
 | Implementation Planning Framework | Planning | Conditional certification decision | Conditional Baseline Certification | Initialized | Governance validation | Yes | 45b1a2a | Pass | Active |
 | Implementation Planning Package | Planning | User approved planning-only transition | Conditional Baseline Certification | Created | Governance validation | Yes | ac99594 | Pass | Active — Planning Only |
 | Implementation Authorization Gate | Governance | User recommendation | Implementation Planning Package | Active | Governance/dependency validation | Yes | ac99594 | Pass | Active |
+| Draft Implementation Cards CARD-IMP-007 through CARD-IMP-015 | Planning | User approved draft cards only | Implementation Planning Package | Draft cards created | Dependency/governance validation | Yes | Pending current commit | Pass | Draft — Not Approved |
