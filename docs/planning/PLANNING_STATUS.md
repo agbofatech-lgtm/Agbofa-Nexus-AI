@@ -33,3 +33,4 @@
 | IMP-001 IAG authorization | Granted | Production code generation permitted within approved IMP-001 scope only |
 | IMP-001 implementation | Complete within authorized scope | Repository foundation and engineering controls implemented; IMP-002 through IMP-016 remain unauthorized |
 | IMP-001 closure | Closed | Implemented and validated within authorized scope; IMP-002 readiness may begin |
+| CARD-IMP-002 draft card | Created | Draft only; planning review and readiness review still required |

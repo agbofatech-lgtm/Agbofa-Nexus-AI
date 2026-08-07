@@ -14,3 +14,4 @@
 | 7 | `CARD-IMP-013` | IMP-013 — Analytics, Audience Intelligence & Continuous Learning | Draft |
 | 8 | `CARD-IMP-014` | IMP-014 — Frontend Foundation | Draft |
 | 9 | `CARD-IMP-015` | IMP-015 — Enterprise Frontend Centers | Draft |
+| 1 | `CARD-IMP-002` | IMP-002 — Infrastructure Foundation | Draft |
