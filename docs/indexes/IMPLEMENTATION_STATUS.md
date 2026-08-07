@@ -7,4 +7,4 @@
 |---|---|---|---|---|---|---|---|---|---|
 | Documentation repository scaffold | Repository governance | User-approved operating mode | None | Initialized | Not applicable | Yes | Pending/committed | Pass | Complete |
 | Enterprise Engineering Constitution | Repository governance | User-provided strengthened AI implementation rules | Existing governance scaffold | Initialized | Not applicable | Yes | Pending | Pass | Complete |
-| Permanent Enterprise Engineering Agent Charter | Repository governance | User-provided permanent agent operating model | Engineering Constitution | Initialized | Not applicable | Yes | Pending current commit | Pass | Complete |
+| Permanent Enterprise Engineering Agent Charter | Repository governance | User-provided permanent agent operating model | Engineering Constitution | Initialized | Not applicable | Yes | 1052248 | Pass | Complete |
