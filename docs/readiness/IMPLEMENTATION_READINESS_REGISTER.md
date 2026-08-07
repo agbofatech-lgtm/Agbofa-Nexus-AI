@@ -85,3 +85,7 @@
 ## IMP-001 Readiness Update
 
 IMP-001 readiness: READY for IAG. Implementation Eligible = Yes. Implementation Authorized = No. Production Code Generation = Prohibited.
+
+## IMP-001 Authorization Update
+
+IMP-001 authorization: GRANTED. Production code generation is permitted only within approved IMP-001 scope. IMP-002 through IMP-016 remain unauthorized.

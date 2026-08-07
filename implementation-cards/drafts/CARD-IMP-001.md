@@ -6,14 +6,14 @@
 |---|---|
 | Card ID | CARD-IMP-001 |
 | Implementation Unit | IMP-001 — Repository Foundation & Engineering Controls |
-| Status | Draft |
+| Status | Authorized for Implementation — IMP-001 Scope Only |
 | Version | 0.1 |
 | Owner | Enterprise Engineering Agent / Human Approver |
 | Date | 2026-08-07 |
 | Baseline Status | Conditionally Certified for planning only |
-| Implementation Eligible | No |
-| Implementation Authorized | No |
-| Production Code Generation | Prohibited |
+| Implementation Eligible | Yes |
+| Implementation Authorized | Yes — IMP-001 Scope Only |
+| Production Code Generation | Permitted within approved IMP-001 scope only |
 
 ---
 
@@ -173,13 +173,13 @@ Planning-only acceptance criteria:
 ## 13. Authorization Section
 
 ```text
-Implementation Eligible: No
-Implementation Authorized: No
-Production Code Generation: Prohibited
+Implementation Eligible: Yes
+Implementation Authorized: Yes — IMP-001 Scope Only
+Production Code Generation: Permitted within approved IMP-001 scope only
 ```
 
 ---
 
 ## 14. No-Code Certification
 
-This implementation card is a planning artifact only. No production code, infrastructure code, database schema, API implementation, service implementation, frontend implementation, AI agent implementation, or deployment artifact is authorized by this card.
+This implementation card has passed IAG for IMP-001 only. Production code generation is permitted only within the approved IMP-001 repository foundation and engineering controls scope. IMP-002 through IMP-016 remain unauthorized.

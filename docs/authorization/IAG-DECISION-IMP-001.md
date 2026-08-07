@@ -5,12 +5,14 @@
 | Field | Value |
 |---|---|
 | Decision ID | IAG-DECISION-IMP-001 |
-| Date | 2026-08-07 |
+| Decision Date | 2026-08-07 |
 | Implementation Unit | IMP-001 — Repository Foundation & Engineering Controls |
 | Gate | Implementation Authorization Gate |
-| Evaluation Result | Deferred |
-| Effective Authorization | Not Granted |
-| Production Code Generation | Prohibited |
+| Evaluation Result | Approved |
+| Effective Authorization | Granted |
+| Authorized By | Project Owner / User Authorization |
+| Authorization Date | 2026-08-07 |
+| Production Code Generation | Permitted within approved IMP-001 scope only |
 
 ---
 
@@ -24,7 +26,7 @@ IMP-001 — Repository Foundation & Engineering Controls
 
 ## 3. Authorization Request
 
-Evaluate whether IMP-001 may cross the Implementation Authorization Gate after readiness evidence established:
+Authorize implementation for IMP-001 after readiness evidence established:
 
 ```text
 Implementation Eligible: Yes
@@ -50,6 +52,7 @@ Production Code Generation: Prohibited
 | GAR register | `docs/reconciliation/GLOBAL_ARCHITECTURE_RECONCILIATION_REGISTER.md` | Reviewed with IMP-001-specific closure records |
 | Dependency validation report | `governance/reports/implementation-dependency-validation-report.md` | Pass |
 | Governance validation report | `governance/reports/governance-validation-report.md` | Pass |
+| Human authorization | User message: `IAG Decision: AUTHORIZED; Target: IMP-001; Implementation Authorization: Granted` | Present |
 
 ---
 
@@ -120,15 +123,15 @@ Findings: 0
 | GAR-008 | Dispositioned for IMP-001; remains watch item for IMP-002 |
 | GAR-007 | Not direct IMP-001 blocker; Volume 11 source now verified |
 
-No unresolved direct GAR blocker prevents IMP-001 eligibility.
+No unresolved direct GAR blocker prevents IMP-001 authorization.
 
 ---
 
 ## 11. Scope Verification
 
-### Authorized Scope Requested
+### Authorized Scope
 
-The requested authorization scope is limited to IMP-001 planning-defined repository foundation and engineering controls:
+Authorization is limited to IMP-001 repository foundation and engineering controls:
 
 - repository foundation;
 - monorepo organization;
@@ -136,7 +139,7 @@ The requested authorization scope is limited to IMP-001 planning-defined reposit
 - repository governance;
 - centralized API contract structure;
 - service scaffolding standards;
-- CI/CD and validation workflow planning/implementation where explicitly authorized;
+- CI/CD and validation workflow implementation where explicitly within IMP-001;
 - AI coding governance alignment;
 - implementation execution workflow alignment;
 - decision-record mapping.
@@ -155,42 +158,47 @@ The scope does not include IMP-002 through IMP-016 responsibilities.
 
 | Risk | Severity | Disposition |
 |---|---|---|
-| Human approval not yet recorded | High | Blocks effective authorization |
-| Draft card not converted into explicit implementation authorization package | Medium | Authorization deferred until human decision authority acts |
-| Repository scaffolding could be mistaken for broader infrastructure implementation | Medium | Must remain limited to IMP-001 if later authorized |
-| Source text rather than original PDF/OCR for Phase 5 Document 2 | Medium | Accepted for readiness; may require archival upgrade later |
+| Scope creep into infrastructure/service implementation | High | Authorization excludes IMP-002 through IMP-016 and limits work to IMP-001. |
+| Repository scaffolding mistaken for full infrastructure implementation | Medium | Infrastructure deployment code remains excluded unless explicitly within IMP-001 governance scaffolding and not IMP-002. |
+| Source text rather than original PDF/OCR for Phase 5 Document 2 | Medium | Accepted for IMP-001 authorization; archival upgrade may be performed later. |
+| Future dependency unlock misunderstood | High | IMP-002 through IMP-016 remain unauthorized and require separate gates. |
 
 ---
 
 ## 13. Decision
 
 ```text
-IAG Recommendation: DEFERRED
-Formal Authorization: NOT GRANTED
+IAG Decision: APPROVED
+Formal Authorization: GRANTED
+Implementation Authorized: YES
+Production Code Generation: PERMITTED WITHIN APPROVED IMP-001 SCOPE ONLY
 ```
-
-Reason:
-
-The evidence supports IMP-001 eligibility and readiness for IAG consideration, but the repository's Implementation Authorization Gate requires a recorded human approval/final authorization decision before implementation may begin. This evaluation does not fabricate that approval.
 
 ---
 
 ## 14. Authorization Scope
 
-No implementation scope is authorized by this decision record.
-
-If a proper human authorization is later granted, the maximum allowable scope must remain limited to IMP-001 as defined in CARD-IMP-001 and the scope verification section above.
+```text
+Authorized Implementation Unit: IMP-001
+Authorized Scope: Repository Foundation & Engineering Controls only
+Authorization Start: 2026-08-07
+Authorization Expiry/Review: Until superseded by governance decision or scope-change request
+Production Code Generation: Permitted only within the explicitly authorized IMP-001 scope
+```
 
 ---
 
 ## 15. Conditions
 
-Before authorization can become effective:
+No additional conditions were specified by the authorizing user beyond the approved IMP-001 scope and existing governance controls.
 
-1. Human decision authority must explicitly approve IMP-001 implementation.
-2. The approval must be recorded in this directory or a superseding IAG decision record.
-3. Final validation must remain passing.
-4. Authorization must remain limited to IMP-001.
+Standing conditions remain:
+
+1. Authorization is limited to IMP-001.
+2. IMP-002 through IMP-016 are not authorized.
+3. Work must preserve source traceability and update governance records.
+4. Validation must continue to pass.
+5. Any scope change requires governance review and approval.
 
 ---
 
@@ -199,11 +207,11 @@ Before authorization can become effective:
 This decision does not authorize:
 
 - IMP-002 through IMP-016;
-- production service implementation;
-- infrastructure deployment beyond approved IMP-001 scope;
-- business-domain implementation;
-- API implementation outside repository contract scaffolding if later authorized;
-- database implementation;
+- business-domain service implementation;
+- foundation service implementation under IMP-003;
+- infrastructure foundation implementation under IMP-002;
+- API Gateway/Event Platform implementation under IMP-004;
+- database implementation outside approved IMP-001 repository/governance artifacts;
 - frontend implementation;
 - AI agent implementation;
 - production deployment.
@@ -214,17 +222,15 @@ This decision does not authorize:
 
 | Approval Item | Status |
 |---|---|
-| Human authorization decision | Not recorded |
-| Effective implementation authorization | Not granted |
-
-No human approval/signature authorizing implementation has been recorded in this decision.
+| Human authorization decision | Recorded via user instruction |
+| Effective implementation authorization | Granted for IMP-001 only |
 
 ---
 
 ## 18. Production-Code-Generation Authorization Status
 
 ```text
-Production Code Generation: PROHIBITED
+Production Code Generation: PERMITTED ONLY WITHIN APPROVED IMP-001 SCOPE
 ```
 
 ---
@@ -245,7 +251,6 @@ Production Code Generation: PROHIBITED
 
 ## 20. Decision Rationale
 
-The IAG evaluation confirms that IMP-001 is eligible and technically ready for authorization consideration. However, the governance framework explicitly requires a human approval record before implementation authorization becomes effective.
+IMP-001 readiness evidence passed, architecture validation passed, dependency validation passed, governance validation passed, direct GAR blockers were closed or accepted for IMP-001, and explicit user authorization was provided.
 
-Therefore, the correct governance outcome is deferred authorization, not self-authorization.
-
+Therefore, IMP-001 is formally authorized for implementation within its approved scope only.

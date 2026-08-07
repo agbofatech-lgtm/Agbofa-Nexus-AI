@@ -30,3 +30,4 @@
 | CARD-IMP-001 draft card | Created | Draft only; planning review and readiness review still required |
 | IMP-001 readiness review revised | Ready for IAG | Implementation Eligible = Yes; Implementation Authorized = No; Code Generation Prohibited |
 | IMP-001 IAG evaluation | Deferred | Implementation Eligible = Yes; Formal Authorization = Not Granted; Production Code Generation Prohibited |
+| IMP-001 IAG authorization | Granted | Production code generation permitted within approved IMP-001 scope only |

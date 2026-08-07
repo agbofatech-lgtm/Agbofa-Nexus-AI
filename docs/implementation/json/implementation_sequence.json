@@ -7,11 +7,13 @@
       "name": "Repository Foundation & Engineering Controls",
       "blocking_gar": [],
       "dependencies": [],
-      "approval_status": "iag_pending",
+      "approval_status": "approved",
       "implementation_eligible": true,
       "evidence_status": "Phase 5 Document 2 provided; ready for readiness review, not IAG-approved",
-      "implementation_authorized": false,
-      "readiness_status": "ready_for_iag"
+      "implementation_authorized": true,
+      "readiness_status": "authorized",
+      "authorization_record": "docs/authorization/IAG-DECISION-IMP-001.md",
+      "production_code_generation": "permitted_within_imp_001_scope_only"
     },
     {
       "id": "IMP-002",

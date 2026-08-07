@@ -88,16 +88,15 @@ The IAG must fail if any of the following are true:
 
 ```text
 IMP-001 Implementation Eligible = Yes
-IMP-001 Implementation Authorized = No
+IMP-001 Implementation Authorized = Yes — IMP-001 Scope Only
 IMP-002 through IMP-016 Implementation Authorized = No
-Production Code Generation = Blocked
+Production Code Generation = Permitted only within approved IMP-001 scope
 ```
 
 Reason:
 
-- IMP-001 readiness validation passed, but formal human authorization has not been recorded.
-- IMP-002 through IMP-016 remain unauthorized.
-- Volume 11 source verification is resolved for governance/readiness but remains relevant to later foundation work.
-- Phase 5 Document 2 source has been provided and reviewed for IMP-001 readiness.
-- IAG-DECISION-IMP-001 records deferred authorization pending human decision authority.
+- IMP-001 readiness validation passed.
+- IMP-001 IAG decision has been recorded and approved.
+- Authorization is limited to repository foundation and engineering controls.
+- IMP-002 through IMP-016 remain unauthorized and require separate gates.
 
