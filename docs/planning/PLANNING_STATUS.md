@@ -35,3 +35,4 @@
 | IMP-001 closure | Closed | Implemented and validated within authorized scope; IMP-002 readiness may begin |
 | CARD-IMP-002 draft card | Created | Draft only; planning review and readiness review still required |
 | IMP-002 fast-track readiness matrix | Passed | Baseline evidence reused; unit-specific GAR checks passed; implementation not authorized |
+| IMP-002 IAG evaluation | Recommendation Approve; Deferred | Human authorization not recorded; implementation remains prohibited |
