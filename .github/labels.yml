@@ -1,0 +1,13 @@
+labels:
+  - name: governance
+    color: '1f77b4'
+    description: Governance, readiness, authorization, or compliance work
+  - name: ai-generated
+    color: '9467bd'
+    description: AI-assisted generated content requiring human review
+  - name: domain-foundation
+    color: '2ca02c'
+    description: Foundation domain
+  - name: security
+    color: 'd62728'
+    description: Security-sensitive change

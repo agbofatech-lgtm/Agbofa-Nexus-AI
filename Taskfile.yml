@@ -1,0 +1,12 @@
+version: '3'
+
+tasks:
+  validate:
+    cmds:
+      - python3 scripts/generate_registries.py --check
+      - python3 scripts/documentation_pipeline.py
+      - python3 scripts/validate_implementation_dependencies.py
+      - python3 governance/validators/governance_validator.py
+  status:
+    cmds:
+      - git status --short

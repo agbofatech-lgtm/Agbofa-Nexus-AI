@@ -1,0 +1,17 @@
+name: Scheduled Governance Security Review
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+jobs:
+  governance-security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Governance validation
+        run: python3 governance/validators/governance_validator.py --validator security-validator

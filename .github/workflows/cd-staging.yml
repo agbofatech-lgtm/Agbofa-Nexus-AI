@@ -1,0 +1,16 @@
+name: CD — Staging Governance Gate
+
+on:
+  workflow_dispatch:
+
+jobs:
+  staging-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python3 governance/validators/governance_validator.py
+      - name: Deployment boundary
+        run: echo 'Deployment execution requires later implementation-unit authorization.'

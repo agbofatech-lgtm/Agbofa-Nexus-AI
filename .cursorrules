@@ -1,0 +1,8 @@
+Agbofa Nexus AI repository rules:
+
+1. Read source citations, implementation card, and IAG decision before modifying files.
+2. Do not modify files outside the authorized implementation unit scope.
+3. Do not invent services, APIs, databases, events, workflows, or agents.
+4. Keep documentation, registries, traceability, and implementation status synchronized.
+5. Run repository validation before reporting completion.
+6. Preserve source documents under source/ and derived artifacts under extracted/.

@@ -1,0 +1,26 @@
+# Agbofa Nexus AI domain ownership
+
+/api/protobuf/foundation/ @agbofa/foundation-team
+/api/protobuf/truth_engine/ @agbofa/truth-engine-team
+/api/protobuf/content_origination/ @agbofa/content-origination-team
+/api/protobuf/content_factory/ @agbofa/content-factory-team
+/api/protobuf/story_graph/ @agbofa/story-graph-team
+/api/protobuf/distribution/ @agbofa/distribution-team
+/api/protobuf/analytics/ @agbofa/analytics-team
+
+/services/foundation/ @agbofa/foundation-team
+/services/truth-engine/ @agbofa/truth-engine-team
+/services/content-origination/ @agbofa/content-origination-team
+/services/content-factory/ @agbofa/content-factory-team
+/services/story-graph/ @agbofa/story-graph-team
+/services/distribution/ @agbofa/distribution-team
+/services/analytics/ @agbofa/analytics-team
+/services/runtime/ @agbofa/platform-team
+
+/libs/go/ @agbofa/platform-team
+/libs/python/ @agbofa/ai-platform-team
+/libs/node/ @agbofa/frontend-platform-team
+/infrastructure/ @agbofa/platform-team
+/docs/ @agbofa/architecture-team
+/governance/ @agbofa/architecture-team
+/scripts/ @agbofa/platform-team
