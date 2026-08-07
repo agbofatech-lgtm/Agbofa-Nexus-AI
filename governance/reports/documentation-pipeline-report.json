@@ -1,12 +1,13 @@
 {
-  "source_files": 3,
+  "source_files": 4,
   "extracted_files": 36,
-  "checksums_recorded": 3,
+  "checksums_recorded": 4,
   "errors": [],
   "source_paths": [
     "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt",
     "source/original-text/phase5/PHASE5_DOCUMENT2_USER_PROVIDED.txt",
-    "source/original-text/phase5/PHASE5_DOCUMENT3_USER_PROVIDED.txt"
+    "source/original-text/phase5/PHASE5_DOCUMENT3_USER_PROVIDED.txt",
+    "source/original-text/volume11/VOLUME11_USER_PROVIDED.txt"
   ],
   "extracted_paths": [
     "extracted/text/batch-1/Volume-01.txt",

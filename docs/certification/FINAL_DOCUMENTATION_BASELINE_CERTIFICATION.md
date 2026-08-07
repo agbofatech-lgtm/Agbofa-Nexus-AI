@@ -38,7 +38,7 @@ Formal impact assessment: `docs/assessment/SOURCE_VERIFICATION_IMPACT_ASSESSMENT
 
 | Source Issue | Status | Impact | Required Resolution |
 |---|---|---|---|
-| Volume 11 source boundary | Open | May affect foundation-service implementation planning | Obtain source/OCR JSON, impact-assess, or accept uncertainty |
+| Volume 11 source boundary | Resolved for governance/readiness | User-provided clean Volume 11 source preserved and reviewed | Use preserved source for future IMP-003 readiness review |
 | Phase 5 Document 2 body | Resolved for IMP-001 readiness | User-provided source preserved and reviewed | No further action for IMP-001; OCR/PDF still preferred for archival quality |
 
 ---

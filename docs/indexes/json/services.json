@@ -3799,6 +3799,60 @@
       "deployment_unit": "Pending implementation planning",
       "tests_required": "As specified by testing and readiness volumes",
       "implementation_status": "Not started"
+    },
+    {
+      "id": "SVC-184",
+      "name": "Tenant & Identity Service (TIS)",
+      "owner": "Foundation",
+      "bounded_context": "Foundation Platform",
+      "status": "Volume 11 Source Verified — Pending IAG",
+      "primary_volume": "Volume 11",
+      "source_reference": "source/original-text/volume11/VOLUME11_USER_PROVIDED.txt:11.1",
+      "related_adrs": [],
+      "dependencies": [],
+      "exposes_apis": [
+        "API-040"
+      ],
+      "consumes_events": [
+        "EVT-050"
+      ],
+      "produces_events": [
+        "EVT-047",
+        "EVT-048",
+        "EVT-049"
+      ],
+      "database_owner": "DB-033",
+      "runtime": "Golang",
+      "language": "Go",
+      "deployment_unit": "Pending implementation planning",
+      "tests_required": "Auth, RLS, tenant provisioning, token, event and security tests required",
+      "implementation_status": "Not started"
+    },
+    {
+      "id": "SVC-185",
+      "name": "Global Configuration Service (GCS)",
+      "owner": "Foundation",
+      "bounded_context": "Foundation Platform",
+      "status": "Volume 11 Source Verified — Pending IAG",
+      "primary_volume": "Volume 11",
+      "source_reference": "source/original-text/volume11/VOLUME11_USER_PROVIDED.txt:11.2",
+      "related_adrs": [],
+      "dependencies": [
+        "SVC-184"
+      ],
+      "exposes_apis": [
+        "API-041"
+      ],
+      "consumes_events": [],
+      "produces_events": [
+        "EVT-051"
+      ],
+      "database_owner": "DB-034, DB-035",
+      "runtime": "Golang",
+      "language": "Go",
+      "deployment_unit": "Pending implementation planning",
+      "tests_required": "Configuration, watch stream, audit, Redis, event and security tests required",
+      "implementation_status": "Not started"
     }
   ]
 }

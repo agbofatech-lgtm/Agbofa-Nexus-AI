@@ -1,0 +1,11 @@
+{
+  "artifact_type": "user_provided_volume11_text",
+  "source_path": "source/original-text/volume11/VOLUME11_USER_PROVIDED.txt",
+  "sha256": "7b22546101aec5ec28f6e4c0a35998da1a2357151ce42206b6bbf6e03eed8888",
+  "bytes": 7920,
+  "date": "2026-08-07",
+  "document": "Volume 11",
+  "title": "Engineering Specification \u2013 Foundation Platform Services",
+  "status": "Preserved as source evidence; resolves Volume 11 boundary verification for governance purposes",
+  "notes": "User-provided source supplies clean Volume 11 foundation service specification."
+}

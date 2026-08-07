@@ -1,0 +1,201 @@
+Volume 11: Engineering Specification – Foundation Platform Services
+
+Version: 1.0.0 Status: Implementation-Ready Scope: Foundation (Platform) Bounded Context – IAM, Tenant Management, Configuration Services Parent Baseline: Architecture Baseline & Assumptions v1.0
+
+11.0 Introduction & Spec Structure
+
+This volume provides the complete, unambiguous specification for the Platform Foundation services. It is the bridge from architecture to code. Each specification is self-contained for an AI coding agent or a human squad to implement independently. The structure follows a strict pattern:
+
+Service Overview: Purpose and DDD role.
+API Contract: gRPC/REST/Event definitions (protobuf/OpenAPI).
+Data Schema: Logical and physical data model for the service’s store.
+Business Logic & Rules: Deterministic algorithms, validation rules, state machines.
+Event Contracts: Events produced/consumed on Kafka.
+Observability, Security & SLOs: Non-functional specifics.
+
+11.1 Service: Tenant & Identity Service (TIS)
+
+Service ID: SVC-FND-TIS Runtime: Golang Purpose: Central tenant registry, user identity lifecycle, authentication, and access token minting. This is the root trust domain entry point for all human and non-human actors.
+
+11.1.1 API Contract (gRPC with REST Transcoding)
+
+// api/foundation/tenant_identity/v1/service.proto
+
+syntax = "proto3";
+
+package foundation.tenant_identity.v1;
+
+option go_package = "github.com/agbofa/nexus-api/foundation/tenant_identity/v1";
+
+service TenantIdentityService {
+  rpc ProvisionTenant(ProvisionTenantRequest) returns (ProvisionTenantResponse);
+  rpc GetTenant(GetTenantRequest) returns (Tenant);
+  rpc UpdateTenantConfig(UpdateTenantConfigRequest) returns (Tenant);
+  rpc CreateUser(CreateUserRequest) returns (User);
+  rpc AuthenticateUser(AuthenticateUserRequest) returns (AuthenticationTokens);
+  rpc RefreshToken(RefreshTokenRequest) returns (AuthenticationTokens);
+  rpc ValidateToken(ValidateTokenRequest) returns (TokenClaims);
+}
+
+message Tenant {
+  string id = 1;
+  string name = 2;
+  TenantStatus status = 3;
+  TenantConfig config = 4;
+  string created_at = 5;
+}
+
+enum TenantStatus { ACTIVE = 0; SUSPENDED = 1; DELETED = 2; }
+
+message TenantConfig {
+  string default_region = 1;
+  int32 max_users = 2;
+  repeated string allowed_auth_providers = 3;
+  SSOConfig sso = 4;
+}
+
+message User {
+  string id = 1;
+  string tenant_id = 2;
+  string principal_name = 3;
+  UserStatus status = 4;
+  repeated string roles = 5;
+  string created_at = 6;
+}
+
+enum UserStatus { ACTIVE = 0; DISABLED = 1; PASSWORD_RESET_REQUIRED = 2; }
+
+message AuthenticateUserRequest {
+  string tenant_name = 1;
+  string principal_name = 2;
+  string credential = 3;
+}
+
+message AuthenticationTokens {
+  string access_token = 1;
+  string refresh_token = 2;
+  int32 expires_in = 3;
+}
+
+11.1.2 Data Schema (PostgreSQL – foundation_db)
+
+Strictly isolated via Row-Level Security (RLS) on tenant_id.
+
+-- Extension required: "uuid-ossp" for uuid_v7 generation
+
+CREATE TABLE tenants (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    name VARCHAR(100) UNIQUE NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE','SUSPENDED','DELETED')),
+    config JSONB NOT NULL DEFAULT '{}',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id),
+    principal_name VARCHAR(255) NOT NULL,
+    credential_hash VARCHAR(255),
+    status VARCHAR(30) NOT NULL DEFAULT 'PASSWORD_RESET_REQUIRED',
+    roles JSONB NOT NULL DEFAULT '["EDITOR"]',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    last_login_at TIMESTAMPTZ,
+    UNIQUE(tenant_id, principal_name)
+);
+
+CREATE TABLE refresh_tokens (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    user_id UUID NOT NULL REFERENCES users(id),
+    token_hash VARCHAR(255) UNIQUE NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    revoked BOOLEAN NOT NULL DEFAULT false
+);
+
+ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY tenant_isolation_policy ON users
+    FOR ALL
+    USING (tenant_id = current_setting('app.current_tenant')::UUID);
+
+11.1.3 Business Logic & Rules
+
+Tenant Provisioning Flow:
+
+1. Validate TenantConfig against a strict JSON Schema. max_users must be > 0. allowed_auth_providers must contain at least "email".
+2. Idempotently check for existing tenant with the same name. If exists and status is ACTIVE, return conflict. If SUSPENDED, return error "Tenant suspended. Contact admin.".
+3. Insert tenant record. Publish TenantProvisioned event.
+4. Automatically create a bootstrap user with TENANT_ADMIN role. The initial credential is a one-time password, set as PASSWORD_RESET_REQUIRED.
+
+Authentication & Token Minting:
+
+tenant_name in request maps to tenant_id.
+Fetch user by principal_name and tenant_id. Status must be ACTIVE.
+Compare provided credential against credential_hash using bcrypt constant-time comparison.
+
+On success, generate JWT Access Token:
+Header: { "alg": "RS256", "kid": "<key-id>" }
+Claims: sub, tenant_id, roles, iss, aud, exp, iat, token_id/jti.
+Sign with the service's RSA private key rotated via Vault.
+Generate Refresh Token: 256-bit cryptographically secure random string. Store SHA-256 hash in refresh_tokens table with 7-day expiry. Return opaque token to user.
+Publish UserLoggedIn event with tenant_id, user_id, and timestamp.
+
+11.1.4 Event Contracts (Kafka)
+
+Produces:
+
+foundation.tenant.provisioned (Key: tenant_id)
+foundation.user.created (Key: user_id)
+foundation.user.authenticated (Key: user_id)
+
+Consumes:
+
+billing.subscription.updated
+
+Logic: If status == "PAYMENT_FAILED", set Tenant.status = SUSPENDED. Publish foundation.tenant.suspended.
+
+11.1.5 Security, Observability & SLOs
+
+Security: JWT signing key from HashiCorp Vault, rotated every 30 days. All endpoints require mTLS for service-to-service callers. RLS in DB is a hard boundary.
+Logging: Every auth attempt success/failure must be logged at INFO/WARN level. Do not log raw credentials.
+Metrics: auth_attempts_total{status="success|failure"}, token_validation_duration_seconds, active_tenants.
+SLO: 99.99% availability. p99 latency for AuthenticateUser < 250ms.
+
+11.2 Service: Global Configuration Service (GCS)
+
+Service ID: SVC-FND-GCS Runtime: Golang Purpose: Single source of truth for all feature flags, runtime configuration, AI model hyperparameters, and dynamic thresholds across all bounded contexts.
+
+11.2.1 API Contract (gRPC)
+
+service ConfigurationService {
+  rpc GetConfiguration(GetConfigurationRequest) returns (ConfigurationBundle);
+  rpc SetConfiguration(SetConfigurationRequest) returns (ConfigurationBundle);
+  rpc WatchConfiguration(WatchRequest) returns (stream ConfigurationEvent);
+}
+
+message ConfigurationBundle {
+  string namespace = 1;
+  map<string, string> key_values = 2;
+  int64 version = 3;
+}
+
+11.2.2 Data Model & Storage
+
+Primary Store: Redis (Keyspace: config:<namespace>). Hash data type where field=key, value=value.
+Audit & History: A companion PostgreSQL table config_audit_log records every Set operation with namespace, key, old_value, new_value, modified_by, and version.
+
+11.2.3 Core Logic: Real-time Propagation
+
+SetConfiguration call publishes a foundation.configuration.updated event on Kafka foundation.config topic.
+The WatchConfiguration gRPC stream provides a channel for critical, low-latency services to subscribe to key changes, backed by Redis Pub/Sub.
+Bulk configuration on service start is pulled via GetConfiguration before Kafka/stream subscriptions are established.
+
+11.2.4 Event Contracts
+
+Produces: foundation.configuration.updated (Key: namespace)
+
+Consumes: None directly.
+
+End of Volume 11 Next Volume: Volume 12 – Content Origination Service (AI Ideation & Drafting Engine)

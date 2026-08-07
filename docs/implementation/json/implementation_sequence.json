@@ -30,15 +30,14 @@
     {
       "id": "IMP-003",
       "name": "Core Platform Foundation",
-      "blocking_gar": [
-        "GAR-007"
-      ],
+      "blocking_gar": [],
       "dependencies": [
         "IMP-001",
         "IMP-002"
       ],
       "approval_status": "not_approved",
-      "implementation_eligible": false
+      "implementation_eligible": false,
+      "evidence_status": "Volume 11 provided; still depends on upstream IMP-001/IMP-002 and IAG sequence"
     },
     {
       "id": "IMP-004",

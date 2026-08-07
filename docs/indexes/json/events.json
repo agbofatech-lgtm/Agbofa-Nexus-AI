@@ -960,6 +960,108 @@
       "security_classification": "Internal platform event unless otherwise classified",
       "tests_required": "Producer/consumer contract, idempotency, replay and failure tests required",
       "implementation_status": "Not started"
+    },
+    {
+      "id": "EVT-047",
+      "name": "TenantProvisioned",
+      "topic_stream": "foundation.tenant.provisioned",
+      "producer": "SVC-184",
+      "consumers": [
+        "SVC-185"
+      ],
+      "status": "Volume 11 Source Verified — Pending IAG",
+      "primary_volume": "Volume 11",
+      "source_reference": "source/original-text/volume11/VOLUME11_USER_PROVIDED.txt:11.1.4",
+      "related_adrs": [],
+      "payload_contract": "Defined or summarized in Volume 11 source",
+      "ordering_requirement": "Pending implementation card",
+      "idempotency_requirement": "Required where state changes occur",
+      "retention": "Pending implementation planning",
+      "security_classification": "Internal foundation event",
+      "tests_required": "Producer/consumer contract and idempotency tests required",
+      "implementation_status": "Not started"
+    },
+    {
+      "id": "EVT-048",
+      "name": "UserCreated",
+      "topic_stream": "foundation.user.created",
+      "producer": "SVC-184",
+      "consumers": [
+        "SVC-185"
+      ],
+      "status": "Volume 11 Source Verified — Pending IAG",
+      "primary_volume": "Volume 11",
+      "source_reference": "source/original-text/volume11/VOLUME11_USER_PROVIDED.txt:11.1.4",
+      "related_adrs": [],
+      "payload_contract": "Defined or summarized in Volume 11 source",
+      "ordering_requirement": "Pending implementation card",
+      "idempotency_requirement": "Required where state changes occur",
+      "retention": "Pending implementation planning",
+      "security_classification": "Internal foundation event",
+      "tests_required": "Producer/consumer contract and idempotency tests required",
+      "implementation_status": "Not started"
+    },
+    {
+      "id": "EVT-049",
+      "name": "UserAuthenticated",
+      "topic_stream": "foundation.user.authenticated",
+      "producer": "SVC-184",
+      "consumers": [
+        "SVC-185"
+      ],
+      "status": "Volume 11 Source Verified — Pending IAG",
+      "primary_volume": "Volume 11",
+      "source_reference": "source/original-text/volume11/VOLUME11_USER_PROVIDED.txt:11.1.4",
+      "related_adrs": [],
+      "payload_contract": "Defined or summarized in Volume 11 source",
+      "ordering_requirement": "Pending implementation card",
+      "idempotency_requirement": "Required where state changes occur",
+      "retention": "Pending implementation planning",
+      "security_classification": "Internal foundation event",
+      "tests_required": "Producer/consumer contract and idempotency tests required",
+      "implementation_status": "Not started"
+    },
+    {
+      "id": "EVT-050",
+      "name": "BillingSubscriptionUpdated",
+      "topic_stream": "billing.subscription.updated",
+      "producer": "SVC-006",
+      "consumers": [
+        "SVC-184"
+      ],
+      "status": "Volume 11 Source Verified — Pending IAG",
+      "primary_volume": "Volume 11",
+      "source_reference": "source/original-text/volume11/VOLUME11_USER_PROVIDED.txt:11.1.4",
+      "related_adrs": [],
+      "payload_contract": "Defined or summarized in Volume 11 source",
+      "ordering_requirement": "Pending implementation card",
+      "idempotency_requirement": "Required where state changes occur",
+      "retention": "Pending implementation planning",
+      "security_classification": "Internal foundation event",
+      "tests_required": "Producer/consumer contract and idempotency tests required",
+      "implementation_status": "Not started",
+      "notes": "Source event billing.subscription.updated is consumed by TIS; producer mapped to existing Monetise Service pending billing-service reconciliation."
+    },
+    {
+      "id": "EVT-051",
+      "name": "ConfigurationUpdated",
+      "topic_stream": "foundation.configuration.updated",
+      "producer": "SVC-185",
+      "consumers": [
+        "SVC-184"
+      ],
+      "status": "Volume 11 Source Verified — Pending IAG",
+      "primary_volume": "Volume 11",
+      "source_reference": "source/original-text/volume11/VOLUME11_USER_PROVIDED.txt:11.2.4",
+      "related_adrs": [],
+      "payload_contract": "Defined or summarized in Volume 11 source",
+      "ordering_requirement": "Pending implementation card",
+      "idempotency_requirement": "Required where state changes occur",
+      "retention": "Pending implementation planning",
+      "security_classification": "Internal foundation event",
+      "tests_required": "Producer/consumer contract and idempotency tests required",
+      "implementation_status": "Not started",
+      "notes": "Source says configuration updates are for subscribed services; registry lists TIS as initial explicit consumer pending subscriber expansion during implementation-card validation."
     }
   ]
 }

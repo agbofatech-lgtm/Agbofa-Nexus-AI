@@ -15,7 +15,7 @@
 | V8 | High | Derived text high; OCR JSON not supplied | High | Approved for indexing only | No | Batch 1 locked; implementation deferred |
 | V9 | High | Derived text high; OCR JSON not supplied | High | Approved for indexing only | No | Batch 1 locked; implementation deferred |
 | V10 | High | Derived text high; OCR JSON not supplied | High | Approved for indexing only | No | Batch 1 locked; implementation deferred |
-| V11 | Medium | Derived text medium; OCR JSON not supplied | Low | Source verification pending | No | High priority; obtain PDF/OCR JSON before dependent implementation |
+| V11 | Medium-High | User-provided clean text; OCR JSON not supplied | Medium-High | Source verification complete for governance/readiness | No | Preserved and reviewed; supports IMP-003 future readiness but no implementation authorization |
 | V12 | High | Derived text high; OCR JSON not supplied | High | Approved for indexing only | No | Batch 2 locked; architecture reconciliation deferred |
 | V13 | High | Derived text high; OCR JSON not supplied | Medium | Approved for indexing only | No | Batch 2 locked; architecture reconciliation deferred |
 | V14 | High | Derived text high; OCR JSON not supplied | High | Approved for indexing only | No | Batch 2 locked; architecture reconciliation deferred |

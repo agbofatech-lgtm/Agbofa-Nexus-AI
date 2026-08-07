@@ -752,6 +752,50 @@
       "related_events": [],
       "tests_required": "Contract/security/integration tests required",
       "implementation_status": "Not started"
+    },
+    {
+      "id": "API-040",
+      "name": "TenantIdentityService gRPC API",
+      "api_type": "gRPC with REST transcoding",
+      "owning_service": "SVC-184",
+      "status": "Volume 11 Source Verified — Pending IAG",
+      "primary_volume": "Volume 11",
+      "source_reference": "source/original-text/volume11/VOLUME11_USER_PROVIDED.txt:11.1.1",
+      "related_adrs": [],
+      "method_rpc": "ProvisionTenant, GetTenant, UpdateTenantConfig, CreateUser, AuthenticateUser, RefreshToken, ValidateToken",
+      "path_service": "foundation.tenant_identity.v1.TenantIdentityService",
+      "request_contract": "Defined in Volume 11 extract",
+      "response_contract": "Defined in Volume 11 extract",
+      "auth_security": "mTLS, JWT validation, Vault-backed signing, tenant isolation",
+      "dependencies": [],
+      "related_events": [
+        "EVT-047",
+        "EVT-048",
+        "EVT-049"
+      ],
+      "tests_required": "gRPC contract, auth, token, tenant, RLS and negative tests required",
+      "implementation_status": "Not started"
+    },
+    {
+      "id": "API-041",
+      "name": "ConfigurationService gRPC API",
+      "api_type": "gRPC streaming",
+      "owning_service": "SVC-185",
+      "status": "Volume 11 Source Verified — Pending IAG",
+      "primary_volume": "Volume 11",
+      "source_reference": "source/original-text/volume11/VOLUME11_USER_PROVIDED.txt:11.2.1",
+      "related_adrs": [],
+      "method_rpc": "GetConfiguration, SetConfiguration, WatchConfiguration",
+      "path_service": "ConfigurationService",
+      "request_contract": "Defined in Volume 11 extract",
+      "response_contract": "Defined in Volume 11 extract",
+      "auth_security": "mTLS and authorization required",
+      "dependencies": [],
+      "related_events": [
+        "EVT-051"
+      ],
+      "tests_required": "gRPC contract, stream, audit, Redis and event tests required",
+      "implementation_status": "Not started"
     }
   ]
 }
