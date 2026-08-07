@@ -24,6 +24,6 @@
 | Batch 2 Lock | Documentation governance | User approval with condition | Batch 2 Documentation Review | Locked for indexing only | Governance validation | Yes | e563bbb | Pass | Complete |
 | Documentation Confidence Register | Documentation governance | User instruction | Batch 2 Approval | Initialized | Governance validation | Yes | e563bbb | Pass | Active |
 | Batch 3 Documentation Review | Documentation review | Volumes 21–30 from uploaded source artifact | Batch 2 Lock | Review complete; awaiting approval | Governance validation | Yes | e563bbb | Pass | Awaiting approval |
-| Batch 3 Lock | Documentation governance | User approval with condition | Batch 3 Documentation Review | Locked for indexing only | Governance validation | Yes | Pending current commit | Pass | Complete |
-| Implementation Readiness Register | Documentation governance | User instruction | Batch 3 Approval | Initialized | Governance validation | Yes | Pending current commit | Pass | Active |
-| Batch 4 Documentation Review | Documentation review | Volumes 31–37 + Phase 5 detected material | Batch 3 Lock | Review complete; awaiting approval | Governance validation | Yes | Pending current commit | Pass | Awaiting approval |
+| Batch 3 Lock | Documentation governance | User approval with condition | Batch 3 Documentation Review | Locked for indexing only | Governance validation | Yes | 75e1fc9 | Pass | Complete |
+| Implementation Readiness Register | Documentation governance | User instruction | Batch 3 Approval | Initialized | Governance validation | Yes | 75e1fc9 | Pass | Active |
+| Batch 4 Documentation Review | Documentation review | Volumes 31–37 + Phase 5 detected material | Batch 3 Lock | Review complete; awaiting approval | Governance validation | Yes | 75e1fc9 | Pass | Awaiting approval |
