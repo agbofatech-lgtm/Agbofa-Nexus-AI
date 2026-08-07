@@ -1,0 +1,11 @@
+{
+  "artifact_type": "user_provided_phase5_document3_text",
+  "source_path": "source/original-text/phase5/PHASE5_DOCUMENT3_USER_PROVIDED.txt",
+  "sha256": "37722808f31f2991c3e8ed42704fd9c5a188ab35e7f5710104606270704dbda7",
+  "bytes": 1255,
+  "date": "2026-08-07",
+  "document": "Phase 5 Document 3",
+  "document_reference": "AGBA-NEXUS-PHASE5-DOC3-1.0",
+  "status": "Preserved as additional source evidence; does not resolve Phase 5 Document 2 blocker",
+  "notes": "User-provided content is Document 3 and explicitly references Document 2 as a separate required document."
+}

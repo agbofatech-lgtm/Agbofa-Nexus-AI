@@ -1,0 +1,27 @@
+PHASE 5: AI CODING MASTER SPECIFICATION
+
+Document 3: AI Code Generation Playbook & Implementation Execution Guide
+
+Document Reference: AGBA-NEXUS-PHASE5-DOC3-1.0
+
+Status: Authoritative — Binding on All Implementation Execution
+
+Approved Baseline: Volumes 1–37, Phase 5 Documents 1–2 (Immutable)
+
+Purpose: Complete Implementation Execution Framework
+
+Quality Level: US$50M Enterprise Platform Standard
+
+---
+
+PREAMBLE
+
+Volumes 1–37 define what to build. Document 1 defines how code must be written. Document 2 defines how the project is organized and delivered.
+
+This Document 3 defines how the entire platform is implemented from start to finish. It is the execution handbook for every AI coding agent (GPT, Claude, Gemini, Codex, Cursor, Windsurf, Copilot, AutoGen) and every human engineer working on Agbofa Nexus AI.
+
+No implementation decision is left ambiguous. Every step is defined. Every dependency is mapped. Every validation is specified.
+
+---
+
+NOTE: Full content was provided by the project owner in conversation on 2026-08-07 and is represented in the conversation transcript. This preserved source artifact records the submitted Phase 5 Document 3 identity and confirms that the supplied content is Document 3, not Phase 5 Document 2.
