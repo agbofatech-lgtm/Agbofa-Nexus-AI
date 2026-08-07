@@ -22,3 +22,4 @@
 | CARD-IMP-015 planning review | Accepted for Planning | Card remains Draft; no implementation authorization |
 | Implementation planning review summary | Complete | CARD-IMP-007 through CARD-IMP-015 reviewed and accepted for planning only |
 | Implementation Readiness Governance Framework | Active | Governs movement from Draft/Planning to implementation-ready without authorizing code generation |
+| Implementation Dependency Audit | Complete | No implementation unit qualifies for independent authorization under current sequence and blockers |
