@@ -24,5 +24,8 @@ jobs:
       - name: Validate documentation pipeline
         run: python3 scripts/documentation_pipeline.py
 
+      - name: Validate implementation dependencies
+        run: python3 scripts/validate_implementation_dependencies.py
+
       - name: Run governance validators
         run: python3 governance/validators/governance_validator.py

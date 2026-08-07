@@ -220,6 +220,12 @@ def validate_markdown_links(ctx: ValidationContext) -> None:
                 ctx.add("documentation-validator", "ERROR", f"Broken local link: {target}", path)
 
 
+def validate_dependency_controls(ctx: ValidationContext) -> None:
+    result = subprocess.run([sys.executable, str(ROOT / "scripts" / "validate_implementation_dependencies.py")], cwd=ROOT, text=True, capture_output=True)
+    if result.returncode != 0:
+        ctx.add("dependency-validator", "ERROR", result.stdout.strip() or result.stderr.strip(), "docs/implementation")
+
+
 def validate_security_controls(ctx: ValidationContext) -> None:
     sec_path = ROOT / "docs" / "indexes" / "SECURITY_INDEX.md"
     if not sec_path.exists():
@@ -243,6 +249,7 @@ def run_validators(selected: list[str]) -> ValidationContext:
         "traceability-validator": validate_implementation_cards,
         "documentation-validator": lambda c: (validate_required_files(c), validate_markdown_sync(c), validate_markdown_links(c)),
         "security-validator": validate_security_controls,
+        "dependency-validator": validate_dependency_controls,
     }
     targets = selected or list(validators)
     for name in targets:

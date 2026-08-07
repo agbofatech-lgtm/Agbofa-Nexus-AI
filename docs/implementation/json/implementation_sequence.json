@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "status": "draft_not_implementation_authorization",
+  "items": [
+    {"id":"IMP-001","name":"Repository Foundation & Engineering Controls","blocking_gar":["GAR-006","GAR-013","GAR-014","GAR-016"],"dependencies":[],"approval_status":"not_approved","implementation_eligible":false},
+    {"id":"IMP-002","name":"Infrastructure Foundation","blocking_gar":["GAR-001","GAR-008","GAR-009","GAR-015","GAR-016"],"dependencies":["IMP-001"],"approval_status":"not_approved","implementation_eligible":false},
+    {"id":"IMP-003","name":"Core Platform Foundation","blocking_gar":["GAR-007"],"dependencies":["IMP-001","IMP-002"],"approval_status":"not_approved","implementation_eligible":false},
+    {"id":"IMP-004","name":"API Gateway & Event Platform","blocking_gar":["GAR-001","GAR-008","GAR-009","GAR-016"],"dependencies":["IMP-001","IMP-002","IMP-003"],"approval_status":"not_approved","implementation_eligible":false},
+    {"id":"IMP-005","name":"Identity, Tenant & Authorization","blocking_gar":["GAR-007"],"dependencies":["IMP-001","IMP-002","IMP-003","IMP-004"],"approval_status":"not_approved","implementation_eligible":false},
+    {"id":"IMP-006","name":"AI Gateway, Prompt, Model & Agent Runtime Foundation","blocking_gar":["GAR-001","GAR-006","GAR-011","GAR-013","GAR-014","GAR-016"],"dependencies":["IMP-001","IMP-002","IMP-003","IMP-004","IMP-005"],"approval_status":"not_approved","implementation_eligible":false},
+    {"id":"IMP-007","name":"Content Origination","blocking_gar":["GAR-016"],"dependencies":["IMP-001","IMP-002","IMP-003","IMP-004","IMP-005","IMP-006"],"approval_status":"not_approved","implementation_eligible":false},
+    {"id":"IMP-008","name":"Truth Engine","blocking_gar":["GAR-003","GAR-011","GAR-012","GAR-016"],"dependencies":["IMP-001","IMP-002","IMP-003","IMP-004","IMP-005","IMP-006","IMP-007"],"approval_status":"not_approved","implementation_eligible":false},
+    {"id":"IMP-009","name":"Story Graph & Knowledge Intelligence","blocking_gar":["GAR-003","GAR-011","GAR-016"],"dependencies":["IMP-001","IMP-002","IMP-003","IMP-004","IMP-005","IMP-006","IMP-007","IMP-008"],"approval_status":"not_approved","implementation_eligible":false},
+    {"id":"IMP-010","name":"Content Factory","blocking_gar":["GAR-004","GAR-011","GAR-016"],"dependencies":["IMP-001","IMP-002","IMP-003","IMP-004","IMP-005","IMP-006","IMP-007","IMP-008","IMP-009"],"approval_status":"not_approved","implementation_eligible":false},
+    {"id":"IMP-011","name":"Compliance Gatekeeper","blocking_gar":["GAR-011","GAR-016"],"dependencies":["IMP-001","IMP-002","IMP-003","IMP-004","IMP-005","IMP-006","IMP-007","IMP-008","IMP-009","IMP-010"],"approval_status":"not_approved","implementation_eligible":false},
+    {"id":"IMP-012","name":"Distribution Engine","blocking_gar":["GAR-005","GAR-010","GAR-011","GAR-016"],"dependencies":["IMP-001","IMP-002","IMP-003","IMP-004","IMP-005","IMP-006","IMP-007","IMP-008","IMP-009","IMP-010","IMP-011"],"approval_status":"not_approved","implementation_eligible":false},
+    {"id":"IMP-013","name":"Analytics, Audience Intelligence & Continuous Learning","blocking_gar":["GAR-010","GAR-011","GAR-016"],"dependencies":["IMP-001","IMP-002","IMP-003","IMP-004","IMP-005","IMP-006","IMP-007","IMP-008","IMP-009","IMP-010","IMP-011","IMP-012"],"approval_status":"not_approved","implementation_eligible":false},
+    {"id":"IMP-014","name":"Frontend Foundation","blocking_gar":["GAR-016"],"dependencies":["IMP-001","IMP-002","IMP-003","IMP-004","IMP-005","IMP-006","IMP-007","IMP-008","IMP-009","IMP-010","IMP-011","IMP-012","IMP-013"],"approval_status":"not_approved","implementation_eligible":false},
+    {"id":"IMP-015","name":"Enterprise Frontend Centers","blocking_gar":["GAR-016"],"dependencies":["IMP-014"],"approval_status":"not_approved","implementation_eligible":false},
+    {"id":"IMP-016","name":"Enterprise Operations, Release & Certification","blocking_gar":["GAR-014","GAR-015","GAR-016"],"dependencies":["IMP-001","IMP-002","IMP-003","IMP-004","IMP-005","IMP-006","IMP-007","IMP-008","IMP-009","IMP-010","IMP-011","IMP-012","IMP-013","IMP-014","IMP-015"],"approval_status":"not_approved","implementation_eligible":false}
+  ]
+}
