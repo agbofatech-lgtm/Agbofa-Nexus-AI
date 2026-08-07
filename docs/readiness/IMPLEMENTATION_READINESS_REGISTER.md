@@ -1,6 +1,7 @@
 # Implementation Readiness Register
 
 **Purpose:** Prevent implementation from beginning merely because a component appears in an index or registry.  
+**Baseline Status:** Conditional Baseline Certification approved for planning only; no implementation authorization.  
 **Rule:** `Implementation Eligible = Yes` only after all related volumes are reviewed, source verification issues are closed, M5.5 reconciliation is complete, dependencies are verified, required ADRs are finalized, and documentation confidence is acceptable.
 
 | Component ID | Component | Type | Documentation Complete | Source Verified | Reconciliation Complete | Dependencies Complete | Implementation Eligible | Notes |

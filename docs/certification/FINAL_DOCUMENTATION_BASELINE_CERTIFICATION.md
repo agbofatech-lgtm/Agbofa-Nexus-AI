@@ -2,7 +2,7 @@
 
 **Project:** Agbofa Nexus AI — Autonomous AI Media Company Platform  
 **Company:** Agbofa Technologies  
-**Certification Status:** Pending — conditional certification path available after impact-assessment approval  
+**Certification Status:** Conditionally Certified — implementation authorization not granted  
 **Baseline Version:** Candidate Documentation Baseline v1.0-indexed  
 **Date:** 2026-08-07  
 
@@ -10,7 +10,7 @@
 
 This document is the final documentation baseline certification artifact for Agbofa Nexus AI. It records documentation completeness, reconciliation status, source-integrity status, implementation readiness gates, and outstanding risks.
 
-This document is currently **pending** and does not authorize implementation.
+This document is now **conditionally certified** for governance, planning, documentation, citation, indexing, and controlled implementation preparation. It does not authorize implementation.
 
 ---
 
@@ -80,7 +80,7 @@ Formal impact assessment: `docs/assessment/SOURCE_VERIFICATION_IMPACT_ASSESSMENT
 | Automation Validation | Complete | Governance validation passing |
 | Architecture Reconciliation | Pending | Provisional dispositions recorded; open GAR items remain |
 | Source Verification | Pending | Volume 11 and Phase 5 Document 2 unresolved |
-| Baseline Certification | Pending | This document is not yet approved |
+| Baseline Certification | Conditionally Certified | Approved for governance/planning/documentation only; implementation blocked |
 | Implementation Planning | Blocked | Requires approved baseline certification |
 | Implementation Cards | Blocked | Requires implementation planning approval |
 | Code Generation | Blocked | Requires approved implementation card, architecture gate, dependency validation |
@@ -113,7 +113,7 @@ Formal impact assessment: `docs/assessment/SOURCE_VERIFICATION_IMPACT_ASSESSMENT
 
 The Agbofa Nexus AI documentation baseline has been indexed, reviewed in four batches, and provisionally reconciled for non-source-blocked GAR items.
 
-However, this certification remains **pending** because Volume 11 and Phase 5 Document 2 source-verification issues remain open, and final baseline approval has not yet been granted.
+This certification is **conditional** because Volume 11 and Phase 5 Document 2 source-verification issues remain open. The baseline is approved for governance, documentation, citation, indexing, and controlled planning only. Production implementation remains blocked.
 
 No production implementation is authorized by this document. A conditional documentation baseline certification may be considered only with the limitations documented in `docs/assessment/SOURCE_VERIFICATION_IMPACT_ASSESSMENT.md`.
 
@@ -132,3 +132,16 @@ Before production implementation can begin, the following must occur:
 7. Pass dependency validation.
 8. Record human approval for each implementation card.
 
+
+
+---
+
+## 10. Conditional Certification Approval
+
+Conditional baseline certification approval is recorded in:
+
+```text
+docs/certification/CONDITIONAL_BASELINE_CERTIFICATION_APPROVAL.md
+```
+
+This approval permits planning and documentation activities only. It does not authorize production code generation.
