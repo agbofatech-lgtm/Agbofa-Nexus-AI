@@ -49,3 +49,4 @@
 | Planning Review CARD-IMP-014 | Planning review | CARD-IMP-014 Frontend Foundation | Draft Implementation Cards | Accepted for Planning; card remains Draft | Dependency/governance validation | Yes | a22d34a | Pass | Draft — Not Approved |
 | Planning Review CARD-IMP-015 | Planning review | CARD-IMP-015 Enterprise Frontend Centers | Draft Implementation Cards | Accepted for Planning; card remains Draft | Dependency/governance validation | Yes | 8204c41 | Pass | Draft — Not Approved |
 | Implementation Planning Review Summary | Planning summary | CARD-IMP-007 through CARD-IMP-015 | Planning review records | Complete; planning cards remain Draft | Dependency/governance validation | Yes | 0860c27 | Pass | Complete — Planning Only |
+| Implementation Readiness Governance Framework | Readiness governance | User recommended deliverable | Planning Review Summary | Active | Dependency/governance validation | Yes | f63b3d0 | Pass | Active — No Authorization |
