@@ -125,7 +125,7 @@ The Implementation Authorization Gate must not pass unless the following evidenc
 
 | Implementation Unit | Current Readiness | Implementation Eligible | Implementation Authorized | Blocking Conditions |
 |---|---|---|---|---|
-| IMP-001 Repository Foundation & Engineering Controls | Blocked | No | No | Phase 5 Document 2, GAR-006, GAR-013, GAR-014 |
+| IMP-001 Repository Foundation & Engineering Controls | Ready for IAG | Yes | No | IAG decision not yet issued |
 | IMP-002 Infrastructure Foundation | Blocked | No | No | GAR-001, GAR-008, GAR-009, GAR-015, GAR-016 |
 | IMP-003 Core Platform Foundation | Blocked | No | No | Volume 11, GAR-007 |
 | IMP-004 API Gateway & Event Platform | Blocked | No | No | Upstream blockers, GAR-001, GAR-008, GAR-009, GAR-016 |

@@ -28,3 +28,4 @@
 | IMP-001 readiness review | Not Ready | CARD-IMP-001 and card-level validation evidence required before eligibility |
 | Volume 11 source verification | Complete for governance/readiness | GAR-007 closed for source-verification purposes; no implementation authorization |
 | CARD-IMP-001 draft card | Created | Draft only; planning review and readiness review still required |
+| IMP-001 readiness review revised | Ready for IAG | Implementation Eligible = Yes; Implementation Authorized = No; Code Generation Prohibited |

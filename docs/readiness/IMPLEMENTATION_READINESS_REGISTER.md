@@ -81,3 +81,7 @@
 | API-033 | Distribution Engine Code API | API | Partial | Mixed | No | Pending | No | Waiting for full batch review, source verification, M5.5 reconciliation and dependency verification. |
 | API-034 | Analytics Dashboard API | API | Partial | Mixed | No | Pending | No | Waiting for full batch review, source verification, M5.5 reconciliation and dependency verification. |
 | API-035 | Enterprise Workflow Runtime API | API | Partial | Mixed | No | Pending | No | Waiting for full batch review, source verification, M5.5 reconciliation and dependency verification. |
+
+## IMP-001 Readiness Update
+
+IMP-001 readiness: READY for IAG. Implementation Eligible = Yes. Implementation Authorized = No. Production Code Generation = Prohibited.

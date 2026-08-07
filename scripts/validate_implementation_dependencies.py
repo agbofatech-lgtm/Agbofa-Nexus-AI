@@ -64,8 +64,13 @@ def main() -> int:
             unresolved = blockers & open_gars
             if unresolved:
                 findings.append({"severity": "ERROR", "path": str(SEQ_PATH.relative_to(ROOT)), "message": f"{item_id} is eligible but references unresolved GAR items: {', '.join(sorted(unresolved))}"})
+        if item.get("implementation_authorized") is True:
+            blockers = set(item.get("blocking_gar", []))
+            unresolved = blockers & open_gars
+            if unresolved:
+                findings.append({"severity": "ERROR", "path": str(SEQ_PATH.relative_to(ROOT)), "message": f"{item_id} is authorized but references unresolved GAR items: {', '.join(sorted(unresolved))}"})
             if item.get("approval_status") != "approved":
-                findings.append({"severity": "ERROR", "path": str(SEQ_PATH.relative_to(ROOT)), "message": f"{item_id} is eligible but approval_status is not approved"})
+                findings.append({"severity": "ERROR", "path": str(SEQ_PATH.relative_to(ROOT)), "message": f"{item_id} is authorized but approval_status is not approved"})
 
     # Validate implementation cards if/when they exist.
     if CARD_DIR.exists():
