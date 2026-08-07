@@ -12,5 +12,376 @@
     "primary_volume",
     "source_reference"
   ],
-  "items": []
+  "items": [
+    {
+      "id": "EVT-001",
+      "name": "TrendDetected",
+      "topic_stream": "Event Bus",
+      "producer": "SVC-018",
+      "consumers": [
+        "SVC-019",
+        "SVC-014"
+      ],
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 3",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11738-11742",
+      "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
+      "ordering_requirement": "Pending architecture validation",
+      "idempotency_requirement": "Required for event-driven processing; details pending implementation card",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event",
+      "tests_required": "Producer/consumer contract and idempotency tests required",
+      "implementation_status": "Not started",
+      "related_adrs": []
+    },
+    {
+      "id": "EVT-002",
+      "name": "TopicScored",
+      "topic_stream": "Event Bus",
+      "producer": "SVC-018",
+      "consumers": [
+        "SVC-019",
+        "SVC-014"
+      ],
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 3",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11742-11744",
+      "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
+      "ordering_requirement": "Pending architecture validation",
+      "idempotency_requirement": "Required for event-driven processing; details pending implementation card",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event",
+      "tests_required": "Producer/consumer contract and idempotency tests required",
+      "implementation_status": "Not started",
+      "related_adrs": []
+    },
+    {
+      "id": "EVT-003",
+      "name": "ResearchCompleted",
+      "topic_stream": "Event Bus",
+      "producer": "SVC-018",
+      "consumers": [
+        "SVC-019",
+        "SVC-020"
+      ],
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 3",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11744-11748",
+      "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
+      "ordering_requirement": "Pending architecture validation",
+      "idempotency_requirement": "Required for event-driven processing; details pending implementation card",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event",
+      "tests_required": "Producer/consumer contract and idempotency tests required",
+      "implementation_status": "Not started",
+      "related_adrs": []
+    },
+    {
+      "id": "EVT-004",
+      "name": "ContentBriefCreated",
+      "topic_stream": "Event Bus",
+      "producer": "SVC-018",
+      "consumers": [
+        "SVC-019"
+      ],
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 3",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11748-11754",
+      "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
+      "ordering_requirement": "Pending architecture validation",
+      "idempotency_requirement": "Required for event-driven processing; details pending implementation card",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event",
+      "tests_required": "Producer/consumer contract and idempotency tests required",
+      "implementation_status": "Not started",
+      "related_adrs": []
+    },
+    {
+      "id": "EVT-005",
+      "name": "DraftGenerated",
+      "topic_stream": "Event Bus",
+      "producer": "SVC-019",
+      "consumers": [
+        "SVC-020"
+      ],
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 3",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11758-11763",
+      "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
+      "ordering_requirement": "Pending architecture validation",
+      "idempotency_requirement": "Required for event-driven processing; details pending implementation card",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event",
+      "tests_required": "Producer/consumer contract and idempotency tests required",
+      "implementation_status": "Not started",
+      "related_adrs": []
+    },
+    {
+      "id": "EVT-006",
+      "name": "ContentEdited",
+      "topic_stream": "Event Bus",
+      "producer": "SVC-019",
+      "consumers": [
+        "SVC-020"
+      ],
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 3",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11762-11768",
+      "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
+      "ordering_requirement": "Pending architecture validation",
+      "idempotency_requirement": "Required for event-driven processing; details pending implementation card",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event",
+      "tests_required": "Producer/consumer contract and idempotency tests required",
+      "implementation_status": "Not started",
+      "related_adrs": []
+    },
+    {
+      "id": "EVT-007",
+      "name": "FactCheckCompleted",
+      "topic_stream": "Event Bus",
+      "producer": "SVC-020",
+      "consumers": [
+        "SVC-022",
+        "SVC-014"
+      ],
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 3",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11770-11774",
+      "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
+      "ordering_requirement": "Pending architecture validation",
+      "idempotency_requirement": "Required for event-driven processing; details pending implementation card",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event",
+      "tests_required": "Producer/consumer contract and idempotency tests required",
+      "implementation_status": "Not started",
+      "related_adrs": []
+    },
+    {
+      "id": "EVT-008",
+      "name": "PlagiarismChecked",
+      "topic_stream": "Event Bus",
+      "producer": "SVC-020",
+      "consumers": [
+        "SVC-022",
+        "SVC-014"
+      ],
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 3",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11774-11776",
+      "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
+      "ordering_requirement": "Pending architecture validation",
+      "idempotency_requirement": "Required for event-driven processing; details pending implementation card",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event",
+      "tests_required": "Producer/consumer contract and idempotency tests required",
+      "implementation_status": "Not started",
+      "related_adrs": []
+    },
+    {
+      "id": "EVT-009",
+      "name": "QualityScored",
+      "topic_stream": "Event Bus",
+      "producer": "SVC-020",
+      "consumers": [
+        "SVC-022",
+        "SVC-014"
+      ],
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 3",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11776-11778",
+      "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
+      "ordering_requirement": "Pending architecture validation",
+      "idempotency_requirement": "Required for event-driven processing; details pending implementation card",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event",
+      "tests_required": "Producer/consumer contract and idempotency tests required",
+      "implementation_status": "Not started",
+      "related_adrs": []
+    },
+    {
+      "id": "EVT-010",
+      "name": "ContentApproved",
+      "topic_stream": "Event Bus",
+      "producer": "SVC-020",
+      "consumers": [
+        "SVC-023",
+        "SVC-014"
+      ],
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 3",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11778-11788",
+      "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
+      "ordering_requirement": "Pending architecture validation",
+      "idempotency_requirement": "Required for event-driven processing; details pending implementation card",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event",
+      "tests_required": "Producer/consumer contract and idempotency tests required",
+      "implementation_status": "Not started",
+      "related_adrs": []
+    },
+    {
+      "id": "EVT-011",
+      "name": "HumanReviewRequired",
+      "topic_stream": "Event Bus",
+      "producer": "SVC-020",
+      "consumers": [
+        "SVC-014"
+      ],
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 3",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11778-11788",
+      "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
+      "ordering_requirement": "Pending architecture validation",
+      "idempotency_requirement": "Required for event-driven processing; details pending implementation card",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event",
+      "tests_required": "Producer/consumer contract and idempotency tests required",
+      "implementation_status": "Not started",
+      "related_adrs": []
+    },
+    {
+      "id": "EVT-012",
+      "name": "HumanReviewCompleted",
+      "topic_stream": "Event Bus",
+      "producer": "SVC-014",
+      "consumers": [
+        "SVC-023"
+      ],
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 3",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11785-11788; 11310-11320",
+      "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
+      "ordering_requirement": "Pending architecture validation",
+      "idempotency_requirement": "Required for event-driven processing; details pending implementation card",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event",
+      "tests_required": "Producer/consumer contract and idempotency tests required",
+      "implementation_status": "Not started",
+      "related_adrs": []
+    },
+    {
+      "id": "EVT-013",
+      "name": "ContentPublished",
+      "topic_stream": "Event Bus",
+      "producer": "SVC-023",
+      "consumers": [
+        "SVC-009",
+        "SVC-022"
+      ],
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 3",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11790-11804",
+      "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
+      "ordering_requirement": "Pending architecture validation",
+      "idempotency_requirement": "Required for event-driven processing; details pending implementation card",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event",
+      "tests_required": "Producer/consumer contract and idempotency tests required",
+      "implementation_status": "Not started",
+      "related_adrs": []
+    },
+    {
+      "id": "EVT-014",
+      "name": "ContentPublishFailed",
+      "topic_stream": "Event Bus",
+      "producer": "SVC-023",
+      "consumers": [
+        "SVC-014"
+      ],
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 3",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11792-11796",
+      "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
+      "ordering_requirement": "Pending architecture validation",
+      "idempotency_requirement": "Required for event-driven processing; details pending implementation card",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event",
+      "tests_required": "Producer/consumer contract and idempotency tests required",
+      "implementation_status": "Not started",
+      "related_adrs": []
+    },
+    {
+      "id": "EVT-015",
+      "name": "ContentEngagement",
+      "topic_stream": "Platform Webhooks",
+      "producer": "SVC-024",
+      "consumers": [
+        "SVC-009"
+      ],
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 3",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11804-11808",
+      "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
+      "ordering_requirement": "Pending architecture validation",
+      "idempotency_requirement": "Required for event-driven processing; details pending implementation card",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event",
+      "tests_required": "Producer/consumer contract and idempotency tests required",
+      "implementation_status": "Not started",
+      "related_adrs": []
+    },
+    {
+      "id": "EVT-016",
+      "name": "PerformanceInsight",
+      "topic_stream": "Event Bus",
+      "producer": "SVC-009",
+      "consumers": [
+        "SVC-018",
+        "SVC-019",
+        "SVC-023"
+      ],
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 3",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11808-11814",
+      "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
+      "ordering_requirement": "Pending architecture validation",
+      "idempotency_requirement": "Required for event-driven processing; details pending implementation card",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event",
+      "tests_required": "Producer/consumer contract and idempotency tests required",
+      "implementation_status": "Not started",
+      "related_adrs": []
+    },
+    {
+      "id": "EVT-017",
+      "name": "ProvenanceEvent",
+      "topic_stream": "Event Bus",
+      "producer": "SVC-022",
+      "consumers": [
+        "SVC-022"
+      ],
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 3",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11314-11318; 11816-11822",
+      "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
+      "ordering_requirement": "Pending architecture validation",
+      "idempotency_requirement": "Required for event-driven processing; details pending implementation card",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event",
+      "tests_required": "Producer/consumer contract and idempotency tests required",
+      "implementation_status": "Not started",
+      "related_adrs": []
+    },
+    {
+      "id": "EVT-018",
+      "name": "ContentScheduled",
+      "topic_stream": "Event Bus",
+      "producer": "SVC-023",
+      "consumers": [
+        "SVC-014"
+      ],
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 3",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11320-11328",
+      "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
+      "ordering_requirement": "Pending architecture validation",
+      "idempotency_requirement": "Required for event-driven processing; details pending implementation card",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event",
+      "tests_required": "Producer/consumer contract and idempotency tests required",
+      "implementation_status": "Not started",
+      "related_adrs": []
+    }
+  ]
 }

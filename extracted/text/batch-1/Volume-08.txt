@@ -1,0 +1,3719 @@
+VOLUME 8: FRONTEND ENGINEERING, STATE MANAGEMENT & APPLICATION IMPLEMENTATION
+BLUEPRINT
+
+
+
+Document Status: Enterprise Architecture — Version 1.0
+
+Preceding Volumes: Volumes 1–7 (Approved)
+
+Architecture Context: Agbofa Nexus AI — Autonomous AI Media Company Platform
+
+Volume Purpose: Complete Frontend Engineering Implementation Architecture
+
+---
+
+
+
+PART I — FRONTEND ENGINEERING STRATEGY
+
+
+
+I.1 ENGINEERING PRINCIPLES
+
+
+
+The Agbofa Nexus AI frontend is not a website with AI features. It is an AI operating system for
+newsrooms, delivered through a browser. This distinction drives every engineering decision.
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│            FRONTEND ENGINEERING PRINCIPLES                             │
+
+│                                             │
+
+│ PRINCIPLE 1: AI-NATIVE RENDERING                               │
+
+│ ─────────────────────────────                                      │
+
+│ The frontend renders AI-generated content as a first-class data type.      │
+
+│ Streaming AI responses appear progressively. Confidence scores update          │
+
+│ in real-time. Agent activity streams as events. The rendering engine       │
+
+│ treats AI outputs differently from static content — with loading states    │
+
+│ optimised for variable-duration generation, progressive disclosure,        │
+
+│ and inline confidence visualisation.                       │
+
+│                                             │
+
+│ PRINCIPLE 2: REAL-TIME BY DEFAULT                              │
+
+│ ────────────────────────────                                       │
+
+│ The newsroom operates in real-time. The frontend reflects this through         │
+
+│ WebSocket connections for live data, Server-Sent Events for agent streams, │
+
+│ and optimistic updates for user actions. Stale data is a bug, not a             │
+
+│ feature. Every data display declares its freshness.                 │
+
+│                                             │
+
+│ PRINCIPLE 3: COMPOSABLE OVER MONOLITHIC                                     │
+
+│ ────────────────────────────────────────                                        │
+
+│ The application is composed of feature modules that can be developed,                       │
+
+│ tested, and deployed independently. Each module owns its routes,                        │
+
+│ components, state, and API interactions. Shared code is extracted                   │
+
+│ upward, not duplicated across modules.                          │
+
+│                                             │
+
+│ PRINCIPLE 4: SERVER-FIRST RENDERING                                 │
+
+│ ────────────────────────────────                                        │
+
+│ Next.js App Router with React Server Components is the default rendering │
+
+│ strategy. Client components are used only where interactivity requires                  │
+
+│ them. This maximises performance, SEO, and initial load experience                      │
+
+│ while maintaining rich interactivity where needed.                      │
+
+│                                             │
+
+│ PRINCIPLE 5: TYPE SAFETY THROUGHOUT                                     │
+
+│ ────────────────────────────────                                        │
+
+│ TypeScript strict mode across the entire codebase. API contracts are                │
+
+│ typed end-to-end using shared type packages. No `any` types in                      │
+
+│ production code. AI-generated content carries typed metadata.                       │
+
+│                                             │
+
+│ PRINCIPLE 6: OFFLINE-CAPABLE WHERE CRITICAL                                 │
+
+│ ───────────────────────────────────────────                                             │
+
+│ The newsroom cannot stop because the network did. Critical monitoring,                      │
+
+│ drafting, and approval workflows function offline. Actions queue and                        │
+
+│ sync when connectivity returns. The offline experience is designed,                     │
+
+│ not accidental.                                     │
+
+│                                              │
+
+│ PRINCIPLE 7: ACCESSIBILITY AS ARCHITECTURE                                  │
+
+│ ────────────────────────────────────────                                            │
+
+│ Accessibility is not tested in — it is architected in. Component                │
+
+│ contracts include ARIA requirements. The design system enforces                         │
+
+│ contrast ratios. Keyboard navigation is a first-class interaction               │
+
+│ model. Automated testing catches regressions before merge.                          │
+
+│                                              │
+
+│ PRINCIPLE 8: OBSERVABLE BY DESIGN                                   │
+
+│ ───────────────────────────────                                         │
+
+│ Every user action, every API call, every render, every error is             │
+
+│ observable. The frontend emits structured telemetry that feeds the                      │
+
+│ platform's operational dashboards. Performance regressions are detected                         │
+
+│ in CI, not discovered by users.                           │
+
+│                                              │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+I.2 ENTERPRISE CODING STANDARDS
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│            ENTERPRISE CODING STANDARDS                             │
+
+│                                              │
+
+│ NAMING CONVENTIONS:                                            │
+
+│ ──────────────────                                        │
+
+│ • Files: kebab-case (story-pipeline.tsx, use-story-state.ts)               │
+
+│ • Components: PascalCase (StoryPipeline, AgentMonitor)                             │
+
+│ • Functions: camelCase (fetchStory, calculateConfidence)                       │
+
+│ • Constants: UPPER_SNAKE_CASE (MAX_RETRY_ATTEMPTS)                                         │
+
+│ • Types/Interfaces: PascalCase, prefixed where disambiguating                      │
+
+│ (Story, IStoryService, TStoryState)                            │
+
+│ • Hooks: camelCase, prefixed with 'use' (useStory, useAgentStream)                     │
+
+│ • Stores: camelCase, suffixed with 'Store' (storyStore, agentStore)                │
+
+│                                              │
+
+│ FILE ORGANISATION:                                       │
+
+│ ─────────────────                                        │
+
+│ • One component per file (except tightly coupled sub-components)                       │
+
+│ • Co-located styles, tests, and types                          │
+
+│ • Barrel exports (index.ts) for public module API                      │
+
+│ • Internal utilities not exported from barrels                     │
+
+│                                              │
+
+│ TYPE SYSTEM:                                         │
+
+│ ───────────                                          │
+
+│ • TypeScript strict mode enabled                               │
+
+│ • Explicit return types on all exported functions                      │
+
+│ • Discriminated unions for state management                                │
+
+│ • Branded types for identifiers (StoryId, AgentId, WorkspaceId)                    │
+
+│ • Zod schemas for runtime validation of API boundaries                       │
+
+│                                           │
+
+│ CODE QUALITY:                                      │
+
+│ ────────────                                      │
+
+│ • ESLint with strict configuration                       │
+
+│ • Prettier for formatting (no debates)                       │
+
+│ • Husky pre-commit hooks (lint, format, type-check)                      │
+
+│ • Commitlint for conventional commits                            │
+
+│ • No console.log in production (use structured logger)                   │
+
+│ • Maximum function complexity enforced (ESLint complexity rule)                  │
+
+│                                           │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+I.3 FEATURE-BASED ARCHITECTURE
+
+
+
+The application is organised around feature modules, not technical layers. Each feature module
+is a self-contained unit that owns everything needed to deliver its functionality.
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│            FEATURE-BASED ARCHITECTURE                            │
+
+│                                           │
+
+│ MODULE STRUCTURE (per feature):                                  │
+
+│ ──────────────────────────────                                       │
+
+│                                               │
+
+│ modules/[feature]/                                         │
+
+│ ├── components/            # Feature-specific components                                       │
+
+│ │ ├── [Component].tsx                                              │
+
+│ │ ├── [Component].test.tsx                                             │
+
+│ │ └── [Component].stories.tsx                                          │
+
+│ ├── hooks/           # Feature-specific hooks                                      │
+
+│ │ ├── use[Feature].ts                                      │
+
+│ │ └── use[Feature].test.ts                                     │
+
+│ ├── stores/          # Feature-specific state (Zustand slices)                             │
+
+│ │ └── [feature]-store.ts                                   │
+
+│ ├── services/         # Feature-specific API calls                                 │
+
+│ │ └── [feature]-service.ts                                 │
+
+│ ├── types/           # Feature-specific types                                  │
+
+│ │ └── index.ts                                         │
+
+│ ├── utils/          # Feature-specific utilities                           │
+
+│ │ └── [util].ts                                    │
+
+│ ├── constants.ts       # Feature-specific constants                                    │
+
+│ └── index.ts        # Public API (barrel export)                               │
+
+│                                               │
+
+│ FEATURE MODULES (Primary):                                                 │
+
+│ ─────────────────────────                                                      │
+
+│                                               │
+
+│ modules/dashboard/          # AI Newsroom, Executive, Custom dashboards                                │
+
+│ modules/pipeline/       # Story pipeline, Kanban, story discovery                                  │
+
+│ modules/editorial/     # Story detail, article editor, verification   │
+
+│ modules/breaking-news/ # Breaking news centre, rapid publishing                       │
+
+│ modules/content-factory/ # Headline studio, image/video/audio studios                     │
+
+│ modules/publishing/      # Publishing centre, distribution, scheduling            │
+
+│ modules/analytics/      # Analytics dashboards, audience, competitor                  │
+
+│ modules/agents/        # Agent monitor, prompts, trust management                     │
+
+│ modules/governance/       # Corrections, retractions, audit logs              │
+
+│ modules/settings/      # Workspace, users, roles, billing, integrations │
+
+│ modules/auth/          # Authentication, MFA, session management                  │
+
+│ modules/notifications/ # Notification centre, alerts, preferences             │
+
+│ modules/search/        # Global search, command palette                   │
+
+│ modules/story-graph/     # Story Graph viewer and interaction                 │
+
+│                                             │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+I.4 TESTING PHILOSOPHY
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│             TESTING PHILOSOPHY                            │
+
+│                                             │
+
+│ TESTING PYRAMID (Adapted for AI-Native Application):                      │
+
+│ ────────────────────────────────────────────────────                                          │
+
+│                                             │
+
+│                ┌─────────┐                           │
+
+│                │ E2E │ Critical user journeys                    │
+
+│                │ 10% │ Playwright, user-facing flows                         │
+
+│                └────┬────┘                               │
+
+│                  │                            │
+
+│            ┌─────────┴─────────┐                                         │
+
+│            │ INTEGRATION        │ Feature workflows                              │
+
+│            │    40%         │ Component + store + API                    │
+
+│            └─────────┬─────────┘                                         │
+
+│                  │                            │
+
+│        ┌───────────────┴───────────────┐                                                 │
+
+│        │       UNIT TESTS         │ Pure logic, hooks,                   │
+
+│        │        50%            │ utilities, state machines │
+
+│        └───────────────────────────────┘                                             │
+
+│                                              │
+
+│ TEST CATEGORIES:                                         │
+
+│ ───────────────                                          │
+
+│                                              │
+
+│ UNIT TESTS (Vitest):                                     │
+
+│ • Every utility function                                 │
+
+│ • Every Zustand store slice                                  │
+
+│ • Every custom hook                                          │
+
+│ • State machine transitions                                      │
+
+│ • Confidence calculation logic                                       │
+
+│                                              │
+
+│ COMPONENT TESTS (Vitest + Testing Library):                                          │
+
+│ • Every shared component                                     │
+
+│ • Every feature component (critical)                             │
+
+│ • Accessibility assertions                            │
+
+│ • User interaction sequences                                 │
+
+│ • AI content rendering states (loading, streaming, complete, error)                  │
+
+│                                                │
+
+│ INTEGRATION TESTS (Vitest + MSW):                                     │
+
+│ • Feature workflows (story creation through publishing)                          │
+
+│ • API integration with mocked backend                                    │
+
+│ • State management across features                                    │
+
+│ • Offline/online transitions                          │
+
+│ • Real-time data handling                                │
+
+│                                                │
+
+│ END-TO-END TESTS (Playwright):                                   │
+
+│ • Critical user journeys (happy paths)                            │
+
+│ • Breaking news response workflow                                     │
+
+│ • Human review and approval workflow                                         │
+
+│ • Correction issuance workflow                                   │
+
+│ • Multi-platform publishing verification                             │
+
+│ • Accessibility audit (axe-core integration)                          │
+
+│                                                │
+
+│ PERFORMANCE TESTS (Lighthouse CI):                                        │
+
+│ • Core Web Vitals per route                               │
+
+│ • Bundle size per route                              │
+
+│ • Performance budget enforcement                                      │
+
+│                                                │
+
+│ VISUAL REGRESSION TESTS (Chromatic/Percy):                                      │
+
+│ • Component stories                                     │
+
+│ • Critical page layouts                             │
+
+│ • Theme variations (light/dark)                                 │
+
+│ • Responsive breakpoints                                    │
+
+│                                            │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+I.5 RELEASE STRATEGY
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│               RELEASE STRATEGY                          │
+
+│                                            │
+
+│ BRANCHING STRATEGY: Trunk-Based Development                                             │
+
+│ ─────────────────────────────────────────                                                   │
+
+│ • main: Always deployable, protected                                    │
+
+│ • Feature branches: Short-lived (< 2 days), merged via PR                           │
+
+│ • Release branches: Created from main for versioned releases                                │
+
+│ • Hotfix branches: From main, merged to main and release branch                                 │
+
+│                                            │
+
+│ CI/CD PIPELINE (GitHub Actions):                                    │
+
+│ ────────────────────────────────                                            │
+
+│                                            │
+
+│ Pull Request:                                      │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ Lint → Type Check → Unit Tests → Component Tests → Build Check          ││
+
+│ │ → Lighthouse Budget Check → Visual Regression → Preview Deploy          ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                              │
+
+│ Merge to Main:                                         │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ Full Test Suite → Integration Tests → E2E Tests (critical paths)   ││
+
+│ │ → Production Build → Staging Deploy → Smoke Tests                  ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                              │
+
+│ Production Release:                                        │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ Manual Approval → Blue-Green Deploy → Health Check → Traffic Shift      ││
+
+│ │ → Monitor (1 hour) → Full Traffic                            ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                              │
+
+│ FEATURE FLAGS:                                         │
+
+│ ─────────────                                          │
+
+│ • All new features behind flags (LaunchDarkly or custom)             │
+
+│ • Percentage rollouts for risk mitigation                       │
+
+│ • Kill switches for emergency disable                    │
+
+│ • A/B test support for UX experiments                        │
+
+│                                              │
+
+│ VERSIONING: Semantic Versioning (MAJOR.MINOR.PATCH)                      │
+
+│ ────────────────────────────────────────────────                             │
+
+│ • MAJOR: Breaking changes to user-facing behaviour                   │
+
+│ • MINOR: New features, non-breaking                          │
+
+│ • PATCH: Bug fixes, performance improvements                     │
+
+│                                              │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+I.6 FRONTEND ROADMAP
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│             FRONTEND IMPLEMENTATION ROADMAP                          │
+
+│                                              │
+
+│ MVP (Months 1–4):                                    │
+
+│ ────────────────                                     │
+
+│ • Next.js App Router foundation                          │
+
+│ • Design system components (60% of catalogue)                    │
+
+│ • Authentication and onboarding                          │
+
+│ • AI Newsroom Dashboard (real-time)                          │
+
+│ • Story Pipeline (list view, real-time updates)              │
+
+│ • Article Editor (streaming AI content)                                │
+
+│ • Breaking News Centre                                     │
+
+│ • Verification Centre                              │
+
+│ • Human Review Queue                                           │
+
+│ • Publishing Centre (multi-platform)                                   │
+
+│ • Analytics Dashboard (basic)                                  │
+
+│ • AI Agent Monitor                                     │
+
+│ • Settings (workspace, users, billing)                             │
+
+│ • System Health                                    │
+
+│ • PWA foundation (service worker, manifest)                                        │
+
+│ • Offline: Dashboard viewing, draft editing                                │
+
+│ • Accessibility: WCAG 2.2 AA compliance                                        │
+
+│ • Testing: 80% unit, 60% component, critical E2E                                   │
+
+│                                               │
+
+│ GROWTH (Months 5–12):                                              │
+
+│ ─────────────────────                                              │
+
+│ • Design system components (90% of catalogue)                                          │
+
+│ • Executive Dashboard                                      │
+
+│ • Story Graph Viewer (canvas-based)                                        │
+
+│ • Kanban pipeline view                                     │
+
+│ • Headline Studio                                  │
+
+│ • Image/Audio Studios                                      │
+
+│ • Content Templates                                    │
+
+│ • Calendar & Scheduler                                     │
+
+│ • Distribution Dashboard                                   │
+
+│ • Audience Intelligence                                    │
+
+│ • AI Cost Dashboard                                     │
+
+│ • Prompt Library                                    │
+
+│ • Agent Trust Management                                            │
+
+│ • Knowledge Base                                        │
+
+│ • Audit Logs                                    │
+
+│ • Command Palette (universal)                                       │
+
+│ • Multi-language support (i18n)                                     │
+
+│ • Offline: Full editorial workflows                             │
+
+│ • Testing: 85% unit, 75% component, 80% integration                             │
+
+│                                            │
+
+│ ENTERPRISE (Year 2+):                                       │
+
+│ ────────────────────                                            │
+
+│ • Design system: 100% coverage, multi-tenant theming                                │
+
+│ • Custom Dashboard Builder                                          │
+
+│ • Video Studio                                      │
+
+│ • Competitor Intelligence                                   │
+
+│ • Revenue Dashboard                                         │
+
+│ • Observability Dashboard                                       │
+
+│ • White-label configuration                                     │
+
+│ • Enterprise SSO (SAML/OIDC)                                        │
+
+│ • Advanced offline (full newsroom operation)                                │
+
+│ • Marketplace integration                                   │
+
+│ • Testing: 90% coverage across all categories                           │
+
+│ • Performance: All Core Web Vitals in green                             │
+
+│                                            │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+---
+
+
+
+PART II — NEXT.JS APPLICATION ARCHITECTURE
+
+
+
+II.1 APP ROUTER STRATEGY
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│            NEXT.JS APP ROUTER ARCHITECTURE                      │
+
+│                                           │
+
+│ ROUTING STRATEGY:                                    │
+
+│ ────────────────                                    │
+
+│                                           │
+
+│ The application uses Next.js 15 App Router exclusively. No Pages Router   │
+
+│ migration — greenfield App Router implementation.                   │
+
+│                                           │
+
+│ ROUTE ORGANISATION:                                         │
+
+│ ──────────────────                                      │
+
+│                                           │
+
+│ app/                                          │
+
+│ ├── (marketing)/          # Route Group: Marketing pages            │
+
+│ │ ├── layout.tsx           # Marketing layout (different from app)                 │
+
+│ │ ├── page.tsx             # Landing page                          │
+
+│ │ └── pricing/                                     │
+
+│ │       └── page.tsx                               │
+
+│ │                                            │
+
+│ ├── (auth)/             # Route Group: Authentication                  │
+
+│ │ ├── layout.tsx           # Auth layout (minimal, centred)                │
+
+│ │ ├── login/page.tsx                                       │
+
+│ │ ├── register/page.tsx                                        │
+
+│ │ ├── mfa/page.tsx                                         │
+
+│ │ └── reset-password/page.tsx                                      │
+
+│ │                                            │
+
+│ ├── (onboarding)/            # Route Group: Onboarding                         │
+
+│ │ ├── layout.tsx                                       │
+
+│ │ └── welcome/page.tsx                                         │
+
+│ │                                            │
+
+│ └── (app)/             # Route Group: Main Application                 │
+
+│     ├── layout.tsx         # App shell (sidebar + topbar + statusbar) │
+
+│     │                                        │
+
+│     ├── [workspaceSlug]/       # Workspace context                         │
+
+│     │ ├── layout.tsx       # Workspace provider + guards                   │
+
+│     │ │                                       │
+
+│     │ ├── dashboard/                                       │
+
+│     │ │ ├── page.tsx        # AI Newsroom Dashboard                        │
+
+│     │ │ └── executive/page.tsx                                 │
+
+│   │ │                                          │
+
+│   │ ├── pipeline/                                    │
+
+│   │ │ ├── page.tsx         # Story Pipeline (list)                   │
+
+│   │ │ ├── kanban/page.tsx                                    │
+
+│   │ │ └── breaking/page.tsx                                  │
+
+│   │ │                                          │
+
+│   │ ├── story/[storyId]/                                 │
+
+│   │ │ ├── page.tsx         # Story Detail                        │
+
+│   │ │ ├── edit/page.tsx # Article Editor                             │
+
+│   │ │ ├── graph/page.tsx # Story Graph Viewer                                │
+
+│   │ │ └── verify/page.tsx # Verification Centre                          │
+
+│   │ │                                          │
+
+│   │ ├── editorial/                                   │
+
+│   │ │ ├── review/page.tsx # Human Review Queue                                   │
+
+│   │ │ ├── headlines/page.tsx                                     │
+
+│   │ │ └── quality/page.tsx                               │
+
+│   │ │                                          │
+
+│   │ ├── factory/                                     │
+
+│   │ │ ├── images/page.tsx                                    │
+
+│   │ │ ├── video/page.tsx                                 │
+
+│   │ │ └── audio/page.tsx                                 │
+
+│   │ │                                          │
+
+│   │ ├── publish/                                     │
+
+│   │ │ ├── page.tsx         # Publishing Centre                       │
+
+│   │ │ ├── calendar/page.tsx                                  │
+
+│   │ │ └── distribution/page.tsx                                  │
+
+│   │ │                                        │
+
+│   │ ├── analytics/                                   │
+
+│   │ │ ├── page.tsx                                   │
+
+│   │ │ ├── audience/page.tsx                                      │
+
+│   │ │ ├── costs/page.tsx                                 │
+
+│   │ │ └── competitors/page.tsx                                   │
+
+│   │ │                                        │
+
+│   │ ├── agents/                                  │
+
+│   │ │ ├── page.tsx         # Agent Monitor                               │
+
+│   │ │ ├── prompts/page.tsx                                       │
+
+│   │ │ └── trust/page.tsx                             │
+
+│   │ │                                        │
+
+│   │ ├── governance/                                      │
+
+│   │ │ ├── corrections/page.tsx                                       │
+
+│   │ │ └── audit/page.tsx                                 │
+
+│   │ │                                        │
+
+│   │ └── settings/                                │
+
+│   │     ├── page.tsx                                 │
+
+│   │     ├── users/page.tsx                                   │
+
+│   │     ├── roles/page.tsx                               │
+
+│   │     ├── billing/page.tsx                             │
+
+│   │     ├── integrations/page.tsx                                    │
+
+│   │     └── health/page.tsx                              │
+
+│   │                                          │
+
+│     └── api/            # Route Handlers (backend boundary)             │
+
+│       ├── auth/[...nextauth]/                            │
+
+│       ├── webhooks/                                  │
+
+│       └── revalidate/                            │
+
+│                                              │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+II.2 RENDERING STRATEGY
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│                RENDERING STRATEGY                            │
+
+│                                              │
+
+│ COMPONENT TYPE DECISION TREE:                                       │
+
+│ ────────────────────────────                                       │
+
+│                                              │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ Does component need:                                   ││
+
+│ │ ┌────────────────────────────────────────────────────────────────────┐ │ │
+
+│ │ │ • useState / useEffect?                       │ ││
+
+│ │ │ • Browser-only APIs (localStorage, WebSocket, canvas)?                  │ ││
+
+│ │ │ • Event listeners (onClick, onChange)?                       │ ││
+
+│ │ │ • Custom hooks with state?                           │ ││
+
+│ ││                                             │ ││
+
+│ │ │ YES → Client Component ("use client")                       │ ││
+
+│ │ │ NO → Server Component (default)                             │ ││
+
+│ │ └────────────────────────────────────────────────────────────────────┘ │ │
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                                 │
+
+│ RENDERING PATTERNS:                                     │
+
+│ ──────────────────                                      │
+
+│                                                 │
+
+│ STATIC (Pre-rendered at build time):                            │
+
+│ • Marketing pages, documentation, legal                             │
+
+│ • Never changes without deployment                                  │
+
+│                                                 │
+
+│ DYNAMIC (Server-rendered per request):                              │
+
+│ • Dashboards with initial data                              │
+
+│ • Story pages (SSR with CDN caching where appropriate)                              │
+
+│ • Settings pages (personalised)                             │
+
+│                                                 │
+
+│ STREAMING (Progressive server rendering):                               │
+
+│ • AI-generated content (streamed as generated)                              │
+
+│ • Large dashboards (shell immediate, data streams in)                           │
+
+│ • Story Graph (complex visualisation loads progressively)                       │
+
+│                                                 │
+
+│ CLIENT-SIDE (SPA-like within shell):                            │
+
+│ • Article Editor (rich text, AI suggestions)                    │
+
+│ • Real-time dashboards (WebSocket updates)                         │
+
+│ • Story Graph interactions (canvas manipulation)                   │
+
+│                                            │
+
+│ PARTIAL PRERENDERING (PPR) — Enterprise:                           │
+
+│ • Static shell with dynamic holes for personalised content             │
+
+│ • Combines instant navigation with fresh data                  │
+
+│                                            │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+II.3 STREAMING AI CONTENT
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│            STREAMING AI CONTENT ARCHITECTURE                           │
+
+│                                            │
+
+│ AI-generated content is not fetched — it is streamed. The user sees        │
+
+│ content appearing progressively, just as they would watching a human type. │
+
+│                                            │
+
+│ IMPLEMENTATION: React Suspense + Server Components + ReadableStream            │
+
+│                                            │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ SERVER COMPONENT (Streaming)                               ││
+
+│ │ ─────────────────────────────                                ││
+
+│ │                                             ││
+
+│ │ async function StoryContent({ storyId }: { storyId: string }) {              ││
+
+│ │ // This server component streams AI content as it's generated                      ││
+
+│ │ const stream = await ai.generateStoryContent(storyId);                        ││
+
+│ │ return <StreamingContent stream={stream} />;                              ││
+
+│ │ }                                           ││
+
+│ │                                             ││
+
+│ │ // Wrapped in Suspense:                                       ││
+
+│ │ <Suspense fallback={<ContentSkeleton />}>                                ││
+
+│ │ <StoryContent storyId={storyId} />                                 ││
+
+│ │ </Suspense>                                          ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                               │
+
+│ STREAMING STATES:                                           │
+
+│ ────────────────                                            │
+
+│                                               │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ STATE         VISUAL                 DURATION                 ││
+
+│ │ ─────          ──────                   ────────              ││
+
+│ │ IDLE         Skeleton placeholder          —                   ││
+
+│ │ CONNECTING          Pulsing indicator           < 500ms                 ││
+
+│ │ STREAMING          Content appearing word-by-word Variable                        ││
+
+│ │ PARTIAL         Partial content visible     Ongoing                 ││
+
+│ │ COMPLETE          Full content rendered          —                  ││
+
+│ │ ERROR          Error message + retry         —                     ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                              │
+
+│ CONFIDENCE STREAMING:                                        │
+
+│ Confidence score updates alongside content. As verification completes,                   │
+
+│ the score transitions from "calculating" to a specific value, with       │
+
+│ smooth animation from previous score to new score.                       │
+
+│                                              │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+II.4 SEO ARCHITECTURE
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│               SEO ARCHITECTURE                           │
+
+│                                              │
+
+│ PUBLIC-FACING CONTENT (News articles, landing pages):                            │
+
+│ ────────────────────────────────────────────────────                                         │
+
+│ • Full SSR with comprehensive metadata                           │
+
+│ • Structured data (JSON-LD): Article, NewsArticle, BreadcrumbList                    │
+
+│ • Open Graph and Twitter Card metadata                               │
+
+│ • Dynamic sitemap generation (per workspace, per brand)                          │
+
+│ • Canonical URLs with proper hreflang for multi-language                     │
+
+│ • CDN caching with intelligent invalidation (on story update/correction) │
+
+│                                             │
+
+│ APPLICATION INTERIOR (Dashboards, editors, settings):                        │
+
+│ ──────────────────────────────────────────────────                                   │
+
+│ • No indexing (X-Robots-Tag: noindex, nofollow)                      │
+
+│ • Authenticated routes return 403 for unauthenticated crawlers                   │
+
+│ • Minimal metadata (title only for browser tab)                      │
+
+│                                             │
+
+│ METADATA ARCHITECTURE:                                       │
+
+│ ─────────────────────                                    │
+
+│ • generateMetadata() for dynamic routes                          │
+
+│ • Shared metadata defaults in root layout                        │
+
+│ • Per-page overrides for title, description, OG images                   │
+
+│ • Template-based titles: "%s | Agbofa Nexus AI"                      │
+
+│                                             │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+---
+
+
+
+PART III — FRONTEND FOLDER STRUCTURE
+
+
+
+III.1 COMPLETE ENTERPRISE FOLDER HIERARCHY
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│         COMPLETE ENTERPRISE FOLDER HIERARCHY                                      │
+
+│                                               │
+
+│ agbofa-nexus-ai-web/                                      │
+
+│ ├── .github/                                      │
+
+│ │ ├── workflows/         # CI/CD pipeline definitions                         │
+
+│ │ └── dependabot.yml                                          │
+
+│ │                                             │
+
+│ ├── app/             # Next.js App Router (routes + layouts)                  │
+
+│ │ ├── (marketing)/                                        │
+
+│ │ ├── (auth)/                                     │
+
+│ │ ├── (onboarding)/                                       │
+
+│ │ ├── (app)/                                      │
+
+│ │ │ ├── layout.tsx      # Application shell                           │
+
+│ │ │ ├── [workspaceSlug]/ # Workspace-scoped routes                                    │
+
+│ │ │ └── api/       # Route handlers                               │
+
+│ │ └── layout.tsx       # Root layout                              │
+
+│ │                                             │
+
+│ ├── components/           # Shared components (Design System)                             │
+
+│ │ ├── ui/          # Primitive UI components                              │
+
+│ │ │ ├── button/                                       │
+
+│ │ │ ├── input/                                     │
+
+│ │ │ ├── card/                                     │
+
+│ │ │ ├── modal/                                        │
+
+│ │ │ ├── toast/                                     │
+
+│ │ │ └── ... (50+ primitive components)                                │
+
+│ │ ├── layout/            # Layout components                              │
+
+│ │ │ ├── app-shell/                                        │
+
+│ │ │ ├── sidebar/                                      │
+
+│ │ │ ├── topbar/                                       │
+
+│ │ │ └── status-bar/                                   │
+
+│ │ ├── ai/              # AI-specific shared components                        │
+
+│ │ │ ├── confidence-indicator/                                         │
+
+│ │ │ ├── streaming-content/                                            │
+
+│ │ │ ├── agent-avatar/                                         │
+
+│ │ │ ├── ai-suggestion/                                        │
+
+│ │ │ └── explainability-panel/                                     │
+
+│ │ ├── dashboard/           # Shared dashboard widgets                             │
+
+│ │ │ ├── kpi-card/                                     │
+
+│ │ │ ├── chart-container/                                      │
+
+│ │ │ ├── status-grid/                                      │
+
+│ │ │ └── live-feed/                                    │
+
+│ │ ├── editor/           # Shared editor components                            │
+
+│ │ │ ├── rich-text-editor/                                     │
+
+│ │ │ ├── headline-input/                                       │
+
+│ │ │ └── media-uploader/                                       │
+
+│ │ └── accessibility/     # Accessibility components                           │
+
+│ │    ├── skip-link/                                   │
+
+│ │    ├── live-region/                                     │
+
+│ │    └── focus-trap/                                  │
+
+│ │                                            │
+
+│ ├── modules/            # Feature modules (see I.3 for structure)                  │
+
+│ │ ├── dashboard/                                           │
+
+│ │ ├── pipeline/                                        │
+
+│ │ ├── editorial/                                   │
+
+│ │ ├── breaking-news/                                           │
+
+│ │ ├── content-factory/                                         │
+
+│ │ ├── publishing/                                      │
+
+│ │ ├── analytics/                                       │
+
+│ │ ├── agents/                                      │
+
+│ │ ├── governance/                                          │
+
+│ │ ├── settings/                                    │
+
+│ │ ├── auth/                                       │
+
+│ │ ├── notifications/                                       │
+
+│ │ ├── search/                                      │
+
+│ │ └── story-graph/                                     │
+
+│ │                                            │
+
+│ ├── services/          # API service layer                         │
+
+│ │ ├── api-client.ts     # Base API client (fetch wrapper)                      │
+
+│ │ ├── auth-service.ts     # Authentication API calls                       │
+
+│ │ ├── story-service.ts # Story CRUD API calls                          │
+
+│ │ ├── agent-service.ts # Agent management API calls                                │
+
+│ │ ├── publish-service.ts # Publishing API calls                        │
+
+│ │ ├── analytics-service.ts                                     │
+
+│ │ └── ... (one service per domain)                                 │
+
+│ │                                            │
+
+│ ├── hooks/               # Shared custom hooks                                  │
+
+│ │ ├── use-auth.ts                                       │
+
+│ │ ├── use-workspace.ts                                          │
+
+│ │ ├── use-websocket.ts                                          │
+
+│ │ ├── use-offline.ts                                    │
+
+│ │ ├── use-media-query.ts                                            │
+
+│ │ └── ... (shared hooks)                                    │
+
+│ │                                              │
+
+│ ├── stores/              # Global state (Zustand)                           │
+
+│ │ ├── auth-store.ts                                     │
+
+│ │ ├── workspace-store.ts                                            │
+
+│ │ ├── notification-store.ts                                     │
+
+│ │ ├── ui-store.ts         # Theme, sidebar state, preferences                           │
+
+│ │ └── offline-store.ts                                  │
+
+│ │                                              │
+
+│ ├── providers/            # React Context providers                                 │
+
+│ │ ├── auth-provider.tsx                                         │
+
+│ │ ├── workspace-provider.tsx                                            │
+
+│ │ ├── theme-provider.tsx                                            │
+
+│ │ ├── websocket-provider.tsx                                            │
+
+│ │ └── offline-provider.tsx                                  │
+
+│ │                                              │
+
+│ ├── lib/            # Pure utilities (no React dependency)                          │
+
+│ │ ├── utils/                                        │
+
+│ │ │ ├── cn.ts            # Classname utility (clsx + tailwind-merge)                    │
+
+│ │ │ ├── format.ts         # Date, number, currency formatters                        │
+
+│ │ │ └── validation.ts # Zod schemas                                  │
+
+│ │ ├── constants.ts                                       │
+
+│ │ ├── types/           # Shared TypeScript types                             │
+
+│ │ │ ├── story.ts                                     │
+
+│ │ │ ├── agent.ts                                     │
+
+│ │ │ ├── workflow.ts                                          │
+
+│ │ │ └── ... (domain types)                                   │
+
+│ │ └── errors.ts       # Error classes and handling                       │
+
+│ │                                            │
+
+│ ├── config/            # Application configuration                       │
+
+│ │ ├── env.ts           # Environment variables (validated)                       │
+
+│ │ ├── routes.ts         # Route constants                            │
+
+│ │ └── features.ts      # Feature flag definitions                        │
+
+│ │                                            │
+
+│ ├── styles/           # Global styles                            │
+
+│ │ ├── globals.css        # Tailwind imports + CSS custom properties                      │
+
+│ │ └── tokens/          # Design tokens (CSS custom properties)                       │
+
+│ │    ├── colors.css                                  │
+
+│ │    ├── typography.css                                      │
+
+│ │    ├── spacing.css                                     │
+
+│ │    └── animations.css                                  │
+
+│ │                                            │
+
+│ ├── public/            # Static assets                           │
+
+│ │ ├── images/                                        │
+
+│ │ ├── fonts/                                          │
+
+│ │ ├── icons/                                          │
+
+│ │ ├── manifest.json                                           │
+
+│ │ └── sw.js         # Service Worker                              │
+
+│ │                                                 │
+
+│ ├── tests/               # Test infrastructure                        │
+
+│ │ ├── setup.ts             # Vitest setup                             │
+
+│ │ ├── mocks/               # MSW handlers                                 │
+
+│ │ │ ├── handlers/                                         │
+
+│ │ │ └── server.ts                                     │
+
+│ │ ├── fixtures/            # Test data                            │
+
+│ │ └── utils/         # Test utilities                         │
+
+│ │                                                 │
+
+│ ├── e2e/                 # Playwright E2E tests                           │
+
+│ │ ├── specs/                                          │
+
+│ │ └── fixtures/                                       │
+
+│ │                                                 │
+
+│ └── root config files:                                    │
+
+│     ├── next.config.ts                                    │
+
+│     ├── tailwind.config.ts                                    │
+
+│     ├── tsconfig.json                                     │
+
+│     ├── vitest.config.ts                                  │
+
+│     ├── playwright.config.ts                                      │
+
+│     ├── eslint.config.mjs                                     │
+
+│     ├── prettier.config.mjs                                   │
+
+│     └── package.json                                  │
+
+│                                              │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+---
+
+
+
+PART IV — COMPONENT ARCHITECTURE
+
+
+
+IV.1 COMPONENT ARCHITECTURE STRATEGY
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│            COMPONENT ARCHITECTURE STRATEGY                               │
+
+│                                              │
+
+│ ATOMIC DESIGN (Adapted for AI-Native Application):                           │
+
+│ ────────────────────────────────────────────────                                     │
+
+│                                              │
+
+│ ATOMS: Primitive, non-contextual UI elements                         │
+
+│ ──────────────────────────────────────────                                       │
+
+│ Button, Input, Badge, Icon, Avatar, Spinner, Skeleton, Divider               │
+
+│ • Location: components/ui/                                  │
+
+│ • No business logic                                    │
+
+│ • Fully typed props                                    │
+
+│ • All states handled (default, hover, focus, active, disabled, loading)          │
+
+│ • Accessibility built-in (aria attributes, keyboard support)                   │
+
+│                                              │
+
+│ MOLECULES: Composed atoms with simple behaviour                                        │
+
+│ ─────────────────────────────────────────────                                                  │
+
+│ ConfidenceBadge, AgentAvatar, KpiCard, SearchInput, NotificationItem                               │
+
+│ • Location: components/ai/, components/dashboard/, etc.                                │
+
+│ • May contain simple hooks (useState, useCallback)                             │
+
+│ • Storybook stories with all variants                          │
+
+│                                              │
+
+│ ORGANISMS: Complex composed sections                                       │
+
+│ ────────────────────────────────────                                               │
+
+│ StoryPipelineCard, AgentActivityFeed, ConfidenceBreakdown,                                 │
+
+│ PublishingChecklist, HumanReviewItem                                   │
+
+│ • Location: modules/[feature]/components/                                  │
+
+│ • Feature-specific business logic                              │
+
+│ • May connect to stores or services                                │
+
+│                                              │
+
+│ TEMPLATES: Page-level layouts                                      │
+
+│ ─────────────────────────────                                          │
+
+│ DashboardLayout, EditorialLayout, SettingsLayout                               │
+
+│ • Location: components/layout/                                     │
+
+│ • Define page structure, not content                               │
+
+│                                              │
+
+│ PAGES: Route-level composition                                     │
+
+│ ─────────────────────────────                                          │
+
+│ • Location: app/ routes                                  │
+
+│ • Compose templates + organisms into complete pages                          │
+
+│ • Server Components where possible                                 │
+
+│                                               │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+IV.2 COMPONENT CONTRACTS
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│              COMPONENT CONTRACTS                               │
+
+│                                               │
+
+│ Every shared component exports a strict contract:                      │
+
+│                                               │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ // Button component contract                                ││
+
+│ │ interface ButtonProps {                                ││
+
+│ │ // Required                                       ││
+
+│ │ children: ReactNode;                                   ││
+
+│ │ onPress: (e: PressEvent) => void; // Keyboard + mouse unified              ││
+
+│ │                                             ││
+
+│ │ // Optional                                      ││
+
+│ │ variant?: 'primary' | 'secondary' | 'tertiary' | 'danger' | 'ghost'; │ │
+
+│ │ size?: 'sm' | 'md' | 'lg';                            ││
+
+│ │ isLoading?: boolean;                                 ││
+
+│ │ isDisabled?: boolean;                                ││
+
+│ │ leftIcon?: ReactNode;                                ││
+
+│ │ rightIcon?: ReactNode;                               ││
+
+│ │ accessibilityLabel?: string; // Override auto-generated label             ││
+
+│ │                                           ││
+
+│ │ // DOM passthrough                                   ││
+
+│ │ id?: string;                                   ││
+
+│ │ className?: string;                                 ││
+
+│ │ 'data-testid'?: string;                             ││
+
+│ │}                                          ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                             │
+
+│ CONTRACT ENFORCEMENT:                                           │
+
+│ ────────────────────                                        │
+
+│ • TypeScript strict props (no spreading unknown objects)                    │
+
+│ • Runtime prop validation with Zod in development                       │
+
+│ • Storybook stories for every variant combination                   │
+
+│ • Unit tests for every state (including error and edge cases)           │
+
+│ • Accessibility tests using jest-axe                        │
+
+│                                             │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+IV.3 AI COMPONENT ARCHITECTURE
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│           AI COMPONENT ARCHITECTURE                              │
+
+│                                             │
+
+│ AI-specific components handle the unique patterns of AI-generated content: │
+
+│                                             │
+
+│ CONFIDENCE INDICATOR:                                        │
+
+│ ────────────────────                                         │
+
+│ Displays AI confidence score with colour, icon, and numeric value.               │
+
+│ Props: score (0-1), breakdown?: ConfidenceBreakdown, showLabel?: boolean │
+
+│ States: high (≥0.85, green), medium (0.60-0.84, amber), low (<0.60, red), │
+
+│     calculating (pulsing, neutral), unavailable (grey, "N/A")        │
+
+│ Interaction: Click opens ConfidenceBreakdown panel                       │
+
+│ Accessibility: aria-label="Confidence score: 85 percent. High confidence." │
+
+│                                             │
+
+│ STREAMING CONTENT:                                           │
+
+│ ────────────────                                         │
+
+│ Renders AI-generated content as it streams from the server.                  │
+
+│ Props: stream: ReadableStream, onComplete?: () => void                       │
+
+│ States: connecting, streaming, complete, error                       │
+
+│ Behaviour: Content appears word-by-word; cursor blinks during streaming;             │
+
+│       scrolls smoothly to follow content; confidence updates inline │
+
+│                                             │
+
+│ AGENT AVATAR:                                        │
+
+│ ────────────                                            │
+
+│ Displays which AI agent performed an action.                            │
+
+│ Props: agent: AgentIdentity, size?: 'sm' | 'md' | 'lg', showStatus?: bool │
+
+│ States: active (pulsing border), idle (static), error (red indicator),      │
+
+│      offline (grey)                                 │
+
+│ Interaction: Click opens Agent Detail panel; hover shows agent name + task │
+
+│                                                │
+
+│ AI SUGGESTION CARD:                                         │
+
+│ ─────────────────                                           │
+
+│ Inline suggestion from AI that user can accept, modify, or dismiss.             │
+
+│ Props: suggestion: AISuggestion, onAccept, onModify, onDismiss                      │
+
+│ Visual: Subtle blue border, glassmorphism background, confidence indicator │
+
+│ Interaction: "Apply" (primary), "Edit" (secondary), "Ignore" (tertiary)         │
+
+│ Accessibility: aria-live="polite" for new suggestions                   │
+
+│                                                │
+
+│ EXPLAINABILITY PANEL:                                       │
+
+│ ────────────────────                                            │
+
+│ Shows why the AI made a specific decision.                              │
+
+│ Props: decision: AIDecision                                 │
+
+│ Content: Agent reasoning trace, sources considered, confidence breakdown, │
+
+│       alternatives evaluated, timestamp                             │
+
+│ States: loading, complete, unavailable                              │
+
+│                                                │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+---
+
+
+
+PART V — STATE MANAGEMENT ARCHITECTURE
+
+
+
+V.1 STATE CATEGORIES
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│          STATE MANAGEMENT ARCHITECTURE                               │
+
+│                                            │
+
+│ STATE CATEGORIES:                                     │
+
+│ ────────────────                                       │
+
+│                                            │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ CATEGORY         EXAMPLES              SOLUTION               ││
+
+│ │ ────────         ────────             ────────               ││
+
+│ │                                          ││
+
+│ │ LOCAL UI STATE     Modal open/close          useState              ││
+
+│ │            Form input values     useReducer (complex)             ││
+
+│ │            Dropdown selections        Component-scoped             ││
+
+│ │                                          ││
+
+│ │ GLOBAL UI STATE Theme (light/dark)            Zustand store            ││
+
+│ │            Sidebar collapsed     (ui-store)             ││
+
+│ │            Active workspace                        ││
+
+│ │          User preferences                                ││
+
+│ │                                               ││
+
+│ │ SERVER STATE    Story data              TanStack Query                  ││
+
+│ │          Agent list            (React Query)              ││
+
+│ │          Analytics data          Cache + background sync │ │
+
+│ │          Settings data                               ││
+
+│ │                                               ││
+
+│ │ REAL-TIME STATE Breaking news alerts               WebSocket → Zustand             ││
+
+│ │          Agent activity feed       (realtime-store)                ││
+
+│ │          Story state changes                              ││
+
+│ │          Queue depth updates                                  ││
+
+│ │                                               ││
+
+│ │ WORKFLOW STATE        Story lifecycle state        Zustand + XState           ││
+
+│ │          Publishing workflow         (complex workflows)                ││
+
+│ │          Verification pipeline                           ││
+
+│ │                                               ││
+
+│ │ OFFLINE STATE   Queued actions                Zustand (offline-store) │ │
+
+│ │          Cached data             + IndexedDB                   ││
+
+│ │          Sync status                                ││
+
+│ │                                               │
+
+│ │ AUTH STATE      User session            NextAuth.js + Zustand            ││
+
+│ │          Permissions             (auth-store)              ││
+
+│ │          Workspace role                                ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                                 │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+V.2 STATE MANAGEMENT COMPARISON
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│         STATE MANAGEMENT SOLUTION COMPARISON                                     │
+
+│                                                │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ SOLUTION        STRENGTHS           WEAKNESSES              USE CASE       ││
+
+│ │ ────────        ─────────          ──────────             ────────     ││
+
+│ │                                              ││
+
+│ │ useState/      Zero dependencies     Not for shared         Local UI      ││
+
+│ │ useReducer      Simple mental model state                 state      ││
+
+│ │           Built-in         Re-renders tree                ││
+
+│ │                                              ││
+
+│ │ React Context Built-in           Performance issues Low-frequency │
+
+│ │           Good for providers    with high-frequency updates            ││
+
+│ │           (theme, auth)        updates            Theme, Auth │ │
+
+│ │                                              ││
+
+│ │ Zustand       Tiny (1KB)        Less ecosystem        Global UI │ │
+
+│ │           Simple API         than Redux           state        ││
+
+│ │           No providers needed Fewer devtools              Workflow     ││
+
+│ │           Great performance                                ││
+
+│ │                                                ││
+
+│ │ Redux Toolkit Mature ecosystem             Larger bundle         (Not        ││
+
+│ │           Powerful devtools       More boilerplate         selected) │ │
+
+│ │           Middleware support          Overkill for this          ││
+
+│ │                           architecture              ││
+
+│ │                                                ││
+
+│ │ TanStack Query Best-in-class caching Only for server             Server       ││
+
+│ │ (React Query) Background refetch            state           state       ││
+
+│ │           Mutations + cache       Not for client                ││
+
+│ │           Devtools            state                   ││
+
+│ │                                                ││
+
+│ │ XState       Formal state machines Learning curve               Complex      ││
+
+│ │           Visual editor        Heavy for simple       workflows │ │
+
+│ │           Guaranteed correctness state                (Enterprise)│ │
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                                  │
+
+│ ENTERPRISE RECOMMENDATION: Zustand + TanStack Query + XState (Enterprise) │
+
+│ ────────────────────────────────────────────────────────────────────────── │
+
+│                                                  │
+
+│ Zustand: All client-side global state (UI, workflow, offline, real-time)        │
+
+│ TanStack Query: All server state (caching, refetching, mutations)                   │
+
+│ XState: Complex workflow state machines (Enterprise phase)                          │
+
+│                                                  │
+
+│ WHY NOT REDUX:                                               │
+
+│ • Zustand provides equivalent capability with 1/10th the boilerplate            │
+
+│ • Modern React patterns (Server Components, streaming) reduce client state │
+
+│ • TanStack Query handles the most complex state (server cache) better               │
+
+│                                              │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+V.3 STORE ARCHITECTURE
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│              STORE ARCHITECTURE                             │
+
+│                                              │
+
+│ ZUSTAND STORES (Global client state):                               │
+
+│ ────────────────────────────────────                                        │
+
+│                                              │
+
+│ stores/auth-store.ts                                │
+
+│ ├── user: User | null                                   │
+
+│ ├── session: Session | null                                 │
+
+│ ├── permissions: Permission[]                                   │
+
+│ ├── isLoading: boolean                                      │
+
+│ └── actions: login(), logout(), refreshSession()                        │
+
+│                                              │
+
+│ stores/workspace-store.ts                                   │
+
+│ ├── activeWorkspace: Workspace | null                                       │
+
+│ ├── workspaces: Workspace[]                                             │
+
+│ ├── brand: BrandConfig                                          │
+
+│ └── actions: switchWorkspace(), updateBrand()                                   │
+
+│                                                │
+
+│ stores/ui-store.ts                                  │
+
+│ ├── theme: 'light' | 'dark' | 'system'                                  │
+
+│ ├── sidebarCollapsed: boolean                                           │
+
+│ ├── commandPaletteOpen: boolean                                             │
+
+│ ├── activeModal: string | null                                      │
+
+│ └── actions: toggleTheme(), toggleSidebar()                                 │
+
+│                                                │
+
+│ stores/notification-store.ts                                │
+
+│ ├── notifications: Notification[]                                   │
+
+│ ├── unreadCount: number                                             │
+
+│ └── actions: addNotification(), markRead(), dismiss()                           │
+
+│                                                │
+
+│ stores/offline-store.ts                                 │
+
+│ ├── isOnline: boolean                                       │
+
+│ ├── pendingActions: QueuedAction[]                                          │
+
+│ ├── syncStatus: 'idle' | 'syncing' | 'error'                            │
+
+│ └── actions: queueAction(), sync(), resolveConflicts()                          │
+
+│                                                │
+
+│ stores/realtime-store.ts                                    │
+
+│ ├── connected: boolean                                          │
+
+│ ├── activeStories: Map<StoryId, StoryState>                                     │
+
+│ ├── agentActivities: AgentEvent[]                                   │
+
+│ └── actions: subscribe(), unsubscribe()                             │
+
+│                                               │
+
+│ stores/workflow-store.ts                                    │
+
+│ ├── activeWorkflows: Map<StoryId, WorkflowState>                                        │
+
+│ ├── reviewQueue: ReviewItem[]                                           │
+
+│ └── actions: transitionState(), approve(), reject()                         │
+
+│                                               │
+
+│ FEATURE STORES (Module-scoped, loaded lazily):                                      │
+
+│ ─────────────────────────────────────────────                                               │
+
+│ modules/pipeline/stores/pipeline-store.ts         # Pipeline filters, selection │
+
+│ modules/editorial/stores/editor-store.ts      # Editor state, drafts                    │
+
+│ modules/breaking-news/stores/breaking-store.ts # Breaking news state                            │
+
+│                                               │
+
+│ TANSTACK QUERY (Server state):                                      │
+
+│ ────────────────────────────                                                │
+
+│ Query keys follow convention: [domain, ...params]                                   │
+
+│ • ['story', storyId]                                   │
+
+│ • ['stories', { status, priority, page }]                       │
+
+│ • ['agents', { engine, status }]                            │
+
+│ • ['analytics', 'audience', { period }]                         │
+
+│ • ['workspace', workspaceId, 'settings']                            │
+
+│                                               │
+
+│ MUTATIONS:                                              │
+
+│ • useCreateStory()       • useUpdateStory()       • usePublishStory()                   │
+
+│ • useApproveStory()     • useRejectStory()       • useCorrectStory()        │
+
+│ • useAssignAgent()     • useUpdatePrompt()        • useUpdateSettings()             │
+
+│                                              │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+V.4 OPTIMISTIC UPDATES
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│             OPTIMISTIC UPDATE STRATEGY                          │
+
+│                                              │
+
+│ Optimistic updates are critical for newsroom responsiveness. When a user                │
+
+│ approves a story, the UI updates immediately — not after the server                 │
+
+│ responds.                                          │
+
+│                                              │
+
+│ IMPLEMENTATION (TanStack Query Mutations):                              │
+
+│ ───────────────────────────────────────────                                     │
+
+│                                              │
+
+│ Pattern:                                          │
+
+│ 1. onMutate: Immediately update cache (optimistic)                      │
+
+│ 2. onError: Roll back cache to previous state                       │
+
+│ 3. onSettled: Invalidate queries to ensure consistency                  │
+
+│                                              │
+
+│ OPTIMISTIC OPERATIONS:                                      │
+
+│ ─────────────────────                                             │
+
+│ • Story approval/rejection                                    │
+
+│ • Story assignment                                        │
+
+│ • Breaking news declaration                                       │
+
+│ • Correction application                                      │
+
+│ • Agent task assignment                                       │
+
+│ • Notification dismissal                                  │
+
+│ • User preference changes                                         │
+
+│                                              │
+
+│ ROLLBACK UX:                                          │
+
+│ ───────────                                          │
+
+│ • Toast notification: "Failed to approve story. Retrying..."                  │
+
+│ • Revert UI to previous state                                 │
+
+│ • Option to retry manually                                        │
+
+│ • Error logged for debugging                                      │
+
+│                                              │
+
+│ OPTIMISTIC vs. CONFIRMED:                                             │
+
+│ ─────────────────────────                                                 │
+
+│ • Confirmed: Financial operations, user deletion, retractions                     │
+
+│ • Optimistic: Content approval, assignments, preferences                          │
+
+│                                              │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+---
+
+PART VI — API INTEGRATION LAYER
+
+
+
+VI.1 API CLIENT ARCHITECTURE
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│            API INTEGRATION ARCHITECTURE                      │
+
+│                                            │
+
+│ LAYERED API ARCHITECTURE:                               │
+
+│ ────────────────────────                                │
+
+│                                            │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ LAYER 1: HTTP CLIENT (services/api-client.ts)              ││
+
+│ │ ─────────────────────────────────────────────                   ││
+
+│ │ • Base fetch wrapper                            ││
+
+│ │ • Automatic auth token injection                      ││
+
+│ │ • Request/response interceptors                       ││
+
+│ │ • Error normalisation                           ││
+
+│ │ • Retry logic (exponential backoff)                  ││
+
+│ │ • Rate limit handling (429 → queue + retry)                ││
+
+│ │ • Request deduplication                          ││
+
+│ │ • Response caching (stale-while-revalidate)                ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                       │                      │
+
+│                       ▼                          │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ LAYER 2: DOMAIN SERVICES (services/*-service.ts)                       ││
+
+│ │ ───────────────────────────────────────────────                              ││
+
+│ │ • Typed API functions per domain                             ││
+
+│ │ • Request/response type validation (Zod)                          ││
+
+│ │ • Business logic error handling                          ││
+
+│ │ • Cache tag management for revalidation                           ││
+
+│ │                                            ││
+
+│ │ story-service.ts:                                  ││
+
+│ │ getStory(id) → Story                                ││
+
+│ │ listStories(filters) → PaginatedResponse<Story>                    ││
+
+│ │ createStory(data) → Story                               ││
+
+│ │ updateStory(id, data) → Story                            ││
+
+│ │ approveStory(id) → Story                                ││
+
+│ │ rejectStory(id, reason) → Story                          ││
+
+│ │ correctStory(id, correction) → Story                         ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                       │                      │
+
+│                       ▼                          │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ LAYER 3: TANSTACK QUERY HOOKS (hooks/use-*.ts)                          ││
+
+│ │ ───────────────────────────────────────────────                              ││
+
+│ │ • useQuery for reads                               ││
+
+│ │ • useMutation for writes                            ││
+
+│ │ • useInfiniteQuery for paginated lists                     ││
+
+│ │ • useSuspenseQuery for streaming-compatible data                    ││
+
+│ │ • Optimistic update configuration                          ││
+
+│ │ • Cache invalidation strategy                          ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                            │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+VI.2 REAL-TIME COMMUNICATION
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│           REAL-TIME COMMUNICATION ARCHITECTURE                            │
+
+│                                            │
+
+│ TRANSPORT HIERARCHY:                                     │
+
+│ ──────────────────                                   │
+
+│                                            │
+
+│ PRIMARY: WebSocket (Full-duplex, persistent)                      │
+
+│ ───────────────────────────────────────────                                   │
+
+│ • Single authenticated WebSocket connection per client                │
+
+│ • Multiplexed channels: story-updates, agent-events, notifications, system │
+
+│ • Automatic reconnection with exponential backoff                                  │
+
+│ • Heartbeat/ping for connection health                                 │
+
+│ • Message acknowledgements for critical events                                     │
+
+│                                              │
+
+│ SECONDARY: Server-Sent Events (AI Streaming)                                       │
+
+│ ────────────────────────────────────────────                                               │
+
+│ • AI content generation streams (unidirectional)                               │
+
+│ • Agent reasoning streams (explainability)                             │
+
+│ • Native browser EventSource API                                   │
+
+│ • Automatic reconnection built-in                              │
+
+│                                              │
+
+│ TERTIARY: Server Actions (Mutations)                                   │
+
+│ ─────────────────────────────────────                                                  │
+
+│ • Form submissions, quick actions                                  │
+
+│ • Progressive enhancement (works without JavaScript)                                   │
+
+│ • Built-in CSRF protection                                 │
+
+│                                              │
+
+│ WEBSOCKET CHANNELS:                                            │
+
+│ ──────────────────                                         │
+
+│ • story.{storyId}.state      → Story state changes (real-time pipeline) │
+
+│ • story.{storyId}.confidence → Confidence score updates                                │
+
+│ • agent.{agentId}.activity     → Individual agent events                       │
+
+│ • agents.all              → Aggregate agent status                 │
+
+│ • breaking.active           → Active breaking news events                      │
+
+│ • notifications.user.{userId} → User notifications                         │
+
+│ • system.health             → Platform health metrics                      │
+
+│ • queue.review           → Human review queue updates                             │
+
+│                                            │
+
+│ IMPLEMENTATION:                                           │
+
+│ ──────────────                                        │
+
+│ • Custom useWebSocket hook wrapping native WebSocket                                  │
+
+│ • Channel subscription management                                 │
+
+│ • Automatic cleanup on component unmount                                      │
+
+│ • Message buffering during disconnection                              │
+
+│ • Zustand store integration for reactive UI updates                       │
+
+│                                            │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+---
+
+
+
+PART VII — AUTHENTICATION & SECURITY
+
+
+
+VII.1 AUTHENTICATION ARCHITECTURE
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│           AUTHENTICATION ARCHITECTURE                                 │
+
+│                                            │
+
+│ AUTHENTICATION FLOW:                                          │
+
+│ ──────────────────                                        │
+
+│                                              │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ LOGIN FLOW                                       ││
+
+│ │ ─────────                                        ││
+
+│ │                                            ││
+
+│ │ User → Email/Password → Server validates →                                ││
+
+│ │ ┌────────────────────────────────────────────────────────────────────┐ │ │
+
+│ │ │ MFA Required?                                  │ ││
+
+│ │ │ ├── NO → JWT issued → Session created → Redirect to dashboard                      │ ││
+
+│ │ │ └── YES → MFA challenge sent → User enters code →                           │ ││
+
+│ │ │      JWT issued → Session created → Redirect to dashboard                   │ ││
+
+│ │ └────────────────────────────────────────────────────────────────────┘ │ │
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                              │
+
+│ SESSION MANAGEMENT:                                         │
+
+│ ──────────────────                                      │
+
+│ • NextAuth.js v5 (Auth.js) for session management                           │
+
+│ • JWT-based sessions (stateless, scalable)                          │
+
+│ • Access token: 15-minute expiry                            │
+
+│ • Refresh token: 7-day expiry, rotating                         │
+
+│ • Automatic token refresh in API client interceptor                     │
+
+│ • Session synchronisation across tabs (BroadcastChannel)                        │
+
+│ • Forced logout on security events (server push)                        │
+
+│                                              │
+
+│ RBAC (ROLE-BASED ACCESS CONTROL):                                      │
+
+│ ─────────────────────────────────                                          │
+
+│ • Roles: EIC, ManagingEditor, ContentEditor, PlatformAdmin, Viewer                     │
+
+│ • Permissions: Granular, composable                            │
+
+│ • Frontend: usePermission() hook for conditional rendering                         │
+
+│ • Route protection: Middleware checks workspace role                               │
+
+│ • API protection: Backend validates (never trust client)                   │
+
+│                                             │
+
+│ ENTERPRISE SSO (Growth/Enterprise):                                │
+
+│ ──────────────────────────────────                                             │
+
+│ • SAML 2.0 and OIDC support                                │
+
+│ • Multi-tenant IdP configuration                           │
+
+│ • Just-in-time user provisioning                           │
+
+│                                             │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+VII.2 SECURITY ARCHITECTURE
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│            FRONTEND SECURITY ARCHITECTURE                                  │
+
+│                                             │
+
+│ DEFENCE LAYERS:                                      │
+
+│ ──────────────                                       │
+
+│                                              │
+
+│ LAYER 1: CONTENT SECURITY POLICY (CSP)                                    │
+
+│ • Strict CSP headers configured in next.config.ts                     │
+
+│ • No inline scripts (nonce-based for necessary exceptions)                        │
+
+│ • No 'unsafe-eval'                                    │
+
+│ • Script sources whitelisted                              │
+
+│ • Report-only mode during development                                 │
+
+│                                              │
+
+│ LAYER 2: XSS PREVENTION                                       │
+
+│ • React's built-in XSS protection (JSX escaping)                      │
+
+│ • dangerouslySetInnerHTML: banned (use sanitisation utility if essential) │
+
+│ • DOMPurify for any HTML rendering (AI content previews)                              │
+
+│ • Input validation on all user inputs (Zod schemas)                       │
+
+│                                              │
+
+│ LAYER 3: CSRF PROTECTION                                      │
+
+│ • Next.js Server Actions: Built-in CSRF protection                    │
+
+│ • API routes: SameSite=Strict cookies                             │
+
+│ • Custom fetch: CSRF token header for mutations                               │
+
+│                                              │
+
+│ LAYER 4: SECURE HEADERS                                       │
+
+│ • Strict-Transport-Security (HSTS)                            │
+
+│ • X-Content-Type-Options: nosniff                                 │
+
+│ • X-Frame-Options: DENY (allow for previews if needed)                            │
+
+│ • Referrer-Policy: strict-origin-when-cross-origin                    │
+
+│ • Permissions-Policy: restrictive defaults                        │
+
+│                                              │
+
+│ LAYER 5: SECURE STORAGE                                        │
+
+│ • Tokens: httpOnly cookies (never localStorage)                            │
+
+│ • User preferences: localStorage (non-sensitive)                           │
+
+│ • Offline drafts: IndexedDB (encrypted if sensitive)                       │
+
+│ • Session data: In-memory only                                 │
+
+│                                             │
+
+│ LAYER 6: AUDIT LOGGING                                     │
+
+│ • All sensitive actions logged (frontend → backend)                            │
+
+│ • Log: user, action, resource, timestamp, IP, user agent                       │
+
+│ • Audit log viewer in Governance section                               │
+
+│ • Tamper-evident log integrity                             │
+
+│                                             │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+---
+
+
+
+PART VIII — OFFLINE-FIRST ARCHITECTURE
+
+
+
+VIII.1 OFFLINE STRATEGY
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│            OFFLINE-FIRST ARCHITECTURE                              │
+
+│                                             │
+
+│ DESIGN PHILOSOPHY:                                         │
+
+│ ─────────────────                                          │
+
+│ The newsroom does not stop because the network did. The offline                        │
+
+│ experience is designed — not an afterthought. Critical workflows                   │
+
+│ function without connectivity, queuing actions for sync.                       │
+
+│                                            │
+
+│ OFFLINE CAPABILITY BY PHASE:                                       │
+
+│ ───────────────────────────                                                │
+
+│                                            │
+
+│ MVP:                                           │
+
+│ • Cached dashboard viewing                                         │
+
+│ • Story reading (previously loaded)                                    │
+
+│ • Offline indicator in status bar                              │
+
+│ • Draft editing (queued for sync)                                  │
+
+│                                            │
+
+│ GROWTH:                                            │
+
+│ • Full editorial workflows offline                             │
+
+│ • Breaking news alerts (via Push API)                                  │
+
+│ • Offline publishing queue                                 │
+
+│ • Conflict resolution UI                               │
+
+│                                            │
+
+│ ENTERPRISE:                                        │
+
+│ • Near-full newsroom operation offline                                     │
+
+│ • Multi-device sync                                    │
+
+│ • Advanced conflict resolution                                 │
+
+│ • Offline analytics (cached)                               │
+
+│                                               │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+VIII.2 SERVICE WORKER ARCHITECTURE
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│           SERVICE WORKER ARCHITECTURE                                       │
+
+│                                               │
+
+│ CACHE STRATEGY (per resource type):                                     │
+
+│ ───────────────────────────────────                                              │
+
+│                                               │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ RESOURCE             STRATEGY             MAX AGE         MAX ITEMS │ │
+
+│ │ ────────            ────────             ───────         ───────── │ │
+
+│ │ App Shell (HTML/CSS) Cache-First                7 days      50            ││
+
+│ │ JavaScript bundles Cache-First (versioned) 30 days               100               ││
+
+│ │ Fonts             Cache-First          365 days     20           ││
+
+│ │ Images (UI)         Cache-First          30 days      500         ││
+
+│ │ Images (Content)       Network-First         7 days        1000               ││
+
+│ │ API (Stories)       Network-First         1 hour         500          ││
+
+│ │ API (Agents)        Network-First         5 minutes 100                   ││
+
+│ │ API (Analytics)      Network-First         1 hour        200          ││
+
+│ │ API (Settings)    Stale-While-Revalidate 1 day         50     ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                            │
+
+│ BACKGROUND SYNC:                                            │
+
+│ ──────────────                                      │
+
+│ • Sync API for queued actions (publish, approve, correct)               │
+
+│ • Periodic background sync for content updates                      │
+
+│ • Sync status indicator in UI                            │
+
+│ • Conflict resolution when server state diverges                    │
+
+│                                            │
+
+│ PUSH NOTIFICATIONS:                                         │
+
+│ ──────────────────                                          │
+
+│ • Breaking news alerts                               │
+
+│ • Human review required                                     │
+
+│ • Corrections needed                                    │
+
+│ • System health alerts                               │
+
+│ • User-configurable notification preferences                    │
+
+│                                            │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+VIII.3 OFFLINE SYNC ARCHITECTURE
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│            OFFLINE SYNC ARCHITECTURE                                    │
+
+│                                             │
+
+│ SYNC QUEUE:                                             │
+
+│ ──────────                                          │
+
+│                                             │
+
+│ 1. USER PERFORMS ACTION (while offline)                                     │
+
+│   • UI updates optimistically                               │
+
+│   • Action added to sync queue (IndexedDB)                                  │
+
+│   • Sync status: "pending"                                  │
+
+│    │                                        │
+
+│    ▼                                            │
+
+│ 2. CONNECTIVITY RESTORED                                            │
+
+│   • Service Worker detects online event                                 │
+
+│   • Sync queue processing begins                                │
+
+│   • Actions processed in FIFO order (with priority overrides)                   │
+
+│    │                                        │
+
+│    ▼                                            │
+
+│ 3. ACTION EXECUTED                                          │
+
+│   ├── SUCCESS: Action removed from queue; UI confirms                               │
+
+│   └── CONFLICT: Server state differs from optimistic update                     │
+
+│        │                                    │
+
+│        ▼                                        │
+
+│ 4. CONFLICT RESOLUTION                                          │
+
+│   • User notified of conflict                               │
+
+│     • Side-by-side comparison: Local vs. Server                 │
+
+│     • User chooses: Accept Server, Keep Local, Merge                    │
+
+│     • Resolution applied; action removed from queue                     │
+
+│                                              │
+
+│ CONFLICT DETECTION:                                     │
+
+│ ──────────────────                                      │
+
+│ • Version vectors (client version vs. server version)               │
+
+│ • Last-write-wins for simple data                           │
+
+│ • Three-way merge for content (base, local, server)                 │
+
+│ • Conflict-free replicated data types (CRDTs) for real-time collaboration │
+
+│ (Enterprise — story co-editing)                             │
+
+│                                              │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+---
+
+
+
+PART IX — PERFORMANCE ENGINEERING
+
+
+
+IX.1 PERFORMANCE ARCHITECTURE
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│             PERFORMANCE ENGINEERING                             │
+
+│                                              │
+
+│ CORE WEB VITALS TARGETS (All routes, 75th percentile):                             │
+
+│ ─────────────────────────────────────────────────────                                        │
+
+│                                                  │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ METRIC           MVP TARGET ENTERPRISE TARGET MEASUREMENT                             ││
+
+│ │ ──────           ────────── ───────────────── ───────────                            ││
+
+│ │ LCP            < 2.5s      < 2.0s           Lighthouse CI       ││
+
+│ │ INP (Interaction) < 200ms            < 100ms           RUM (Real User) │ │
+
+│ │ CLS (Layout Shift) < 0.1           < 0.05          Lighthouse CI        ││
+
+│ │ TTFB            < 800ms      < 500ms               Vercel Analytics │ │
+
+│ │ FCP             < 1.8s     < 1.2s           Lighthouse CI       ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                                  │
+
+│ BUNDLE BUDGETS (per route, gzip):                                         │
+
+│ ────────────────────────────────                                               │
+
+│ • Initial JS (all routes): < 150KB                                │
+
+│ • Total JS (largest route): < 350KB                                   │
+
+│ • CSS: < 50KB                                             │
+
+│ • Fonts: < 100KB                                              │
+
+│ • Images (LCP): < 100KB                                           │
+
+│                                                  │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+IX.2 OPTIMISATION STRATEGIES
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│            OPTIMISATION STRATEGIES                            │
+
+│                                              │
+
+│ CODE SPLITTING:                                       │
+
+│ ──────────────                                        │
+
+│ • Route-level: Every app/ route is a natural split point (Next.js default) │
+
+│ • Component-level: Heavy components lazy-loaded with dynamic import               │
+
+│ - StoryGraph: Loads only when navigating to graph view                        │
+
+│ - ArticleEditor: Loads only when editing                              │
+
+│ - Chart libraries: Per-chart-type lazy loading                        │
+
+│ - Video player: Loads on demand                                   │
+
+│ • Library splitting: Large dependencies isolated                          │
+
+│                                              │
+
+│ IMAGE OPTIMISATION:                                       │
+
+│ ──────────────────                                        │
+
+│ • next/image for all images                               │
+
+│ • WebP/AVIF format with fallback                                  │
+
+│ • Responsive sizes attribute                              │
+
+│ • Lazy loading below fold                                 │
+
+│ • Blur placeholder for content images                                 │
+
+│ • Priority loading for LCP images                             │
+
+│                                              │
+
+│ VIRTUALISATION:                                     │
+
+│ ─────────────                                       │
+
+│ • @tanstack/react-virtual for large lists                              │
+
+│ - Story Pipeline: Virtualised list with dynamic row heights                        │
+
+│ - Audit Logs: Virtualised with date grouping                               │
+
+│ - Agent Activity: Virtualised with real-time prepend                           │
+
+│ - Notification Centre: Virtualised list                            │
+
+│                                              │
+
+│ CACHING STRATEGY:                                          │
+
+│ ────────────────                                        │
+
+│ • TanStack Query: Stale-while-revalidate (default 30s, configurable)                       │
+
+│ • Next.js fetch: Automatic request deduplication + caching                             │
+
+│ • Service Worker: App shell + critical assets                              │
+
+│ • IndexedDB: Offline data + large datasets                                 │
+
+│ • Memory: Zustand stores for active session data                               │
+
+│                                                 │
+
+│ FONT OPTIMISATION:                                          │
+
+│ ────────────────                                        │
+
+│ • next/font with subsetting                                    │
+
+│ • Preload critical fonts                               │
+
+│ • Fallback fonts with size-adjust                               │
+
+│ • Variable fonts to reduce requests                                    │
+
+│                                              │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+---
+
+
+
+PART X — FRONTEND OBSERVABILITY
+
+
+
+X.1 OBSERVABILITY ARCHITECTURE
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│           FRONTEND OBSERVABILITY ARCHITECTURE                             │
+
+│                                                │
+
+│ THREE PILLARS OF OBSERVABILITY:                             │
+
+│ ──────────────────────────────                                    │
+
+│                                                │
+
+│ LOGGING (Structured, queryable):                         │
+
+│ ────────────────────────────────                                      │
+
+│ • Winston-style structured JSON logging                       │
+
+│ • Log levels: error, warn, info, debug                  │
+
+│ • Context: userId, workspaceId, route, userAgent, timestamp                   │
+
+│ • PII redaction before transmission                     │
+
+│ • Transport: Batch → Backend → Data warehouse                             │
+
+│                                            │
+
+│ METRICS (Aggregated, trendable):                         │
+
+│ ────────────────────────────────                                      │
+
+│ • Core Web Vitals (LCP, INP, CLS, TTFB, FCP)                  │
+
+│ • Custom metrics:                                        │
+
+│ - Time to Story Approval (human review duration)                                 │
+
+│ - Time to Breaking News Publish                                  │
+
+│ - AI Content Stream Time (generation duration)                               │
+
+│ - Command Palette Usage (adoption)                                       │
+
+│ - Offline Sync Success Rate                              │
+
+│ • Real User Monitoring (RUM)                                     │
+
+│                                              │
+
+│ TRACING (Request-level visibility):                              │
+
+│ ───────────────────────────────────                                                  │
+
+│ • Trace context propagation (traceparent headers)                                │
+
+│ • API call tracing (start → end, status, duration)                       │
+
+│ • AI agent interaction tracing                               │
+
+│ • Workflow stage tracing (story lifecycle)                           │
+
+│                                              │
+
+│ TOOLING:                                             │
+
+│ ───────                                              │
+
+│ • Error tracking: Sentry (frontend + backend correlation)                            │
+
+│ • Performance: Vercel Analytics + Custom RUM                                     │
+
+│ • Session replay: PostHog / FullStory (GDPR-compliant, Enterprise)                       │
+
+│ • Logging: Datadog / Grafana Loki (Enterprise)                               │
+
+│ • Dashboard: Grafana (aggregated view of all signals)                            │
+
+│                                              │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+X.2 ERROR TRACKING
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│             ERROR TRACKING STRATEGY                            │
+
+│                                             │
+
+│ ERROR BOUNDARIES (React):                                  │
+
+│ ────────────────────────                                       │
+
+│ • Root Error Boundary: Catches unhandled errors, shows fallback UI                  │
+
+│ • Feature Error Boundaries: Isolate errors to specific feature panels       │
+
+│ • Streaming Error Boundaries: Handle AI stream failures gracefully              │
+
+│ • Each boundary: Logs error, shows appropriate recovery UI                  │
+
+│                                             │
+
+│ ERROR SEVERITY:                                      │
+
+│ ──────────────                                       │
+
+│ • FATAL: Application cannot continue (crash)                       │
+
+│ • ERROR: Feature unavailable, user impact                          │
+
+│ • WARNING: Degraded experience, workaround possible                         │
+
+│ • INFO: Non-impacting anomaly                                  │
+
+│                                             │
+
+│ ERROR CONTEXT (Sent with every error):                             │
+
+│ ─────────────────────────────────────                                   │
+
+│ • Error message and stack trace                            │
+
+│ • User action that triggered the error                         │
+
+│ • Route and component tree                                  │
+
+│ • Workspace and user context (anonymised)                           │
+
+│ • Browser/OS/device information                                 │
+
+│ • Timestamp                                    │
+
+│ • Correlation ID (links to backend logs)                        │
+
+│                                            │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+---
+
+
+
+PART XI — TESTING STRATEGY
+
+
+
+XI.1 TESTING ARCHITECTURE
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│              TESTING ARCHITECTURE                          │
+
+│                                            │
+
+│ TESTING TOOLCHAIN:                                     │
+
+│ ────────────────                                   │
+
+│                                            │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ LAYER         TOOL             PURPOSE               ││
+
+│ │ ─────           ────            ───────                ││
+
+│ │ Static Analysis TypeScript + ESLint     Type safety, code quality           ││
+
+│ │ Unit Tests      Vitest          Pure logic, hooks, stores          ││
+
+│ │ Component Tests Vitest + Testing Lib UI behaviour, accessibility │ │
+
+│ │ Integration Tests Vitest + MSW          Feature workflows, API mock │ │
+
+│ │ E2E Tests       Playwright         Critical user journeys          ││
+
+│ │ Visual Regression Chromatic / Percy       Component visuals, themes                  ││
+
+│ │ Accessibility    jest-axe + Playwright WCAG 2.2 AA compliance                ││
+
+│ │ Performance        Lighthouse CI       Core Web Vitals budgets              ││
+
+│ │ Security        npm audit + Snyk      Dependency vulnerabilities │ │
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                               │
+
+│ TEST COVERAGE TARGETS:                                           │
+
+│ ─────────────────────                                            │
+
+│ • Lines: > 80%                                       │
+
+│ • Branches: > 75%                                        │
+
+│ • Functions: > 80%                                       │
+
+│ • Critical paths: 100%                                   │
+
+│                                              │
+
+│ CI/CD INTEGRATION:                                           │
+
+│ ────────────────                                         │
+
+│ • Pre-commit: Lint + Type Check + Unit Tests (affected only)                   │
+
+│ • PR: Full test suite + Lighthouse budget check + Visual regression                │
+
+│ • Merge: E2E critical paths + Performance baseline                        │
+
+│ • Nightly: Full E2E suite + Accessibility audit + Security scan           │
+
+│                                              │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+---
+
+
+
+PART XII — DEPLOYMENT & ENTERPRISE OPERATIONS
+
+
+
+XII.1 DEPLOYMENT ARCHITECTURE
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│           DEPLOYMENT & ENTERPRISE OPERATIONS                      │
+
+│                                              │
+
+│ DEPLOYMENT ENVIRONMENTS:                                  │
+
+│ ──────────────────────                                │
+
+│                                              │
+
+│ Development → Preview (per PR) → Staging → Production                     │
+
+│                                              │
+
+│ HOSTING: Vercel (MVP/Growth) → Multi-Cloud (Enterprise)                   │
+
+│                                              │
+
+│ BLUE-GREEN DEPLOYMENT (Zero-downtime):                            │
+
+│ ──────────────────────────────────────                                │
+
+│ 1. Deploy new version to inactive slot (blue/green)           │
+
+│ 2. Run health checks against inactive slot                │
+
+│ 3. Run smoke tests (critical user journeys)                             │
+
+│ 4. Switch traffic to new slot (gradual: 10% → 50% → 100%)                           │
+
+│ 5. Monitor error rates, performance, user metrics                           │
+
+│ 6. If issues: Instant rollback to previous slot                     │
+
+│ 7. If stable: Previous slot becomes inactive (ready for next deploy)                    │
+
+│                                               │
+
+│ ROLLBACK STRATEGY:                                      │
+
+│ ────────────────                                       │
+
+│ • Instant rollback via traffic switch (< 1 minute)                      │
+
+│ • Database: Backward-compatible migrations (expand-contract pattern)                            │
+
+│ • Static assets: Versioned, immutable, CDN-cached                               │
+
+│ • Feature flags: Disable problematic features without rollback                          │
+
+│                                               │
+
+│ FEATURE FLAGS (LaunchDarkly / Custom):                                      │
+
+│ ────────────────────────────────────────                                                │
+
+│ • All new features behind flags                             │
+
+│ • Kill switches for critical functionality                  │
+
+│ • Percentage rollouts (0% → 10% → 50% → 100%)                                       │
+
+│ • Targetable by: user, workspace, region, random percentage                                 │
+
+│ • A/B experiment support                                    │
+
+│                                               │
+
+│ MONITORING (Production):                                    │
+
+│ ───────────────────────                                         │
+
+│ • Real-time error rate dashboard                                │
+
+│ • Core Web Vitals trend dashboard                                   │
+
+│ • API latency and error rate dashboard                              │
+
+│ • User-facing performance dashboard                               │
+
+│ • Alert thresholds: Error rate spike, latency degradation,                    │
+
+│ feature flag anomaly, security event                          │
+
+│                                             │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+XII.2 FRONTEND ADRs
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│           FRONTEND ARCHITECTURE DECISION RECORDS                                      │
+
+│                                             │
+
+│ ADR-FE-001: Next.js App Router as Foundation                              │
+
+│ Decision: Use Next.js 15 App Router exclusively                       │
+
+│ Rationale: Server Components reduce client JS; streaming enables AI content; │
+
+│       built-in optimisations reduce engineering burden                    │
+
+│                                             │
+
+│ ADR-FE-002: Zustand over Redux for Client State                           │
+
+│ Decision: Zustand for all client-side global state management                         │
+
+│ Rationale: Minimal boilerplate, excellent TypeScript support, tiny bundle, │
+
+│       no provider wrapping required                          │
+
+│                                             │
+
+│ ADR-FE-003: TanStack Query for Server State                           │
+
+│ Decision: TanStack Query (React Query) for all server state                       │
+
+│ Rationale: Best-in-class caching, background refetch, optimistic updates, │
+
+│       devtools; handles the hardest state management problem                   │
+
+│                                               │
+
+│ ADR-FE-004: Feature-Based Module Organisation                              │
+
+│ Decision: Organise codebase by feature modules, not technical layers                   │
+
+│ Rationale: Enables independent development, testing, and deployment;                           │
+
+│       reduces coupling; improves discoverability               │
+
+│                                               │
+
+│ ADR-FE-005: WebSocket for Real-Time, SSE for AI Streaming                      │
+
+│ Decision: WebSocket for bidirectional real-time; SSE for AI streaming              │
+
+│ Rationale: WebSocket provides full-duplex for dashboards; SSE is simpler                   │
+
+│       for unidirectional AI content streams                │
+
+│                                               │
+
+│ ADR-FE-006: Offline-First with Background Sync                         │
+
+│ Decision: Critical workflows function offline with background sync                 │
+
+│ Rationale: Newsroom operations cannot stop for network issues; queued                          │
+
+│       actions with conflict resolution provide seamless experience             │
+
+│                                               │
+
+│ ADR-FE-007: Streaming AI Content Display                           │
+
+│ Decision: AI content streams progressively (word-by-word rendering)                    │
+
+│ Rationale: Reduces perceived latency; provides early preview; communicates │
+
+│       AI activity; allows early abort if quality is poor       │
+
+│                                               │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+XII.3 EXECUTIVE SUMMARY
+
+
+
+Volume 8 of the Agbofa Nexus AI enterprise architecture defines the complete frontend
+engineering implementation blueprint. Where Volume 7 specified what the frontend experience
+should be, Volume 8 specifies how it is engineered, organised, managed, and deployed.
+
+
+
+Key Architectural Decisions:
+
+
+
+1. Next.js 15 App Router as the foundational framework, leveraging React Server Components
+as the default rendering strategy, with Client Components reserved for interactive elements.
+This maximises performance, SEO, and developer experience while supporting the unique
+requirements of an AI-native application — streaming content, real-time updates, and
+progressive disclosure.
+
+2. Feature-based module architecture that organises the codebase around business capabilities
+(dashboard, pipeline, editorial, publishing, agents) rather than technical layers. Each module
+owns its components, hooks, stores, services, and types. This enables independent
+development and testing while maintaining clear boundaries.
+
+3. Zustand + TanStack Query as the state management architecture. Zustand handles client-side
+global state (UI, workflow, offline, real-time) with minimal boilerplate. TanStack Query handles
+all server state with best-in-class caching, background refetching, and optimistic updates. XState
+is reserved for complex workflow state machines in the Enterprise phase.
+
+4. Layered API architecture with a base HTTP client providing authentication, retry logic, rate
+limiting, and error normalisation; typed domain services providing business-logic API functions;
+and TanStack Query hooks providing reactive data fetching with cache management.
+
+5. Offline-first architecture using Service Workers for asset caching, IndexedDB for data
+persistence, and a sync queue for offline actions. Critical workflows — story review, draft
+editing, approval — function without connectivity, queuing actions for synchronisation when
+the network returns.
+
+6. Real-time by default using WebSocket connections for bidirectional communication (story
+state changes, agent events, notifications) and Server-Sent Events for unidirectional AI content
+streaming. The real-time store integrates with Zustand for reactive UI updates.
+
+7. Comprehensive testing strategy spanning static analysis, unit tests, component tests,
+integration tests, E2E tests, visual regression tests, accessibility audits, and performance budget
+enforcement — all integrated into the CI/CD pipeline.
+
+8. Blue-green deployment with feature flags, percentage rollouts, instant rollback capability, and
+comprehensive production monitoring — ensuring the newsroom platform meets enterprise
+reliability standards.
+
+
+
+The Engineering Reality:
+
+
+
+When implemented, the Agbofa Nexus AI frontend will be a high-performance, real-time,
+offline-capable, AI-native application that delivers the Mission Control experience defined in
+Volume 7. It will be built on a foundation of type safety, component isolation, and
+comprehensive testing. It will deploy with zero downtime and degrade gracefully under adverse
+conditions. It will be observable — every error, every performance regression, every user
+interaction captured and actionable.
+
+
+
+This volume, together with Volumes 1–7, provides the complete blueprint for building the
+world's leading autonomous AI media company platform — from executive vision through AI
+architecture, user experience, and frontend engineering implementation.
+
+
+
+---
+
+
+
+END OF VOLUME 8
+
+
+
+AGBOFA NEXUS AI — AUTONOMOUS AI MEDIA COMPANY PLATFORM
+
+
+
+FRONTEND ENGINEERING, STATE MANAGEMENT & APPLICATION IMPLEMENTATION BLUEPRINT
+

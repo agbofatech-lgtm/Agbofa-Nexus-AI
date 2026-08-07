@@ -11,5 +11,383 @@
     "primary_volume",
     "source_reference"
   ],
-  "items": []
+  "items": [
+    {
+      "id": "WF-001",
+      "name": "Content Pipeline Lifecycle",
+      "workflow_type": "Operational Workflow",
+      "owner": "Editorial Operations",
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 3",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:13017-13104",
+      "trigger": "Pending detailed extraction",
+      "participants": "AI agents, platform services and human roles as specified in source",
+      "services_involved": [
+        "SVC-014",
+        "SVC-018",
+        "SVC-019",
+        "SVC-020",
+        "SVC-021",
+        "SVC-023"
+      ],
+      "apis_used": [],
+      "events_produced_consumed": [
+        "EVT-001",
+        "EVT-004",
+        "EVT-010",
+        "EVT-013"
+      ],
+      "databases_used": [],
+      "ui_screens": [],
+      "security_controls": "Human approval, RBAC, audit and governance controls as applicable",
+      "tests_required": "Workflow integration, state transition, error handling and security tests required",
+      "implementation_status": "Not started",
+      "related_adrs": []
+    },
+    {
+      "id": "WF-002",
+      "name": "API Request Lifecycle",
+      "workflow_type": "Technical Workflow",
+      "owner": "Platform",
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 3",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:12924-12995",
+      "trigger": "Pending detailed extraction",
+      "participants": "AI agents, platform services and human roles as specified in source",
+      "services_involved": [
+        "SVC-001"
+      ],
+      "apis_used": [],
+      "events_produced_consumed": [],
+      "databases_used": [],
+      "ui_screens": [],
+      "security_controls": "Human approval, RBAC, audit and governance controls as applicable",
+      "tests_required": "Workflow integration, state transition, error handling and security tests required",
+      "implementation_status": "Not started",
+      "related_adrs": []
+    },
+    {
+      "id": "WF-003",
+      "name": "AI Model Invocation Flow",
+      "workflow_type": "AI Workflow",
+      "owner": "AI Platform",
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 3",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:13295-13404",
+      "trigger": "Pending detailed extraction",
+      "participants": "AI agents, platform services and human roles as specified in source",
+      "services_involved": [
+        "SVC-016"
+      ],
+      "apis_used": [],
+      "events_produced_consumed": [],
+      "databases_used": [],
+      "ui_screens": [],
+      "security_controls": "Human approval, RBAC, audit and governance controls as applicable",
+      "tests_required": "Workflow integration, state transition, error handling and security tests required",
+      "implementation_status": "Not started",
+      "related_adrs": []
+    },
+    {
+      "id": "WF-004",
+      "name": "Autonomous Newsroom Operating Model",
+      "workflow_type": "Business Workflow",
+      "owner": "Editorial Operations",
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 6",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:83348-84428",
+      "trigger": "Pending detailed extraction",
+      "participants": "AI agents, platform services and human roles as specified in source",
+      "services_involved": [
+        "SVC-014",
+        "SVC-016"
+      ],
+      "apis_used": [],
+      "events_produced_consumed": [],
+      "databases_used": [],
+      "ui_screens": [],
+      "security_controls": "Human approval, RBAC, audit and governance controls as applicable",
+      "tests_required": "Workflow integration, state transition, error handling and security tests required",
+      "implementation_status": "Not started",
+      "related_adrs": []
+    },
+    {
+      "id": "WF-005",
+      "name": "Story Discovery & Intelligence",
+      "workflow_type": "Editorial Workflow",
+      "owner": "Content Intelligence",
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 6",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:84428-85731",
+      "trigger": "Pending detailed extraction",
+      "participants": "AI agents, platform services and human roles as specified in source",
+      "services_involved": [
+        "SVC-018"
+      ],
+      "apis_used": [],
+      "events_produced_consumed": [
+        "EVT-001",
+        "EVT-002",
+        "EVT-003",
+        "EVT-004"
+      ],
+      "databases_used": [],
+      "ui_screens": [],
+      "security_controls": "Human approval, RBAC, audit and governance controls as applicable",
+      "tests_required": "Workflow integration, state transition, error handling and security tests required",
+      "implementation_status": "Not started",
+      "related_adrs": []
+    },
+    {
+      "id": "WF-006",
+      "name": "Editorial Workflow",
+      "workflow_type": "Editorial Workflow",
+      "owner": "Editorial Operations",
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 6",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:86451-87093",
+      "trigger": "Pending detailed extraction",
+      "participants": "AI agents, platform services and human roles as specified in source",
+      "services_involved": [
+        "SVC-014",
+        "SVC-019",
+        "SVC-020"
+      ],
+      "apis_used": [],
+      "events_produced_consumed": [
+        "EVT-006",
+        "EVT-010",
+        "EVT-011",
+        "EVT-012"
+      ],
+      "databases_used": [],
+      "ui_screens": [],
+      "security_controls": "Human approval, RBAC, audit and governance controls as applicable",
+      "tests_required": "Workflow integration, state transition, error handling and security tests required",
+      "implementation_status": "Not started",
+      "related_adrs": []
+    },
+    {
+      "id": "WF-007",
+      "name": "Breaking News Framework",
+      "workflow_type": "Editorial Workflow",
+      "owner": "Editorial Operations",
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 6",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:87093-87681",
+      "trigger": "Pending detailed extraction",
+      "participants": "AI agents, platform services and human roles as specified in source",
+      "services_involved": [
+        "SVC-014",
+        "SVC-018",
+        "SVC-020",
+        "SVC-023"
+      ],
+      "apis_used": [],
+      "events_produced_consumed": [],
+      "databases_used": [],
+      "ui_screens": [],
+      "security_controls": "Human approval, RBAC, audit and governance controls as applicable",
+      "tests_required": "Workflow integration, state transition, error handling and security tests required",
+      "implementation_status": "Not started",
+      "related_adrs": []
+    },
+    {
+      "id": "WF-008",
+      "name": "Verification Pipeline (Truth Engine)",
+      "workflow_type": "Trust Workflow",
+      "owner": "Trust and Quality",
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 6",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:87697-89232",
+      "trigger": "Pending detailed extraction",
+      "participants": "AI agents, platform services and human roles as specified in source",
+      "services_involved": [
+        "SVC-020",
+        "SVC-022"
+      ],
+      "apis_used": [],
+      "events_produced_consumed": [
+        "EVT-007",
+        "EVT-008",
+        "EVT-009",
+        "EVT-010",
+        "EVT-011"
+      ],
+      "databases_used": [],
+      "ui_screens": [],
+      "security_controls": "Human approval, RBAC, audit and governance controls as applicable",
+      "tests_required": "Workflow integration, state transition, error handling and security tests required",
+      "implementation_status": "Not started",
+      "related_adrs": []
+    },
+    {
+      "id": "WF-009",
+      "name": "Content Factory Workflow",
+      "workflow_type": "Production Workflow",
+      "owner": "Content Production",
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 6",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:89232-90743",
+      "trigger": "Pending detailed extraction",
+      "participants": "AI agents, platform services and human roles as specified in source",
+      "services_involved": [
+        "SVC-019",
+        "SVC-021"
+      ],
+      "apis_used": [],
+      "events_produced_consumed": [
+        "EVT-005",
+        "EVT-006"
+      ],
+      "databases_used": [],
+      "ui_screens": [],
+      "security_controls": "Human approval, RBAC, audit and governance controls as applicable",
+      "tests_required": "Workflow integration, state transition, error handling and security tests required",
+      "implementation_status": "Not started",
+      "related_adrs": []
+    },
+    {
+      "id": "WF-010",
+      "name": "Distribution Engine Workflow",
+      "workflow_type": "Distribution Workflow",
+      "owner": "Distribution",
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 6",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:90743-91299",
+      "trigger": "Pending detailed extraction",
+      "participants": "AI agents, platform services and human roles as specified in source",
+      "services_involved": [
+        "SVC-021",
+        "SVC-023"
+      ],
+      "apis_used": [],
+      "events_produced_consumed": [
+        "EVT-013",
+        "EVT-014"
+      ],
+      "databases_used": [],
+      "ui_screens": [],
+      "security_controls": "Human approval, RBAC, audit and governance controls as applicable",
+      "tests_required": "Workflow integration, state transition, error handling and security tests required",
+      "implementation_status": "Not started",
+      "related_adrs": []
+    },
+    {
+      "id": "WF-011",
+      "name": "Continuous Story Monitoring",
+      "workflow_type": "Analytics Workflow",
+      "owner": "Analytics",
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 6",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:91299-92017",
+      "trigger": "Pending detailed extraction",
+      "participants": "AI agents, platform services and human roles as specified in source",
+      "services_involved": [
+        "SVC-009"
+      ],
+      "apis_used": [],
+      "events_produced_consumed": [
+        "EVT-015",
+        "EVT-016"
+      ],
+      "databases_used": [],
+      "ui_screens": [],
+      "security_controls": "Human approval, RBAC, audit and governance controls as applicable",
+      "tests_required": "Workflow integration, state transition, error handling and security tests required",
+      "implementation_status": "Not started",
+      "related_adrs": []
+    },
+    {
+      "id": "WF-012",
+      "name": "Correction & Retraction Framework",
+      "workflow_type": "Governance Workflow",
+      "owner": "Governance",
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 6",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:92017-92543",
+      "trigger": "Pending detailed extraction",
+      "participants": "AI agents, platform services and human roles as specified in source",
+      "services_involved": [
+        "SVC-014",
+        "SVC-022"
+      ],
+      "apis_used": [],
+      "events_produced_consumed": [],
+      "databases_used": [],
+      "ui_screens": [],
+      "security_controls": "Human approval, RBAC, audit and governance controls as applicable",
+      "tests_required": "Workflow integration, state transition, error handling and security tests required",
+      "implementation_status": "Not started",
+      "related_adrs": []
+    },
+    {
+      "id": "WF-013",
+      "name": "Enterprise Workflow Orchestration",
+      "workflow_type": "Platform Workflow",
+      "owner": "Platform",
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 6",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:92543-94060",
+      "trigger": "Pending detailed extraction",
+      "participants": "AI agents, platform services and human roles as specified in source",
+      "services_involved": [
+        "SVC-026",
+        "SVC-014"
+      ],
+      "apis_used": [],
+      "events_produced_consumed": [],
+      "databases_used": [],
+      "ui_screens": [],
+      "security_controls": "Human approval, RBAC, audit and governance controls as applicable",
+      "tests_required": "Workflow integration, state transition, error handling and security tests required",
+      "implementation_status": "Not started",
+      "related_adrs": []
+    },
+    {
+      "id": "WF-014",
+      "name": "Frontend API Integration Workflow",
+      "workflow_type": "Frontend Workflow",
+      "owner": "Frontend",
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 8",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:101314-101631",
+      "trigger": "Pending detailed extraction",
+      "participants": "AI agents, platform services and human roles as specified in source",
+      "services_involved": [
+        "SVC-001",
+        "SVC-025"
+      ],
+      "apis_used": [],
+      "events_produced_consumed": [],
+      "databases_used": [],
+      "ui_screens": [],
+      "security_controls": "Human approval, RBAC, audit and governance controls as applicable",
+      "tests_required": "Workflow integration, state transition, error handling and security tests required",
+      "implementation_status": "Not started",
+      "related_adrs": []
+    },
+    {
+      "id": "WF-015",
+      "name": "Enterprise Delivery Lifecycle",
+      "workflow_type": "Delivery Workflow",
+      "owner": "Programme Delivery",
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 10",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:105584-108403",
+      "trigger": "Pending detailed extraction",
+      "participants": "AI agents, platform services and human roles as specified in source",
+      "services_involved": [
+        "SVC-026"
+      ],
+      "apis_used": [],
+      "events_produced_consumed": [],
+      "databases_used": [],
+      "ui_screens": [],
+      "security_controls": "Human approval, RBAC, audit and governance controls as applicable",
+      "tests_required": "Workflow integration, state transition, error handling and security tests required",
+      "implementation_status": "Not started",
+      "related_adrs": []
+    }
+  ]
 }

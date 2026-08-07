@@ -1,0 +1,4933 @@
+VOLUME 7: FRONTEND ARCHITECTURE & USER EXPERIENCE SPECIFICATION
+
+
+
+Document Status: Enterprise Architecture — Version 1.0
+
+Preceding Volumes: Volumes 1–6 (Approved)
+
+Architecture Context: Agbofa Nexus AI — Autonomous AI Media Company Platform
+
+Volume Purpose: Complete Frontend Experience Architecture & Design System Blueprint
+
+
+
+---
+
+
+
+PART I — FRONTEND VISION & DESIGN PHILOSOPHY
+
+
+
+I.1 UX VISION
+
+
+
+I.1.1 The AI Operating System for Newsrooms
+
+
+
+Agbofa Nexus AI is not a content management system with AI features added. It is an AI
+operating system for running a modern autonomous newsroom. The frontend experience must
+reflect this fundamental distinction.
+
+Where traditional CMS platforms present users with forms, fields, and publish buttons, Agbofa
+Nexus AI presents users with intelligence dashboards, agent workspaces, confidence indicators,
+and editorial command centres. The user is not filling in content fields — they are overseeing an
+AI workforce that discovers, verifies, produces, and distributes news.
+
+
+
+The UX vision rests on four pillars:
+
+
+
+1. Command, Not Control — Users direct AI agents rather than performing tasks themselves.
+The interface surfaces decisions that require human judgment while automating routine
+execution.
+
+2. Confidence, Not Certainty — Every AI-generated output displays its confidence level. Users
+make informed decisions about when to trust AI and when to intervene.
+
+3. Visibility, Not Opacity — The AI newsroom's operations are fully visible. Users can inspect any
+agent's reasoning, trace any story's provenance, and audit any decision.
+
+4. Focus, Not Noise — The interface prioritises what needs human attention. Routine operations
+happen automatically; exceptions surface prominently.
+
+
+
+I.1.2 The Experience Metaphor
+
+
+
+The Agbofa Nexus AI frontend operates on a Mission Control metaphor:
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│               EXPERIENCE METAPHOR                         │
+
+│             AI Newsroom Mission Control                    │
+
+│                                             │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │            COMMAND DECK (Primary Workspace)                        ││
+
+│ │                                                ││
+
+│ │ ┌─────────────┐ ┌─────────────────────────┐ ┌─────────────────────┐ │ │
+
+│ │ │ STORY         │ │                │ │ AGENT           │ ││
+
+│ │ │ PIPELINE │ │        MAIN CANVAS          │ │ STATUS          │ ││
+
+│ │ │         │ │                │ │               │ ││
+
+│ │ │ • Breaking │ │ Active story, editor, │ │ • Active agents │ │ │
+
+│ │ │ • Assigned │ │ dashboard, or viewer │ │ • Queue depth               │ ││
+
+│ │ │ • In Review │ │                   │ │ • Confidence        │ ││
+
+│ │ │ • Published │ │                   │ │ • Alerts       │ ││
+
+│ │ └─────────────┘ └─────────────────────────┘ └─────────────────────┘ │ │
+
+│ │                                                ││
+
+│ │ ┌─────────────────────────────────────────────────────────────────────┐ │ │
+
+│ │ │               STATUS BAR                            │││
+
+│ │ │ System Health │ Stories Today │ Active Agents │ Confidence Avg │ Costs│ │ │
+
+│ │ └─────────────────────────────────────────────────────────────────────┘ │ │
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                                │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+I.2 FRONTEND DESIGN PRINCIPLES
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│            FRONTEND DESIGN PRINCIPLES                            │
+
+│                                               │
+
+│ PRINCIPLE 1: AI VISIBILITY                                 │
+
+│ ────────────────────────                                        │
+
+│ Every AI action is visible to the user. Agent activity is surfaced in            │
+
+│ real-time. Confidence scores are displayed prominently. Users never                          │
+
+│ wonder "what is the AI doing right now?"                             │
+
+│                                               │
+
+│ PRINCIPLE 2: PROGRESSIVE DISCLOSURE                                      │
+
+│ ──────────────────────────────────                                           │
+
+│ Complex AI capabilities are revealed progressively. The default view                     │
+
+│ shows essential information. Users drill down for detail. Advanced                       │
+
+│ features are discoverable but not overwhelming.                              │
+
+│                                               │
+
+│ PRINCIPLE 3: CONFIDENCE-FIRST INFORMATION HIERARCHY                                          │
+
+│ ───────────────────────────────────────────────────                                                  │
+
+│ Content confidence level determines visual prominence. High-confidence                               │
+
+│ content appears ready for action. Low-confidence content demands                                 │
+
+│ attention. The user's eye is drawn to what needs their judgment.                         │
+
+│                                               │
+
+│ PRINCIPLE 4: ACTION-ORIENTED INTERFACES                                          │
+
+│ ────────────────────────────────────                                                 │
+
+│ Every screen has a clear primary action. The interface reduces cognitive                     │
+
+│ load by presenting the most relevant action prominently. Secondary                    │
+
+│ actions are available but not competing.                      │
+
+│                                              │
+
+│ PRINCIPLE 5: CONSISTENT MENTAL MODEL                                  │
+
+│ ──────────────────────────────────                                        │
+
+│ The platform behaves consistently. Stories flow left to right through             │
+
+│ pipeline stages. Confidence uses consistent colour semantics. Agent                   │
+
+│ interactions follow consistent patterns. Users build one mental model.                │
+
+│                                              │
+
+│ PRINCIPLE 6: REAL-TIME BY DEFAULT                                 │
+
+│ ────────────────────────────                                      │
+
+│ The newsroom operates in real-time; the interface reflects this. Data             │
+
+│ updates live. Notifications appear immediately. Story states change               │
+
+│ before the user's eyes. The interface feels alive.                │
+
+│                                              │
+
+│ PRINCIPLE 7: KEYBOARD-DRIVEN EFFICIENCY                               │
+
+│ ────────────────────────────────────                                          │
+
+│ Power users operate the newsroom primarily via keyboard. Every action                     │
+
+│ has a keyboard shortcut. The Command Palette provides universal access.                   │
+
+│ Mouse is for exploration; keyboard is for execution.                  │
+
+│                                              │
+
+│ PRINCIPLE 8: ACCESSIBLE BY DESIGN                              │
+
+│ ────────────────────────────                                      │
+
+│ WCAG 2.2 AA compliance is not an add-on — it is a design constraint                   │
+
+│ applied from the first wireframe. Every component meets accessibility                 │
+
+│ standards. Every workflow is keyboard-navigable. Every visualisation                  │
+
+│ has text alternatives.                               │
+
+│                                            │
+
+│ PRINCIPLE 9: RESPONSIVE FROM DESKTOP TO FIELD                           │
+
+│ ───────────────────────────────────────────────                                 │
+
+│ The newsroom operates from desktop workstations, laptops in the field,          │
+
+│ and mobile devices for on-the-go monitoring. Every critical workflow        │
+
+│ functions at every breakpoint, with appropriate adaptations.            │
+
+│                                            │
+
+│ PRINCIPLE 10: BRAND-ADAPTIVE THEMING                                │
+
+│ ─────────────────────────────────                                   │
+
+│ The platform supports light, dark, and system themes. Multi-tenant          │
+
+│ deployments support tenant-specific branding (colours, logos, typography) │
+
+│ while maintaining consistent interaction patterns.              │
+
+│                                            │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+I.3 AI-FIRST USER EXPERIENCE
+
+
+
+I.3.1 The AI-First Paradigm
+
+
+
+Traditional CMS: User → Form → Content → Publish
+
+Agbofa Nexus AI: User → Direct AI Agents → Review AI Output → Approve/Publish
+
+
+
+The AI-First UX manifests in every screen:
+
+Traditional CMS Pattern AI-First Pattern
+
+User writes headline AI proposes 5 headlines with scores; user selects or edits
+
+User finds images AI generates images with prompts; user approves or adjusts
+
+User checks facts AI verifies claims with sources; user reviews flagged items
+
+User schedules posts AI recommends optimal schedule; user confirms or overrides
+
+User monitors analytics AI surfaces anomalies and insights; user investigates
+
+
+
+I.3.2 AI Presence in the Interface
+
+
+
+AI is not a chatbot in the corner. AI permeates the interface:
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│             AI PRESENCE IN THE INTERFACE                       │
+
+│                                              │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ AI INDICATORS (Everywhere)                               ││
+
+│ │ • Blue dot/pulse: AI actively working on this                    ││
+
+│ │ • Confidence badge: Score displayed on all AI-generated content            ││
+
+│ │ • Agent avatar: Which agent performed this action                     ││
+
+│ │ • Explainability icon: Click to see AI reasoning                 ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                              │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ AI PANELS (Contextual)                                ││
+
+│ │ • Right sidebar: AI Assistant panel (context-aware)               ││
+
+│ │ • Bottom panel: Agent conversation thread                        ││
+
+│ │ • Overlay: Confidence breakdown modal                            ││
+
+│ │ • Inline: AI suggestions within content                     ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                             │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ AI CONTROLS (Task-specific)                            ││
+
+│ │ • "Ask AI" button on every content area                     ││
+
+│ │ • Confidence threshold slider (per user preference)               ││
+
+│ │ • Agent assignment dropdown                                ││
+
+│ │ • Feedback thumbs up/down on AI outputs                           ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                             │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+I.4 ENTERPRISE USABILITY GOALS
+
+
+
+Metric Target Measurement
+
+Time to First Story < 15 minutes for new user Onboarding completion to first story published
+
+Story Review Time < 2 minutes for high-confidence story Time from opening story to approval
+decision
+
+Breaking News Response < 30 seconds from alert to action Alert appearance to user
+acknowledgement
+
+Task Completion Rate 95% for top 10 tasks Task success without help or error
+
+Error Rate < 2% for critical actions Errors per user session
+
+Learnability < 1 hour to basic proficiency Time to complete core workflows independently
+
+SUS Score 80 (Excellent) System Usability Scale survey
+
+Keyboard Accessibility 100% of actions keyboard-accessible Audit against WCAG 2.2 AA
+
+Screen Reader Compatibility 100% of content accessible Audit with NVDA/VoiceOver
+
+
+
+I.5 USER PERSONAS
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│               PRIMARY USER PERSONAS                               │
+
+│                                              │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ PERSONA 1: EDITOR-IN-CHIEF (EIC)                                    ││
+
+│ │ ─────────────────────────────────                                         ││
+
+│ │ Role: Strategic oversight of AI newsroom                             ││
+
+│ │ Frequency: Daily (2-4 hours); heavy during breaking news                       ││
+
+│ │ Primary Screens: Executive Dashboard, Breaking News Centre,                     ││
+
+│ │           Corrections & Retractions                        ││
+
+│ │ Key Needs:                                     ││
+
+│ │ • At-a-glance newsroom health                               ││
+
+│ │ • Immediate breaking news visibility                        ││
+
+│ │ • Override capability for critical decisions                 ││
+
+│ │ • Performance trends and analytics                          ││
+
+│ │ • Agent workforce overview                              ││
+
+│ │ Technical Level: Moderate (comfortable with analytics dashboards)           ││
+
+│ │ Device: Primarily desktop; mobile for breaking news alerts             ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                              │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ PERSONA 2: MANAGING EDITOR                                       ││
+
+│ │ ───────────────────────────                                      ││
+
+│ │ Role: Day-to-day editorial operations management                       ││
+
+│ │ Frequency: Daily (6-8 hours); primary platform user                   ││
+
+│ │ Primary Screens: Story Pipeline, Editorial Workspace, Human Review Queue │ │
+
+│ │ Key Needs:                                     ││
+
+│ │ • Story pipeline visibility and management                       ││
+
+│ │ • Efficient review workflow for AI-generated content                  ││
+
+│ │ • Agent assignment and oversight                            ││
+
+│ │ • Quality control workflows                            ││
+
+│ │ • Team coordination tools                              ││
+
+│ │ Technical Level: Moderate-High (power user)                       ││
+
+│ │ Device: Desktop primary; laptop for remote work                       ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                             │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ PERSONA 3: CONTENT EDITOR                                   ││
+
+│ │ ───────────────────────────                                   ││
+
+│ │ Role: Review and refine AI-generated content                      ││
+
+│ │ Frequency: Daily (6-8 hours); focused content work                 ││
+
+│ │ Primary Screens: Article Editor, Headline Studio, Verification Centre │ │
+
+│ │ Key Needs:                                        ││
+
+│ │ • Comfortable editing environment for long-form content                 ││
+
+│ │ • Quick access to AI suggestions and fact-checks                  ││
+
+│ │ • Confidence indicators for editorial decisions               ││
+
+│ │ • Efficient approval/rejection workflow                      ││
+
+│ │ • Image and media review                               ││
+
+│ │ Technical Level: Moderate (focused on content, not system)              ││
+
+│ │ Device: Desktop primary (large screen for content editing)             ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                             │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ PERSONA 4: PLATFORM ADMINISTRATOR                                  ││
+
+│ │ ───────────────────────────────────                                    ││
+
+│ │ Role: Platform configuration, user management, system health                ││
+
+│ │ Frequency: Daily (1-2 hours); intensive during setup/changes            ││
+
+│ │ Primary Screens: Settings, User Management, System Health, Billing         ││
+
+│ │ Key Needs:                                        ││
+
+│ │ • Comprehensive configuration options                        ││
+
+│ │ • System health monitoring and alerting                      ││
+
+│ │ • User and role management                              ││
+
+│ │ • API integration management                            ││
+
+│ │ • Cost monitoring and optimisation                          ││
+
+│ │ Technical Level: High (technical administrator)                  ││
+
+│ │ Device: Desktop primary                                ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                             │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ PERSONA 5: MOBILE MONITOR (On-Call Editor)                            ││
+
+│ │ ───────────────────────────────────────────                                ││
+
+│ │ Role: Monitor newsroom during off-hours; respond to critical alerts        ││
+
+│ │ Frequency: Intermittent; intensive during incidents                ││
+
+│ │ Primary Screens: Mobile Dashboard, Breaking News Alerts, Notifications │ │
+
+│ │ Key Needs:                                        ││
+
+│ │ • Critical alert visibility on mobile                  ││
+
+│ │ • Quick approval/rejection of breaking content                    ││
+
+│ │ • Story pipeline status at a glance                     ││
+
+│ │ • Agent health monitoring on mobile                          ││
+
+│ │ • One-hand operation for key actions                         ││
+
+│ │ Technical Level: Moderate                              ││
+
+│ │ Device: Mobile primary; tablet secondary                      ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                               │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+I.6 ACCESSIBILITY STRATEGY (WCAG 2.2 AA)
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│            ACCESSIBILITY STRATEGY                          │
+
+│                                              │
+
+│ STANDARD: WCAG 2.2 Level AA compliance (minimum)                                │
+
+│                                              │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ PERCEIVABLE                                        ││
+
+│ │ ───────────                                         ││
+
+│ │ • All non-text content has text alternatives                   ││
+
+│ │ • Colour contrast ratio ≥ 4.5:1 (normal text), ≥ 3:1 (large text)        ││
+
+│ │ • Information not conveyed by colour alone                          ││
+
+│ │ • Content readable at 200% zoom without horizontal scrolling                  ││
+
+│ │ • Text spacing adjustable without loss of content                   ││
+
+│ │ • Content on hover/focus is dismissible, hoverable, persistent            ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                               │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ OPERABLE                                          ││
+
+│ │ ────────                                          ││
+
+│ │ • All functionality available from keyboard                       ││
+
+│ │ • No keyboard traps                                    ││
+
+│ │ • Visible focus indicators on all interactive elements                ││
+
+│ │ • Skip navigation links provided                            ││
+
+│ │ • Descriptive page titles and headings                           ││
+
+│ │ • Link purpose clear from link text alone                        ││
+
+│ │ • Multiple ways to locate pages (nav, search, sitemap)                  ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                               │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ UNDERSTANDABLE                                           ││
+
+│ │ ─────────────                                       ││
+
+│ │ • Language of page programmatically determined                             ││
+
+│ │ • Consistent navigation across pages                          ││
+
+│ │ • Consistent identification of components                         ││
+
+│ │ • Input errors identified and described to user                    ││
+
+│ │ • Labels and instructions provided for inputs                     ││
+
+│ │ • Error suggestions provided where known                              ││
+
+│ │ • Legal, financial, data consequences clearly communicated                   ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                             │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ ROBUST                                          ││
+
+│ │ ──────                                         ││
+
+│ │ • Valid, semantic HTML                                 ││
+
+│ │ • ARIA used appropriately (where native HTML insufficient)                   ││
+
+│ │ • Status messages announced to screen readers                           ││
+
+│ │ • Compatible with current assistive technologies                    ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                             │
+
+│ IMPLEMENTATION APPROACH:                                      │
+
+│ • Accessibility tested at component level (unit tests)                │
+
+│ • Automated accessibility testing in CI/CD pipeline                   │
+
+│ • Manual screen reader testing (NVDA, VoiceOver) per release                   │
+
+│ • Keyboard-only testing for all workflows                     │
+
+│ • Colour contrast validation in design system                     │
+
+│ • Accessibility documentation for every component                         │
+
+│                                             │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+I.7 RESPONSIVE STRATEGY
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│            RESPONSIVE STRATEGY                               │
+
+│                                              │
+
+│ BREAKPOINTS:                                             │
+
+│ ───────────                                          │
+
+│                                              │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ BREAKPOINT MIN WIDTH TARGET DEVICE                     PRIMARY USE CASE      ││
+
+│ │ ────────── ───────── ─────────────                  ────────────────         ││
+
+│ │ Desktop XL ≥ 1920px        Large monitor        Multi-panel workspace │ │
+
+│ │ Desktop LG ≥ 1440px        Standard desktop       Full editorial work   ││
+
+│ │ Desktop MD ≥ 1024px         Small desktop/Laptop Standard operations         ││
+
+│ │ Tablet      ≥ 768px     iPad/Tablet      Monitoring + light edit │ │
+
+│ │ Mobile LG     ≥ 428px     Large phone          Monitoring + approvals │ │
+
+│ │ Mobile SM     ≥ 320px      Small phone         Alerts + quick actions │ │
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                              │
+
+│ RESPONSIVE BEHAVIOUR:                                        │
+
+│ ────────────────────                                         │
+
+│                                              │
+
+│ Desktop XL/LG (Primary Editorial Workspace):                        │
+
+│ • Three-column layout: Nav | Content | Context Panel                             │
+
+│ • Multi-panel dashboards with drag-and-drop arrangement                                  │
+
+│ • Full article editor with side-by-side AI suggestions                   │
+
+│ • Keyboard shortcuts for all operations                              │
+
+│                                               │
+
+│ Desktop MD/Tablet:                                       │
+
+│ • Two-column layout: Nav (collapsed) | Content                               │
+
+│ • Context panel becomes slide-out drawer                                 │
+
+│ • Dashboards switch to stacked layout                                │
+
+│ • Article editor: full-width with floating AI toolbar                    │
+
+│                                               │
+
+│ Mobile:                                           │
+
+│ • Single column layout with bottom navigation                                │
+
+│ • Context panels become full-screen overlays                                 │
+
+│ • Dashboards: stacked card layout with swipe navigation                              │
+
+│ • Article review: scrollable content with fixed approval bar                     │
+
+│ • Critical actions available with one-hand operation                         │
+
+│ • Pull-to-refresh for live data                              │
+
+│ • Haptic feedback for critical alerts                            │
+
+│                                               │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+I.8 INTERNATIONALISATION & LOCALISATION
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│         INTERNATIONALISATION & LOCALISATION STRATEGY                                         │
+
+│                                                 │
+
+│ LANGUAGE SUPPORT:                                            │
+
+│ ────────────────                                         │
+
+│ • MVP: English                                      │
+
+│ • Growth: + French, Arabic, Portuguese, Swahili                                  │
+
+│ • Enterprise: 20+ languages with cultural localisation                               │
+
+│                                                 │
+
+│ LOCALISATION DIMENSIONS:                                         │
+
+│ ───────────────────────                                          │
+
+│ • UI strings: All interface text externalised                        │
+
+│ • Date/Time formats: Locale-appropriate (DD/MM/YYYY vs MM/DD/YYYY)                               │
+
+│ • Number formats: Locale-appropriate (1,234.56 vs 1.234,56)                              │
+
+│ • Currency: Locale-appropriate with conversion                               │
+
+│ • RTL support: Arabic and Hebrew right-to-left layouts                           │
+
+│ • Cultural adaptations: Images, icons, examples, colour semantics                            │
+
+│ • Content language: Separate from interface language                                 │
+
+│                                                 │
+
+│ IMPLEMENTATION:                                          │
+
+│ ──────────────                                       │
+
+│ • i18n framework with lazy-loaded locale packs                               │
+
+│ • Language detection from browser preferences                                    │
+
+│ • Manual language override in user settings                              │
+
+│ • Per-tenant default language configuration                 │
+
+│ • Content language independent of UI language                     │
+
+│                                             │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+I.9 THEME STRATEGY
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│               THEME STRATEGY                          │
+
+│                                             │
+
+│ THEME MODES:                                          │
+
+│ ───────────                                       │
+
+│                                             │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ LIGHT THEME                                     ││
+
+│ │ ───────────                                     ││
+
+│ │ • Clean, professional, high-readability                 ││
+
+│ │ • White/grey backgrounds with strong contrast                 ││
+
+│ │ • Primary use: Daytime editorial work                   ││
+
+│ │ • Confidence colours: Green (high), Amber (medium), Red (low)       ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                            │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ DARK THEME                                       ││
+
+│ │ ──────────                                      ││
+
+│ │ • Low-light environment optimisation                       ││
+
+│ │ • Dark backgrounds with reduced eye strain                      ││
+
+│ │ • Primary use: Night operations, breaking news monitoring                 ││
+
+│ │ • Confidence colours: Adjusted for dark background visibility         ││
+
+│ │ • Accent colours more vibrant for contrast                  ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                            │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ SYSTEM THEME                                       ││
+
+│ │ ────────────                                      ││
+
+│ │ • Automatically follows OS preference                       ││
+
+│ │ • Transitions smoothly between light and dark                    ││
+
+│ │ • Default for new users                              ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                            │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ MULTI-TENANT BRANDING (Enterprise)                              ││
+
+│ │ ──────────────────────────────────                                   ││
+
+│ │ • Tenant-customisable: Primary colour, logo, favicon                    ││
+
+│ │ • Typography: Select from approved font stack                        ││
+
+│ │ • Corner radius: Brand personality expression                        ││
+
+│ │ • Accent colour: Used for interactive elements                       ││
+
+│ │ • All customisations applied via design tokens                    ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                                │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+I.10 DESIGN PHILOSOPHY
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│                DESIGN PHILOSOPHY                              │
+
+│                                                 │
+
+│ VISUAL LANGUAGE:                                          │
+
+│ ───────────────                                          │
+
+│                                                 │
+
+│ The Agbofa Nexus AI visual language balances three qualities:                  │
+
+│                                                │
+
+│ 1. PROFESSIONAL AUTHORITY — The platform must inspire trust. Visual design │
+
+│     communicates reliability, precision, and editorial integrity. Clean        │
+
+│     lines, clear hierarchy, restrained colour palette.             │
+
+│                                              │
+
+│ 2. TECHNOLOGICAL SOPHISTICATION — The platform is AI-native. Subtle                    │
+
+│     animations, glassmorphism accents, and intelligent use of motion           │
+
+│     communicate technological advancement without feeling gimmicky.                │
+
+│                                              │
+
+│ 3. OPERATIONAL CLARITY — The newsroom is complex. The interface reduces                    │
+
+│     that complexity through clear information architecture, consistent         │
+
+│     patterns, and progressive disclosure. Every pixel serves understanding. │
+
+│                                              │
+
+│ VISUAL REFERENCES:                                      │
+
+│ • Bloomberg Terminal: Data density, professional authority                 │
+
+│ • Notion: Clean typography, flexible layouts                   │
+
+│ • Linear: Modern SaaS design, command palette                       │
+
+│ • Vercel: Dark theme elegance, glassmorphism                       │
+
+│ • SpaceX Mission Control: Real-time operations visibility              │
+
+│                                              │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+---
+
+
+
+PART II — INFORMATION ARCHITECTURE
+
+
+
+II.1 GLOBAL NAVIGATION
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│            GLOBAL NAVIGATION ARCHITECTURE                              │
+
+│                                                  │
+
+│ DESKTOP NAVIGATION (Sidebar + Top Bar):                               │
+
+│ ─────────────────────────────────────────                                  │
+
+│                                                  │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ ┌─────────────────────┐ ┌───────────────────────────────────────────┐ │ │
+
+│ │ │               │ │ TOP BAR                            │││
+
+│ │ │ WORKSPACE LOGO │ │ ┌──────────┐ ┌──────────┐ ┌──────────┐ │ │ │
+
+│ │ │               │ │ │⌘K Search │ │Notifications│ │User Menu│ │ │ │
+
+│ │ ├─────────────────────┤ │ └──────────┘ └──────────┘ └──────────┘ │ │ │
+
+│ │ │               │ ├───────────────────────────────────────────┤ │ │
+
+│ │ │ PRIMARY NAV           │ │                              │││
+
+│ │ │               │ │                            │││
+
+│ │ │ ⬡ Dashboard           │ │         MAIN CONTENT AREA              │││
+
+│ │ │ ⬡ Story Pipeline │ │                                  │││
+
+│ │ │ ⬡ Breaking News           │ │      (Dashboard / Editor /         │││
+
+│ │ │ ⬡ Editorial         │ │         Viewer / Settings)         │││
+
+│ │ │ ⬡ Content Factory │ │                                  │││
+
+│ │ │ ⬡ Publishing         │ │                             │││
+
+│ │ │ ⬡ Analytics         │ │                              │││
+
+│ │ │ ⬡ Agents            │ │                              │││
+
+│ │ │              │ │                         │││
+
+│ │ ├─────────────────────┤ │                                    │││
+
+│ │ │              │ │                         │││
+
+│ │ │ SECONDARY NAV            │ │                         │││
+
+│ │ │              │ │                         │││
+
+│ │ │ ⬡ Audience          │ │                        │││
+
+│ │ │ ⬡ Knowledge Base │ │                                 │││
+
+│ │ │ ⬡ Settings         │ │                         │││
+
+│ │ │              │ │                         │││
+
+│ │ ├─────────────────────┤ ├───────────────────────────────────────────┤
+││
+
+│ │ │              │ │ STATUS BAR                    │││
+
+│ │ │ WORKSPACE            │ │ Stories: 142 | Agents: 28 Active |      │││
+
+│ │ │ SWITCHER            │ │ Confidence Avg: 0.87 | Cost: $234/day     │││
+
+│ │ │              │ │                         │││
+
+│ │ └─────────────────────┘ └───────────────────────────────────────────┘ │ │
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                              │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+II.2 NAVIGATION HIERARCHY
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│             NAVIGATION HIERARCHY                                      │
+
+│                                               │
+
+│ LEVEL 1: PRIMARY NAVIGATION (Always visible in sidebar)                               │
+
+│ ───────────────────────────────────────────────────────                                   │
+
+│                                               │
+
+│ ⬡ DASHBOARD                                               │
+
+│   ├── AI Newsroom Dashboard (default)                                             │
+
+│   ├── Executive Dashboard                                         │
+
+│   └── Custom Dashboards (user-created)                                        │
+
+│                                               │
+
+│ ⬡ STORY PIPELINE                                          │
+
+│   ├── All Stories (filterable by state, priority, beat)                           │
+
+│   ├── Breaking News Centre                                            │
+
+│   ├── Story Graph Viewer                                          │
+
+│   ├── Human Review Queue                                                  │
+
+│   └── Quality Assurance                                       │
+
+│                                               │
+
+│ ⬡ EDITORIAL                                           │
+
+│   ├── Editorial Workspace (active story)                                      │
+
+│   ├── Article Editor                                      │
+
+│   ├── Headline Studio                                         │
+
+│   ├── Verification Centre                                     │
+
+│   └── Corrections & Retractions                                   │
+
+│                                               │
+
+│ ⬡ CONTENT FACTORY                                   │
+
+│   ├── Content Calendar                          │
+
+│   ├── Image Studio                          │
+
+│   ├── Video Studio                      │
+
+│   ├── Audio Studio                          │
+
+│   └── Content Templates                         │
+
+│                                 │
+
+│ ⬡ PUBLISHING                            │
+
+│   ├── Publishing Centre                         │
+
+│   ├── Distribution Dashboard                            │
+
+│   ├── Calendar & Scheduler                              │
+
+│   └── Platform Connectors                       │
+
+│                                 │
+
+│ ⬡ ANALYTICS                         │
+
+│   ├── Analytics Dashboard                           │
+
+│   ├── Audience Intelligence                         │
+
+│   ├── Competitor Intelligence                           │
+
+│   ├── Revenue Dashboard                                 │
+
+│   └── AI Cost Dashboard                         │
+
+│                                 │
+
+│ ⬡ AGENTS                            │
+
+│   ├── AI Agent Monitor                          │
+
+│   ├── Agent Activity Timeline                           │
+
+│   ├── Prompt Library                        │
+
+│   └── Agent Trust Management                                │
+
+│                                        │
+
+│ LEVEL 2: SECONDARY NAVIGATION (Below primary, collapsible)      │
+
+│ ───────────────────────────────────────────────────────────         │
+
+│                                        │
+
+│ ⬡ AUDIENCE                                      │
+
+│ ⬡ KNOWLEDGE BASE                                        │
+
+│ ⬡ SETTINGS                                      │
+
+│     ├── Workspace Settings                              │
+
+│     ├── User Management                                     │
+
+│     ├── Role Management                                 │
+
+│     ├── API & Integrations                          │
+
+│     ├── Billing & Subscription                          │
+
+│     ├── System Health                               │
+
+│     └── Audit Logs                              │
+
+│                                        │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+II.3 SITEMAP (ABBREVIATED)
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│                 SITEMAP                     │
+
+│                                        │
+
+│ /              → Landing Page (unauthenticated)                │
+
+│ /login           → Authentication                          │
+
+│ /onboarding            → New user onboarding                       │
+
+│                                             │
+
+│ /[workspace]/dashboard      → AI Newsroom Dashboard                                │
+
+│ /[workspace]/dashboard/executive → Executive Dashboard                                 │
+
+│                                             │
+
+│ /[workspace]/pipeline     → Story Pipeline (all stories)                   │
+
+│ /[workspace]/pipeline/breaking → Breaking News Centre                              │
+
+│ /[workspace]/pipeline/review → Human Review Queue                                      │
+
+│                                             │
+
+│ /[workspace]/story/[id] → Story Detail / Editorial Workspace                       │
+
+│ /[workspace]/story/[id]/graph → Story Graph Viewer                             │
+
+│ /[workspace]/story/[id]/verify → Verification Centre                       │
+
+│ /[workspace]/story/[id]/edit → Article Editor                      │
+
+│                                             │
+
+│ /[workspace]/editorial    → Editorial Overview                         │
+
+│ /[workspace]/editorial/headlines → Headline Studio                             │
+
+│                                             │
+
+│ /[workspace]/factory      → Content Factory                        │
+
+│ /[workspace]/factory/images → Image Studio                                 │
+
+│ /[workspace]/factory/video → Video Studio                              │
+
+│ /[workspace]/factory/audio → Audio Studio                              │
+
+│                                             │
+
+│ /[workspace]/publish      → Publishing Centre                      │
+
+│ /[workspace]/publish/calendar → Calendar & Scheduler                               │
+
+│                                           │
+
+│ /[workspace]/analytics    → Analytics Dashboard                      │
+
+│ /[workspace]/analytics/audience → Audience Intelligence                          │
+
+│ /[workspace]/analytics/costs → AI Cost Dashboard                         │
+
+│                                           │
+
+│ /[workspace]/agents      → AI Agent Monitor                      │
+
+│ /[workspace]/agents/prompts → Prompt Library                             │
+
+│                                           │
+
+│ /[workspace]/settings    → Workspace Settings                    │
+
+│ /[workspace]/settings/users → User Management                                │
+
+│ /[workspace]/settings/billing → Billing                      │
+
+│                                           │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+II.4 ROLE-BASED NAVIGATION
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│            ROLE-BASED NAVIGATION                         │
+
+│                                           │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ ROLE         DEFAULT SCREEN         VISIBLE SECTIONS           ││
+
+│ │ ────         ──────────────         ────────────────               ││
+
+│ │                                            ││
+
+│ │ Editor-in-Chief Executive Dashboard ALL sections visible             ││
+
+│ │                      Settings: full access           ││
+
+│ │                      Agents: full management              ││
+
+│ │                                            ││
+
+│ │ Managing Editor Story Pipeline         Dashboard, Pipeline, Editorial, │ │
+
+│ │                      Factory, Publish, Analytics, │ │
+
+│ │                      Corrections                 ││
+
+│ │                      Settings: editorial config       ││
+
+│ │                      Agents: monitoring only              ││
+
+│ │                                            ││
+
+│ │ Content Editor Human Review Queue           Pipeline, Editorial, Factory     ││
+
+│ │                      Analytics: content only          ││
+
+│ │                      Settings: profile only          ││
+
+│ │                                            ││
+
+│ │ Platform Admin System Health           Dashboard, Settings (full),    ││
+
+│ │                      Agents (monitor), Analytics          ││
+
+│ │                      (cost), Billing            ││
+
+│ │                                            ││
+
+│ │ Viewer       AI Newsroom Dashboard Dashboard (read-only)                   ││
+
+│ │                      Pipeline (read-only)            ││
+
+│ │                      Analytics (read-only)           ││
+
+│ │                                            ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                              │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+II.5 GLOBAL SEARCH & COMMAND PALETTE
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│          GLOBAL SEARCH & COMMAND PALETTE                             │
+
+│                                           │
+
+│ ACTIVATION: ⌘K (Mac) / Ctrl+K (Windows/Linux)                         │
+
+│                                          │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ ┌─────────────────────────────────────────────────────────────────────┐│ │
+
+│ │ │     Search stories, agents, settings, commands...              ││ │
+
+│ │ ├─────────────────────────────────────────────────────────────────────┤│
+│
+
+│ │ │                                      ││ │
+
+│ │ │ STORIES                                    ││ │
+
+│ │ │ ───────                                    ││ │
+
+│ │ │     BoG Raises Policy Rate to 30%         Published · 2h ago    ││ │
+
+│ │ │     Ghana Election Results Update          Draft · 15m ago      ││ │
+
+│ │ │                                      ││ │
+
+│ │ │ COMMANDS                                          ││ │
+
+│ │ │ ────────                                     ││ │
+
+│ │ │      Create New Story                ⌘N                 ││ │
+
+│ │ │      Open Breaking News Centre                               ││ │
+
+│ │ │      Go to Human Review Queue                                 ││ │
+
+│ │ │      Open Prompt Library                              ││ │
+
+│ │ │                                         ││ │
+
+│ │ │ AGENTS                                      ││ │
+
+│ │ │ ──────                                      ││ │
+
+│ │ │      News Director Agent              Active · 28 tasks        ││ │
+
+│ │ │      Fact-Check Agent               Active · 12 tasks        ││ │
+
+│ │ │                                         ││ │
+
+│ │ │ SETTINGS                                       ││ │
+
+│ │ │ ────────                                       ││ │
+
+│ │ │      Confidence Thresholds                              ││ │
+
+│ │ │      Brand Configuration                              ││ │
+
+│ │ │                                         ││ │
+
+│ │ └─────────────────────────────────────────────────────────────────────┘│ │
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                             │
+
+│ COMMAND PALETTE CAPABILITIES:                                      │
+
+│ • Universal search across stories, agents, settings, commands                 │
+
+│ • Quick actions: Create story, publish, approve, reject                   │
+
+│ • Navigation: Jump to any screen                              │
+
+│ • Agent commands: Assign agent, check status, adjust parameters                   │
+
+│ • Recent and frequent actions surfaced first                        │
+
+│ • Keyboard-first: Arrow keys navigate, Enter selects, Esc dismisses           │
+
+│                                              │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+II.6 NOTIFICATIONS CENTRE
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│             NOTIFICATIONS CENTRE                            │
+
+│                                              │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │     NOTIFICATIONS                         Mark all read        ││
+
+│ │ ───────────────────────────────────────────────────────────────────── │ │
+
+│ │                                           ││
+
+│ │ FILTER: [All] [Requires Action] [Breaking] [System] [Agents]        ││
+
+│ │                                           ││
+
+│ │ ┌────────────────────────────────────────────────────────────────────┐ │ │
+
+│ │ │     BREAKING NEWS DETECTED                      2 minutes ago │ │ │
+
+│ │ │ Bank of Ghana announces emergency MPC meeting                      │││
+
+│ │ │ [View Story] [Assign Agent] [Dismiss]                       │││
+
+│ │ └────────────────────────────────────────────────────────────────────┘ │ │
+
+│ │                                           ││
+
+│ │ ┌────────────────────────────────────────────────────────────────────┐ │ │
+
+│ │ │     HUMAN REVIEW REQUIRED                        15 minutes ago │ │ │
+
+│ │ │ "Ghana Trade Balance Report" — Confidence: 0.68               │││
+
+│ │ │ Assigned to: You [Review Now] [Reassign]                │││
+
+│ │ └────────────────────────────────────────────────────────────────────┘ │ │
+
+│ │                                        ││
+
+│ │ ┌────────────────────────────────────────────────────────────────────┐ │ │
+
+│ │ │     STORY PUBLISHED                       1 hour ago   │││
+
+│ │ │ "Tech Startup Funding Round" — Published to 5 platforms            │││
+
+│ │ │ [View Story] [View Analytics]                     │││
+
+│ │ └────────────────────────────────────────────────────────────────────┘ │ │
+
+│ │                                        ││
+
+│ │ ┌────────────────────────────────────────────────────────────────────┐ │ │
+
+│ │ │     CORRECTION NEEDED                        2 hours ago │ │ │
+
+│ │ │ "MPC Decision Analysis" — Potential factual error detected       │││
+
+│ │ │ [Review Error] [Dismiss]                        │││
+
+│ │ └────────────────────────────────────────────────────────────────────┘ │ │
+
+│ │                                        ││
+
+│ │ ┌────────────────────────────────────────────────────────────────────┐ │ │
+
+│ │ │     AGENT TRUST LEVEL CHANGE                   3 hours ago │ │ │
+
+│ │ │ Writer Agent #004 promoted to T2 (Trusted)                │││
+
+│ │ │ Accuracy: 98.2% | Human override rate: 1.8%                  │││
+
+│ │ └────────────────────────────────────────────────────────────────────┘ │ │
+
+│ │                                        ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                           │
+
+│ NOTIFICATION TYPES:                                  │
+
+│ • Breaking News (Critical — red indicator)                     │
+
+│ • Human Review Required (High — amber indicator)                           │
+
+│ • Story Published (Info — green indicator)                     │
+
+│ • Correction Needed (Warning — orange indicator)                       │
+
+│ • Agent Status Change (Info — blue indicator)                      │
+
+│ • System Alert (Error — red indicator)                     │
+
+│ • Cost Alert (Warning — amber indicator)                       │
+
+│                                              │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+---
+
+
+
+PART III — DESIGN SYSTEM
+
+
+
+III.1 BRAND IDENTITY
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│              BRAND IDENTITY                        │
+
+│                                              │
+
+│ PRIMARY BRAND: Agbofa Nexus AI                                 │
+
+│                                              │
+
+│ BRAND ATTRIBUTES:                                      │
+
+│ ────────────────                                   │
+
+│ • Authoritative — Trusted source of truth                     │
+
+│ • Intelligent — AI-powered, not AI-gimmicky                       │
+
+│ • African — Rooted in Ghana, pan-African perspective                  │
+
+│ • Modern — Technologically sophisticated                          │
+
+│ • Clear — Transparency as a brand value                       │
+
+│                                             │
+
+│ LOGO:                                               │
+
+│ ────                                            │
+
+│ • Primary: Agbofa wordmark with Nexus AI lockup                       │
+
+│ • Symbol: Abstract "A" formed from interconnected nodes (network/AI)              │
+
+│ • Usage: Symbol-only for favicon, app icon; full lockup for header        │
+
+│                                             │
+
+│ COLOUR PALETTE (See Colour System section for full specification)             │
+
+│                                             │
+
+│ TYPOGRAPHY (See Typography section for full specification)                │
+
+│                                             │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+III.2 TYPOGRAPHY
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│               TYPOGRAPHY                                │
+
+│                                             │
+
+│ FONT FAMILIES:                                         │
+
+│ ─────────────                                          │
+
+│                                              │
+
+│ PRIMARY (UI): Inter                                    │
+
+│ ────────────────                                           │
+
+│ • Rationale: Excellent readability at small sizes, extensive weight range, │
+
+│ designed for screens, open-source with commercial licence                      │
+
+│ • Weights: 400 (Regular), 500 (Medium), 600 (SemiBold), 700 (Bold)                 │
+
+│ • Usage: Body text, UI components, navigation, forms, tables                   │
+
+│                                              │
+
+│ SECONDARY (Display): Space Grotesk                                 │
+
+│ ─────────────────────────────                                          │
+
+│ • Rationale: Distinctive geometric character for headlines, strong presence, │
+
+│ good pairing with Inter                                    │
+
+│ • Weights: 400, 500, 600, 700                                  │
+
+│ • Usage: Page titles, dashboard headings, hero text, KPI values                │
+
+│                                              │
+
+│ MONOSPACE (Data/Code): JetBrains Mono                                      │
+
+│ ────────────────────────────────                                           │
+
+│ • Rationale: Excellent legibility for code and data, coding ligatures          │
+
+│ • Weights: 400, 500                                    │
+
+│ • Usage: Code blocks, prompt editor, API responses, data tables (dense)                │
+
+│                                              │
+
+│ TYPE SCALE:                                        │
+
+│ ──────────                                         │
+
+│                                              │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ TOKEN        SIZE (px) LINE HEIGHT USAGE                        ││
+
+│ │ ─────       ───────── ─────────── ─────                             ││
+
+│ │ text-xs     12     1.0       Legal text, fine print       ││
+
+│ │ text-sm      14    1.4        Secondary info, metadata          ││
+
+│ │ text-base    16     1.5       Body text (default)          ││
+
+│ │ text-lg     18    1.5        Emphasised body               ││
+
+│ │ text-xl     20    1.4     Card titles, section heads │ │
+
+│ │ text-2xl    24     1.3       Panel titles             ││
+
+│ │ text-3xl    30     1.2       Page titles              ││
+
+│ │ text-4xl    36     1.1       Dashboard headings                ││
+
+│ │ text-5xl    48     1.1       Hero titles              ││
+
+│ │ text-6xl    60     1.0       KPI values, major metrics         ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                               │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+III.3 COLOUR SYSTEM
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│                COLOUR SYSTEM                            │
+
+│                                           │
+
+│ SEMANTIC COLOUR TOKENS:                                          │
+
+│ ──────────────────────                                       │
+
+│                                           │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ TOKEN            LIGHT MODE    DARK MODE             USAGE              ││
+
+│ │ ─────           ──────────    ─────────            ─────           ││
+
+│ │                                         ││
+
+│ │ NEUTRAL                                       ││
+
+│ │ ───────                                      ││
+
+│ │ bg-primary        #FFFFFF     #0A0A0B             Page bg          ││
+
+│ │ bg-secondary       #F8F9FA     #141416             Card bg         ││
+
+│ │ bg-tertiary      #F0F1F2      #1E1E21         Hover state │ │
+
+│ │ border-primary     #E0E2E4      #2E2E32            Borders          ││
+
+│ │ text-primary      #0A0A0B      #FAFAFA            Body text        ││
+
+│ │ text-secondary     #5E6368      #A0A4A8             Metadata            ││
+
+│ │ text-tertiary    #8B9096      #6E7278         Placeholder │ │
+
+│ │                                         ││
+
+│ │ BRAND                                        ││
+
+│ │ ─────                                        ││
+
+│ │ brand-primary      #0066CC      #3399FF            Primary CTA │ │
+
+│ │ brand-secondary #004499          #66B2FF            Hover           ││
+
+│ │ brand-tertiary    #E6F0FF      #0D1A33            Subtle bg         ││
+
+│ │                                         ││
+
+│ │ CONFIDENCE (CRITICAL — Must not rely on colour alone)                        ││
+
+│ │ ─────────────────────────────────────────────────────                                   ││
+
+│ │ confidence-high #0D9040              #2ECC71             ≥ 0.85           ││
+
+│ │ confidence-medium #D4880F                #F0B429            0.60-0.84              ││
+
+│ │ confidence-low     #CF2020          #FF4444              < 0.60       ││
+
+│ │                                             ││
+
+│ │ SEMANTIC                                           ││
+
+│ │ ────────                                           ││
+
+│ │ success        #0D9040          #2ECC71            Success        ││
+
+│ │ warning         #D4880F          #F0B429           Warning            ││
+
+│ │ error         #CF2020          #FF4444           Error       ││
+
+│ │ info         #0066CC          #3399FF           Information │ │
+
+│ │ breaking        #DC143C          #FF2D55           Breaking news │ │
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                               │
+
+│ CONFIDENCE COLOUR RULES:                                            │
+
+│ ────────────────────────                                            │
+
+│ • Colour always accompanied by numeric score                                     │
+
+│ • Pattern differentiation for colour-blind users (icons, text labels)                │
+
+│ • High-confidence: CheckCircle icon + score                             │
+
+│ • Medium-confidence: Warning icon + score                                    │
+
+│ • Low-confidence: AlertCircle icon + score                              │
+
+│                                               │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+III.4 SPACING & GRID
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│             SPACING & GRID SYSTEM                           │
+
+│                                               │
+
+│ SPACING SCALE (4px base):                                 │
+
+│ ────────────────────────                                        │
+
+│                                               │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ TOKEN    VALUE USAGE                                    ││
+
+│ │ ─────    ───── ─────                                 ││
+
+│ │ space-0 0px        No spacing                           ││
+
+│ │ space-1 4px        Inline spacing (icon+text, badge padding)            ││
+
+│ │ space-2 8px        Tight component padding, list gaps                  ││
+
+│ │ space-3 12px       Component padding, card content padding                   ││
+
+│ │ space-4 16px       Standard component padding, section gaps                  ││
+
+│ │ space-5 20px       Card padding, panel sections                    ││
+
+│ │ space-6 24px       Section spacing, card gaps                     ││
+
+│ │ space-8 32px       Page section spacing                       ││
+
+│ │ space-10 40px       Large section spacing                     ││
+
+│ │ space-12 48px       Page-level spacing                        ││
+
+│ │ space-16 64px       Hero section spacing                       ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                             │
+
+│ GRID SYSTEM:                                           │
+
+│ ───────────                                        │
+
+│ • 12-column grid for page layouts                            │
+
+│ • Column gap: 24px (desktop), 16px (tablet), 12px (mobile)                     │
+
+│ • Max content width: 1440px (centred)                              │
+
+│ • Full-width available for dashboards                          │
+
+│ • Sidebar width: 240px (collapsed: 64px)                           │
+
+│ • Context panel width: 360px                               │
+
+│                                             │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+III.5 COMPONENT PRINCIPLES
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│             COMPONENT DESIGN PRINCIPLES                            │
+
+│                                             │
+
+│ CARD SYSTEM:                                           │
+
+│ ───────────                                        │
+
+│ • Cards are the primary content container                          │
+
+│ • Variants: Default, Elevated, Outlined, Interactive                   │
+
+│ • Padding: 16px (default), 20px (large), 12px (compact)                    │
+
+│ • Border radius: 12px (default cards), 8px (compact cards)                     │
+
+│ • Background: bg-secondary with 1px border (light), subtle gradient (dark) │
+
+│ • Hover: bg-tertiary, subtle shadow increase                             │
+
+│ • Glassmorphism variant: backdrop-blur, semi-transparent bg                              │
+
+│                                             │
+
+│ FORM COMPONENTS:                                                 │
+
+│ ───────────────                                          │
+
+│ • Input height: 40px (default), 32px (compact), 48px (large)                         │
+
+│ • Border radius: 8px                                 │
+
+│ • Border: 1.5px, border-primary (default), brand-primary (focus)                         │
+
+│ • Label: Above input, text-sm, text-secondary                            │
+
+│ • Error state: Red border, error message below                               │
+
+│ • Disabled: Reduced opacity (0.5), not-allowed cursor                            │
+
+│ • All inputs support: normal, hover, focus, error, disabled, read-only                   │
+
+│                                             │
+
+│ BUTTON HIERARCHY:                                            │
+
+│ ────────────────                                         │
+
+│ • Primary: Solid brand colour, white text, for main actions                          │
+
+│ • Secondary: Outlined, for secondary actions                             │
+
+│ • Tertiary/Ghost: No border/bg, for subtle actions                           │
+
+│ • Danger: Red, for destructive actions                               │
+
+│ • Sizes: sm (32px), md (40px), lg (48px)                             │
+
+│ • Icon-only variant: Square, for toolbar actions                         │
+
+│ • Loading state: Spinner replaces text, button disabled                          │
+
+│ • All buttons: Focus ring, keyboard activatable                          │
+
+│                                             │
+
+│ TABLE SYSTEM:                                        │
+
+│ ────────────                                         │
+
+│ • Header: Semi-bold, uppercase tracking, sticky on scroll                    │
+
+│ • Rows: Alternating subtle background (optional), hover highlight                    │
+
+│ • Sorting: Click column header to sort; indicator icon                   │
+
+│ • Selection: Checkbox column; select all; bulk actions bar                   │
+
+│ • Pagination: Bottom, with page size selector                        │
+
+│ • Responsive: Horizontal scroll on mobile with sticky first column                   │
+
+│ • Empty state: Illustration + message + action                       │
+
+│                                              │
+
+│ MODAL & DRAWER SYSTEM:                                           │
+
+│ ──────────────────────                                       │
+
+│ • Modal: Centred overlay, max-width 560px (default), 720px (large)                       │
+
+│ • Drawer: Slides from right, width 480px (default), 640px (wide)                 │
+
+│ • Backdrop: Semi-transparent overlay with blur                           │
+
+│ • Close: X button (top-right), Esc key, click backdrop               │
+
+│ • Focus trap: Tab cycles within modal/drawer                             │
+
+│ • Scroll: Content scrolls if exceeds viewport; header/footer fixed               │
+
+│                                              │
+
+│ TOAST NOTIFICATIONS:                                     │
+
+│ ───────────────────                                      │
+
+│ • Position: Bottom-right (desktop), bottom-centre (mobile)                       │
+
+│ • Duration: 5 seconds (info), 8 seconds (warning), persistent (error)                │
+
+│ • Types: Success (green), Error (red), Warning (amber), Info (blue)              │
+
+│ • Actions: Optional action button, dismiss button                        │
+
+│ • Stacking: Newest at bottom, max 4 visible                          │
+
+│ • Animation: Slide in from right, fade out                       │
+
+│                                              │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+III.6 STATES & FEEDBACK
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│              COMPONENT STATES & FEEDBACK                            │
+
+│                                              │
+
+│ EVERY INTERACTIVE COMPONENT MUST HANDLE:                                      │
+
+│ ─────────────────────────────────────────                                     │
+
+│                                              │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ STATE       DESCRIPTION              VISUAL TREATMENT               ││
+
+│ │ ─────       ───────────              ────────────────                 ││
+
+│ │ Default     Resting state           Standard styling         ││
+
+│ │ Hover       Mouse cursor over          Subtle bg change, cursor        ││
+
+│ │ Focus       Keyboard focused          Visible focus ring (2px)      ││
+
+│ │ Active      Being pressed/clicked      Darker bg, subtle scale        ││
+
+│ │ Disabled     Not available           Reduced opacity (0.5)        ││
+
+│ │ Loading      Processing             Skeleton or spinner        ││
+
+│ │ Empty       No data available         Illustration + message        ││
+
+│ │ Error      Something went wrong          Red indicator + message           ││
+
+│ │ Success     Action completed             Green indicator + message │ │
+
+│ │ Read-only    Viewable, not editable        No interactive indicators │ │
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                               │
+
+│ LOADING STATES:                                          │
+
+│ ──────────────                                           │
+
+│ • Skeleton screens: Mimic content layout with animated placeholders                   │
+
+│ • Spinners: For actions < 2 seconds                           │
+
+│ • Progress bars: For processes with known duration                        │
+
+│ • Streaming text: For AI content generation (words appear progressively) │
+
+│ • Pulsing dots: For AI "thinking" states                          │
+
+│                                               │
+
+│ EMPTY STATES:                                        │
+
+│ ────────────                                         │
+
+│ • Relevant illustration or icon                              ││
+
+│ • Clear heading explaining the empty state                            │
+
+│ • Descriptive subtext with guidance                               │
+
+│ • Primary action button (where applicable)                            │
+
+│ • Example: "No stories in review queue — All clear! Stories will appear           │
+
+│ here when confidence scores require human review."                            │
+
+│                                               │
+
+│ ERROR STATES:                                        │
+
+│ ────────────                                         │
+
+│ • Clear error message (what happened)                                 │
+
+│ • Actionable guidance (what to do about it)                           │
+
+│ • Retry button (where applicable)                                 │
+
+│ • Error reference code (for support)                              │
+
+│ • Never show raw stack traces to users                                │
+
+│                                            │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+III.7 MOTION DESIGN
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│              MOTION DESIGN PRINCIPLES                                 │
+
+│                                            │
+
+│ ANIMATION PHILOSOPHY:                                         │
+
+│ ────────────────────                                          │
+
+│ Motion serves purpose, never decoration. Animations communicate state                 │
+
+│ changes, guide attention, and provide feedback. They are fast, subtle,            │
+
+│ and respectful of user preferences.                               │
+
+│                                            │
+
+│ DURATION TOKENS:                                          │
+
+│ ───────────────                                       │
+
+│ • Instant (0ms): Layout changes, value updates                            │
+
+│ • Micro (100ms): Button presses, icon state changes                           │
+
+│ • Quick (200ms): Hover effects, tooltip appearance                            │
+
+│ • Standard (300ms): Modal open/close, drawer slide, page transitions              │
+
+│ • Slow (500ms): Complex transitions, celebratory animations                                │
+
+│                                             │
+
+│ EASING TOKENS:                                         │
+
+│ ─────────────                                       │
+
+│ • Default: ease-out (decelerating — natural feeling)                           │
+
+│ • Entrance: ease-out (elements entering the screen)                                │
+
+│ • Exit: ease-in (elements leaving the screen)                          │
+
+│ • Bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55) (celebratory)                     │
+
+│                                             │
+
+│ ANIMATION PATTERNS:                                            │
+
+│ ──────────────────                                         │
+
+│ • Page transitions: Fade + subtle slide (200ms)                        │
+
+│ • List items: Staggered fade-in (50ms delay per item)                          │
+
+│ • Modal: Scale + fade backdrop (300ms)                                 │
+
+│ • Toast: Slide from right + fade (300ms)                           │
+
+│ • AI content: Streaming text reveal (character by character)                           │
+
+│ • Confidence change: Value counts up/down smoothly                                     │
+
+│ • Agent activity: Subtle pulse on active agents                        │
+
+│ • Breaking news: Attention-grabbing but not alarming animation                                     │
+
+│                                             │
+
+│ REDUCED MOTION:                                            │
+
+│ ──────────────                                         │
+
+│ • All animations respect prefers-reduced-motion                                │
+
+│ • When reduced: Instant transitions, no movement, fades only                                   │
+
+│ • No auto-playing animations over 5 seconds                                │
+
+│                                             │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+---
+
+
+
+PART IV — COMPLETE SCREEN CATALOGUE
+
+
+
+IV.1 SCREEN CATALOGUE INDEX
+
+
+
+The following screens are documented in detail in this section. Each screen specification
+includes: purpose, primary user, layout description, key components, interactive behaviours,
+states (loading, empty, error, edge cases), responsive adaptations, and accessibility
+considerations.
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│             COMPLETE SCREEN CATALOGUE                             │
+
+│                                            │
+
+│ AUTHENTICATION & ONBOARDING                                           │
+
+│ ───────────────────────────                                   │
+
+│ SCR-001 Landing Page                                  │
+
+│ SCR-002 Login                                     │
+
+│ SCR-003 Registration                                  │
+
+│ SCR-004 Password Recovery                                 │
+
+│ SCR-005 Multi-Factor Authentication                           │
+
+│ SCR-006 Onboarding Flow (3-step)                                     │
+
+│ SCR-007 Workspace Selection                                  │
+
+│                                          │
+
+│ DASHBOARDS                                       │
+
+│ ──────────                                   │
+
+│ SCR-010 AI Newsroom Dashboard                                        │
+
+│ SCR-011 Executive Dashboard                                  │
+
+│ SCR-012 Custom Dashboard Builder                                     │
+
+│                                          │
+
+│ STORY PIPELINE & EDITORIAL                                   │
+
+│ ─────────────────────────                                        │
+
+│ SCR-020 Story Pipeline (All Stories)                         │
+
+│ SCR-021 Story Pipeline (Kanban View)                                 │
+
+│ SCR-022 Story Detail / Editorial Workspace                               │
+
+│ SCR-023 Story Graph Viewer                                   │
+
+│ SCR-024 Breaking News Centre                                     │
+
+│ SCR-025 Verification Centre                              │
+
+│ SCR-026 Human Review Queue                                           │
+
+│ SCR-027 Quality Assurance Dashboard                                      │
+
+│                                          │
+
+│ CONTENT CREATION                                         │
+
+│ ───────────────                                  │
+
+│ SCR-030 Article Editor                               │
+
+│ SCR-031 Headline Studio                                  │
+
+│ SCR-032 Image Studio                                 │
+
+│ SCR-033 Video Studio                                 │
+
+│ SCR-034 Audio Studio                      │
+
+│ SCR-035 Content Templates                     │
+
+│                                   │
+
+│ PUBLISHING & DISTRIBUTION                             │
+
+│ ─────────────────────────                                 │
+
+│ SCR-040 Publishing Centre                     │
+
+│ SCR-041 Distribution Dashboard                    │
+
+│ SCR-042 Calendar & Scheduler                      │
+
+│ SCR-043 Platform Connectors                       │
+
+│                                   │
+
+│ ANALYTICS                             │
+
+│ ─────────                             │
+
+│ SCR-050 Analytics Dashboard                       │
+
+│ SCR-051 Audience Intelligence                     │
+
+│ SCR-052 Competitor Intelligence                   │
+
+│ SCR-053 Revenue Dashboard                         │
+
+│ SCR-054 AI Cost Dashboard                     │
+
+│                                   │
+
+│ AI AGENTS & PROMPTS                           │
+
+│ ─────────────────                         │
+
+│ SCR-060 AI Agent Monitor                      │
+
+│ SCR-061 Agent Activity Timeline                   │
+
+│ SCR-062 Prompt Library                    │
+
+│ SCR-063 Agent Trust Management                            │
+
+│                                   │
+
+│ GOVERNANCE & CORRECTIONS                                  │
+
+│ ────────────────────────                                             │
+
+│ SCR-070 Corrections & Retractions                                    │
+
+│ SCR-071 Audit Logs                                   │
+
+│ SCR-072 Knowledge Base                                       │
+
+│                                             │
+
+│ SETTINGS & ADMINISTRATION                                            │
+
+│ ─────────────────────────                                            │
+
+│ SCR-080 Workspace Settings                                   │
+
+│ SCR-081 User Management                                          │
+
+│ SCR-082 Role Management                                          │
+
+│ SCR-083 Brand Configuration                                  │
+
+│ SCR-084 API & Integrations                               │
+
+│ SCR-085 Billing & Subscription                               │
+
+│ SCR-086 System Health                                    │
+
+│ SCR-087 Observability Dashboard                                      │
+
+│                                             │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+IV.2 DETAILED SCREEN SPECIFICATIONS (Selected Examples)
+
+
+
+Due to the comprehensive nature of the screen catalogue (87+ screens), the following
+represents detailed specifications for the most architecturally significant screens. The complete
+catalogue follows the same specification format.
+
+
+
+---
+
+SCR-010: AI NEWSROOM DASHBOARD
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│ SCR-010: AI NEWSROOM DASHBOARD                                 │
+
+│ ──────────────────────────────                                 │
+
+│                                           │
+
+│ PURPOSE: Primary operational view of the autonomous newsroom              │
+
+│ PRIMARY USER: Managing Editor (default landing after login)          │
+
+│ ROUTE: /[workspace]/dashboard                             │
+
+│                                           │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ LAYOUT (Desktop XL — 1440px+)                           ││
+
+│ │                                         ││
+
+│ │ ┌─────────────────────────────────────────────────────────────────────┐ │ │
+
+│ │ │ TOP BAR                                    │││
+
+│ │ │ [Agbofa Nexus AI]    ⌘K Search       3      User Menu          │││
+
+│ │ ├─────────────────────────────────────────────────────────────────────┤
+││
+
+│ │ │                                      │││
+
+│ │ │ ┌──────────────────────────────┐ ┌──────────────────────────────┐ │ │ │
+
+│ │ │ │ STORY PIPELINE OVERVIEW        │ │ NEWSROOM HEALTH             ││││
+
+│ │ │ │ ─────────────────────          │ │ ──────────────            ││││
+
+│ │ │ │                   │ │               ││││
+
+│ │ │ │ Seed: 12                │ │        Stories Today: 142 │ │ │ │
+
+│ │ │ │ Draft: 8                │ │      Published:      127 │ │ │ │
+
+│ │ │ │ Review: 5 ← Needs attention│ │                In Review:     8 ││││
+
+│ │ │ │ FactChk: 3               │ │       Confidence Avg: 0.87 │ │ │ │
+
+│ │ │ │ Publish: 114              │ │       Breaking Active: 1 │ │ │ │
+
+│ │ │ │                   │ │          Agents Active:   28 │ │ │ │
+
+│ │ │ │ [View Full Pipeline →] │ │           │ │ │ ││ │ │
+└──────────────────────────────┘ └──────────────────────────────┘ │ │ │
+
+│ │ │                                             │││
+
+│ │ │ ┌──────────────────────────────────────────────────────────────────┐ │ │
+│
+
+│ │ │ │ BREAKING NEWS ALERTS                                       ││││
+
+│ │ │ │ ────────────────────                                       ││││
+
+│ │ │ │     BREAKING: "BoG Holds Emergency MPC Meeting" — 5 min ago                 ││││
+
+│ │ │ │ Status: Verification in progress | Confidence: 0.72               ││││
+
+│ │ │ │ [View Story] [Assign Editor] [Publish Brief]                 ││││
+
+│ │ │ └──────────────────────────────────────────────────────────────────┘ │ │
+│
+
+│ │ │                                             │││
+
+│ │ │ ┌────────────────────────────┐ ┌──────────────────────────────┐ │ │ │
+
+│ │ │ │ HUMAN REVIEW QUEUE                 │ │ RECENTLY PUBLISHED           │ │││
+
+│ │ │ │ ─────────────────               │ │ ──────────────────             │ │││
+
+│ │ │ │                   │ │                    │ │││
+
+│ │ │ │     "Trade Report" 0.68 │ │             "MPC Decision" 10m ago │ │ │ │
+
+│ │ │ │     "Election Update" 0.72 │ │           "Startup Funding" 25m ago│ │ │ │
+
+│ │ │ │     "Oil Price"    0.78 │ │          "Sports Final" 45m ago │ │ │ │
+
+│ │ │ │                  │ │                   │ │││
+
+│ │ │ │ [View All (8) →]         │ │ [View All →]            │ │││
+
+│ │ │ └────────────────────────────┘ └──────────────────────────────┘ │ │ │
+
+│ │ │                                          │││
+
+│ │ │ ┌────────────────────────────┐ ┌──────────────────────────────┐ │ │ │
+
+│ │ │ │ AGENT ACTIVITY (LIVE)         │ │ CONFIDENCE TREND (24hr)       │ │││
+
+│ │ │ │ ──────────────────             │ │ ──────────────────────        │ │││
+
+│ │ │ │                  │ │                   │ │││
+
+│ │ │ │     News Director Active │ │           [Line chart showing   │ │││
+
+│ │ │ │     Writer-003         Active │ │   confidence over time] │ │ │ │
+
+│ │ │ │     Writer-007         Active │ │               │ ││
+
+│ │ │ │     FactCheck-001 Idle │ │ Avg: 0.87 ↑0.03               │ │││
+
+│ │ │ │     Editor-002     Active │ │                   │ ││
+
+│ │ │ │                  │ │                   │ ││
+
+│ │ │ │ [View All Agents →]         │ │ [View Analytics →]      │ │││
+
+│ │ │ └────────────────────────────┘ └──────────────────────────────┘ │ │ │
+
+│ │ │                                          │││
+
+│ │ ├─────────────────────────────────────────────────────────────────────┤
+││
+
+│ │ │ STATUS BAR                                      │││
+
+│ │ │     System Healthy | Stories: 142 | Published: 127 | Agents: 28/32 │ │ │
+
+│ │ │ Active | Confidence Avg: 0.87 | Cost Today: $234.50            │││
+
+│ │ └─────────────────────────────────────────────────────────────────────┘ │ │
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                               │
+
+│ RESPONSIVE BEHAVIOUR:                                          │
+
+│ ────────────────────                                           │
+
+│ Desktop MD (1024px): Two-column grid; breaking alerts full-width                           │
+
+│ Tablet (768px): Single column stacked cards; pipeline as horizontal scroll │
+
+│ Mobile (428px): Critical cards only; breaking alerts prominent; simplified │
+
+│                                              │
+
+│ INTERACTIONS:                                              │
+
+│ ────────────                                           │
+
+│ • All cards clickable to navigate to detail view                   │
+
+│ • Breaking alert: One-click to view story; one-click to assign self                │
+
+│ • Agent activity: Click to open Agent Monitor                          │
+
+│ • Confidence trend: Hover for hourly breakdown                             │
+
+│ • Refresh: Auto-refresh every 30 seconds (configurable)                        │
+
+│ • Manual refresh: Pull-to-refresh (mobile), refresh button (desktop)                   │
+
+│                                              │
+
+│ STATES:                                            │
+
+│ ──────                                             │
+
+│ • Loading: Skeleton cards with pulsing animation                           │
+
+│ • Empty (new workspace): Guided setup cards with quick-start actions                       │
+
+│ • Error: "Unable to load dashboard" with retry button                          │
+
+│ • No breaking news: Card shows "No active breaking news — All clear"                       │
+
+│ • High load: Warning banner if queue depth exceeds threshold                           │
+
+│                                              │
+
+│ ACCESSIBILITY:                                         │
+
+│ ─────────────                                              │
+
+│ • All KPI values have text labels (not colour-only)                │
+
+│ • Chart data available in accessible table view                │
+
+│ • Breaking alert: aria-live="assertive" for screen reader announcement      │
+
+│ • Keyboard navigable: Tab through cards, Enter to select            │
+
+│ • Skip link to main content available                      │
+
+│                                             │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+---
+
+
+
+SCR-022: STORY DETAIL / EDITORIAL WORKSPACE
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│ SCR-022: STORY DETAIL / EDITORIAL WORKSPACE                             │
+
+│ ────────────────────────────────────────────                                │
+
+│                                             │
+
+│ PURPOSE: Central workspace for viewing, editing, and managing a story           │
+
+│ PRIMARY USER: Content Editor, Managing Editor                       │
+
+│ ROUTE: /[workspace]/story/[id]                             │
+
+│                                             │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ LAYOUT (Desktop XL — Three-panel)                            ││
+
+│ │                                           ││
+
+│ │ ┌─────────────────────────────────────────────────────────────────────┐ │ │
+
+│ │ │ TOP BAR: Story title + state badge + actions                   │││
+
+│ │ │ ───────────────────────────────────────────────                             │││
+
+│ │ │ ← Back to Pipeline                                │││
+
+│ │ │ "BoG Raises Policy Rate to 30% Amid Inflation Concerns"               │││
+
+│ │ │     PUBLISHED · v2.0 · Confidence 0.89                         │││
+
+│ │ │ [Edit] [Update] [View Graph] [··· More]                    │││
+
+│ │ ├─────────────────────────────────────────────────────────────────────┤
+││
+
+│ │ │                                          │││
+
+│ │ │ ┌──────────────────┐ ┌────────────────────┐ ┌────────────────────┐ │ │ │
+
+│ │ │ │ STORY INFO      │ │ CONTENT PREVIEW │ │ CONTEXT PANEL                │││
+
+│ │ │ │ ─────────       │ │ ────────────── │ │ ────────────             │││
+
+│ │ │ │           ││             ││               │││
+
+│ │ │ │ STATE: Published │ │ [Article content │ │ AI CONFIDENCE            │││
+
+│ │ │ │           │ │ as it appears    │ │ ────────────         │││
+
+│ │ │ │ PRIORITY: P0    │ │ on web]          ││            │││
+
+│ │ │ │           ││             │ │ Overall: 0.89      │││
+
+│ │ │ │ CREATED: 2h ago │ │ Headline + image │ │ Accuracy: 0.92             │││
+
+│ │ │ │ AUTHOR: Writer-3 │ │                 │ │ Source: 0.88    │││
+
+│ │ │ │ EDITOR: Editor-2 │ │ Article body       │ │ Quality: 0.85     │││
+
+│ │ │ │           │ │ with formatting │ │ Style: 0.90         │││
+
+│ │ │ │ SOURCES: 4      ││              │ │ Ethics: 0.91    │││
+
+│ │ │ │ CLAIMS: 12/12 ✓ │ │ [Scroll for full │ │                │││
+
+│ │ │ │           │ │ content]        │ │ [View Full Report] │ │ │
+
+│ │ │ │ VERSIONS: 4     ││              ││              │││
+
+│ │ │ │            ││              │ │ SOURCES             │││
+
+│ │ │ │ DERIVATIVES: 8 │ │                 │ │ ───────            │││
+
+│ │ │ │            ││              │ │ • BoG Statement │ │ │
+
+│ │ │ │ [View Graph]       ││             │ │ • Reuters          │││
+
+│ │ │ │ [Edit Story]    ││              │ │ • Bloomberg          │││
+
+│ │ │ │ [View Analytics] │ │               │ │ • Expert Interview │ │ │
+
+│ │ │ │            ││              ││                │││
+
+│ │ │ │            ││              │ │ AGENT ACTIVITY           │││
+
+│ │ │ │            ││              │ │ ────────────── │ │ │
+
+│ │ │ │            ││              │ │ Writer-3: Drafted │ │ │
+
+│ │ │ │            ││              │ │ Editor-2: Reviewed │ │ │
+
+│ │ │ │            ││              │ │ FactChk-1: Verified│ │ │
+
+│ │ │ │            ││              │ │ Style-1: Styled │ │ │
+
+│ │ │ │            ││              ││                │││
+
+│ │ │ └──────────────────┘ └────────────────────┘ └────────────────────┘ │ │ │
+
+│ │ │                                           │││
+
+│ │ └─────────────────────────────────────────────────────────────────────┘ │ │
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                                │
+
+│ INTERACTIONS:                                             │
+
+│ ────────────                                              │
+
+│ • Content preview: Scrollable; click to open full Article Editor          │
+
+│ • Confidence panel: Click any dimension for detailed breakdown                │
+
+│ • Source list: Click source to view reliability profile               │
+
+│ • Agent activity: Click agent to view full activity log               │
+
+│ • "View Graph": Opens Story Graph Viewer in new panel                                 │
+
+│ • "Edit Story": Opens Article Editor with this story loaded                   │
+
+│                                             │
+
+│ STATES:                                         │
+
+│ ──────                                          │
+
+│ • Draft: "Edit" primary action; "Submit for Review" secondary                         │
+
+│ • In Review: Read-only preview; "Approve" / "Request Changes" actions                     │
+
+│ • Published: Read-only with "Update" and "Edit" options                           │
+
+│ • Breaking: Pulsing breaking indicator; rapid update interface                    │
+
+│ • Corrected: Correction notice displayed prominently                      │
+
+│ • Retracted: Retraction notice; content greyed out                        │
+
+│ • Loading: Skeleton for content preview                           │
+
+│ • Error: "Story not found" or "Error loading story"                   │
+
+│                                             │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+---
+
+
+
+SCR-030: ARTICLE EDITOR
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│ SCR-030: ARTICLE EDITOR                                  │
+
+│ ──────────────────────                                        │
+
+│                                            │
+
+│ PURPOSE: Edit and refine AI-generated article content                     │
+
+│ PRIMARY USER: Content Editor                                 │
+
+│ ROUTE: /[workspace]/story/[id]/edit                              │
+
+│                                            │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ LAYOUT (Desktop XL)                                   ││
+
+│ │                                          ││
+
+│ │ ┌─────────────────────────────────────────────────────────────────────┐ │ │
+
+│ │ │ TOOLBAR                                       │││
+
+│ │ │ ───────                                       │││
+
+│ │ │ [← Back] Story: "BoG Raises Policy Rate..."      0.89              │││
+
+│ │ │ [Save Draft] [Submit for Review] [⌘S] [AI Assistant] [···]         │││
+
+│ │ ├─────────────────────────────────────────────────────────────────────┤
+││
+
+│ │ │                                        │││
+
+│ │ │ ┌────────────────────────────────────┐ ┌──────────────────────────┐│ │ │
+
+│ │ │ │ EDITOR CANVAS                │ │ AI CONTEXT PANEL              ││ │ │
+
+│ │ │ │ ─────────────                │ │ ────────────────              ││ │ │
+
+│ │ │ │                     ││                ││ │ │
+
+│ │ │ │ ┌──────────────────────────────┐ │ │ VERIFIED CLAIMS                    ││ │ │
+
+│ │ │ │ │ HEADLINE                │ │ │ ───────────────            ││ │ │
+
+│ │ │ │ │ BoG Raises Policy Rate      │ ││                 ││ │ │
+
+│ │ │ │ │ to 30% Amid Inflation      │ │ │ ✓ MPC increased rate ││ │ │
+
+│ │ │ │ │ Concerns               │ │ │ ✓ New rate is 30%       ││ │ │
+
+│ │ │ │ │                 │ │ │ ✓ Decision unanimous ││ │ │
+
+│ │ │ │ │[     AI Suggest Headlines] │ │ │ ✓ Inflation concerns            ││ │ │
+
+│ │ │ │ └──────────────────────────────┘ │ │                  Growth forecast       ││ │ │
+
+│ │ │ │                       ││                 ││ │ │
+
+│ │ │ │ ┌──────────────────────────────┐ │ │ SOURCE REFERENCES                      ││ │ │
+
+│ │ │ │ │ ARTICLE BODY               │ │ │ ────────────────             ││ │ │
+
+│ │ │ │ │                 │ │ │ [1] BoG Statement            ││ │ │
+
+│ │ │ │ │ ACCRA, Ghana — The Bank           │ │ │ [2] Reuters Alert       ││ │ │
+
+│ │ │ │ │ of Ghana's Monetary Policy │ │ │ [3] Bloomberg Data              ││ │ │
+
+│ │ │ │ │ Committee (MPC) has             │ ││                 ││ │ │
+
+│ │ │ │ │ increased the policy rate │ │ │ AI SUGGESTIONS                 ││ │ │
+
+│ │ │ │ │ by 100 basis points to       │ │ │ ──────────────             ││ │ │
+
+│ │ │ │ │ 30 percent...            │ ││       Add context about ││ │ │
+
+│ │ │ │ │                 │ │ │ previous rate             ││ │ │
+
+│ │ │ │ │ [Cursor position]         │ ││         Include market       ││ │ │
+
+│ │ │ │ │                 │ │ │ reaction paragraph ││ │ │
+
+│ │ │ │ │                 │ ││          Consider expert      ││ │ │
+
+│ │ │ │ │                 │ │ │ quote from KG              ││ │ │
+
+│ │ │ │ └──────────────────────────────┘ │ │                             ││ │ │
+
+│ │ │ │                       │ │ [Apply] [Ignore] [···] ││ │ │
+
+│ │ │ └────────────────────────────────────┘ └──────────────────────────┘│ │ │
+
+│ │ │                                            │││
+
+│ │ └─────────────────────────────────────────────────────────────────────┘ │ │
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                                │
+
+│ INLINE AI INTERACTIONS:                                 │
+
+│ ──────────────────────                                      │
+
+│ • Highlight text → AI menu appears: "Improve", "Expand", "Shorten",         │
+
+│ "Fact-check", "Rewrite in [tone]"                          │
+
+│ • ⌘K anywhere → Inline command palette                          │
+
+│ • "@" mention → Reference sources, entities, or other stories           │
+
+│ • AI suggestions appear as subtle highlights in the margin          │
+
+│ • Confidence indicators on AI-generated paragraphs                  │
+
+│                                            │
+
+│ KEYBOARD SHORTCUTS:                                        │
+
+│ ──────────────────                                     │
+
+│ • ⌘S: Save draft                                  │
+
+│ • ⌘Enter: Submit for review                                 │
+
+│ • ⌘K: Command palette                                   │
+
+│ • ⌘/: Toggle AI context panel                              │
+
+│ • ⌘Z / ⌘⇧Z: Undo/Redo                                      │
+
+│ • ⌘F: Find in document                                 │
+
+│                                            │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+---
+
+
+
+SCR-024: BREAKING NEWS CENTRE
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│ SCR-024: BREAKING NEWS CENTRE                              │
+
+│ ─────────────────────────────                                  │
+
+│                                         │
+
+│ PURPOSE: Dedicated interface for managing breaking news events            │
+
+│ PRIMARY USER: Managing Editor, EIC                         │
+
+│ ROUTE: /[workspace]/pipeline/breaking                          │
+
+│                                         │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ LAYOUT                                      ││
+
+│ │                                       ││
+
+│ │ ┌─────────────────────────────────────────────────────────────────────┐ │ │
+
+│ │ │     BREAKING NEWS CENTRE                  Active: 1 Recent: 3 │ │ │
+
+│ │ ├─────────────────────────────────────────────────────────────────────┤
+││
+
+│ │ │                                     │││
+
+│ │ │ ┌──────────────────────────────────────────────────────────────────┐ │ │
+│
+
+│ │ │ │      ACTIVE BREAKING                          ││││
+
+│ │ │ │ ─────────────────                             ││││
+
+│ │ │ │                                   ││││
+
+│ │ │ │ "BoG Holds Emergency MPC Meeting"                        ││││
+
+│ │ │ │ ─────────────────────────────────────                        ││││
+
+│ │ │ │ Status: DEVELOPING │ Confidence: 0.72 │ Age: 8 minutes          ││││
+
+│ │ │ │                                        ││││
+
+│ │ │ │ TIMELINE (Live):                               ││││
+
+│ │ │ │ ───────────────                                    ││││
+
+│ │ │ │ 14:38       Published initial brief (v1.0)              ││││
+
+│ │ │ │ 14:40       New source: Bloomberg confirms meeting                ││││
+
+│ │ │ │ 14:42       VERIFICATION NEEDED: Meeting outcome claim              ││││
+
+│ │ │ │ 14:45       Published update with confirmed details (v1.1)        ││││
+
+│ │ │ │                                        ││││
+
+│ │ │ │ ACTIONS:                                     ││││
+
+│ │ │ │ [Publish Update] [Add Source] [Request Verification]           ││││
+
+│ │ │ │ [Assign Editor] [Escalate to EIC] [End Breaking]           ││││
+
+│ │ │ └──────────────────────────────────────────────────────────────────┘ │ │
+│
+
+│ │ │                                          │││
+
+│ │ │ ┌────────────────────────────────┐ ┌──────────────────────────────┐ │ │ │
+
+│ │ │ │ PENDING VERIFICATION            │ │ RECENT BREAKING (24hr)        ││││
+
+│ │ │ │ ──────────────────             │ │ ──────────────────────         ││││
+
+│ │ │ │                     ││                  ││││
+
+│ │ │ │ • "Meeting outcome: Rate        │ │ • "Election Results"     ││││
+
+│ │ │ │ increased to 30%"          │ │ Resolved · 3 hours ago      ││││
+
+│ │ │ │ Source: Unverified social │ │ • "Minister Resignation"       ││││
+
+│ │ │ │ [Verify] [Reject]        │ │ Resolved · 6 hours ago     ││││
+
+│ │ │ │                     ││                  ││││
+
+│ │ │ │ • "Governor to address        │ │ [View All Recent →]      ││││
+
+│ │ │ │ press at 15:00"          ││                    ││││
+
+│ │ │ │ Source: Parliamentary source │ │                      ││││
+
+│ │ │ │ [Verify] [Reject]        ││                     ││││
+
+│ │ │ └────────────────────────────────┘ └──────────────────────────────┘ │ │ │
+
+│ │ │                                         │││
+
+│ │ └─────────────────────────────────────────────────────────────────────┘ │ │
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                             │
+
+│ CRITICAL INTERACTIONS:                                      │
+
+│ ─────────────────────                                        │
+
+│ • "Publish Update": Opens rapid publishing modal with pre-filled update          │
+
+│ • "Request Verification": Assigns Fact-Check Agent to urgent claim           │
+
+│ • "End Breaking": Transitions story to standard workflow (confirmation)          │
+
+│ • "Escalate to EIC": Sends immediate notification with full context          │
+
+│ • Real-time: Timeline updates automatically as events occur              │
+
+│ • Audio alert: Optional sound for new breaking events (user preference) │
+
+│                                             │
+
+│ MOBILE ADAPTATION:                                       │
+
+│ ─────────────────                                       │
+
+│ • Simplified single-column timeline                              │
+
+│ • Large action buttons for one-tap operations                        │
+
+│ • Pull-to-refresh for latest updates                         │
+
+│ • Push notification integration for breaking alerts                  │
+
+│                                             │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+---
+
+
+
+IV.3 ADDITIONAL SCREEN SUMMARIES
+
+
+
+Due to the extensive screen catalogue, the following provides architectural summaries for
+remaining key screens:
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│            ADDITIONAL SCREEN SPECIFICATIONS (SUMMARIES)                                 │
+
+│                                                │
+
+│ SCR-023: STORY GRAPH VIEWER                                    │
+
+│ ───────────────────────────                                         │
+
+│ Interactive graph visualisation showing: story nodes, version lineage,                  │
+
+│ source relationships, entity connections, derivative branches.                      │
+
+│ Features: Zoom, pan, node click for details, relationship filter,               │
+
+│ timeline scrubber. Full-screen mode for investigation.                      │
+
+│ Technical: Canvas-based rendering for large graphs; WebGL for Enterprise. │
+
+│                                                │
+
+│ SCR-025: VERIFICATION CENTRE                                   │
+
+│ ─────────────────────────────                                           │
+
+│ Displays all claims for a story with verification status.               │
+
+│ Layout: Claim list (left) + Evidence panel (right).                 │
+
+│ Each claim shows: text, criticality, source, verdict, confidence.               │
+
+│ Actions: "Re-verify", "Add Evidence", "Override Verdict", "Escalate".                   │
+
+│ Filter by: All, Verified, Unverified, Disputed, Critical.           │
+
+│ Colour coding by verdict with accessible indicators.                     │
+
+│                                              │
+
+│ SCR-026: HUMAN REVIEW QUEUE                                          │
+
+│ ────────────────────────────                                         │
+
+│ Prioritised list of stories requiring human review.                  │
+
+│ Sortable by: Confidence (ascending), Age, Priority, Topic.                   │
+
+│ Each item: Story title, confidence score (colour + number), age,                     │
+
+│ reason for review, assigned editor.                          │
+
+│ Quick actions: "Review", "Assign to Me", "Reassign", "Quick Approve".                        │
+
+│ Bulk actions: "Assign Selected", "Quick Approve All High-Confidence".                        │
+
+│ Empty state: "No stories require review — All clear!"                        │
+
+│                                              │
+
+│ SCR-040: PUBLISHING CENTRE                                   │
+
+│ ──────────────────────────                                       │
+
+│ Central hub for managing publication across platforms.                           │
+
+│ Layout: Story summary (left) + Platform checklist (right).                   │
+
+│ Each platform: Status indicator, scheduled time, preview thumbnail.                          │
+
+│ Actions per platform: "Publish Now", "Schedule", "Edit Variant", "Skip". │
+
+│ Bulk: "Publish to All", "Schedule All".                      │
+
+│ Preview: Platform-specific preview on hover/click.                       │
+
+│ Post-publish: Status updates, URL capture, engagement initial metrics.                       │
+
+│                                              │
+
+│ SCR-060: AI AGENT MONITOR                                    │
+
+│ ─────────────────────────                                        │
+
+│ Real-time view of all AI agents in the newsroom.                         │
+
+│ Grid of agent cards showing: name, type, status (Active/Idle/Error),                     │
+
+│ current task, tasks completed, trust level, performance sparkline.                        │
+
+│ Filter by: Engine, Status, Trust Level.                           │
+
+│ Click agent → Detailed view: task history, performance metrics,                       │
+
+│ trust level details, activity log.                        │
+
+│ Actions: "Pause Agent", "Reassign Tasks", "Adjust Parameters",                        │
+
+│ "View Prompt".                                        │
+
+│ Alerts: "Agent Trust Level Changed", "Agent Error Rate Exceeded".                             │
+
+│                                               │
+
+│ SCR-062: PROMPT LIBRARY                                           │
+
+│ ──────────────────────                                            │
+
+│ Version-controlled repository of all AI prompts.                              │
+
+│ Layout: Category tree (left) + Prompt list (centre) + Preview (right).                │
+
+│ Each prompt: Name, version, agent type, last updated, status.                         │
+
+│ Editor: Split view with prompt template + variables + test output.                    │
+
+│ Features: Syntax highlighting, variable autocomplete, test run,                       │
+
+│ version diff, rollback, A/B test configuration.                       │
+
+│ Governance: Change requires approval for MAJOR version; audit log.                                │
+
+│                                               │
+
+│ SCR-054: AI COST DASHBOARD                                            │
+
+│ ───────────────────────────                                               │
+
+│ Financial visibility into AI model usage and costs.                           │
+
+│ KPIs: Cost Today, Cost This Month, Projected Monthly, Cost per Story.                         │
+
+│ Charts: Cost by Model, Cost by Task Type, Cost Trend (daily),                     │
+
+│ Cost by Agent, Cost by Story.                                 │
+
+│ Alerts: Budget threshold warnings, unusual spending patterns.                         │
+
+│ Actions: Adjust model tiering, set budget caps, view optimisation                         │
+
+│ recommendations.                                       │
+
+│ Time range selector: Today, This Week, This Month, Custom.                    │
+
+│                                             │
+
+│ SCR-086: SYSTEM HEALTH                                       │
+
+│ ─────────────────────                                        │
+
+│ Infrastructure and platform health monitoring.                   │
+
+│ Status overview: All services with health indicators (green/amber/red).               │
+
+│ Metrics: CPU, Memory, API Latency, Error Rate, Queue Depth.                   │
+
+│ Agent Health: Agent availability, task success rate, response time.           │
+
+│ Database: Connection pool, query performance, storage usage.                      │
+
+│ AI Services: Model availability, API quota usage, latency.            │
+
+│ Alerts: Configurable thresholds with notification routing.            │
+
+│ Incident timeline: Recent incidents with status and duration.             │
+
+│                                             │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+---
+
+
+
+PART V — DASHBOARD ARCHITECTURE
+
+
+
+V.1 DASHBOARD DESIGN PRINCIPLES
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│            DASHBOARD ARCHITECTURE PRINCIPLES                              │
+
+│                                              │
+
+│ PRINCIPLE 1: INFORMATION HIERARCHY                                    │
+
+│ Most critical information at top-left (F-pattern reading).                │
+
+│ Breaking news and alerts → KPIs → Trends → Detail.                            │
+
+│                                              │
+
+│ PRINCIPLE 2: ACTIONABLE DATA                                  │
+
+│ Every data point that requires action has a direct action link.               │
+
+│ "Stories in Review: 8" → Click to open Review Queue.                          │
+
+│                                              │
+
+│ PRINCIPLE 3: REAL-TIME WHERE IT MATTERS                                   │
+
+│ Breaking news, agent status, queue depth: real-time.                          │
+
+│ Historical trends, audience data: near-real-time or periodic refresh.                 │
+
+│                                              │
+
+│ PRINCIPLE 4: CONFIGURABLE DENSITY                                 │
+
+│ Users choose: Compact (maximum data), Comfortable (default), Relaxed.                     │
+
+│ Density affects: card padding, chart size, font size.                │
+
+│                                              │
+
+│ PRINCIPLE 5: DRILL-DOWN CAPABILITY                                │
+
+│ Every KPI card is clickable for detail. Every chart supports zoom.                │
+
+│ Every metric has an "Explore" link to full analytics.                │
+
+│                                              │
+
+│ PRINCIPLE 6: CONSISTENT TIME CONTROLS                                     │
+
+│ Global time range selector: Today, Yesterday, Last 7 Days, Last 30 Days,              │
+
+│ This Month, Custom Range. Individual widgets can override.                        │
+
+│                                              │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+V.2 KPI CARD SYSTEM
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│                KPI CARD SYSTEM                             │
+
+│                                                │
+
+│ CARD ANATOMY:                                              │
+
+│ ────────────                                           │
+
+│                                                │
+
+│ ┌─────────────────────────┐                                         │
+
+│ │       Stories Today      │ ← Label (text-sm, text-secondary)          │
+
+│ │                │                                 │
+
+│ │ 142                │ ← Value (text-6xl, text-primary, bold)       │
+
+│ │                │                                 │
+
+│ │ ↑ 12% from yesterday │ ← Trend (text-sm, success/warning/neutral)             │
+
+│ │ ─────────────────────── │ ← Sparkline (subtle, 60px height)               │
+
+│ │ ⬡⬡⬡⬡⬢⬢⬢⬢⬢⬢⬢⬢⬢ │                                               │
+
+│ │                │                                 │
+
+│ │ [View All Stories →] │ ← Action link                          │
+
+│ └─────────────────────────┘                                         │
+
+│                                                │
+
+│ KPI CARD VARIANTS:                                        │
+
+│ ─────────────────                                         │
+
+│ • Standard: Label + Value + Trend + Sparkline                     │
+
+│ • Compact: Label + Value + Trend (no sparkline)                       │
+
+│ • Alert: Label + Value + Alert indicator (red/amber border)               │
+
+│ • Comparative: Label + Value + vs. Previous Period                    │
+
+│ • Predictive: Label + Value + Forecast (dashed sparkline extension)           │
+
+│                                             │
+
+│ INTERACTIONS:                                         │
+
+│ • Hover: Subtle elevation increase; cursor pointer                    │
+
+│ • Click: Navigate to detail view or drill-down                │
+
+│ • Sparkline hover: Show tooltip with data point values                    │
+
+│                                             │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+V.3 DASHBOARD WIDGET CATALOGUE
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│            DASHBOARD WIDGET CATALOGUE                             │
+
+│                                             │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ WIDGET           TYPE       SIZE     UPDATE        INTERACTIVE │ │
+
+│ │ ──────           ────       ────            ──────          ─────────── │ │
+
+│ │                                                    ││
+
+│ │ Story Pipeline      Status Grid Full          Real-time       Click→Detail │ │
+
+│ │ Overview            (stage count)                              ││
+
+│ │                                                    ││
+
+│ │ Breaking News         Alert List Half          Real-time       Click→Story │ │
+
+│ │ Active                                               ││
+
+│ │                                                    ││
+
+│ │ Human Review Queue Priority List Half                   Real-time     Click→Review │ │
+
+│ │                                                    ││
+
+│ │ Agent Activity       Live Feed      Half      Real-time       Click→Agent │ │
+
+│ │                                                    ││
+
+│ │ Confidence Trend        Line Chart Half            Hourly       Hover→Value │ │
+
+│ │ (24hr)                                               ││
+
+│ │                                                    ││
+
+│ │ Stories Published     Bar Chart      Half          Hourly      Click→Day │ │
+
+│ │ (Daily)                                              ││
+
+│ │                                                    ││
+
+│ │ Content Performance Data Table Full                  Hourly         Sort/Filter │ │
+
+│ │ (Top Stories)                                            ││
+
+│ │                                                    ││
+
+│ │ Platform Distribution Pie/Donut            Third     Daily      Click→Seg │
+
+│ │                                                    ││
+
+│ │ Audience Growth         Area Chart Half             Daily      Hover→Value │ │
+
+│ │                                                     ││
+
+│ │ Engagement Rate         Gauge         Third         Hourly      —          ││
+
+│ │                                          ││
+
+│ │ AI Model Costs      Stacked Bar Half     Hourly         Click→Model │ │
+
+│ │                                          ││
+
+│ │ System Health       Status Grid Full   Real-time        Click→Detail │ │
+
+│ │                                          ││
+
+│ │ Correction Rate     Single Value Quarter Daily          Click→Report │ │
+
+│ │                                          ││
+
+│ │ Live Feed         Event Stream Full    Real-time       Scroll/Pause │ │
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                            │
+
+│ WIDGET SIZES:                                        │
+
+│ • Full: Spans full content width                            │
+
+│ • Half: 50% of content width (stacks on mobile)                     │
+
+│ • Third: 33% of content width (stacks on tablet/mobile)                 │
+
+│ • Quarter: 25% of content width (KPI cards; stacks on tablet/mobile)         │
+
+│                                            │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+---
+
+
+
+PART VI — USER WORKFLOWS
+
+
+
+VI.1 CORE WORKFLOW PATTERNS
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│              CORE WORKFLOW PATTERNS                          │
+
+│                                              │
+
+│ WORKFLOW 1: DISCOVER & VERIFY STORY                                  │
+
+│ ─────────────────────────────────                                    │
+
+│                                              │
+
+│ 1. User receives notification: "New story candidate detected"                │
+
+│     │                                         │
+
+│     ▼                                             │
+
+│ 2. User opens Story Pipeline → Story in "Seed" column                    │
+
+│     │                                         │
+
+│     ▼                                             │
+
+│ 3. User clicks story → Story Detail view                    │
+
+│     │                                         │
+
+│     ▼                                             │
+
+│ 4. User reviews: AI-generated summary, source list, initial confidence           │
+
+│     │                                         │
+
+│     ├── Confidence ≥ 0.85: Story auto-assigned to Writer                 │
+
+│     │                                         │
+
+│     └── Confidence < 0.85: User decides:                    │
+
+│         ├── "Assign" → Select agent or let AI assign             │
+
+│         ├── "Research More" → Request additional research                    │
+
+│         └── "Reject" → Story killed with reason              │
+
+│                                              │
+
+│ WORKFLOW 2: HUMAN REVIEW & APPROVAL                                             │
+
+│ ────────────────────────────────────                                            │
+
+│                                            │
+
+│ 1. User receives notification: "Story requires human review"                        │
+
+│    │                                        │
+
+│    ▼                                            │
+
+│ 2. User opens Human Review Queue → Sorted by priority                                   │
+
+│    │                                        │
+
+│    ▼                                            │
+
+│ 3. User clicks story → Editorial Workspace with Review Mode                             │
+
+│    │                                        │
+
+│    ▼                                            │
+
+│ 4. User reviews:                                    │
+
+│   • Content preview (as it will appear)                         │
+
+│   • Confidence breakdown (all dimensions)                               │
+
+│   • Fact-check results                                  │
+
+│   • Source list with reliability scores                     │
+
+│   • AI recommendations and rationale                                │
+
+│    │                                        │
+
+│    ▼                                            │
+
+│ 5. User decides:                                    │
+
+│   ├── "Approve" → Story published; confidence recorded                              │
+
+│   ├── "Approve with Edits" → Opens Article Editor; then publish                         │
+
+│   ├── "Request Changes" → Returns to AI with editor notes                           │
+
+│   ├── "Reject" → Story returned to draft; reason required                       │
+
+│   └── "Escalate" → Sent to Managing Editor or EIC                           │
+
+│                                             │
+
+│ WORKFLOW 3: BREAKING NEWS RESPONSE                                           │
+
+│ ─────────────────────────────────                                        │
+
+│                                             │
+
+│ 1. Breaking alert appears: Visual + Audio (if enabled) + Notification                │
+
+│    │                                          │
+
+│    ▼                                             │
+
+│ 2. User clicks alert → Breaking News Centre                      │
+
+│    │                                          │
+
+│    ▼                                             │
+
+│ 3. User reviews: Initial brief (AI-generated), sources, confidence               │
+
+│    │                                          │
+
+│    ▼                                             │
+
+│ 4. User actions (rapid, one-click where possible):                   │
+
+│   ├── "Publish Brief" → Initial version published immediately                    │
+
+│   ├── "Hold for Verification" → Brief held; verification accelerated                 │
+
+│   ├── "Edit Brief" → Quick edit then publish                     │
+
+│   └── "Assign Coverage Team" → Multiple agents assigned                          │
+
+│    │                                         │
+
+│    ▼                                             │
+
+│ 5. Continuous monitoring: Timeline updates live; user intervenes as needed │
+
+│    │                                         │
+
+│    ▼                                             │
+
+│ 6. Story stabilises → "End Breaking" → Transitions to standard monitoring │
+
+│                                             │
+
+│ WORKFLOW 4: CORRECTION ISSUANCE                                      │
+
+│ ───────────────────────────────                                        │
+
+│                                               │
+
+│ 1. Correction alert: AI detects error OR user/audience reports error           │
+
+│      │                                        │
+
+│      ▼                                             │
+
+│ 2. User opens Corrections & Retractions → Reviews flagged issue                │
+
+│      │                                        │
+
+│      ▼                                             │
+
+│ 3. User verifies: Compare original vs. corrected information               │
+
+│      │                                        │
+
+│      ▼                                             │
+
+│ 4. User reviews AI-drafted correction notice                       │
+
+│      │                                        │
+
+│      ▼                                             │
+
+│ 5. User approves/rejects based on severity:                        │
+
+│     • Minor: Content Editor can approve                        │
+
+│     • Significant: Desk Editor approval required                   │
+
+│     • Major: Managing Editor approval required                         │
+
+│     • Critical: EIC approval required                   │
+
+│      │                                         │
+
+│      ▼                                             │
+
+│ 6. Correction published: Content updated; notice posted; derivatives synced │
+
+│                                               │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+---
+
+
+
+PART VII — AI INTERACTION EXPERIENCE
+
+
+
+VII.1 AI INTERACTION PATTERNS
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│            AI INTERACTION PATTERNS                        │
+
+│                                             │
+
+│ PATTERN 1: AI ASSISTANT PANEL (Contextual Sidebar)                    │
+
+│ ───────────────────────────────────────────────                               │
+
+│ • Always-available panel (toggle with ⌘/)                     │
+
+│ • Context-aware: Shows relevant AI insights for current screen            │
+
+│ • Sections: AI Suggestions, Agent Status, Confidence Info, Quick Actions │
+
+│ • User can ask questions: "Summarise this story", "Find related stories" │
+
+│ • Responses appear in threaded conversation within panel                  │
+
+│                                             │
+
+│ PATTERN 2: INLINE AI SUGGESTIONS                              │
+
+│ ───────────────────────────────                                   │
+
+│ • AI suggestions appear subtly in context                     │
+
+│ • Article editor: Margin highlights for suggested improvements            │
+
+│ • Dashboard: "AI Insight" callouts on anomalies                   │
+
+│ • Verification: Suggested sources or contradictions flagged           │
+
+│ • Visual treatment: Subtle blue glow or dotted underline                   │
+
+│ • Hover: Preview suggestion; Click: Apply or expand                    │
+
+│                                             │
+
+│ PATTERN 3: CONFIDENCE INDICATORS (Everywhere)                                  │
+
+│ ─────────────────────────────────────────────                                          │
+
+│ • Appears on every AI-generated output                         │
+
+│ • Visual: Colour bar (green/amber/red) + numeric score + icon                      │
+
+│ • Position: Consistent location (top-right of content area)                │
+
+│ • Click: Opens confidence breakdown panel                          │
+
+│ • Breakdown: Per-dimension scores with contributing factors                        │
+
+│ • Explainability: "Why this score?" shows agent reasoning                      │
+
+│                                             │
+
+│ PATTERN 4: MULTI-AGENT CONVERSATION VIEW                                       │
+
+│ ────────────────────────────────────────                                           │
+
+│ • For complex tasks, user can observe agent collaboration                      │
+
+│ • View: Chat-like interface showing agent-to-agent messages                        │
+
+│ • Each message: Agent avatar, message content, timestamp                           │
+
+│ • User can interject: "Suggest different angle" or "Ask FactCheck to verify"│
+
+│ • User messages highlighted differently from agent messages                        │
+
+│ • Transcript preserved for audit                           │
+
+│                                             │
+
+│ PATTERN 5: FEEDBACK COLLECTION                                 │
+
+│ ───────────────────────────────                                    │
+
+│ • Every AI output has         feedback buttons                         │
+
+│ • Thumbs down opens: Quick reason selector + optional comment                          │
+
+│ • Reasons: "Inaccurate", "Poor quality", "Wrong tone", "Not relevant"                  │
+
+│ • Feedback immediately logged; feeds Continuous Learning Engine             │
+
+│ • User can see their feedback history on outputs                │
+
+│                                             │
+
+│ PATTERN 6: PROMPT VISIBILITY & EDITING                          │
+
+│ ────────────────────────────────────────                                │
+
+│ • "View Prompt" link on AI-generated content                    │
+
+│ • Opens prompt viewer: System prompt + Context + Task prompt                │
+
+│ • Read-only by default; editable with appropriate permissions           │
+
+│ • "Test Changes" to see output with modified prompt                 │
+
+│ • Version history tracked for all prompt edits              │
+
+│                                             │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+---
+
+
+
+PART VIII — RESPONSIVE EXPERIENCE
+
+
+
+VIII.1 RESPONSIVE LAYOUT STRATEGY
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│            RESPONSIVE LAYOUT STRATEGY                       │
+
+│                                             │
+
+│ DESKTOP XL (≥ 1920px):                                │
+
+│ ─────────────────────                                               │
+
+│ • Three-panel: Sidebar (240px) | Content | Context Panel (360px)                    │
+
+│ • Dashboard: 4-column KPI grid; 2-column widget grid                            │
+
+│ • Article Editor: Side-by-side content and AI panel                         │
+
+│ • Story Graph: Full-canvas with floating toolbar                        │
+
+│                                              │
+
+│ DESKTOP LG (≥ 1440px):                                          │
+
+│ ─────────────────────                                               │
+
+│ • Three-panel: Sidebar (240px) | Content | Context Panel (320px)                    │
+
+│ • Dashboard: 4-column KPI grid; 2-column widget grid                            │
+
+│ • Article Editor: Side-by-side with collapsible AI panel                    │
+
+│                                              │
+
+│ DESKTOP MD (≥ 1024px):                                          │
+
+│ ─────────────────────                                               │
+
+│ • Two-panel: Sidebar (collapsed 64px) | Content                             │
+
+│ • Context panel becomes slide-out drawer                                │
+
+│ • Dashboard: 2-column KPI grid; stacked widget grid                             │
+
+│ • Article Editor: Full-width with floating AI toolbar                   │
+
+│                                              │
+
+│ TABLET (≥ 768px):                                       │
+
+│ ────────────────                                            │
+
+│ • Single column with hamburger navigation                               │
+
+│ • Dashboard: 2-column KPI grid; single column widgets                           │
+
+│ • Article Editor: Full-width; AI suggestions as bottom sheet                    │
+
+│ • Story Graph: Simplified view with tap-to-inspect                          │
+
+│                                              │
+
+│ MOBILE LG (≥ 428px):                                   │
+
+│ ───────────────────                                        │
+
+│ • Single column with bottom tab navigation                             │
+
+│ • Dashboard: Single column; most critical widgets only                         │
+
+│ • Actions: Fixed bottom action bar for primary actions                         │
+
+│ • Article Editor: Scrollable with fixed toolbar                    │
+
+│                                              │
+
+│ MOBILE SM (≥ 320px):                                     │
+
+│ ───────────────────                                        │
+
+│ • Same as Mobile LG with reduced padding and simplified visuals                        │
+
+│ • KPI values: Reduced font size; fewer sparklines                          │
+
+│ • Tables: Horizontal scroll with sticky first column                   │
+
+│                                              │
+
+│ NAVIGATION ADAPTATION:                                         │
+
+│ ─────────────────────                                          │
+
+│ Desktop: Persistent sidebar with icon + label                          │
+
+│ Tablet: Collapsible sidebar (hamburger toggle)                             │
+
+│ Mobile: Bottom tab bar (5 primary items) + "More" menu                             │
+
+│                                              │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+---
+
+
+
+PART IX — ACCESSIBILITY & INCLUSIVITY
+
+Covered comprehensively in Section I.6 (Accessibility Strategy) with additional component-level
+requirements specified throughout Section IV screen specifications. This section reference is
+satisfied by the WCAG 2.2 AA strategy, keyboard navigation requirements, screen reader
+support specifications, and colour contrast rules defined throughout the design system and
+individual screen specifications.
+
+
+
+---
+
+
+
+PART X — FRONTEND PERFORMANCE STRATEGY
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│            FRONTEND PERFORMANCE STRATEGY                             │
+
+│                                              │
+
+│ PERFORMANCE BUDGETS:                                        │
+
+│ ──────────────────                                      │
+
+│                                              │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ METRIC              MVP TARGET          ENTERPRISE TARGET          ││
+
+│ │ ──────              ──────────        ─────────────────            ││
+
+│ │ FCP (First Contentful Paint) < 1.5s      < 1.0s           ││
+
+│ │ LCP (Largest Contentful Paint) < 2.5s      < 2.0s             ││
+
+│ │ TTI (Time to Interactive)   < 3.0s       < 2.5s           ││
+
+│ │ TBT (Total Blocking Time)    < 200ms        < 100ms            ││
+
+│ │ CLS (Cumulative Layout Shift) < 0.1        < 0.05             ││
+
+│ │ Bundle Size (initial)     < 200KB gzip     < 150KB gzip                 ││
+
+│ │ Bundle Size (total route)    < 500KB gzip        < 350KB gzip                   ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                                │
+
+│ OPTIMISATION STRATEGIES:                                          │
+
+│ ──────────────────────                                         │
+
+│                                                │
+
+│ LOADING:                                              │
+
+│ • Route-based code splitting (lazy load all routes)                           │
+
+│ • Component-level code splitting (heavy widgets, editors)                              │
+
+│ • Image optimisation: WebP/AVIF with lazy loading                                 │
+
+│ • Font subsetting and preloading                                  │
+
+│ • Critical CSS inlining                                    │
+
+│                                                │
+
+│ RENDERING:                                                 │
+
+│ • Virtual scrolling for large lists (Story Pipeline, Audit Logs)                  │
+
+│ • Canvas/WebGL for complex visualisations (Story Graph)                                │
+
+│ • Web Workers for heavy computation                                       │
+
+│ • Debounced real-time updates                                         │
+
+│                                                │
+
+│ CACHING:                                               │
+
+│ • Service Worker for offline shell                                │
+
+│ • API response caching (stale-while-revalidate)                               │
+
+│ • Static asset caching with content hashing                               │
+
+│ • IndexedDB for client-side data persistence                              │
+
+│                                            │
+
+│ OFFLINE & PWA:                                     │
+
+│ • PWA-capable for mobile monitoring                        │
+
+│ • Offline: Cached dashboards, queued actions                   │
+
+│ • Background sync for queued actions when online                   │
+
+│ • Push notifications for critical alerts               │
+
+│                                            │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+---
+
+
+
+PART XI — ENTERPRISE UX GOVERNANCE
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│             ENTERPRISE UX GOVERNANCE                       │
+
+│                                            │
+
+│ DESIGN REVIEW PROCESS:                                 │
+
+│ ─────────────────────                                  │
+
+│ 1. Component Proposal → Design Lead Review                         │
+
+│ 2. Prototype → UX Architect Review                         │
+
+│ 3. Accessibility Audit → A11y Specialist Review                │
+
+│ 4. Performance Review → Frontend Architect Review                      │
+
+│ 5. Final Approval → Chief Experience Officer                   │
+
+│                                             │
+
+│ COMPONENT GOVERNANCE:                                               │
+
+│ ────────────────────                                        │
+
+│ • All components in central design system (Figma + Storybook)                           │
+
+│ • Design tokens as single source of truth                           │
+
+│ • Semantic versioning for all components                                │
+
+│ • Breaking changes require migration guide                              │
+
+│ • Deprecated components: 2-release sunset period                                │
+
+│                                             │
+
+│ UX QUALITY METRICS:                                     │
+
+│ ─────────────────                                       │
+
+│ • Task completion rate (per workflow)                               │
+
+│ • Time on task (per workflow)                               │
+
+│ • Error rate (per form/interaction)                             │
+
+│ • SUS score (quarterly survey)                              │
+
+│ • Accessibility compliance score (automated audit)                          │
+
+│ • User satisfaction (NPS, quarterly)                            │
+
+│                                             │
+
+│ CONTINUOUS IMPROVEMENT:                                             │
+
+│ ──────────────────────                                          │
+
+│ • Monthly UX review with user feedback analysis                             │
+
+│ • Quarterly usability testing (moderated, 5 users per persona)                      │
+
+│ • A/B testing for significant workflow changes                          │
+
+│ • Feedback button on every screen (enterprise opt-in)                           │
+
+│                                             │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+---
+
+
+
+PART XII — EXECUTIVE SUMMARY & APPENDICES
+
+
+
+XII.1 SCREEN INVENTORY (COMPLETE)
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│           COMPLETE SCREEN INVENTORY                                  │
+
+│                                          │
+
+│ ID    SCREEN NAME                     PHASE      OWNER               │
+
+│ ──    ───────────                 ─────         ─────        │
+
+│                                          │
+
+│ AUTHENTICATION & ONBOARDING (7 screens)                                      │
+
+│ SCR-001 Landing Page                  MVP        Brand           │
+
+│ SCR-002 Login                   MVP         Auth         │
+
+│ SCR-003 Registration                  MVP       Auth         │
+
+│ SCR-004 Password Recovery                MVP        Auth                 │
+
+│ SCR-005 Multi-Factor Authentication             Growth Auth                  │
+
+│ SCR-006 Onboarding Flow                 MVP        UX            │
+
+│ SCR-007 Workspace Selection                 Growth UX                    │
+
+│                                             │
+
+│ DASHBOARDS (3 screens)                                        │
+
+│ SCR-010 AI Newsroom Dashboard                    MVP        Editorial              │
+
+│ SCR-011 Executive Dashboard                  Growth Executive                      │
+
+│ SCR-012 Custom Dashboard Builder                  Enterprise UX                    │
+
+│                                              │
+
+│ STORY PIPELINE & EDITORIAL (11 screens)                                    │
+
+│ SCR-020 Story Pipeline (All Stories)         MVP         Editorial         │
+
+│ SCR-021 Story Pipeline (Kanban View)             Growth Editorial                      │
+
+│ SCR-022 Story Detail / Editorial Workspace         MVP        Editorial                │
+
+│ SCR-023 Story Graph Viewer                Growth Editorial                 │
+
+│ SCR-024 Breaking News Centre                 MVP         Editorial         │
+
+│ SCR-025 Verification Centre              MVP           Editorial       │
+
+│ SCR-026 Human Review Queue                       MVP       Editorial           │
+
+│ SCR-027 Quality Assurance Dashboard               Growth Editorial                     │
+
+│ SCR-028 Corrections & Retractions                MVP      Governance                   │
+
+│ SCR-029 Audit Logs                     Growth Governance               │
+
+│ SCR-029b Knowledge Base                   Growth Editorial                 │
+
+│                                              │
+
+│ CONTENT CREATION (6 screens)                                       │
+
+│ SCR-030 Article Editor                 MVP        Content          │
+
+│ SCR-031 Headline Studio                  MVP        Content            │
+
+│ SCR-032 Image Studio                    Growth Content                 │
+
+│ SCR-033 Video Studio                   Enterprise Content              │
+
+│ SCR-034 Audio Studio                    Growth Content                 │
+
+│ SCR-035 Content Templates                 Growth Content                       │
+
+│                                              │
+
+│ PUBLISHING & DISTRIBUTION (4 screens)                           │
+
+│ SCR-040 Publishing Centre           MVP        Distribution │
+
+│ SCR-041 Distribution Dashboard           Growth Distribution │
+
+│ SCR-042 Calendar & Scheduler             Growth Distribution │
+
+│ SCR-043 Platform Connectors             Growth Admin                │
+
+│                                          │
+
+│ ANALYTICS (5 screens)                              │
+
+│ SCR-050 Analytics Dashboard             MVP     Analytics           │
+
+│ SCR-051 Audience Intelligence           Growth Analytics            │
+
+│ SCR-052 Competitor Intelligence          Enterprise Analytics           │
+
+│ SCR-053 Revenue Dashboard                Enterprise Business                │
+
+│ SCR-054 AI Cost Dashboard               Growth Admin                │
+
+│                                          │
+
+│ AI AGENTS & PROMPTS (4 screens)                             │
+
+│ SCR-060 AI Agent Monitor                MVP    Admin            │
+
+│ SCR-061 Agent Activity Timeline          Growth Admin                   │
+
+│ SCR-062 Prompt Library              Growth AI Engineering │
+
+│ SCR-063 Agent Trust Management               Growth Admin                       │
+
+│                                          │
+
+│ SETTINGS & ADMINISTRATION (8 screens)                               │
+
+│ SCR-080 Workspace Settings              MVP     Admin           │
+
+│ SCR-081 User Management                  MVP     Admin              │
+
+│ SCR-082 Role Management                  Growth Admin               │
+
+│ SCR-083 Brand Configuration             Growth Admin                │
+
+│ SCR-084 API & Integrations          Growth Admin                │
+
+│ SCR-085 Billing & Subscription          MVP     Admin           │
+
+│ SCR-086 System Health                   MVP       Admin        │
+
+│ SCR-087 Observability Dashboard                Enterprise DevOps       │
+
+│                                            │
+
+│ TOTAL: 48 screens                                    │
+
+│ MVP: 25 screens | Growth: 17 screens | Enterprise: 6 screens               │
+
+│                                            │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+XII.2 DESIGN DECISION RECORDS (DDRs)
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│           DESIGN DECISION RECORDS                          │
+
+│                                            │
+
+│ DDR-001: Three-Panel Layout as Primary Desktop Pattern                     │
+
+│ Decision: Primary workspace uses sidebar | content | context panel                 │
+
+│ Rationale: Maximises information density while maintaining focus on content │
+
+│ Context panel provides AI insights without leaving the workspace               │
+
+│                                            │
+
+│ DDR-002: Confidence-First Visual Hierarchy                         │
+
+│ Decision: Confidence score determines visual prominence of AI content                  │
+
+│ Rationale: Draws user attention to content requiring human judgment                    │
+
+│ Colour + icon + number ensures accessibility for colour-blind users            │
+
+│                                            │
+
+│ DDR-003: Command Palette as Universal Interaction Pattern                      │
+
+│ Decision: ⌘K activates searchable command palette for all actions                  │
+
+│ Rationale: Power-user efficiency; reduces reliance on mouse navigation                 │
+
+│ All platform actions accessible via keyboard through palette               │
+
+│                                             │
+
+│ DDR-004: Streaming AI Content Display                          │
+
+│ Decision: AI-generated content appears progressively (character/word stream) │
+
+│ Rationale: Communicates AI activity; allows early review; reduces perceived │
+
+│ latency; distinguishes AI generation from static content               │
+
+│                                            │
+
+│ DDR-005: Glassmorphism for AI-Related UI Elements                          │
+
+│ Decision: Subtle glassmorphism (backdrop-blur, semi-transparency) for AI               │
+
+│ panels, suggestion cards, and confidence indicators                    │
+
+│ Rationale: Creates visual distinction between human-managed and AI-managed │
+
+│ interface elements; communicates technological sophistication                  │
+
+│                                            │
+
+│ DDR-006: Real-Time by Default, Configurable                        │
+
+│ Decision: All dashboards and pipeline views update in real-time by default │
+
+│ Rationale: Newsroom operations are time-sensitive; stale data risks missed │
+
+│ stories; users can reduce refresh frequency for focus work                 │
+
+│                                             │
+
+│ DDR-007: Mobile as Monitoring and Approval Platform                        │
+
+│ Decision: Mobile experience optimised for monitoring, alerts, and approvals │
+
+│ rather than content creation                               │
+
+│ Rationale: Content creation requires desktop-class screen and keyboard;                │
+
+│ mobile serves the "on-call editor" use case for time-sensitive decisions           │
+
+│                                          │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+XII.3 FRONTEND ROADMAP
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────────────────────
+─┐
+
+│              FRONTEND IMPLEMENTATION ROADMAP                             │
+
+│                                          │
+
+│ MVP (Months 1–4):                                    │
+
+│ ────────────────                                     │
+
+│ • Design system foundation (tokens, components, patterns)                    │
+
+│ • Authentication and onboarding                                  │
+
+│ • AI Newsroom Dashboard                                      │
+
+│ • Story Pipeline (list view)                         │
+
+│ • Story Detail / Editorial Workspace                             │
+
+│ • Article Editor (basic)                         │
+
+│ • Breaking News Centre                                   │
+
+│ • Verification Centre                            │
+
+│ • Human Review Queue                                         │
+
+│ • Publishing Centre                              │
+
+│ • Analytics Dashboard (basic)                                │
+
+│ • AI Agent Monitor                               │
+
+│ • Workspace Settings, User Management, Billing                       │
+
+│ • System Health                                      │
+
+│ • Mobile responsive (monitoring and approvals)                               │
+
+│ • Accessibility baseline (WCAG 2.2 AA)                                   │
+
+│                                          │
+
+│ GROWTH (Months 5–12):                                                │
+
+│ ─────────────────────                                                │
+
+│ • Executive Dashboard                                            │
+
+│ • Story Pipeline (Kanban view)                                       │
+
+│ • Story Graph Viewer                                         │
+
+│ • Headline Studio                                        │
+
+│ • Image Studio                                       │
+
+│ • Audio Studio                                       │
+
+│ • Content Templates                                          │
+
+│ • Calendar & Scheduler                                           │
+
+│ • Distribution Dashboard                                         │
+
+│ • Audience Intelligence                                      │
+
+│ • AI Cost Dashboard                                          │
+
+│ • Agent Activity Timeline                                        │
+
+│ • Prompt Library                                     │
+
+│ • Agent Trust Management                                             │
+
+│ • Role Management                                            │
+
+│ • Brand Configuration                                        │
+
+│ • API & Integrations                                     │
+
+│ • Knowledge Base                                         │
+
+│ • Audit Logs                                     │
+
+│ • Corrections & Retractions (enhanced)                                   │
+
+│ • Tablet-optimised layouts                              │
+
+│ • PWA support                                       │
+
+│                                            │
+
+│ ENTERPRISE (Year 2+):                                   │
+
+│ ────────────────────                                        │
+
+│ • Custom Dashboard Builder                                      │
+
+│ • Video Studio                                      │
+
+│ • Competitor Intelligence                               │
+
+│ • Revenue Dashboard                                     │
+
+│ • Observability Dashboard                                   │
+
+│ • Multi-tenant branding                                 │
+
+│ • Advanced accessibility (WCAG 2.2 AAA for critical flows)                  │
+
+│ • White-label configuration                                 │
+
+│ • Enterprise SSO integration                                │
+
+│ • Advanced analytics and reporting                                  │
+
+│ • Marketplace integration for third-party plugins                       │
+
+│                                            │
+
+└─────────────────────────────────────────────────────────────────────────────
+─┘
+
+```
+
+
+
+XII.4 EXECUTIVE SUMMARY
+
+
+
+Volume 7 of the Agbofa Nexus AI enterprise architecture defines the complete frontend
+experience and user interface specification for the Autonomous AI Media Company Platform.
+This document transforms the architectural specifications of Volumes 1–6 into a concrete,
+implementable user experience blueprint.
+
+Key Achievements:
+
+
+
+1. AI-Native UX Paradigm — The platform is designed from the ground up as an AI operating
+system for newsrooms, not a traditional CMS. AI presence permeates the interface through
+confidence indicators, agent activity feeds, inline suggestions, and explainability panels.
+
+2. Mission Control Metaphor — The three-panel desktop layout (Navigation | Content | AI
+Context) provides a consistent mental model that scales from executive oversight to detailed
+content editing.
+
+3. Complete Screen Catalogue — 48 screens fully specified with layouts, components,
+interactions, states, responsive behaviour, and accessibility requirements. Every screen is
+documented to a level that enables independent implementation by AI coding agents.
+
+4. Comprehensive Design System — Typography, colour, spacing, component, motion, and state
+systems defined with design tokens. Light and dark themes. Multi-tenant branding support.
+WCAG 2.2 AA accessibility embedded from foundation.
+
+5. Confidence-First Information Architecture — The platform's most innovative UX pattern: AI-
+generated content displays its confidence score prominently, drawing human attention to
+decisions that require judgment while allowing high-confidence content to flow autonomously.
+
+6. Responsive from Desktop to Field — Six breakpoints with appropriate adaptations. Desktop
+for editorial work, tablet for monitoring, mobile for alerts and approvals. Every critical workflow
+functions at every breakpoint.
+
+7. Enterprise Governance — Design review process, component versioning, UX quality metrics,
+continuous improvement framework, and architecture decision records ensure the frontend
+evolves with discipline.
+
+
+
+The Experience:
+
+
+
+An editor-in-chief opens the Executive Dashboard each morning to review the AI newsroom's
+overnight performance — stories published, confidence trends, agent activity, and any
+escalations requiring attention. A managing editor works through the Human Review Queue,
+approving high-confidence stories with a single click and providing feedback on stories requiring
+revision. A content editor refines an AI-generated article in the Article Editor, accepting AI
+
+suggestions for improved clarity and requesting additional context where needed. An on-call
+editor receives a breaking news push notification on their phone, reviews the AI-generated
+initial brief, and approves publication — all within 60 seconds of the alert.
+
+
+
+Throughout this experience, AI is not a chatbot in the corner. It is the fabric of the platform —
+visible, explainable, and accountable. The user is not operating a content management system.
+They are commanding an AI newsroom.
+
+
+
+This volume, together with the complete Agbofa Nexus AI enterprise architecture (Volumes 1–
+7), provides the blueprint for building the world's leading autonomous AI media company
+platform.
+
+
+
+---
+
+
+
+END OF VOLUME 7
+
+
+
+AGBOFA NEXUS AI — AUTONOMOUS AI MEDIA COMPANY PLATFORM
+
+
+
+FRONTEND ARCHITECTURE & USER EXPERIENCE SPECIFICATION
+
+
+

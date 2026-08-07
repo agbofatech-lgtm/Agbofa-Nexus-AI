@@ -1,10 +1,21 @@
 {
   "source_files": 1,
-  "extracted_files": 0,
+  "extracted_files": 10,
   "checksums_recorded": 1,
   "errors": [],
   "source_paths": [
     "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt"
   ],
-  "extracted_paths": []
+  "extracted_paths": [
+    "extracted/text/batch-1/Volume-01.txt",
+    "extracted/text/batch-1/Volume-02.txt",
+    "extracted/text/batch-1/Volume-03.txt",
+    "extracted/text/batch-1/Volume-04.txt",
+    "extracted/text/batch-1/Volume-05.txt",
+    "extracted/text/batch-1/Volume-06.txt",
+    "extracted/text/batch-1/Volume-07.txt",
+    "extracted/text/batch-1/Volume-08.txt",
+    "extracted/text/batch-1/Volume-09.txt",
+    "extracted/text/batch-1/Volume-10.txt"
+  ]
 }

@@ -9,5 +9,608 @@
     "decision_area",
     "source_reference"
   ],
-  "items": []
+  "items": [
+    {
+      "id": "ADR-001",
+      "title": "Event-Driven Modular Architecture",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:17866",
+      "related_volumes": [
+        "Volume 3"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-002",
+      "title": "TypeScript/Node.js as Primary Language",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:17895",
+      "related_volumes": [
+        "Volume 3"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-003",
+      "title": "PostgreSQL as Primary Database",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:17923",
+      "related_volumes": [
+        "Volume 3"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-004",
+      "title": "Cloud-Agnostic with Abstraction Interfaces",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:17949",
+      "related_volumes": [
+        "Volume 3"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-005",
+      "title": "Event Sourcing for Content Provenance",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:17977",
+      "related_volumes": [
+        "Volume 3"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-006",
+      "title": "REST + GraphQL Hybrid API",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:108308",
+      "related_volumes": [
+        "Volume 10"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-007",
+      "title": "WebSocket for Real-Time Communication",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:108310",
+      "related_volumes": [
+        "Volume 10"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-008",
+      "title": "S3 for Object Storage",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:108312",
+      "related_volumes": [
+        "Volume 10"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-009",
+      "title": "SQS + EventBridge for Messaging",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:108314",
+      "related_volumes": [
+        "Volume 10"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-010",
+      "title": "Multi-Agent Architecture with Intelligence Engines",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:108322",
+      "related_volumes": [
+        "Volume 10"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-011",
+      "title": "LangGraph for Agent Workflow Orchestration",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:108324",
+      "related_volumes": [
+        "Volume 10"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-012",
+      "title": "Multi-LLM Abstraction Layer",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:108326",
+      "related_volumes": [
+        "Volume 10"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-013",
+      "title": "Deterministic Confidence Scoring (No ML for Governance)",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:108328",
+      "related_volumes": [
+        "Volume 10"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-014",
+      "title": "Story Graph as Canonical Content Model",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:108330",
+      "related_volumes": [
+        "Volume 10"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-015",
+      "title": "RAG with Multi-Source Retrieval",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:108332",
+      "related_volumes": [
+        "Volume 10"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-016",
+      "title": "Next.js App Router as Foundation",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:108340",
+      "related_volumes": [
+        "Volume 10"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-017",
+      "title": "Zustand + TanStack Query for State",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:108342",
+      "related_volumes": [
+        "Volume 10"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-018",
+      "title": "Feature-Based Module Organisation",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:108344",
+      "related_volumes": [
+        "Volume 10"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-019",
+      "title": "Streaming AI Content Display",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:108346",
+      "related_volumes": [
+        "Volume 10"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-020",
+      "title": "Offline-First with Background Sync",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:108348",
+      "related_volumes": [
+        "Volume 10"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-021",
+      "title": "AWS as Primary Cloud Provider",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:108356",
+      "related_volumes": [
+        "Volume 10"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-022",
+      "title": "Kubernetes (EKS) for Orchestration",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:108358",
+      "related_volumes": [
+        "Volume 10"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-023",
+      "title": "Aurora PostgreSQL for Primary Database",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:108360",
+      "related_volumes": [
+        "Volume 10"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-024",
+      "title": "DynamoDB for Episodic Memory",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:108362",
+      "related_volumes": [
+        "Volume 10"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-025",
+      "title": "GitOps with ArgoCD (Enterprise)",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:108364",
+      "related_volumes": [
+        "Volume 10"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-026",
+      "title": "Istio Service Mesh (Enterprise)",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:108366",
+      "related_volumes": [
+        "Volume 10"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-027",
+      "title": "Progressive Autonomy Delivery Model",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:108374",
+      "related_volumes": [
+        "Volume 10"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-028",
+      "title": "Feature Flags for All New Capabilities",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:108376",
+      "related_volumes": [
+        "Volume 10"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-029",
+      "title": "Blue-Green Deployment with Canary Rollout",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:108378",
+      "related_volumes": [
+        "Volume 10"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-030",
+      "title": "Prompt Changes Follow Code Review Process",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:108380",
+      "related_volumes": [
+        "Volume 10"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-031",
+      "title": "AI Agent Testing: Statistical Validation over Deterministic",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:108382",
+      "related_volumes": [
+        "Volume 10"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-032",
+      "title": "Confidence-Gated Phase Transitions",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:108384",
+      "related_volumes": [
+        "Volume 10"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-033",
+      "title": "ADR-AI-2026-001 — Multi-Agent Architecture Over Single-Model",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:25523",
+      "related_volumes": [
+        "Volume 4"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-034",
+      "title": "ADR-AI-2026-002 — Verification-First Design",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:25546",
+      "related_volumes": [
+        "Volume 4"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-035",
+      "title": "ADR-AI-2026-003 — Model Cascade for Cost Optimisation",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:25570",
+      "related_volumes": [
+        "Volume 4"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-036",
+      "title": "ADR-AI-2026-004 — Prompt as Code",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:25593",
+      "related_volumes": [
+        "Volume 4"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-037",
+      "title": "ADR-INFRA-001 — AWS as Primary Cloud Provider",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:105388",
+      "related_volumes": [
+        "Volume 9"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-038",
+      "title": "ADR-INFRA-002 — Kubernetes as Orchestration Standard",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:105400",
+      "related_volumes": [
+        "Volume 9"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-039",
+      "title": "ADR-INFRA-003 — PostgreSQL (Aurora) as Primary Database",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:105412",
+      "related_volumes": [
+        "Volume 9"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-040",
+      "title": "ADR-INFRA-004 — DynamoDB for Episodic Memory",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:105424",
+      "related_volumes": [
+        "Volume 9"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-041",
+      "title": "ADR-INFRA-005 — GitOps with ArgoCD (Enterprise)",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:105436",
+      "related_volumes": [
+        "Volume 9"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-042",
+      "title": "ADR-INFRA-006 — Self-Hosted Vector Database at MVP",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:105448",
+      "related_volumes": [
+        "Volume 9"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-043",
+      "title": "ADR-INFRA-007 — Istio Service Mesh (Enterprise)",
+      "status": "Extracted from Batch 1 — Pending ADR Reconciliation",
+      "decision_area": "Architecture / Engineering",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:105460",
+      "related_volumes": [
+        "Volume 9"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    }
+  ]
 }

@@ -11,5 +11,106 @@
     "primary_volume",
     "source_reference"
   ],
-  "items": []
+  "items": [
+    {
+      "id": "ENT-001",
+      "name": "Discovery Context",
+      "type": "Bounded Context",
+      "owner": "Content Intelligence",
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 3",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11637-11648; 11738-11752",
+      "notes": "Publishes TrendDetected, TopicScored, ResearchCompleted, ContentBriefCreated."
+    },
+    {
+      "id": "ENT-002",
+      "name": "Production Context",
+      "type": "Bounded Context",
+      "owner": "Content Production",
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 3",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11650-11658; 11754-11763",
+      "notes": "Subscribes to ContentBriefCreated; publishes DraftGenerated and ContentEdited."
+    },
+    {
+      "id": "ENT-003",
+      "name": "Verification Context",
+      "type": "Bounded Context",
+      "owner": "Trust and Quality",
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 3",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11660-11672; 11765-11783",
+      "notes": "Publishes FactCheckCompleted, PlagiarismChecked, QualityScored, ContentApproved or HumanReviewRequired."
+    },
+    {
+      "id": "ENT-004",
+      "name": "Publishing Context",
+      "type": "Bounded Context",
+      "owner": "Distribution",
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 3",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11785-11800",
+      "notes": "Subscribes to ContentApproved and HumanReviewCompleted; publishes ContentPublished and ContentPublishFailed."
+    },
+    {
+      "id": "ENT-005",
+      "name": "Analytics Context",
+      "type": "Bounded Context",
+      "owner": "Analytics",
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 3",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11802-11814",
+      "notes": "Subscribes to ContentPublished and ContentEngagement; publishes PerformanceInsight."
+    },
+    {
+      "id": "ENT-006",
+      "name": "Provenance Context",
+      "type": "Bounded Context",
+      "owner": "Governance",
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 3",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11816-11822",
+      "notes": "Subscribes to all events and records immutable lineage."
+    },
+    {
+      "id": "ENT-007",
+      "name": "Brand Context",
+      "type": "Bounded Context",
+      "owner": "Brand Platform",
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 3",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11612-11620",
+      "notes": "Brand rules govern production via customer-supplier relationship."
+    },
+    {
+      "id": "ENT-008",
+      "name": "Autonomous Newsroom",
+      "type": "Business Domain",
+      "owner": "Editorial Operations",
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 6",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:83348-94060",
+      "notes": "End-to-end newsroom model, story lifecycle, verification, distribution and corrections."
+    },
+    {
+      "id": "ENT-009",
+      "name": "Frontend Experience Platform",
+      "type": "Frontend Domain",
+      "owner": "UX / Frontend",
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 7",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:94092-98995",
+      "notes": "Frontend vision, information architecture, design system and screen catalogue."
+    },
+    {
+      "id": "ENT-010",
+      "name": "Enterprise Infrastructure Platform",
+      "type": "Infrastructure Domain",
+      "owner": "Platform Operations",
+      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "primary_volume": "Volume 9",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:102742-105555",
+      "notes": "Cloud, infrastructure, containers, CI/CD, security, observability, reliability and operations."
+    }
+  ]
 }
