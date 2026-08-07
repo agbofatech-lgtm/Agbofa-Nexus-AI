@@ -1,0 +1,4672 @@
+VOLUME 20: ENTERPRISE OPERATIONS, INFRASTRUCTURE & PRODUCTION READINESS
+
+
+
+Implementation Specification — Deployment, Reliability, Security & Operational Excellence
+
+Document Reference: AGBA-NEXUS-VOL20-IMPL-1.0
+
+Status: Implementation-Ready
+
+Approved Baseline: Volumes 1–19 (Immutable)
+
+Domain: Enterprise Operations & Platform Engineering
+
+Quality Level: US$50M Enterprise Platform Specification
+
+
+
+---
+
+
+
+ARCHITECTURE DECISION RECORDS (ADR)
+
+
+
+ADR-OPS-001: Multi-Region Active-Active Deployment
+
+
+
+Decision: Deploy Agbofa Nexus AI across three AWS regions (us-east-1, eu-west-1, ap-southeast-
+1) in active-active configuration with global traffic management via Route 53 latency-based
+routing.
+
+Rationale: Autonomous newsroom requires 99.99% availability. Multi-region active-active
+eliminates single-region failure risk and provides data sovereignty for regional compliance.
+
+Alternatives Considered: Active-passive (rejected — failover latency unacceptable for breaking
+news); single-region multi-AZ (rejected — insufficient for global audience).
+
+Consequences: Higher infrastructure cost, data replication complexity, but essential for platform
+reliability targets.
+
+
+
+ADR-OPS-002: Istio Ambient Mesh for Service Communication
+
+
+
+Decision: Use Istio Ambient Mesh (sidecar-less mode) for service-to-service communication,
+replacing traditional sidecar proxies.
+
+Rationale: Reduces resource overhead by 40-60% compared to sidecar model. Ambient mesh
+provides zero-trust networking without per-pod sidecar injection.
+
+Alternatives Considered: Traditional Istio sidecars (rejected — resource overhead); Linkerd
+(rejected — fewer enterprise features); no mesh (rejected — security requirements).
+
+Consequences: Requires Kubernetes 1.29+, newer technology but significant resource savings.
+
+
+
+ADR-OPS-003: GitOps with Flux CD
+
+
+
+Decision: Use Flux CD for GitOps-based continuous delivery, with all infrastructure and
+application configs stored in Git.
+
+Rationale: GitOps provides audit trail, rollback capability, and disaster recovery through Git. Flux
+CD is CNCF-graduated with strong Kubernetes integration.
+
+Alternatives Considered: ArgoCD (evaluated — equivalent; Flux chosen for tighter integration
+with our Terraform workflow); traditional CI/CD push (rejected — lacks GitOps benefits).
+
+Consequences: Requires Git discipline, but provides complete deployment auditability.
+
+
+
+ADR-OPS-004: Tiered Storage with Automatic Data Lifecycle
+
+
+
+Decision: Implement automatic data tiering: Kafka (7 days hot) → S3 Standard (90 days warm)
+→ S3 Glacier (7 years cold) with automatic lifecycle policies.
+
+Rationale: News platform generates 50TB+ daily. Cost-effective storage requires automatic
+tiering based on access patterns and compliance requirements.
+
+Consequences: Complex lifecycle policies, but 60-70% storage cost reduction.
+
+
+
+---
+
+
+
+PART I — ENTERPRISE INFRASTRUCTURE ARCHITECTURE
+
+
+
+1.1 Multi-Region Cloud Architecture
+
+```
+
+AGBOFA NEXUS AI — GLOBAL INFRASTRUCTURE:
+
+┌─────────────────────────────────────────────────────────────────────────────
+┐
+
+│               GLOBAL TRAFFIC MANAGEMENT                           │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │             AWS Route 53 (Latency-Based Routing)                ││
+
+│ │             AWS CloudFront (Global CDN)                 ││
+
+│ │             AWS Shield Advanced (DDoS Protection)               ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                              │
+
+│ ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐                      │
+
+│ │ REGION:       │ │ REGION:        │ │ REGION:       │        │
+
+│ │ us-east-1     │ │ eu-west-1      │ │ ap-southeast-1│            │
+
+│ │ (Primary)     │ │ (Europe)       │ │ (Asia-Pacific)│        │
+
+│ └────────┬────────┘ └────────┬────────┘ └────────┬────────┘                          │
+
+│      │            │            │                 │
+
+│
+┌────────▼────────────────────▼────────────────────▼──────────────────────┐
+│
+
+│ │               CROSS-REGION SERVICES                    ││
+
+│ │ • Route 53 Health Checks • Global Accelerator • DynamoDB Global           ││
+
+│ │ • S3 Cross-Region Replication • Aurora Global Database               ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+└─────────────────────────────────────────────────────────────────────────────
+┘
+
+
+
+REGION ARCHITECTURE (us-east-1 shown — identical pattern in all regions):
+
+┌─────────────────────────────────────────────────────────────────────────────
+┐
+
+│                 VPC: 10.0.0.0/16                  │
+
+│                                          │
+
+│ ┌──────────────────────┐ ┌──────────────────────┐ ┌──────────────────────┐│
+
+│ │ AVAILABILITY ZONE A │ │ AVAILABILITY ZONE B │ │ AVAILABILITY ZONE C ││
+
+│ │ 10.0.1.0/24       │ │ 10.0.2.0/24    │ │ 10.0.3.0/24     ││
+
+│ │            │ │              │ │            ││
+
+│ │ ┌────────────────┐ │ │ ┌────────────────┐ │ │ ┌────────────────┐ ││
+
+│ │ │ PUBLIC SUBNET │ │ │ │ PUBLIC SUBNET │ │ │ │ PUBLIC SUBNET │ ││
+
+│ │ │ • ALB/NLB      │ │ │ │ • ALB/NLB   │ │ │ │ • ALB/NLB     │ ││
+
+│ │ │ • NAT Gateway │ │ │ │ • NAT Gateway │ │ │ │ • NAT Gateway │ ││
+
+│ │ │ • Bastion Host │ │ │ │ • Bastion Host │ │ │ │ • Bastion Host │ ││
+
+│ │ └────────────────┘ │ │ └────────────────┘ │ │ └────────────────┘ ││
+
+│ │            │ │              │ │            ││
+
+│ │ ┌────────────────┐ │ │ ┌────────────────┐ │ │ ┌────────────────┐ ││
+
+│ │ │ PRIVATE SUBNET │ │ │ │ PRIVATE SUBNET │ │ │ │ PRIVATE SUBNET │ ││
+
+│ │ │ • EKS Workers │ │ │ │ • EKS Workers │ │ │ │ • EKS Workers │ ││
+
+│ │ │ • MSK Brokers │ │ │ │ • MSK Brokers │ │ │ │ • MSK Brokers │ ││
+
+│ │ └────────────────┘ │ │ └────────────────┘ │ │ └────────────────┘ ││
+
+│ │            │ │              │ │            ││
+
+│ │ ┌────────────────┐ │ │ ┌────────────────┐ │ │ ┌────────────────┐ ││
+
+│ │ │ DATA SUBNET │ │ │ │ DATA SUBNET │ │ │ │ DATA SUBNET │ ││
+
+│ │ │ • RDS/Aurora │ │ │ │ • RDS/Aurora │ │ │ │ • RDS/Aurora │ ││
+
+│ │ │ • ElastiCache │ │ │ │ • ElastiCache │ │ │ │ • ElastiCache │ ││
+
+│ │ │ • Neo4j EE     │ │ │ │ • Neo4j EE   │ │ │ │ • Neo4j EE    │ ││
+
+│ │ └────────────────┘ │ │ └────────────────┘ │ │ └────────────────┘ ││
+
+│ └──────────────────────┘ └──────────────────────┘ └──────────────────────┘│
+
+│                                           │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │                SHARED SERVICES                   ││
+
+│ │ • S3 (Object Storage) • ECR (Container Registry) • EFS (Shared FS) │ │
+
+│ │ • Secrets Manager • KMS • Certificate Manager • CloudWatch          ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+└─────────────────────────────────────────────────────────────────────────────
+┘
+
+```
+
+
+
+1.2 Kubernetes Cluster Architecture
+
+
+
+```yaml
+
+# EKS Cluster Configuration
+
+cluster:
+
+ name: agbofa-nexus-production
+
+ version: "1.30"
+
+
+
+ # Control Plane
+
+ control_plane:
+
+endpoint_access: PRIVATE # Private endpoint with VPC endpoints
+
+logging:
+
+ - api
+
+ - audit
+
+ - authenticator
+
+ - controllerManager
+
+ - scheduler
+
+
+
+# Node Groups
+
+node_groups:
+
+system:
+
+ name: system-critical
+
+ instance_types: ["c7i.xlarge", "c7a.xlarge"]
+
+ capacity_type: ON_DEMAND
+
+ min_size: 3
+
+ max_size: 9
+
+ labels:
+
+  role: system
+
+  criticality: high
+
+ taints:
+
+  - key: CriticalAddonsOnly
+
+   value: "true"
+
+   effect: NO_SCHEDULE
+
+ # Runs: CoreDNS, Istio control plane, monitoring agents
+
+
+
+ai_workloads:
+
+ name: ai-inference-gpu
+
+ instance_types: ["g5.2xlarge", "g5.4xlarge"]
+
+ capacity_type: ON_DEMAND
+
+ min_size: 2
+
+ max_size: 20
+
+ labels:
+
+  role: ai-inference
+
+  accelerator: nvidia-gpu
+
+ taints:
+
+  - key: nvidia.com/gpu
+
+   value: "true"
+
+   effect: NO_SCHEDULE
+
+ # Runs: LLM inference, NLP models, image generation
+
+
+
+ai_training:
+
+ name: ai-training-gpu
+
+ instance_types: ["p4d.24xlarge"]
+
+ capacity_type: SPOT
+
+ min_size: 0
+
+ max_size: 4
+
+ labels:
+
+  role: ai-training
+
+  accelerator: nvidia-gpu-training
+
+ taints:
+
+  - key: training-only
+
+   value: "true"
+
+  effect: NO_SCHEDULE
+
+# Runs: Model fine-tuning, batch inference
+
+
+
+general_compute:
+
+name: general-compute
+
+instance_types: ["c7i.2xlarge", "c7a.2xlarge", "m7i.2xlarge"]
+
+capacity_type: MIXED # 70% ON_DEMAND, 30% SPOT
+
+min_size: 10
+
+max_size: 100
+
+labels:
+
+ role: general
+
+# Runs: Go services, API gateways, connectors, workers
+
+
+
+memory_optimized:
+
+name: memory-optimized
+
+instance_types: ["r7i.2xlarge", "r7a.2xlarge"]
+
+capacity_type: ON_DEMAND
+
+min_size: 3
+
+max_size: 30
+
+labels:
+
+ role: memory-intensive
+
+# Runs: Kafka consumers, analytics processors, caching
+
+
+
+burst_compute:
+
+name: burst-compute
+
+instance_types: ["c7i.xlarge", "c7a.xlarge"]
+
+  capacity_type: SPOT
+
+  min_size: 0
+
+  max_size: 50
+
+  labels:
+
+   role: burst
+
+ # Runs: Batch jobs, non-critical workloads
+
+
+
+# Namespace Structure
+
+namespaces:
+
+- name: foundation
+
+ description: Platform services (IAM, Config, Gateway)
+
+ resource_quota:
+
+   cpu: 100
+
+   memory: 200Gi
+
+- name: content-origination
+
+ description: Volume 12 services
+
+ resource_quota:
+
+   cpu: 200
+
+   memory: 400Gi
+
+- name: truth-engine
+
+ description: Volume 13 services
+
+ resource_quota:
+
+   cpu: 150
+
+   memory: 300Gi
+
+- name: content-factory
+
+ description: Volume 14/15 services
+
+ resource_quota:
+
+  cpu: 300
+
+  memory: 600Gi
+
+- name: compliance
+
+ description: Volume 16 services
+
+ resource_quota:
+
+  cpu: 100
+
+  memory: 200Gi
+
+- name: distribution
+
+ description: Volume 17 services
+
+ resource_quota:
+
+  cpu: 150
+
+  memory: 300Gi
+
+- name: analytics
+
+ description: Volume 18/19 services
+
+ resource_quota:
+
+  cpu: 250
+
+  memory: 500Gi
+
+- name: monitoring
+
+ description: Observability stack
+
+ resource_quota:
+
+  cpu: 100
+
+  memory: 200Gi
+
+- name: ingress
+
+ description: API gateways, ingress controllers
+
+ resource_quota:
+
+        cpu: 50
+
+        memory: 100Gi
+
+```
+
+
+
+1.3 Service Mesh Topology (Istio Ambient)
+
+
+
+```yaml
+
+# Istio Ambient Mesh Configuration
+
+apiVersion: install.istio.io/v1alpha1
+
+kind: IstioOperator
+
+spec:
+
+ profile: ambient # Sidecar-less mode
+
+
+
+ components:
+
+      base:
+
+       enabled: true
+
+      pilot:
+
+       enabled: true
+
+       k8s:
+
+        resources:
+
+         requests:
+
+           cpu: 500m
+
+           memory: 2Gi
+
+      ztunnel:
+
+       enabled: true # Zero-trust tunnel (replaces sidecar)
+
+       k8s:
+
+  resources:
+
+   requests:
+
+    cpu: 250m
+
+    memory: 512Mi
+
+waypoint:
+
+ enabled: true # L7 policy enforcement (per-namespace)
+
+
+
+meshConfig:
+
+accessLogFile: /dev/stdout
+
+defaultConfig:
+
+ proxyMetadata:
+
+  ISTIO_META_INTERCEPTION_MODE: REDIRECT
+
+
+
+# Trust configuration
+
+trustDomain: agbofa-nexus.internal
+
+trustDomainAliases:
+
+ - agbofa-nexus-prod.internal
+
+ - agbofa-nexus-staging.internal
+
+
+
+# mTLS settings
+
+defaultConfig:
+
+ controlPlaneAuthPolicy: MUTUAL_TLS
+
+
+
+# Telemetry
+
+defaultProviders:
+
+ metrics:
+
+       - prometheus
+
+      tracing:
+
+       - opentelemetry
+
+
+
+# Waypoint configuration per namespace
+
+---
+
+apiVersion: gateway.networking.k8s.io/v1
+
+kind: Gateway
+
+metadata:
+
+ name: waypoint
+
+ namespace: content-factory
+
+spec:
+
+ gatewayClassName: istio-waypoint
+
+ listeners:
+
+  - name: mesh
+
+      port: 15008
+
+      protocol: ALL
+
+---
+
+# Authorization policy for Truth Engine namespace
+
+apiVersion: security.istio.io/v1
+
+kind: AuthorizationPolicy
+
+metadata:
+
+ name: truth-engine-access
+
+ namespace: truth-engine
+
+spec:
+
+ action: ALLOW
+
+ rules:
+
+      - from:
+
+        - source:
+
+             namespaces: ["content-origination", "content-factory", "compliance"]
+
+       to:
+
+        - operation:
+
+             methods: ["POST"]
+
+             paths: ["/truth_engine.v1.TruthEngineService/*"]
+
+      - from:
+
+        - source:
+
+             namespaces: ["monitoring"]
+
+       to:
+
+        - operation:
+
+             methods: ["GET"]
+
+             paths: ["/metrics", "/healthz"]
+
+```
+
+
+
+1.4 API Gateway Architecture (APISIX)
+
+
+
+```yaml
+
+# APISIX Gateway Configuration
+
+apisix:
+
+ deployment:
+
+      mode: traditional
+
+      role: data_plane
+
+# Admin API (internal only)
+
+admin:
+
+ admin_key: "${APISIX_ADMIN_KEY}"
+
+ enable_admin_cors: false
+
+
+
+# etcd for config storage
+
+etcd:
+
+ host:
+
+  - "https://etcd.agbofa-nexus.internal:2379"
+
+ prefix: "/apisix"
+
+ timeout: 30
+
+
+
+plugins:
+
+ # Bundled plugins
+
+ - prometheus
+
+ - opentelemetry
+
+ - jwt-auth
+
+ - key-auth
+
+ - limit-count
+
+ - limit-conn
+
+ - limit-req
+
+ - proxy-cache
+
+ - proxy-rewrite
+
+ - redirect
+
+ - response-rewrite
+
+ - cors
+
+  - ip-restriction
+
+  - ua-restriction
+
+  - referer-restriction
+
+  - csrf
+
+  - uri-blocker
+
+  - request-validation
+
+  - fault-injection
+
+  - serverless-pre-function
+
+
+
+  # Custom plugins
+
+  - agbofa-tenant-routing
+
+  - agbofa-content-type-routing
+
+  - agbofa-rate-limit-ai
+
+
+
+# Route Configuration Example
+
+routes:
+
+ # Truth Engine API
+
+ - id: truth-engine-api
+
+  uri: /truth-engine/*
+
+  upstream:
+
+   type: roundrobin
+
+   scheme: grpc
+
+   nodes:
+
+    "truth-engine-service.truth-engine.svc.cluster.local:9090": 1
+
+  plugins:
+
+   jwt-auth:
+
+   key: user_token
+
+  limit-count:
+
+   count: 100
+
+   time_window: 60
+
+   key_type: var
+
+   key: consumer_name
+
+  prometheus:
+
+   prefer_name: true
+
+  opentelemetry:
+
+   sampler:
+
+    name: ratio
+
+    options:
+
+     fraction: 0.1
+
+
+
+# Content Factory API
+
+- id: content-factory-api
+
+ uri: /content-factory/*
+
+ upstream:
+
+  type: least_conn
+
+  scheme: grpc
+
+  nodes:
+
+   "content-factory-service.content-factory.svc.cluster.local:9090": 1
+
+ plugins:
+
+  jwt-auth: {}
+
+  limit-conn:
+
+   count: 50
+
+        burst: 10
+
+        default_conn_delay: 0.5
+
+
+
+ # Analytics API (public-facing)
+
+ - id: analytics-public-api
+
+      uri: /api/v1/analytics/*
+
+      upstream:
+
+       type: roundrobin
+
+       nodes:
+
+        "analytics-api.analytics.svc.cluster.local:8080": 1
+
+      plugins:
+
+       jwt-auth: {}
+
+       cors:
+
+        allow_origins: "https://*.agbofa.com"
+
+        allow_methods: "GET,POST,OPTIONS"
+
+        allow_headers: "Authorization,Content-Type"
+
+       response-rewrite:
+
+        headers:
+
+         set:
+
+          X-Content-Type-Options: "nosniff"
+
+          X-Frame-Options: "DENY"
+
+          Strict-Transport-Security: "max-age=31536000; includeSubDomains"
+
+```
+
+
+
+1.5 Infrastructure as Code (Terraform)
+
+```hcl
+
+# Main Terraform structure
+
+terraform {
+
+ required_version = ">= 1.9"
+
+
+
+ backend "s3" {
+
+     bucket        = "agbofa-nexus-terraform-state"
+
+     key          = "production/terraform.tfstate"
+
+     region        = "us-east-1"
+
+     encrypt        = true
+
+     dynamodb_table = "terraform-locks"
+
+ }
+
+
+
+ required_providers {
+
+     aws = {
+
+         source = "hashicorp/aws"
+
+         version = "~> 5.0"
+
+     }
+
+     kubernetes = {
+
+         source = "hashicorp/kubernetes"
+
+         version = "~> 2.30"
+
+     }
+
+     helm = {
+
+         source = "hashicorp/helm"
+
+         version = "~> 2.14"
+
+     }
+
+        flux = {
+
+            source = "fluxcd/flux"
+
+            version = "~> 1.3"
+
+        }
+
+    }
+
+}
+
+
+
+# Module structure
+
+module "vpc" {
+
+    source = "./modules/vpc"
+
+
+
+    name           = "agbofa-nexus-${var.region}"
+
+    cidr_block = var.vpc_cidr
+
+    az_count = 3
+
+
+
+    enable_nat_gateway           = true
+
+    single_nat_gateway           = false # One per AZ for HA
+
+    enable_vpn_gateway            = true
+
+    enable_dns_hostnames = true
+
+
+
+    tags = local.common_tags
+
+}
+
+
+
+module "eks" {
+
+    source = "./modules/eks"
+
+cluster_name = "agbofa-nexus-${var.environment}"
+
+cluster_version = "1.30"
+
+vpc_id            = module.vpc.vpc_id
+
+subnet_ids          = module.vpc.private_subnets
+
+
+
+node_groups = {
+
+ system = {
+
+     instance_types = ["c7i.xlarge"]
+
+     desired_size = 3
+
+     max_size        =9
+
+     min_size       =3
+
+     labels = {
+
+         role = "system"
+
+     }
+
+ }
+
+ general = {
+
+     instance_types = ["c7i.2xlarge", "m7i.2xlarge"]
+
+     desired_size = 10
+
+     max_size        = 100
+
+     min_size       = 10
+
+     capacity_type = "MIXED"
+
+     spot_percentage = 30
+
+     labels = {
+
+         role = "general"
+
+     }
+
+ }
+
+    gpu_inference = {
+
+        instance_types = ["g5.2xlarge"]
+
+        desired_size = 2
+
+        max_size        = 20
+
+        min_size        =2
+
+        labels = {
+
+            role = "ai-inference"
+
+        }
+
+        taints = [{
+
+            key = "nvidia.com/gpu"
+
+            value = "true"
+
+            effect = "NO_SCHEDULE"
+
+        }]
+
+    }
+
+}
+
+
+
+enable_irsa = true
+
+
+
+# Add-ons
+
+cluster_addons = {
+
+    coredns = {}
+
+    kube-proxy = {}
+
+    vpc-cni = {
+
+        configuration_values = jsonencode({
+
+            enableNetworkPolicy = "true"
+
+        })
+
+        }
+
+        aws-ebs-csi-driver = {}
+
+        aws-efs-csi-driver = {}
+
+    }
+
+}
+
+
+
+module "rds" {
+
+    source = "./modules/rds"
+
+
+
+    identifier = "agbofa-nexus-postgres"
+
+    engine         = "aurora-postgresql"
+
+    version = "16.2"
+
+
+
+    instance_class = "db.r7g.xlarge"
+
+    instances = {
+
+        primary = {}
+
+        replica = {
+
+            count = 2 # Read replicas
+
+        }
+
+    }
+
+
+
+    vpc_id        = module.vpc.vpc_id
+
+    subnet_ids = module.vpc.database_subnets
+
+
+
+    backup_retention_period = 30
+
+    backup_window              = "03:00-04:00"
+
+    maintenance_window       = "sun:04:00-sun:05:00"
+
+
+
+    deletion_protection = true
+
+    skip_final_snapshot = false
+
+    storage_encrypted = true
+
+
+
+    # Global database for disaster recovery
+
+    global_cluster_identifier = "agbofa-nexus-global"
+
+
+
+    # Automated minor version upgrades
+
+    auto_minor_version_upgrade = true
+
+}
+
+
+
+module "msk" {
+
+    source = "./modules/msk"
+
+
+
+    cluster_name = "agbofa-nexus-kafka"
+
+    kafka_version = "3.7"
+
+
+
+    number_of_broker_nodes = 9 # 3 per AZ
+
+    instance_type       = "kafka.m7g.xlarge"
+
+
+
+    ebs_storage_volume_size = 1000 # 1TB per broker
+
+
+
+    configuration = {
+
+     auto.create.topics.enable = false
+
+        default.replication.factor = 3
+
+        min.insync.replicas = 2
+
+        num.partitions = 12
+
+        log.retention.hours = 168 # 7 days
+
+    }
+
+
+
+    client_authentication = {
+
+        sasl = {
+
+            iam = true
+
+            scram = true
+
+        }
+
+    }
+
+
+
+    encryption_in_transit {
+
+        client_broker = "TLS"
+
+        in_cluster = true
+
+    }
+
+
+
+    # Connect for source/sink
+
+    msk_connect = {
+
+        enabled = true
+
+        plugins = ["debezium-postgres", "mongodb-source"]
+
+    }
+
+}
+
+
+
+module "elasticache" {
+
+    source = "./modules/elasticache"
+
+
+
+    # Redis for caching
+
+    redis_clusters = {
+
+        session = {
+
+            node_type    = "cache.r7g.xlarge"
+
+            num_cache_nodes = 3
+
+            engine_version = "7.2"
+
+            port      = 6379
+
+        }
+
+        realtime_analytics = {
+
+            node_type    = "cache.r7g.2xlarge"
+
+            num_cache_nodes = 6
+
+            engine_version = "7.2"
+
+            port      = 6379
+
+        }
+
+    }
+
+}
+
+
+
+# Flux CD Bootstrap
+
+resource "flux_bootstrap_git" "this" {
+
+    depends_on = [module.eks]
+
+
+
+    path = "clusters/${var.environment}"
+
+}
+
+```
+
+---
+
+
+
+PART II — DEVSECOPS & CONTINUOUS DELIVERY
+
+
+
+2.1 CI/CD Pipeline Architecture
+
+
+
+```
+
+CONTINUOUS DELIVERY PIPELINE:
+
+
+
+┌─────────────────────────────────────────────────────────────────────────────
+┐
+
+│                  GIT REPOSITORY                  │
+
+│ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────────────┐ │
+
+│ │ Application │ │Infrastructure│ │ AI Models │ │ Configuration   ││
+
+│ │ Code     │ │ as Code     │ │ & Prompts │ │ (Flux CD)     ││
+
+│ └──────┬──────┘ └──────┬──────┘ └──────┬──────┘ └──────────┬──────────┘
+│
+
+└─────────┼────────────────┼────────────────┼─────────────────────┼
+───────────┘
+
+      │        │         │            │
+
+┌─────────▼────────────────▼────────────────▼─────────────────────▼───────
+────┐
+
+│               CI PIPELINE (GitHub Actions)           │
+
+│                                              │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ PULL REQUEST → Build → Lint → Unit Test → SAST → Container Build   ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                          │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ MERGE TO MAIN → Build → Integration Test → Security Scan → Push Image │ │
+
+│ │         → SBOM Generation → Image Signing → Staging Deploy │ │
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+└─────────────────────────────────────────────────────────────────────────────
+┘
+
+                  │
+
+┌───────────────────────────────────▼────────────────────────────────────────
+─┐
+
+│            CD PIPELINE (Flux CD + Argo Rollouts)      │
+
+│                                          │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ GITOPS RECONCILIATION → STAGING DEPLOY → SMOKE TESTS → CANARY 10%           ││
+
+│ │ → METRICS VALIDATION → CANARY 50% → FULL ROLLOUT → PRODUCTION               ││
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+│                                          │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ AUTOMATED ROLLBACK: Metrics Deviation → Auto-Rollback → Alert On-Call │ │
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+└─────────────────────────────────────────────────────────────────────────────
+┘
+
+```
+
+
+
+2.2 Progressive Delivery Strategy
+
+
+
+```yaml
+
+# Argo Rollouts Configuration for Canary Deployments
+
+apiVersion: argoproj.io/v1alpha1
+
+kind: Rollout
+
+metadata:
+
+ name: content-factory-service
+
+ namespace: content-factory
+
+spec:
+
+ replicas: 10
+
+ strategy:
+
+      canary:
+
+       # Canary steps
+
+       steps:
+
+        - setWeight: 5   # 5% traffic to canary
+
+        - pause:
+
+          duration: 5m # Wait 5 minutes
+
+        - analysis:
+
+          templates:
+
+           - templateName: error-rate-check
+
+           - templateName: latency-check
+
+ - setWeight: 25 # 25% traffic
+
+ - pause:
+
+   duration: 10m
+
+ - analysis:
+
+   templates:
+
+    - templateName: error-rate-check
+
+ - setWeight: 50 # 50% traffic
+
+ - pause:
+
+   duration: 15m
+
+ - setWeight: 100 # Full rollout
+
+
+
+# Auto-promotion/rollback based on analysis
+
+autoPromotionEnabled: true
+
+autoPromotionSeconds: 600
+
+
+
+# Anti-affinity for canary pods
+
+antiAffinity:
+
+ requiredDuringSchedulingIgnoredDuringExecution:
+
+  - labelSelector:
+
+    matchExpressions:
+
+      - key: app
+
+       operator: In
+
+       values:
+
+        - content-factory-service
+
+   topologyKey: kubernetes.io/hostname
+
+---
+
+# Analysis Template for Automated Validation
+
+apiVersion: argoproj.io/v1alpha1
+
+kind: AnalysisTemplate
+
+metadata:
+
+ name: error-rate-check
+
+ namespace: content-factory
+
+spec:
+
+ metrics:
+
+  - name: error-rate
+
+      interval: 1m
+
+      count: 5
+
+      successCondition: result[0] < 0.01 # Error rate < 1%
+
+      failureCondition: result[0] >= 0.05 # Error rate >= 5%
+
+      failureLimit: 2
+
+      provider:
+
+       prometheus:
+
+        address: http://prometheus.monitoring.svc.cluster.local:9090
+
+        query: |
+
+         sum(rate(http_requests_total{
+
+          namespace="content-factory",
+
+          status_code=~"5.."
+
+         }[5m])) /
+
+         sum(rate(http_requests_total{
+
+          namespace="content-factory"
+
+         }[5m]))
+
+---
+
+apiVersion: argoproj.io/v1alpha1
+
+kind: AnalysisTemplate
+
+metadata:
+
+ name: latency-check
+
+ namespace: content-factory
+
+spec:
+
+ metrics:
+
+      - name: p99-latency
+
+       interval: 1m
+
+       count: 5
+
+       successCondition: result[0] < 2 # p99 < 2 seconds
+
+       failureCondition: result[0] >= 5 # p99 >= 5 seconds
+
+       provider:
+
+        prometheus:
+
+         address: http://prometheus.monitoring.svc.cluster.local:9090
+
+         query: |
+
+          histogram_quantile(0.99,
+
+           rate(http_request_duration_seconds_bucket{
+
+            namespace="content-factory"
+
+           }[5m]))
+
+```
+
+
+
+2.3 Security Scanning Pipeline
+
+```yaml
+
+# CI Security Scanning
+
+security_scanning:
+
+ stages:
+
+  pre_commit:
+
+   - tool: pre-commit
+
+    checks:
+
+     - trailing-whitespace
+
+     - end-of-file-fixer
+
+     - detect-private-key
+
+     - detect-aws-credentials
+
+
+
+  pull_request:
+
+   - tool: trufflehog
+
+    scan: secrets
+
+    severity: HIGH,CRITICAL
+
+
+
+   - tool: semgrep
+
+    scan: sast
+
+    ruleset: p/default
+
+    severity: ERROR,WARNING
+
+
+
+   - tool: dependency-review
+
+    scan: dependencies
+
+    fail_on: CRITICAL
+
+merge_to_main:
+
+ - tool: trivy
+
+  scan: container_image
+
+  severity: CRITICAL,HIGH
+
+  ignore_unfixed: false
+
+
+
+ - tool: syft
+
+  action: generate_sbom
+
+  format: spdx-json
+
+
+
+ - tool: cosign
+
+  action: sign_image
+
+  key: "${COSIGN_PRIVATE_KEY}"
+
+
+
+ - tool: grype
+
+  scan: vulnerability
+
+  fail_on: CRITICAL
+
+
+
+scheduled:
+
+ - tool: trivy
+
+  scan: kubernetes_cluster
+
+  schedule: "0 6 * * *"
+
+
+
+ - tool: kube-bench
+
+  scan: cis_benchmark
+
+  schedule: "0 7 * * *"
+
+       - tool: kube-hunter
+
+        scan: penetration
+
+        schedule: "0 2 * * 0" # Weekly
+
+
+
+# Image Signing Policy
+
+image_signing:
+
+ provider: cosign
+
+ key_management: AWS KMS
+
+ policy:
+
+      require_signature: true
+
+      require_sbom: true
+
+      allowed_signer_identities:
+
+       - "agbofa-ci@agbofa.com"
+
+
+
+ verification:
+
+      enabled: true
+
+      mode: ENFORCE # Block unsigned images
+
+```
+
+
+
+---
+
+
+
+PART III — OBSERVABILITY PLATFORM
+
+
+
+3.1 Observability Stack Architecture
+
+```
+
+OBSERVABILITY ARCHITECTURE:
+
+┌─────────────────────────────────────────────────────────────────────────────
+┐
+
+│             OBSERVABILITY PLATFORM                                 │
+
+├
+─────────────────────────────────────────────────────────────────────────────
+┤
+
+│                                             │
+
+│ DATA COLLECTION                                              │
+
+│ ┌─────────────────────────────────────────────────────────────────────────┐
+│
+
+│ │ OpenTelemetry Collector (DaemonSet + Deployment)                            ││
+
+│ │ • Traces • Metrics • Logs • Events                              ││
+
+│ └───────────────────────────────┬─────────────────────────────────────────┘
+│
+
+│                   │                         │
+
+│ ┌───────────────────────────────┼─────────────────────────────────────────┐
+│
+
+│ │                 ▼                             ││
+
+│ │ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐                               ││
+
+│ │ │ TEMPO        │ │ PROMETHEUS │ │ LOKI                 │              ││
+
+│ │ │ (Traces) │ │ (Metrics) │ │ (Logs)           │                 ││
+
+│ │ │        │ │         │ │       │                  ││
+
+│ │ │ • Distributed│ │ • Time Series│ │ • Structured │                     ││
+
+│ │ │ Tracing │ │ • Alert Rules│ │ Logging │                         ││
+
+│ │ │ • Span Search│ │ • Recording │ │ • Log Search │                      ││
+
+│ │ │        │ │ Rules     │ │ • LogQL    │                    ││
+
+│ │ └──────┬───────┘ └──────┬───────┘ └──────┬───────┘                     ││
+
+│ └─────────┼─────────────────┼─────────────────┼
+───────────────────────────┘ │
+
+│          │         │         │                  │
+
+│
+┌─────────▼─────────────────▼─────────────────▼───────────────────────────┐
+│
+
+│ │                  GRAFANA (Visualization)             ││
+
+│ │ ┌──────────────┐ ┌──────────────┐ ┌──────────────────────────────┐ │ │
+
+│ │ │ Dashboards │ │ Explore │ │               Alerts    │ ││
+
+│ │ │ • AI Newsroom│ │ • Logs+Traces│ │ • Alertmanager Integration │ │ │
+
+│ │ │ • Platform │ │ • Metrics │ │ • SLO Monitoring           │ ││
+
+│ │ │ • Business │ │ • Correlate │ │ • On-Call Routing          │ ││
+
+│ │ └──────────────┘ └──────────────┘ └──────────────────────────────┘ │ │
+
+│ └─────────────────────────────────────────────────────────────────────────┘
+│
+
+└─────────────────────────────────────────────────────────────────────────────
+┘
+
+```
+
+
+
+3.2 Key Dashboards
+
+
+
+```yaml
+
+grafana_dashboards:
+
+ ai_newsroom_overview:
+
+      title: "AI Newsroom — Executive Overview"
+
+      refresh: 10s
+
+  rows:
+
+   - title: "Content Pipeline Health"
+
+    panels:
+
+     - title: "Stories Processed (24h)"
+
+      type: stat
+
+      targets:
+
+          - expr: sum(increase(content_origination_stories_total[24h]))
+
+     - title: "Verification Success Rate"
+
+      type: gauge
+
+      targets:
+
+       - expr: sum(rate(truth_engine_verified_stories_total[5m])) /
+sum(rate(truth_engine_stories_total[5m])) * 100
+
+     - title: "Content Factory Throughput"
+
+      type: stat
+
+      targets:
+
+          - expr: sum(rate(content_factory_articles_generated_total[5m]))
+
+     - title: "Distribution Success Rate"
+
+      type: gauge
+
+      targets:
+
+       - expr: sum(rate(distribution_published_total{status="success"}[5m])) /
+sum(rate(distribution_published_total[5m])) * 100
+
+
+
+   - title: "AI Performance"
+
+    panels:
+
+     - title: "LLM Token Usage (hourly)"
+
+      type: graph
+
+      targets:
+
+      - expr: sum(rate(llm_tokens_used_total[1h])) by (model)
+
+    - title: "AI Confidence Distribution"
+
+     type: heatmap
+
+     targets:
+
+      - expr: sum(rate(ai_confidence_score_bucket[5m])) by (le)
+
+    - title: "Hallucination Detection Rate"
+
+     type: graph
+
+     targets:
+
+      - expr: rate(ai_hallucination_detected_total[5m])
+
+
+
+  - title: "Platform Health"
+
+   panels:
+
+    - title: "Service Health"
+
+     type: status_map
+
+     targets:
+
+      - expr: up
+
+    - title: "Error Rate by Service"
+
+     type: graph
+
+     targets:
+
+      - expr: sum(rate(http_requests_total{status_code=~"5.."}[5m])) by (service)
+
+    - title: "Kafka Consumer Lag"
+
+     type: graph
+
+     targets:
+
+      - expr: kafka_consumer_lag > 0
+
+
+
+platform_operations:
+
+  title: "Platform Operations — SRE Dashboard"
+
+  refresh: 30s
+
+  rows:
+
+   - title: "SLO Compliance"
+
+    panels:
+
+     - title: "Error Budget Remaining"
+
+      type: gauge
+
+      targets:
+
+       - expr: (1 - (sum(rate(http_requests_total{status_code=~"5.."}[30d])) /
+sum(rate(http_requests_total[30d])))) * 100
+
+
+
+   - title: "Resource Utilization"
+
+    panels:
+
+     - title: "Node CPU/Memory"
+
+      type: graph
+
+      targets:
+
+          - expr: sum(node_resource_utilization) by (node)
+
+     - title: "Pod Restarts"
+
+      type: stat
+
+      targets:
+
+          - expr: sum(kube_pod_container_status_restarts_total)
+
+     - title: "GPU Utilization"
+
+      type: graph
+
+      targets:
+
+          - expr: avg(nvidia_gpu_utilization) by (node)
+
+ business_analytics:
+
+      title: "Business Intelligence — Content Performance"
+
+      refresh: 1m
+
+      rows:
+
+       - title: "Audience Engagement"
+
+        panels:
+
+         - title: "Active Readers (Real-time)"
+
+          type: stat
+
+          targets:
+
+              - expr: sum(active_readers_current)
+
+         - title: "Engagement by Platform"
+
+          type: graph
+
+          targets:
+
+              - expr: sum(rate(engagement_total[5m])) by (platform)
+
+         - title: "Revenue Attribution"
+
+          type: graph
+
+          targets:
+
+              - expr: sum(rate(revenue_impact_total[1h])) by (content_category)
+
+```
+
+
+
+3.3 Alert Configuration
+
+
+
+```yaml
+
+alertmanager:
+
+ config:
+
+      global:
+
+ slack_api_url: "${SLACK_WEBHOOK_URL}"
+
+ pagerduty_url: "${PAGERDUTY_URL}"
+
+
+
+route:
+
+ receiver: slack-ops
+
+ group_by: [alertname, severity]
+
+ group_wait: 10s
+
+ group_interval: 5m
+
+ repeat_interval: 1h
+
+
+
+ routes:
+
+  - match:
+
+    severity: critical
+
+   receiver: pagerduty-oncall
+
+   group_wait: 0s
+
+   repeat_interval: 5m
+
+
+
+  - match:
+
+    severity: warning
+
+   receiver: slack-ops
+
+
+
+  - match:
+
+    alertname: AIHallucinationDetected
+
+   receiver: ai-ops-team
+
+
+
+receivers:
+
+   - name: slack-ops
+
+    slack_configs:
+
+      - channel: "#platform-ops"
+
+       title: '{{ .GroupLabels.alertname }}'
+
+       text: '{{ .CommonAnnotations.description }}'
+
+
+
+   - name: pagerduty-oncall
+
+    pagerduty_configs:
+
+      - routing_key: "${PAGERDUTY_ROUTING_KEY}"
+
+       severity: critical
+
+
+
+   - name: ai-ops-team
+
+    slack_configs:
+
+      - channel: "#ai-ops"
+
+
+
+   - name: dead-mans-switch
+
+    webhook_configs:
+
+      - url: "https://deadmansswitch.example.com/heartbeat"
+
+
+
+# Prometheus Alert Rules
+
+prometheus_rules:
+
+ critical_alerts:
+
+  - alert: ServiceDown
+
+   expr: up == 0
+
+   for: 2m
+
+   labels:
+
+    severity: critical
+
+   annotations:
+
+    summary: "Service {{ $labels.service }} is down"
+
+   description: "Service {{ $labels.service }} in namespace {{ $labels.namespace }} has been
+down for more than 2 minutes."
+
+
+
+  - alert: HighErrorRate
+
+   expr: sum(rate(http_requests_total{status_code=~"5.."}[5m])) /
+sum(rate(http_requests_total[5m])) > 0.05
+
+   for: 5m
+
+   labels:
+
+    severity: critical
+
+   annotations:
+
+    summary: "High error rate detected"
+
+    description: "Error rate is {{ $value | humanizePercentage }} in namespace {{
+$labels.namespace }}"
+
+
+
+  - alert: AIHallucinationDetected
+
+   expr: rate(ai_hallucination_detected_total[5m]) > 0.01
+
+   for: 5m
+
+   labels:
+
+    severity: critical
+
+   annotations:
+
+    summary: "AI hallucination rate exceeded 1%"
+
+    description: "Hallucination rate is {{ $value }} per second. Investigate immediately."
+
+
+
+  - alert: KafkaConsumerLagCritical
+
+   expr: kafka_consumer_lag > 10000
+
+   for: 10m
+
+   labels:
+
+    severity: critical
+
+   annotations:
+
+    summary: "Kafka consumer lag exceeded 10000"
+
+     description: "Consumer group {{ $labels.consumer_group }} on topic {{ $labels.topic }} has
+{{ $value }} lag."
+
+
+
+  - alert: AuditLogWriteFailure
+
+   expr: rate(audit_log_write_failures_total[5m]) > 0
+
+   for: 1m
+
+   labels:
+
+    severity: critical
+
+   annotations:
+
+    summary: "Audit log write failure detected"
+
+    description: "Compliance audit log writes are failing. Immediate investigation required."
+
+
+
+ warning_alerts:
+
+  - alert: HighLatency
+
+   expr: histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m])) > 5
+
+   for: 10m
+
+   labels:
+
+    severity: warning
+
+   annotations:
+
+    summary: "High latency detected"
+
+        description: "P99 latency is {{ $value }}s for {{ $labels.service }}"
+
+
+
+      - alert: DiskSpaceLow
+
+       expr: node_filesystem_avail_bytes / node_filesystem_size_bytes < 0.15
+
+       for: 5m
+
+       labels:
+
+        severity: warning
+
+       annotations:
+
+        summary: "Low disk space"
+
+   description: "Disk {{ $labels.device }} on {{ $labels.instance }} has {{ $value |
+humanizePercentage }} free"
+
+
+
+      - alert: CertificateExpiring
+
+       expr: certificate_expiry_days < 30
+
+       for: 1h
+
+       labels:
+
+        severity: warning
+
+       annotations:
+
+        summary: "TLS certificate expiring"
+
+        description: "Certificate for {{ $labels.domain }} expires in {{ $value }} days"
+
+```
+
+
+
+---
+
+
+
+PART IV — RELIABILITY ENGINEERING
+
+4.1 High Availability Design
+
+
+
+```yaml
+
+high_availability:
+
+ infrastructure:
+
+  multi_az: true
+
+  multi_region: true
+
+  region_failover: AUTOMATED # Route 53 health checks
+
+
+
+ kubernetes:
+
+  control_plane:
+
+   sla: 99.95% # AWS EKS SLA
+
+  node_redundancy:
+
+   min_nodes_per_az: 3
+
+   pod_anti_affinity: required
+
+   topology_spread: enabled
+
+
+
+ databases:
+
+  postgresql:
+
+   type: Aurora Global Database
+
+   primary_region: us-east-1
+
+   secondary_regions: [eu-west-1, ap-southeast-1]
+
+   replication_lag_target: <1s
+
+   automatic_failover: enabled
+
+   failover_time_target: <60s
+
+neo4j:
+
+ type: Enterprise Causal Cluster
+
+ core_members: 3
+
+ read_replicas: 2
+
+ multi_dc: enabled
+
+ raft_consensus: enabled
+
+
+
+mongodb:
+
+ type: Replica Set
+
+ members: 3 (1 primary + 2 secondary)
+
+ write_concern: majority
+
+ read_preference: primaryPreferred
+
+ automatic_failover: enabled
+
+
+
+redis:
+
+ type: ElastiCache Cluster Mode
+
+ shards: 3
+
+ replicas_per_shard: 2
+
+ automatic_failover: enabled
+
+ multi_az: enabled
+
+ backup_retention: 7 days
+
+
+
+kafka:
+
+ type: MSK Provisioned
+
+ brokers_per_az: 3
+
+ replication_factor: 3
+
+       min_insync_replicas: 2
+
+       acks: all
+
+
+
+      clickhouse:
+
+       type: Altinity Cluster
+
+       shards: 12
+
+       replicas: 3
+
+       distributed_tables: enabled
+
+```
+
+
+
+4.2 Circuit Breaker & Resilience Patterns
+
+
+
+```yaml
+
+# Resilience Configuration per Service
+
+resilience:
+
+ circuit_breakers:
+
+      llm_gateway:
+
+       failure_threshold: 5
+
+       success_threshold: 3
+
+       timeout: 30s
+
+       half_open_max_requests: 3
+
+       isolation: SEMAPHORE # Prevents cascading failures
+
+
+
+      external_platforms:
+
+       failure_threshold: 3
+
+       success_threshold: 2
+
+  timeout: 10s
+
+  half_open_max_requests: 1
+
+
+
+ database_connections:
+
+  failure_threshold: 5
+
+  success_threshold: 2
+
+  timeout: 5s
+
+  fallback: read_replica
+
+
+
+retry_policies:
+
+ default:
+
+  max_attempts: 3
+
+  backoff: exponential
+
+  initial_delay: 100ms
+
+  max_delay: 10s
+
+  jitter: true
+
+  retry_on: [5xx, network_error, timeout]
+
+
+
+ idempotent_operations:
+
+  max_attempts: 5
+
+  backoff: exponential
+
+  initial_delay: 1s
+
+  max_delay: 30s
+
+
+
+ critical_operations:
+
+  max_attempts: 10
+
+  backoff: fibonacci
+
+  initial_delay: 500ms
+
+  max_delay: 60s
+
+
+
+bulkheads:
+
+ thread_pools:
+
+  llm_inference:
+
+   core_size: 10
+
+   max_size: 50
+
+   queue_size: 100
+
+   rejection_policy: CALLER_RUNS
+
+
+
+  platform_publishing:
+
+   core_size: 20
+
+   max_size: 100
+
+   queue_size: 500
+
+
+
+  analytics_processing:
+
+   core_size: 30
+
+   max_size: 200
+
+   queue_size: 1000
+
+
+
+rate_limiters:
+
+ per_service:
+
+  truth_engine:
+
+   requests_per_second: 1000
+
+        burst: 200
+
+       content_factory:
+
+        requests_per_second: 500
+
+        burst: 100
+
+       public_api:
+
+        requests_per_second: 100
+
+        burst: 20
+
+
+
+      per_tenant:
+
+       default:
+
+        requests_per_second: 50
+
+       premium:
+
+        requests_per_second: 200
+
+       enterprise:
+
+        requests_per_second: 1000
+
+```
+
+
+
+4.3 SLO/SLI Framework
+
+
+
+```yaml
+
+slos:
+
+ content_pipeline:
+
+      content_origination:
+
+       slo: 99.95% availability
+
+       sli: uptime{service="content-origination"}
+
+       error_budget: 43.8 minutes/month
+
+ truth_engine:
+
+  slo: 99.99% availability
+
+  sli: uptime{service="truth-engine"}
+
+  error_budget: 4.38 minutes/month
+
+
+
+ content_factory:
+
+  slo: 99.9% availability
+
+  sli: uptime{service="content-factory"}
+
+  error_budget: 43.8 minutes/month
+
+
+
+ distribution:
+
+  slo: 99.95% availability
+
+  sli: uptime{service="distribution"}
+
+  error_budget: 21.9 minutes/month
+
+
+
+latency:
+
+ breaking_news_pipeline:
+
+  slo: p99 < 60s
+
+  sli: histogram_quantile(0.99, breaking_news_latency_seconds)
+
+
+
+ api_responses:
+
+  slo: p99 < 500ms
+
+  sli: histogram_quantile(0.99, http_request_duration_seconds)
+
+
+
+ analytics_queries:
+
+       slo: p95 < 3s
+
+       sli: histogram_quantile(0.95, analytics_query_duration_seconds)
+
+
+
+ quality:
+
+      ai_accuracy:
+
+       slo: >99.5% factual accuracy
+
+       sli: truth_engine_verified_claims / truth_engine_total_claims
+
+
+
+      publication_success:
+
+       slo: >99.9% success rate
+
+       sli: distribution_published{status="success"} / distribution_published_total
+
+
+
+      compliance_pass:
+
+       slo: 100% compliance check completion
+
+       sli: compliance_checks_completed / compliance_checks_total
+
+```
+
+
+
+---
+
+
+
+PART V — SECURITY OPERATIONS
+
+
+
+5.1 Zero Trust Architecture
+
+
+
+```yaml
+
+zero_trust:
+
+ identity:
+
+ provider: SPIFFE/SPIRE
+
+ spiffe_trust_domain: agbofa-nexus.internal
+
+ node_attestation: AWS IID
+
+
+
+ workload_identity:
+
+  format: "spiffe://agbofa-nexus.internal/ns/{{.Namespace}}/sa/{{.ServiceAccount}}"
+
+  automatic_rotation: true
+
+  rotation_interval: 1h
+
+
+
+authentication:
+
+ user_to_service:
+
+  protocol: OAuth 2.0 + OIDC
+
+  provider: Auth0 Enterprise
+
+  token_type: JWT (RS256)
+
+  token_lifetime: 15 minutes
+
+  refresh_token_lifetime: 7 days
+
+
+
+ service_to_service:
+
+  protocol: mTLS (SPIFFE)
+
+  min_tls_version: "1.3"
+
+  cipher_suites:
+
+   - TLS_AES_256_GCM_SHA384
+
+   - TLS_CHACHA20_POLY1305_SHA256
+
+
+
+authorization:
+
+ policy_engine: Open Policy Agent (OPA)
+
+policy_distribution: OPA Bundles via S3
+
+
+
+default_policy: DENY # Zero trust — deny by default
+
+
+
+policies:
+
+ - name: service_to_service
+
+  description: Allow only authorized service-to-service communication
+
+  rego: |
+
+   package agbofa.authz
+
+   default allow = false
+
+   allow {
+
+       input.source.namespace == "content-factory"
+
+       input.destination.namespace == "distribution"
+
+       input.destination.path == "/publish"
+
+   }
+
+
+
+ - name: tenant_isolation
+
+  description: Ensure tenant-level data isolation
+
+  rego: |
+
+   package agbofa.authz
+
+   allow {
+
+       input.source.tenant_id == input.destination.tenant_id
+
+   }
+
+
+
+network:
+
+segmentation:
+
+       vpc: private subnets only for workloads
+
+       service_mesh: Istio Ambient (L4 + L7)
+
+       network_policies:
+
+        default_deny: true
+
+        allowed_egress:
+
+         - monitoring namespace
+
+         - vault namespace
+
+         - external: AWS APIs only via VPC endpoints
+
+
+
+      api_gateway:
+
+       waf: AWS WAF with managed rules
+
+       ddos_protection: AWS Shield Advanced
+
+       rate_limiting: Per-IP, per-tenant, per-endpoint
+
+```
+
+
+
+5.2 Secret Management
+
+
+
+```yaml
+
+vault:
+
+ deployment: HashiCorp Vault Enterprise (HA)
+
+ storage_backend: Integrated Storage (Raft)
+
+
+
+ auto_unseal: AWS KMS
+
+
+
+ auth_methods:
+
+      - type: kubernetes
+
+  path: kubernetes/
+
+  config:
+
+   kubernetes_host: https://kubernetes.default.svc
+
+   token_reviewer_jwt: enabled
+
+
+
+ - type: jwt
+
+  path: jwt/
+
+  config:
+
+   oidc_discovery_url: https://auth.agbofa.com/.well-known/openid-configuration
+
+
+
+secrets_engines:
+
+ - type: kv-v2
+
+  path: secrets/
+
+  config:
+
+   max_versions: 10
+
+
+
+ - type: pki
+
+  path: pki/
+
+  config:
+
+   max_lease_ttl: 87600h # 10 years for root
+
+
+
+  roles:
+
+   - name: internal-services
+
+    allowed_domains: ["agbofa-nexus.internal", "*.svc.cluster.local"]
+
+    allow_subdomains: true
+
+    max_ttl: 720h # 30 days
+
+     key_type: rsa
+
+     key_bits: 4096
+
+
+
+  - type: database
+
+   path: database/
+
+   config:
+
+    plugin_name: postgresql-database-plugin
+
+    allowed_roles: ["read-only", "read-write"]
+
+    connection_url: "postgresql://{{username}}:{{password}}@postgres.agbofa-
+nexus.internal:5432/nexus"
+
+
+
+   roles:
+
+    - name: read-only
+
+     db_name: nexus
+
+     creation_statements:
+
+        - CREATE ROLE "{{name}}" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL
+'{{expiration}}';
+
+      - GRANT SELECT ON ALL TABLES IN SCHEMA public TO "{{name}}";
+
+     default_ttl: 1h
+
+     max_ttl: 24h
+
+
+
+  - type: transit
+
+   path: transit/
+
+   config:
+
+    key_type: aes256-gcm96
+
+
+
+   keys:
+
+        - name: content-encryption
+
+        - name: pii-encryption
+
+        - name: audit-encryption
+
+
+
+ policies:
+
+      - name: content-factory-read
+
+       rules: |
+
+        path "secrets/data/content-factory/*" {
+
+            capabilities = ["read"]
+
+        }
+
+        path "database/creds/read-only" {
+
+            capabilities = ["read"]
+
+        }
+
+
+
+      - name: truth-engine-admin
+
+       rules: |
+
+        path "secrets/data/truth-engine/*" {
+
+            capabilities = ["create", "read", "update", "delete"]
+
+        }
+
+        path "transit/encrypt/*" {
+
+            capabilities = ["create", "update"]
+
+        }
+
+        path "transit/decrypt/*" {
+
+            capabilities = ["create", "update"]
+
+        }
+
+```
+
+5.3 Security Monitoring
+
+
+
+```yaml
+
+security_monitoring:
+
+ tools:
+
+  - guardduty:
+
+    enabled: true
+
+    findings_export: S3 + CloudWatch
+
+
+
+  - security_hub:
+
+    enabled: true
+
+    standards:
+
+     - CIS AWS Foundations Benchmark
+
+     - PCI DSS
+
+     - NIST 800-53
+
+
+
+  - inspector:
+
+    enabled: true
+
+    scan_schedule: weekly
+
+    scan_types: [network, host]
+
+
+
+  - cloudtrail:
+
+    enabled: true
+
+    multi_region: true
+
+    log_validation: true
+
+   insight_events: enabled
+
+
+
+ - waf_logs:
+
+   enabled: true
+
+   destination: S3 + Athena
+
+
+
+ - falco:
+
+   enabled: true
+
+   rules:
+
+    - unexpected_process
+
+    - file_integrity_monitoring
+
+    - kubernetes_audit
+
+   output: CloudWatch Logs + Slack
+
+
+
+incident_response:
+
+ severity_levels:
+
+  SEV1:
+
+   description: "Critical — Platform outage or security breach"
+
+   response_time: 5 minutes
+
+   escalation: VP Engineering, CISO
+
+   notification: PagerDuty + Phone Call
+
+
+
+  SEV2:
+
+   description: "High — Service degradation or potential breach"
+
+   response_time: 15 minutes
+
+   escalation: Engineering Manager
+
+        notification: PagerDuty
+
+
+
+       SEV3:
+
+        description: "Medium — Non-critical issue"
+
+        response_time: 1 hour
+
+        notification: Slack
+
+
+
+       SEV4:
+
+        description: "Low — Cosmetic or non-impacting"
+
+        response_time: Next business day
+
+        notification: Ticket
+
+
+
+      runbook_locations:
+
+       s3: s3://agbofa-nexus-runbooks/
+
+       git: github.com/agbofa/runbooks
+
+       wiki: wiki.internal.agbofa.com/runbooks
+
+```
+
+
+
+---
+
+
+
+PART VI — DATA PROTECTION & DISASTER RECOVERY
+
+
+
+6.1 Backup Strategy
+
+
+
+```yaml
+
+backup_strategy:
+
+postgresql:
+
+ tool: AWS Backup + pg_dump
+
+ schedule:
+
+  automated: every 6 hours
+
+  transaction_logs: every 5 minutes (continuous)
+
+ retention:
+
+  daily: 30 days
+
+  weekly: 12 weeks
+
+  monthly: 12 months
+
+  yearly: 7 years
+
+
+
+ point_in_time_recovery:
+
+  enabled: true
+
+  retention: 35 days
+
+
+
+ cross_region_copy:
+
+  enabled: true
+
+  destination: eu-west-1, ap-southeast-1
+
+
+
+neo4j:
+
+ tool: neo4j-admin backup
+
+ schedule:
+
+  full: daily
+
+  incremental: every 4 hours
+
+ retention:
+
+  full: 30 days
+
+  incremental: 7 days
+
+
+
+ consistency_check: after each backup
+
+
+
+mongodb:
+
+ tool: mongodump + oplog
+
+ schedule:
+
+  snapshot: every 6 hours
+
+  oplog: continuous
+
+ retention:
+
+  snapshots: 30 days
+
+  oplog: 7 days
+
+
+
+ restore_validation: weekly automated restore test
+
+
+
+kafka:
+
+ tool: Kafka MirrorMaker 2 + S3 Sink Connector
+
+ schedule:
+
+  mirroring: continuous
+
+  s3_export: every 1 hour
+
+ retention:
+
+  s3: 90 days (S3 Standard)
+
+  glacier: 7 years (S3 Glacier)
+
+
+
+redis:
+
+ tool: ElastiCache snapshots
+
+      schedule:
+
+       automated: daily
+
+       manual: before major changes
+
+      retention: 7 days
+
+
+
+ kubernetes:
+
+      tool: Velero
+
+      schedule: daily
+
+      retention: 30 days
+
+      include:
+
+       - persistent_volumes
+
+       - cluster_resources
+
+       - namespaced_resources
+
+      exclude:
+
+       - kube-system
+
+       - ephemeral_volumes
+
+```
+
+
+
+6.2 Disaster Recovery Plan
+
+
+
+```yaml
+
+disaster_recovery:
+
+ rpo_targets:
+
+      postgresql: 5 minutes
+
+      neo4j: 1 hour
+
+      mongodb: 15 minutes
+
+ kafka: 5 minutes (cross-region mirroring)
+
+ redis: 24 hours (cache — acceptable to lose)
+
+ clickhouse: 1 hour (replayable from Kafka)
+
+
+
+rto_targets:
+
+ total_platform: 1 hour
+
+ critical_services: 15 minutes
+
+ breaking_news_capability: 5 minutes (failover to secondary region)
+
+
+
+scenarios:
+
+ single_az_failure:
+
+  impact: None (HA across 3 AZs)
+
+  action: Automatic failover
+
+  notification: Info only
+
+
+
+ single_region_failure:
+
+  impact: Service degradation for that region
+
+  rto: 15 minutes (DNS failover to healthy region)
+
+  action:
+
+   - Route 53 health check detects failure
+
+   - DNS weighted routing shifts traffic
+
+   - Aurora promotes secondary region to primary
+
+   - Neo4j read replicas promoted
+
+   - Services scale up in healthy region
+
+  notification: PagerDuty SEV1
+
+complete_platform_outage:
+
+ impact: Full platform unavailable
+
+ rto: 1 hour
+
+ action:
+
+  - Incident commander declared
+
+  - War room activated
+
+  - Restore from latest backups in new region
+
+  - Infrastructure provisioned via Terraform
+
+  - Data restored in priority order:
+
+   1. PostgreSQL (user data, source registry)
+
+   2. Kafka (event streaming)
+
+   3. Neo4j (story graph)
+
+   4. MongoDB (content drafts)
+
+   5. ClickHouse (analytics — replayable)
+
+notification: PagerDuty SEV1 + Executive escalation
+
+
+
+ransomware_attack:
+
+ impact: Potential data corruption
+
+ rto: 4 hours
+
+ action:
+
+  - ISOLATE affected systems immediately
+
+  - Activate clean-room recovery environment
+
+  - Restore from last known good backups
+
+  - Validate backup integrity before restore
+
+  - Engage incident response team
+
+  - Notify legal and compliance
+
+       notification: PagerDuty SEV1 + CISO + Legal
+
+
+
+      data_corruption:
+
+       impact: Partial data loss
+
+       rto: 2 hours
+
+       action:
+
+        - Identify corruption scope
+
+        - Point-in-time recovery for PostgreSQL
+
+        - Replay Kafka events to rebuild state
+
+        - Validate data integrity
+
+       notification: PagerDuty SEV1
+
+
+
+ recovery_testing:
+
+      frequency:
+
+       tabletop_exercise: quarterly
+
+       az_failover_test: monthly
+
+       region_failover_test: quarterly
+
+       full_recovery_test: annually
+
+
+
+      success_criteria:
+
+       rto_met: yes/no
+
+       rpo_met: yes/no
+
+       data_integrity_validated: yes/no
+
+       all_critical_services_operational: yes/no
+
+```
+
+6.3 Business Continuity Plan
+
+
+
+```yaml
+
+business_continuity:
+
+ critical_functions:
+
+  breaking_news_publishing:
+
+   priority: 1
+
+   rto: 5 minutes
+
+   rpo: 1 minute
+
+   failover_region: eu-west-1
+
+
+
+  story_verification:
+
+   priority: 2
+
+   rto: 15 minutes
+
+   rpo: 5 minutes
+
+
+
+  content_generation:
+
+   priority: 3
+
+   rto: 30 minutes
+
+   rpo: 15 minutes
+
+
+
+  analytics_dashboards:
+
+   priority: 4
+
+   rto: 2 hours
+
+   rpo: 1 hour
+
+historical_analytics:
+
+ priority: 5
+
+ rto: 24 hours
+
+ rpo: 24 hours
+
+
+
+communication_plan:
+
+stakeholders:
+
+ internal:
+
+  - Engineering Team: Slack + PagerDuty
+
+  - Product Management: Slack
+
+  - Executive Leadership: Email + Phone
+
+  - Legal/Compliance: Email + Phone (if applicable)
+
+ external:
+
+  - Customers/Users: Status Page (status.agbofa.com)
+
+  - Partners: Email notification
+
+  - Media: PR team coordination
+
+  - Regulators: As required by jurisdiction
+
+
+
+status_page:
+
+ provider: Atlassian Statuspage
+
+ components:
+
+  - Content Pipeline
+
+  - Website Publishing
+
+  - Social Media Distribution
+
+  - Analytics Dashboard
+
+  - API Access
+
+      update_frequency:
+
+       during_incident: every 15 minutes
+
+       resolution: within 1 hour of resolution
+
+```
+
+
+
+---
+
+
+
+PART VII — ENTERPRISE OPERATIONS CENTRE
+
+
+
+7.1 AI Newsroom Operations Centre
+
+
+
+```yaml
+
+operations_center:
+
+ name: "Agbofa Nexus AI — Newsroom Operations Centre (NOC)"
+
+
+
+ teams:
+
+      ai_newsroom_ops:
+
+      role: "Monitor AI content pipeline health"
+
+      staffing: 24/7 (3 shifts)
+
+      responsibilities:
+
+       - Monitor content origination pipeline
+
+       - Verify AI agent health
+
+       - Track story processing metrics
+
+       - Respond to AI quality alerts
+
+       - Escalate editorial concerns
+
+      dashboards:
+
+  - AI Newsroom Overview
+
+  - Content Pipeline Health
+
+  - AI Performance Metrics
+
+
+
+platform_sre:
+
+ role: "Platform reliability and performance"
+
+ staffing: 24/7 (3 shifts)
+
+ responsibilities:
+
+  - Monitor infrastructure health
+
+  - Respond to system alerts
+
+  - Manage capacity and scaling
+
+  - Perform incident response
+
+  - Execute disaster recovery
+
+ dashboards:
+
+  - Platform Operations
+
+  - Infrastructure Health
+
+  - SLO Compliance
+
+
+
+security_ops:
+
+ role: "Security monitoring and incident response"
+
+ staffing: 24/7 (3 shifts)
+
+ responsibilities:
+
+  - Monitor security alerts
+
+  - Investigate anomalies
+
+  - Respond to security incidents
+
+  - Manage vulnerabilities
+
+  - Enforce compliance
+
+ dashboards:
+
+  - Security Overview
+
+  - Threat Detection
+
+  - Compliance Status
+
+
+
+ai_quality:
+
+ role: "AI content quality assurance"
+
+ staffing: 16/5 (2 shifts)
+
+ responsibilities:
+
+  - Review AI quality metrics
+
+  - Analyze hallucination patterns
+
+  - Tune AI model parameters
+
+  - Manage prompt templates
+
+  - Coordinate with editorial
+
+ dashboards:
+
+  - AI Quality Dashboard
+
+  - Content Quality Trends
+
+  - Model Performance Comparison
+
+
+
+incident_command:
+
+roles:
+
+ incident_commander:
+
+  authority: Full decision-making during incident
+
+  escalation: VP of Engineering
+
+  operations_lead:
+
+   responsibility: Technical investigation and resolution
+
+
+
+  communications_lead:
+
+   responsibility: Stakeholder updates and status page
+
+
+
+  scribe:
+
+   responsibility: Document timeline and actions
+
+
+
+escalation_matrix:
+
+ level_1:
+
+  response_time: 5 minutes
+
+  role: On-call SRE
+
+  escalation_trigger: 15 minutes without resolution
+
+
+
+ level_2:
+
+  response_time: 15 minutes
+
+  role: Senior SRE / Engineering Manager
+
+  escalation_trigger: 30 minutes without resolution
+
+
+
+ level_3:
+
+  response_time: 30 minutes
+
+  role: Director of Engineering
+
+  escalation_trigger: 1 hour without resolution
+
+
+
+ level_4:
+
+       response_time: 1 hour
+
+       role: VP of Engineering / CTO
+
+       escalation_trigger: Executive notification required
+
+```
+
+
+
+---
+
+
+
+PART VIII — COST MANAGEMENT & OPTIMISATION
+
+
+
+8.1 FinOps Framework
+
+
+
+```yaml
+
+finops:
+
+ principles:
+
+      - cost_transparency: All costs tagged and attributed
+
+      - cost_ownership: Each team owns their costs
+
+      - cost_optimization: Continuous improvement
+
+      - cost_governance: Budgets and guardrails
+
+
+
+ tagging_strategy:
+
+      required_tags:
+
+       - Environment: production|staging|development
+
+       - Service: service-name
+
+       - Team: owning-team
+
+       - CostCenter: finance-code
+
+       - Component: bounded-context-name
+
+ automation:
+
+  tag_enforcement: AWS Tag Policies + OPA
+
+  untagged_resources: Auto-tag or stop (configurable)
+
+
+
+cost_allocation:
+
+ dimensions:
+
+  - by_service: Per microservice cost
+
+  - by_team: Engineering team cost
+
+  - by_feature: Business feature cost
+
+  - by_tenant: Per-tenant cost (for billing)
+
+  - by_environment: Production vs non-production
+
+
+
+ showback:
+
+  dashboard: Weekly cost reports per team
+
+  anomaly_detection: Automated cost anomaly alerts
+
+  forecasting: ML-based cost prediction
+
+
+
+optimization_strategies:
+
+ compute:
+
+  reserved_instances: 70% baseline coverage (1-year + 3-year mix)
+
+  savings_plans: 60% compute coverage
+
+  spot_instances: 30% non-critical workloads
+
+  right_sizing: Monthly review of utilization
+
+  graviton_migration: ARM-based instances where possible
+
+storage:
+
+ s3_lifecycle:
+
+  standard: 0-90 days
+
+  infrequent_access: 90-180 days
+
+  glacier: 180 days - 7 years
+
+  deep_archive: 7+ years
+
+ ebs_optimization:
+
+  gp3_migration: All volumes
+
+  unused_volume_cleanup: Automated weekly
+
+  snapshot_cleanup: 30-day retention policy
+
+
+
+kubernetes:
+
+ resource_optimization:
+
+  vertical_pod_autoscaler: Recommendation mode
+
+  resource_requests: Set based on actual usage
+
+  resource_limits: 2x requests for burst
+
+  idle_resource_reclamation: After 1 hour idle
+
+ cluster_autoscaler:
+
+  scale_down: Enabled with 10-minute cooldown
+
+  overprovisioning: 20% buffer for burst
+
+ spot_instances:
+
+  fallback: On-demand when spot unavailable
+
+  graceful_termination: 2-minute notice handling
+
+
+
+ai_costs:
+
+ llm_usage:
+
+   model_tiering:
+
+    critical_breaking: Claude-3-Opus ($0.015/K tokens)
+
+    standard_news: Claude-3-Sonnet ($0.003/K tokens)
+
+    headlines_seo: Claude-3-Haiku ($0.00025/K tokens)
+
+   caching:
+
+    prompt_cache: Redis with 1-hour TTL
+
+    response_cache: Redis with 24-hour TTL
+
+   batching:
+
+    non_urgent: Batch process during off-peak
+
+
+
+  gpu_optimization:
+
+   inference: g5 instances (cost-effective)
+
+   training: p4d spot instances
+
+   multi_model_serving: Share GPU across models
+
+   model_quantization: INT8 for non-critical inference
+
+
+
+  token_budgeting:
+
+   daily_budget: $10,000/day (adjustable)
+
+   per_story_budget:
+
+    breaking_news: $0.50
+
+    feature_article: $0.10
+
+    social_post: $0.01
+
+   alert_threshold: 80% of daily budget
+
+
+
+cost_guardrails:
+
+ budgets:
+
+       monthly_total: $500,000
+
+       per_environment:
+
+        production: $450,000
+
+        staging: $35,000
+
+        development: $15,000
+
+
+
+      alerts:
+
+       50_percent: Info notification
+
+       75_percent: Warning notification
+
+       90_percent: Critical notification
+
+       100_percent: Hard limit (optional)
+
+
+
+      anomaly_detection:
+
+       threshold: 20% deviation from expected
+
+       window: 24 hours rolling
+
+       action: Alert + Auto-investigation
+
+```
+
+
+
+---
+
+
+
+PART IX — PRODUCTION READINESS
+
+
+
+9.1 Production Readiness Checklist
+
+
+
+```yaml
+
+production_readiness:
+
+infrastructure:
+
+ - [ ] Multi-AZ deployment verified
+
+ - [ ] Multi-region deployment verified
+
+ - [ ] Auto-scaling configured and tested
+
+ - [ ] Load balancers health checks passing
+
+ - [ ] DNS configured with health checks
+
+ - [ ] CDN configured and tested
+
+ - [ ] SSL certificates valid (>30 days)
+
+ - [ ] VPC endpoints configured
+
+ - [ ] NAT gateways redundant
+
+
+
+kubernetes:
+
+ - [ ] Node groups properly configured
+
+ - [ ] Resource requests/limits set
+
+ - [ ] Pod anti-affinity rules configured
+
+ - [ ] PodDisruptionBudgets defined
+
+ - [ ] HorizontalPodAutoscalers configured
+
+ - [ ] NetworkPolicies enforcing segmentation
+
+ - [ ] Service mesh (Istio) healthy
+
+ - [ ] All namespaces with resource quotas
+
+
+
+data_stores:
+
+ - [ ] PostgreSQL: Multi-AZ, backups verified
+
+ - [ ] Neo4j: Cluster healthy, backups running
+
+ - [ ] MongoDB: Replica set healthy, backups verified
+
+ - [ ] Redis: Cluster mode, failover tested
+
+ - [ ] Kafka: Multi-AZ, replication factor 3
+
+ - [ ] ClickHouse: Shards + replicas, distributed tables
+
+ - [ ] S3: Versioning enabled, lifecycle policies
+
+ - [ ] Backup restoration tested within last 30 days
+
+
+
+security:
+
+ - [ ] SPIFFE/SPIRE deployed and healthy
+
+ - [ ] mTLS enforced cluster-wide
+
+ - [ ] OPA policies deployed and tested
+
+ - [ ] Vault unsealed and accessible
+
+ - [ ] Secrets rotation configured
+
+ - [ ] WAF rules deployed
+
+ - [ ] DDoS protection enabled
+
+ - [ ] Security scanning in CI/CD
+
+ - [ ] Vulnerability scan completed (no CRITICAL)
+
+ - [ ] Penetration test completed
+
+ - [ ] IAM roles least-privilege review
+
+
+
+observability:
+
+ - [ ] Prometheus scraping all targets
+
+ - [ ] Grafana dashboards deployed
+
+ - [ ] Loki receiving logs
+
+ - [ ] Tempo receiving traces
+
+ - [ ] Alertmanager configured with routes
+
+ - [ ] PagerDuty integration tested
+
+ - [ ] Status page configured
+
+ - [ ] Synthetic monitoring active
+
+ - [ ] SLO dashboards published
+
+ - [ ] Error budgets visible
+
+
+
+ci_cd:
+
+ - [ ] CI pipeline passing on main
+
+ - [ ] Canary deployments configured
+
+ - [ ] Automated rollback tested
+
+ - [ ] Image signing enforced
+
+ - [ ] SBOM generation active
+
+ - [ ] GitOps reconciliation healthy
+
+ - [ ] Staging environment parity verified
+
+
+
+ai_workloads:
+
+ - [ ] GPU nodes available and healthy
+
+ - [ ] LLM gateway routing correctly
+
+ - [ ] Model versions pinned
+
+ - [ ] Prompt templates versioned
+
+ - [ ] AI token budgets configured
+
+ - [ ] Hallucination monitoring active
+
+ - [ ] AI quality dashboards live
+
+
+
+operations:
+
+ - [ ] Runbooks published and accessible
+
+ - [ ] On-call rotations configured
+
+ - [ ] Escalation paths defined
+
+      - [ ] Incident response tested (tabletop)
+
+      - [ ] Disaster recovery tested
+
+      - [ ] Cost budgets configured
+
+      - [ ] AWS Support plan Enterprise
+
+
+
+ business:
+
+      - [ ] Multi-tenancy verified
+
+      - [ ] Tenant isolation tested
+
+      - [ ] Billing integration verified
+
+      - [ ] SLA commitments documented
+
+      - [ ] Customer support trained
+
+      - [ ] Documentation published
+
+      - [ ] API documentation current
+
+```
+
+
+
+9.2 Go-Live Criteria
+
+
+
+```yaml
+
+go_live_criteria:
+
+ must_pass:
+
+      - All production readiness checklist items complete
+
+      - Load test: 10x expected traffic sustained for 1 hour
+
+      - Soak test: 48 hours at expected traffic with no degradation
+
+      - Chaos test: AZ failure handled without data loss
+
+      - Security review: No HIGH or CRITICAL findings open
+
+      - Performance: All SLOs met under load
+
+ should_pass:
+
+      - Regional failover: <15 minute RTO achieved
+
+      - Data recovery: Point-in-time recovery <2 hours
+
+      - AI quality: >99% editorial acceptance rate in staging
+
+      - User acceptance: Beta users satisfied (>4/5 rating)
+
+
+
+ rollback_plan:
+
+      trigger_conditions:
+
+       - Error rate >5% for >10 minutes
+
+       - Data corruption detected
+
+       - Security breach detected
+
+       - Critical SLO breached for >15 minutes
+
+      rollback_procedure:
+
+       - GitOps revert to last known good commit
+
+       - Flux CD reconciliation (<5 minutes)
+
+       - Database rollback if needed
+
+       - Communication to stakeholders
+
+```
+
+
+
+---
+
+
+
+PART X — ARCHITECTURE DECISION RECORDS
+
+
+
+```markdown
+
+## ADR-OPS-001: Multi-Region Active-Active
+
+**Decision:** Three-region active-active deployment
+
+**Rationale:** 99.99% availability, data sovereignty, global audience
+
+**Consequences:** Higher cost, replication complexity
+
+
+
+## ADR-OPS-002: Istio Ambient Mesh
+
+**Decision:** Istio Ambient (sidecar-less) for service mesh
+
+**Rationale:** 40-60% resource savings vs sidecar model
+
+**Consequences:** Requires K8s 1.29+, newer technology
+
+
+
+## ADR-OPS-003: GitOps with Flux CD
+
+**Decision:** Flux CD for continuous delivery
+
+**Rationale:** GitOps audit trail, disaster recovery, rollback
+
+**Consequences:** Git discipline required
+
+
+
+## ADR-OPS-004: Tiered Storage Lifecycle
+
+**Decision:** Automatic data tiering (Kafka → S3 → Glacier)
+
+**Rationale:** 60-70% storage cost reduction
+
+**Consequences:** Complex lifecycle management
+
+
+
+## ADR-OPS-005: OpenTelemetry for Observability
+
+**Decision:** OpenTelemetry as single observability framework
+
+**Rationale:** Vendor-neutral, CNCF standard, unified collection
+
+**Consequences:** Migration from existing tools if any
+
+
+
+## ADR-OPS-006: SPIFFE/SPIRE for Workload Identity
+
+**Decision:** SPIFFE/SPIRE for service identity in Zero Trust
+
+**Rationale:** Cryptographically verifiable identity, automatic rotation
+
+**Consequences:** Additional infrastructure component
+
+
+
+## ADR-OPS-007: Aurora Global Database for PostgreSQL
+
+**Decision:** AWS Aurora Global Database for primary relational store
+
+**Rationale:** <1s replication lag, <60s cross-region failover
+
+**Consequences:** AWS lock-in, but best-in-class for PostgreSQL
+
+
+
+## ADR-OPS-008: Canary Deployments with Argo Rollouts
+
+**Decision:** Progressive canary deployments with automated analysis
+
+**Rationale:** Reduced blast radius, automated rollback on metric deviation
+
+**Consequences:** More complex deployment configuration
+
+
+
+## ADR-OPS-009: FinOps with Automated Optimization
+
+**Decision:** Implement FinOps framework with automated cost optimization
+
+**Rationale:** AI workloads highly variable; manual optimization insufficient
+
+**Consequences:** Initial setup investment, significant ongoing savings
+
+
+
+## ADR-OPS-010: Immutable Infrastructure
+
+**Decision:** All infrastructure changes through Terraform; no manual changes
+
+**Rationale:** Reproducibility, disaster recovery, audit compliance
+
+**Consequences:** Slower emergency changes, but essential for reliability
+
+```
+
+
+
+---
+
+PART XI — EXECUTIVE SUMMARY
+
+
+
+11.1 Enterprise Operations Overview
+
+
+
+The Enterprise Operations specification provides the complete operational blueprint for running
+Agbofa Nexus AI as a 24/7 autonomous AI newsroom at enterprise scale. The platform is
+designed for 99.99% availability across three global regions, with fully automated deployment,
+scaling, monitoring, and recovery capabilities.
+
+
+
+Key Operational Capabilities:
+
+
+
+· Global Multi-Region: Active-active deployment across US, Europe, and Asia-Pacific
+
+· Zero Trust Security: SPIFFE/SPIRE identity, mTLS everywhere, OPA authorization
+
+· GitOps Delivery: Fully automated CI/CD with canary deployments and automated rollback
+
+· Comprehensive Observability: OpenTelemetry-based tracing, metrics, and logging
+
+· Automated DR: <5 minute RPO, <15 minute RTO for critical services
+
+· FinOps Optimized: Automated cost management targeting 30-40% cloud optimization
+
+
+
+11.2 Deployment Roadmap
+
+
+
+Phase 1: Foundation (Weeks 1-4)
+
+
+
+· Provision core infrastructure (VPC, EKS, RDS, MSK)
+
+· Deploy observability stack
+
+· Configure CI/CD pipelines
+
+· Set up security tooling
+
+Phase 2: Service Deployment (Weeks 5-8)
+
+
+
+· Deploy Foundation Services (Vol 11)
+
+· Deploy Content Origination (Vol 12)
+
+· Deploy Truth Engine (Vol 13)
+
+· Progressive rollout with canary deployments
+
+
+
+Phase 3: Full Platform (Weeks 9-12)
+
+
+
+· Deploy Content Factory (Vol 14/15)
+
+· Deploy Compliance (Vol 16)
+
+· Deploy Distribution (Vol 17)
+
+· Deploy Analytics (Vol 18/19)
+
+
+
+Phase 4: Production Hardening (Weeks 13-16)
+
+
+
+· Load testing and performance tuning
+
+· Chaos engineering exercises
+
+· Disaster recovery testing
+
+· Security penetration testing
+
+· Production readiness validation
+
+
+
+11.3 Operational Excellence Framework
+
+
+
+```
+
+OPERATIONAL EXCELLENCE CYCLE:
+
+┌─────────────────────────────────────────────────────────┐
+
+│            CONTINUOUS IMPROVEMENT                 │
+
+│                                │
+
+│ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ │
+
+│ │ MEASURE │───        │ ANALYZE │───        │ IMPROVE │ │
+
+│ │ • SLOs    │ │ • Incidents│ │ • Automate │ │
+
+│ │ • Metrics │ │ • Postmort │ │ • Optimize │ │
+
+│ │ • Alerts │ │ • Trends │ │ • Train       │ │
+
+│ └─────────────┘ └─────────────┘ └──────┬──────┘ │
+
+│                          │     │
+
+│              ───────────────────────────┘             │
+
+└─────────────────────────────────────────────────────────┘
+
+
+
+WEEKLY RITUALS:
+
+Monday: SLO Review — Are we meeting our targets?
+
+Tuesday: Incident Review — What happened last week?
+
+Wednesday: Operational Health — Dashboards and trends
+
+Thursday: Automation Sprint — Reduce toil
+
+Friday: Knowledge Sharing — Postmortems and learnings
+
+
+
+MONTHLY RITUALS:
+
+Week 1: Capacity Planning Review
+
+Week 2: Security Posture Review
+
+Week 3: Cost Optimization Review
+
+Week 4: Disaster Recovery Test (tabletop or live)
+
+```
+
+
+
+11.4 Conclusion
+
+
+
+Volume 20 completes the Agbofa Nexus AI implementation specification series, providing the
+operational foundation for running a US$50M autonomous AI newsroom. With Volumes 1-20,
+engineering teams have complete, implementation-ready specifications for every bounded
+context, service, API, data model, event contract, and operational procedure required to build
+and operate the platform.
+
+
+
+The platform is designed for the extreme demands of AI-powered news production: sub-second
+breaking news delivery, 99.99% availability, zero-trust security, and continuous AI improvement.
+Every architectural decision has been documented, every failure scenario has a recovery plan,
+and every operational procedure has been defined.
+
+
+
+Agbofa Nexus AI is ready for implementation.
+
+
+
+---
+
+
+
+END OF VOLUME 20
+
+
+
+Document Approval:
+
+
+
+· Enterprise Solution Architect: _________________
+
+· VP of Platform Engineering: _________________
+
+· Chief Information Security Officer: _________________
+
+· VP of Site Reliability Engineering: _________________
+
+· Chief Technology Officer: _________________
+
+· Chief AI Officer: _________________
+
+
+
+Date: 2026-08-07
+
+Version: 1.0.0 - Implementation-Ready
+
+
+
+Phase 2 — Enterprise Engineering Specifications: COMPLETE
+
+Volumes 11–20: All bounded contexts fully specified and implementation-ready.
+
+
+

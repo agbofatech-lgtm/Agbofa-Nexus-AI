@@ -1,0 +1,4754 @@
+VOLUME 18 & 19: DISTRIBUTION, ANALYTICS & INSIGHTS ENGINE
+
+Implementation Specification — Post-Publication Lifecycle, Analytics & Continuous Optimization
+
+
+
+Document Reference: AGBA-NEXUS-VOL18-19-IMPL-1.0
+
+Status: Implementation-Ready
+
+Approved Baseline: Volumes 1–17 (Immutable)
+
+Bounded Context: Distribution Operations, Analytics & Insights, AI Optimization
+
+Quality Level: US$50M Enterprise Platform Specification
+
+
+
+---
+
+
+
+ARCHITECTURE DECISION RECORDS (ADR)
+
+
+
+ADR-ANA-001: Unified Analytics Data Lake
+
+
+
+Decision: All analytics events flow into a unified data lake (S3 + Apache Iceberg) before being
+processed into specialized stores (ClickHouse for real-time, PostgreSQL for operational, Neo4j
+for relationship analytics).
+
+Rationale: Single source of truth prevents data discrepancies. Iceberg provides schema
+evolution and time travel. Specialized stores optimize for different query patterns.
+
+Alternatives Considered: Direct write to multiple stores (rejected — data consistency issues);
+single store for everything (rejected — performance trade-offs).
+
+
+
+ADR-ANA-002: Real-Time + Batch Analytics Dual Path
+
+
+
+Decision: Implement dual processing paths: sub-second real-time stream for dashboards/alerts,
+hourly batch for deep analytics and ML training.
+
+Rationale: Breaking news requires instant metrics; deep analysis requires historical context.
+Separate paths optimize each use case.
+
+Consequences: Additional infrastructure complexity but necessary for news platform
+requirements.
+
+
+
+ADR-ANA-003: Closed-Loop AI Optimization
+
+
+
+Decision: All content performance data flows back to AI agents via a structured feedback
+protocol, enabling continuous model improvement without manual intervention.
+
+Rationale: AI-generated content quality improves only with feedback. Manual feedback doesn't
+scale to 500,000+ stories/day.
+
+Consequences: Requires careful feedback validation to prevent reward hacking.
+
+
+
+ADR-ANA-004: Platform-Agnostic Analytics Abstraction
+
+
+
+Decision: Normalize all platform metrics into a unified schema regardless of source platform
+differences.
+
+Rationale: Cross-platform comparison requires consistent metrics. Platform APIs change;
+abstraction protects downstream systems.
+
+Consequences: Some platform-specific nuance lost, but essential for unified intelligence.
+
+
+
+---
+
+
+
+PART I — DISTRIBUTION OPERATIONS
+
+
+
+1.1 Distribution Architecture Overview
+
+
+
+```
+
+DISTRIBUTION ENGINE ARCHITECTURE:
+
+┌─────────────────────────────────────────────────────────────────────────┐
+
+│             DISTRIBUTION ENGINE BOUNDARY                 │
+
+│                                        │
+
+│ ┌────────────────────────────────────────────────────────────────────┐ │
+
+│ │           PUBLICATION ORCHESTRATOR                   ││
+
+│ │ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────────┐ │ │
+
+│ │ │ PRIORITY │ │SCHEDULER │ │ RETRY │ │ STATE MACHINE │ │ │
+
+│ │ │ QUEUES │ │ ENGINE │ │ MANAGER │ │ (Event Sourced) │ │ │
+
+│ │ └────┬─────┘ └────┬─────┘ └────┬─────┘ └────────┬─────────┘ │ │
+
+│ └───────┼─────────────┼─────────────┼─────────────────┼────────────┘ │
+
+│     │       │         │        │           │
+
+│ ┌───────▼─────────────▼─────────────▼─────────────────▼────────────┐ │
+
+│ │           CONTENT ADAPTATION ENGINE                  ││
+
+│ │ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌───────────┐ │ │
+
+│ │ │ TEXT │ │ MEDIA │ │ SEO │ │ FORMAT │ │ACCESSIBILITY│ │ │
+
+│ │ │ ADAPTER │ │OPTIMIZER│ │ ADAPTER │ │ ADAPTER │ │ ADAPTER │ │ │
+
+│ │ └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘ └─────┬─────┘ │ │
+
+│ └───────┼───────────┼───────────┼───────────┼─────────────┼───────┘ │
+
+│     │      │      │       │        │       │
+
+│ ┌───────▼───────────▼───────────▼───────────▼─────────────▼───────┐ │
+
+│ │          PLATFORM CONNECTOR FRAMEWORK                      ││
+
+│ │ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────────┐ │ │
+
+│ │ │Web │ │ FB │ │ IG │ │ X │ │ LI │ │ YT │ │ TT │ │CUSTOM │ │ │
+
+│ │ └──┬─┘ └──┬─┘ └──┬─┘ └──┬─┘ └──┬─┘ └──┬─┘ └──┬─┘ └───┬────┘ │ │
+
+│ └─────┼──────┼──────┼──────┼──────┼──────┼──────┼────────┼──────┘ │
+
+│        │    │     │   │     │   │   │     │    │
+
+│ ┌─────▼──────▼──────▼──────▼──────▼──────▼──────▼────────▼───────┐ │
+
+│ │                 DELIVERY MONITORING & OBSERVABILITY           ││
+
+│ └─────────────────────────────────────────────────────────────────┘ │
+
+└─────────────────────────────────────────────────────────────────────────┘
+
+```
+
+
+
+1.2 Publishing Pipeline State Machine
+
+
+
+```go
+
+type PublishingState string
+
+
+
+const (
+
+      StateContentReceived PublishingState = "CONTENT_RECEIVED"
+
+      StateValidating       PublishingState = "VALIDATING"
+
+      StateAdapting         PublishingState = "ADAPTING"
+
+      StateAdaptationComplete PublishingState = "ADAPTATION_COMPLETE"
+
+      StateQueued           PublishingState = "QUEUED"
+
+      StatePublishing       PublishingState = "PUBLISHING"
+
+      StatePartiallyPublished PublishingState = "PARTIALLY_PUBLISHED"
+
+      StatePublished        PublishingState = "PUBLISHED"
+
+      StateFailed        PublishingState = "FAILED"
+
+      StateRetrying         PublishingState = "RETRYING"
+
+      StateDeadLettered       PublishingState = "DEAD_LETTERED"
+
+      StateRetracting       PublishingState = "RETRACTING"
+
+      StateRetracted        PublishingState = "RETRACTED"
+
+    StateUpdating        PublishingState = "UPDATING"
+
+    StateArchived        PublishingState = "ARCHIVED"
+
+)
+
+
+
+type PublishingStateMachine struct {
+
+    job        *PublishingJob
+
+    currentState PublishingState
+
+    stateHistory []StateTransition
+
+    eventBus       EventBus
+
+}
+
+
+
+type StateTransition struct {
+
+    FromState PublishingState `json:"from_state"`
+
+    ToState    PublishingState `json:"to_state"`
+
+    Event      PublishingEvent `json:"event"`
+
+    Timestamp time.Time         `json:"timestamp"`
+
+    Metadata json.RawMessage `json:"metadata"`
+
+}
+
+
+
+type PublishingEvent string
+
+
+
+const (
+
+    EventContentSubmitted       PublishingEvent = "CONTENT_SUBMITTED"
+
+    EventValidationPassed     PublishingEvent = "VALIDATION_PASSED"
+
+    EventValidationFailed     PublishingEvent = "VALIDATION_FAILED"
+
+    EventAdaptationStarted PublishingEvent = "ADAPTATION_STARTED"
+
+    EventAdaptationComplete PublishingEvent = "ADAPTATION_COMPLETE"
+
+    EventAdaptationFailed      PublishingEvent = "ADAPTATION_FAILED"
+
+    EventQueuedForPublishing PublishingEvent = "QUEUED_FOR_PUBLISHING"
+
+    EventPublishingStarted PublishingEvent = "PUBLISHING_STARTED"
+
+    EventPlatformSuccess       PublishingEvent = "PLATFORM_SUCCESS"
+
+    EventPlatformFailed      PublishingEvent = "PLATFORM_FAILED"
+
+    EventAllPlatformsComplete PublishingEvent = "ALL_PLATFORMS_COMPLETE"
+
+    EventPartialSuccess      PublishingEvent = "PARTIAL_SUCCESS"
+
+    EventRetryScheduled        PublishingEvent = "RETRY_SCHEDULED"
+
+    EventRetryExhausted        PublishingEvent = "RETRY_EXHAUSTED"
+
+    EventRetractionStarted PublishingEvent = "RETRACTION_STARTED"
+
+    EventRetractionComplete PublishingEvent = "RETRACTION_COMPLETE"
+
+    EventUpdateReceived        PublishingEvent = "UPDATE_RECEIVED"
+
+    EventUpdatePublished        PublishingEvent = "UPDATE_PUBLISHED"
+
+    EventArchived          PublishingEvent = "ARCHIVED"
+
+)
+
+
+
+func (sm *PublishingStateMachine) Transition(event PublishingEvent, metadata interface{})
+error {
+
+    sm.mu.Lock()
+
+    defer sm.mu.Unlock()
+
+
+
+    validStates, exists := sm.transitions[sm.currentState]
+
+    if !exists {
+
+        return fmt.Errorf("no transitions defined from state: %s", sm.currentState)
+
+    }
+
+nextState, valid := validStates[event]
+
+if !valid {
+
+    return fmt.Errorf("invalid transition: %s -> %s", sm.currentState, event)
+
+}
+
+
+
+// Record transition
+
+transition := StateTransition{
+
+    FromState: sm.currentState,
+
+    ToState: nextState,
+
+    Event:    event,
+
+    Timestamp: time.Now(),
+
+}
+
+
+
+if metadata != nil {
+
+    transition.Metadata, _ = json.Marshal(metadata)
+
+}
+
+
+
+sm.stateHistory = append(sm.stateHistory, transition)
+
+sm.currentState = nextState
+
+
+
+// Persist state change as event
+
+sm.eventBus.Publish("distribution.state.changed", StateChangedEvent{
+
+    JobID:     sm.job.JobID,
+
+    Transition: transition,
+
+    CurrentState: nextState,
+
+      })
+
+
+
+      // Handle side effects based on new state
+
+      sm.handleStateEntry(nextState, event)
+
+
+
+      return nil
+
+}
+
+
+
+func (sm *PublishingStateMachine) handleStateEntry(state PublishingState, event
+PublishingEvent) {
+
+      switch state {
+
+      case StateAdapting:
+
+           go sm.startAdaptation()
+
+      case StatePublishing:
+
+           go sm.startPlatformPublishing()
+
+      case StateRetrying:
+
+           go sm.scheduleRetry()
+
+      case StateRetracting:
+
+           go sm.startRetraction()
+
+      case StateFailed:
+
+           sm.sendFailureAlert()
+
+      case StateDeadLettered:
+
+           sm.sendDLQAlert()
+
+      }
+
+}
+
+```
+
+1.3 Publishing Queue Architecture
+
+
+
+```
+
+PUBLISHING QUEUE SYSTEM:
+
+┌─────────────────────────────────────────────────────────────────┐
+
+│            PRIORITY QUEUE SYSTEM                  │
+
+├─────────────────────────────────────────────────────────────────┤
+
+│                                      │
+
+│ CRITICAL QUEUE (Redis Stream)                         │
+
+│ ┌─────────────────────────────────────────────────────────────┐ │
+
+│ │ Breaking News │ Corrections │ Retractions │ Emergency        ││
+
+│ │ Max Latency: <5s │ Workers: 10 │ Preemptive: YES            ││
+
+│ └─────────────────────────────────────────────────────────────┘ │
+
+│                                     │
+
+│ HIGH QUEUE (Redis Stream)                         │
+
+│ ┌─────────────────────────────────────────────────────────────┐ │
+
+│ │ Time-Sensitive │ Developing Stories │ Priority Updates      ││
+
+│ │ Max Latency: <30s │ Workers: 20                     ││
+
+│ └─────────────────────────────────────────────────────────────┘ │
+
+│                                     │
+
+│ MEDIUM QUEUE (Redis Stream)                               │
+
+│ ┌─────────────────────────────────────────────────────────────┐ │
+
+│ │ Standard News │ Scheduled Content │ Campaign Content             ││
+
+│ │ Max Latency: <2min │ Workers: 30                    ││
+
+│ └─────────────────────────────────────────────────────────────┘ │
+
+│                                           │
+
+│ LOW QUEUE (Redis Stream)                                  │
+
+│ ┌─────────────────────────────────────────────────────────────┐ │
+
+│ │ Evergreen │ Bulk Updates │ Analytics Backfill │ Archive            ││
+
+│ │ Max Latency: <15min │ Workers: 10                            ││
+
+│ └─────────────────────────────────────────────────────────────┘ │
+
+│                                           │
+
+│ DEAD LETTER QUEUE (Kafka)                                  │
+
+│ ┌─────────────────────────────────────────────────────────────┐ │
+
+│ │ Failed After Max Retries │ Retention: 30 days                 ││
+
+│ │ Alert on new messages │ Manual intervention required                ││
+
+│ └─────────────────────────────────────────────────────────────┘ │
+
+└─────────────────────────────────────────────────────────────────┘
+
+```
+
+
+
+1.4 Retry & Dead Letter Queue Policies
+
+
+
+```go
+
+type RetryPolicy struct {
+
+      MaxRetries     int          `json:"max_retries"`
+
+      BaseDelay     time.Duration      `json:"base_delay"`
+
+      MaxDelay       time.Duration     `json:"max_delay"`
+
+      BackoffMultiplier float64       `json:"backoff_multiplier"`
+
+      RetryableErrors []string       `json:"retryable_errors"`
+
+      NonRetryableErrors []string      `json:"non_retryable_errors"`
+
+}
+
+var PublishingRetryPolicy = map[PublicationPriority]RetryPolicy{
+
+  PriorityCritical: {
+
+       MaxRetries:      5,
+
+       BaseDelay:       1 * time.Second,
+
+       MaxDelay:        30 * time.Second,
+
+       BackoffMultiplier: 2.0,
+
+       RetryableErrors: []string{"RATE_LIMITED", "NETWORK_ERROR", "TIMEOUT", "5XX"},
+
+    NonRetryableErrors: []string{"AUTH_FAILED", "INVALID_CONTENT", "PLATFORM_BANNED",
+"4XX"},
+
+  },
+
+  PriorityHigh: {
+
+       MaxRetries:      3,
+
+       BaseDelay:       5 * time.Second,
+
+       MaxDelay:        60 * time.Second,
+
+       BackoffMultiplier: 2.0,
+
+       RetryableErrors: []string{"RATE_LIMITED", "NETWORK_ERROR", "TIMEOUT", "5XX"},
+
+    NonRetryableErrors: []string{"AUTH_FAILED", "INVALID_CONTENT",
+"PLATFORM_BANNED"},
+
+  },
+
+  PriorityMedium: {
+
+       MaxRetries:      3,
+
+       BaseDelay:       10 * time.Second,
+
+       MaxDelay:        120 * time.Second,
+
+       BackoffMultiplier: 2.0,
+
+       RetryableErrors: []string{"RATE_LIMITED", "NETWORK_ERROR", "5XX"},
+
+    NonRetryableErrors: []string{"AUTH_FAILED", "INVALID_CONTENT", "PLATFORM_BANNED",
+"4XX"},
+
+    },
+
+    PriorityLow: {
+
+         MaxRetries:      2,
+
+         BaseDelay:      30 * time.Second,
+
+         MaxDelay:       300 * time.Second,
+
+         BackoffMultiplier: 2.0,
+
+         RetryableErrors: []string{"RATE_LIMITED", "5XX"},
+
+    NonRetryableErrors: []string{"AUTH_FAILED", "INVALID_CONTENT", "PLATFORM_BANNED",
+"4XX", "TIMEOUT"},
+
+    },
+
+}
+
+
+
+type RetryManager struct {
+
+    policy     RetryPolicy
+
+    dlq       *DeadLetterQueue
+
+    metrics *MetricsStore
+
+}
+
+
+
+func (rm *RetryManager) ExecuteWithRetry(
+
+    ctx context.Context,
+
+    operation func(context.Context) error,
+
+    jobID string,
+
+) error {
+
+
+
+    var lastErr error
+
+delay := rm.policy.BaseDelay
+
+
+
+for attempt := 0; attempt <= rm.policy.MaxRetries; attempt++ {
+
+  if attempt > 0 {
+
+      // Wait before retry
+
+      select {
+
+      case <-time.After(delay):
+
+          delay = time.Duration(float64(delay) * rm.policy.BackoffMultiplier)
+
+          if delay > rm.policy.MaxDelay {
+
+              delay = rm.policy.MaxDelay
+
+          }
+
+      case <-ctx.Done():
+
+          return ctx.Err()
+
+      }
+
+
+
+      rm.metrics.IncrementRetry(jobID)
+
+  }
+
+
+
+  err := operation(ctx)
+
+  if err == nil {
+
+      return nil
+
+  }
+
+
+
+  lastErr = err
+
+
+
+  // Classify error
+
+        errorType := rm.classifyError(err)
+
+
+
+        if rm.isNonRetryable(errorType) {
+
+            rm.sendToDLQ(jobID, err, attempt)
+
+            return fmt.Errorf("non-retryable error: %w", err)
+
+        }
+
+
+
+        if !rm.isRetryable(errorType) {
+
+            rm.sendToDLQ(jobID, err, attempt)
+
+            return fmt.Errorf("unclassified error: %w", err)
+
+        }
+
+    }
+
+
+
+    // Max retries exceeded
+
+    rm.sendToDLQ(jobID, lastErr, rm.policy.MaxRetries)
+
+    return fmt.Errorf("max retries (%d) exceeded: %w", rm.policy.MaxRetries, lastErr)
+
+}
+
+
+
+type DeadLetterQueue struct {
+
+    kafka       kafka.Producer
+
+    topic       string
+
+    alertManager *AlertManager
+
+}
+
+
+
+func (dlq *DeadLetterQueue) Send(
+
+    ctx context.Context,
+
+  jobID string,
+
+  err error,
+
+  attemptCount int,
+
+  jobData interface{},
+
+) error {
+
+
+
+  dlqMessage := &DLQMessage{
+
+      MessageID: uuid.NewV7().String(),
+
+      JobID:         jobID,
+
+      Error:      err.Error(),
+
+      AttemptCount: attemptCount,
+
+      JobData:        jobData,
+
+      SentToDLQAt: time.Now(),
+
+      RequiresHuman: true,
+
+  }
+
+
+
+  data, _ := json.Marshal(dlqMessage)
+
+
+
+  if err := dlq.kafka.Produce(ctx, &kafka.Message{
+
+      Topic: dlq.topic,
+
+      Key: []byte(jobID),
+
+      Value: data,
+
+  }); err != nil {
+
+      return fmt.Errorf("DLQ write failed: %w", err)
+
+  }
+
+      // Alert on DLQ entries
+
+      dlq.alertManager.TriggerAlert(ctx, AlertDLQMessage, map[string]interface{}{
+
+           "job_id": jobID,
+
+           "error":   err.Error(),
+
+           "attempts": attemptCount,
+
+      })
+
+
+
+      return nil
+
+}
+
+```
+
+
+
+---
+
+
+
+PART II — PLATFORM ADAPTATION ENGINE
+
+
+
+2.1 Platform-Native Content Optimization
+
+
+
+```go
+
+type PlatformAdaptationEngine struct {
+
+      transformers map[string]PlatformTransformer
+
+      llmGateway LLMGateway
+
+      mediaProcessor *MediaOptimizationEngine
+
+      abTestManager *ABTestManager
+
+}
+
+
+
+type PlatformTransformer interface {
+
+    TransformContent(ctx context.Context, content *ContentPackage) (*PlatformContent, error)
+
+    GetFormatRules() PlatformFormatRules
+
+    ValidateContent(content *PlatformContent) []ValidationError
+
+}
+
+
+
+type PlatformFormatRules struct {
+
+    Platform       string        `json:"platform"`
+
+    Version       string         `json:"version"`
+
+    LastUpdated      time.Time        `json:"last_updated"`
+
+
+
+    // Text Constraints
+
+    MaxTitleLength int             `json:"max_title_length"`
+
+    MaxBodyLength         int        `json:"max_body_length"`
+
+    MaxDescriptionLength int           `json:"max_description_length"`
+
+    MaxHashtags       int          `json:"max_hashtags"`
+
+    MaxMentions       int          `json:"max_mentions"`
+
+
+
+    // Media Constraints
+
+    SupportedImageFormats []string         `json:"supported_image_formats"`
+
+    MaxImageSize       int64         `json:"max_image_size"`
+
+    ImageDimensions []ImageDimension          `json:"image_dimensions"`
+
+    SupportedVideoFormats []string        `json:"supported_video_formats"`
+
+    MaxVideoDuration int              `json:"max_video_duration"`
+
+    MaxVideoSize      int64          `json:"max_video_size"`
+
+    VideoDimensions []VideoDimension         `json:"video_dimensions"`
+
+    // Content Rules
+
+    AllowedHTMLTags []string                `json:"allowed_html_tags"`
+
+    EmojiPolicy       string           `json:"emoji_policy"`
+
+    LinkHandling       string           `json:"link_handling"`
+
+    HashtagStyle       string           `json:"hashtag_style"`
+
+
+
+    // SEO & Metadata
+
+    RequiredMetaFields []string             `json:"required_meta_fields"`
+
+    StructuredDataSchemas []string                `json:"structured_data_schemas"`
+
+}
+
+
+
+// Platform-specific format rules
+
+var PlatformRules = map[string]PlatformFormatRules{
+
+    "website": {
+
+      Platform:         "Web CMS",
+
+      MaxTitleLength:          70,
+
+      MaxBodyLength:            0, // Unlimited
+
+      MaxDescriptionLength: 320,
+
+      SupportedImageFormats: []string{"jpg", "jpeg", "png", "webp", "avif", "svg"},
+
+      MaxImageSize:            10 * 1024 * 1024, // 10MB
+
+      ImageDimensions: []ImageDimension{
+
+           {Name: "hero", Width: 1200, Height: 630},
+
+           {Name: "article_body", Width: 800, Height: 0},
+
+           {Name: "thumbnail", Width: 400, Height: 300},
+
+      },
+
+    RequiredMetaFields: []string{"title", "description", "og:title", "og:description", "og:image",
+"canonical_url"},
+
+       StructuredDataSchemas: []string{"NewsArticle", "BreadcrumbList", "Organization"},
+
+  },
+
+  "twitter": {
+
+       Platform:         "X (Twitter)",
+
+       MaxTitleLength:      0, // No separate title
+
+       MaxBodyLength:         280,
+
+       MaxDescriptionLength: 0,
+
+       MaxHashtags:         3,
+
+       MaxMentions:         10,
+
+       SupportedImageFormats: []string{"jpg", "jpeg", "png", "gif"},
+
+       MaxImageSize:        5 * 1024 * 1024,
+
+       ImageDimensions: []ImageDimension{
+
+            {Name: "tweet_image", Width: 1200, Height: 675},
+
+            {Name: "tweet_card", Width: 800, Height: 418},
+
+       },
+
+       SupportedVideoFormats: []string{"mp4", "mov"},
+
+       MaxVideoDuration: 140,
+
+       MaxVideoSize:        512 * 1024 * 1024,
+
+       EmojiPolicy:      "ENCOURAGED",
+
+       LinkHandling:      "AUTO_SHORTEN",
+
+  },
+
+  "facebook": {
+
+       Platform:         "Facebook",
+
+       MaxBodyLength:         63206,
+
+     MaxHashtags:         10,
+
+     SupportedImageFormats: []string{"jpg", "jpeg", "png", "gif", "webp"},
+
+     MaxImageSize:         10 * 1024 * 1024,
+
+     ImageDimensions: []ImageDimension{
+
+          {Name: "feed_image", Width: 1200, Height: 630},
+
+          {Name: "link_image", Width: 1200, Height: 628},
+
+     },
+
+     SupportedVideoFormats: []string{"mp4", "mov", "avi"},
+
+     MaxVideoDuration: 14400,
+
+     MaxVideoSize:        10 * 1024 * 1024 * 1024,
+
+},
+
+"instagram": {
+
+     Platform:         "Instagram",
+
+     MaxBodyLength:         2200,
+
+     MaxHashtags:         30,
+
+     MaxMentions:          20,
+
+     SupportedImageFormats: []string{"jpg", "jpeg", "png"},
+
+     ImageDimensions: []ImageDimension{
+
+          {Name: "square", Width: 1080, Height: 1080},
+
+          {Name: "portrait", Width: 1080, Height: 1350},
+
+          {Name: "landscape", Width: 1080, Height: 566},
+
+          {Name: "story", Width: 1080, Height: 1920},
+
+     },
+
+     SupportedVideoFormats: []string{"mp4"},
+
+     MaxVideoDuration: 90,
+
+     VideoDimensions: []VideoDimension{
+
+          {Name: "reels", Width: 1080, Height: 1920},
+
+          {Name: "feed_video", Width: 1080, Height: 1080},
+
+     },
+
+},
+
+"linkedin": {
+
+     Platform:         "LinkedIn",
+
+     MaxTitleLength:       200,
+
+     MaxBodyLength:         3000,
+
+     MaxDescriptionLength: 256,
+
+     MaxHashtags:         5,
+
+     SupportedImageFormats: []string{"jpg", "jpeg", "png", "gif"},
+
+     MaxImageSize:         10 * 1024 * 1024,
+
+     ImageDimensions: []ImageDimension{
+
+          {Name: "feed_image", Width: 1200, Height: 627},
+
+          {Name: "article_cover", Width: 1200, Height: 644},
+
+     },
+
+},
+
+"youtube": {
+
+     Platform:         "YouTube",
+
+     MaxTitleLength:       100,
+
+     MaxBodyLength:         5000,
+
+     MaxDescriptionLength: 5000,
+
+     SupportedImageFormats: []string{"jpg", "jpeg", "png", "gif", "bmp"},
+
+     MaxImageSize:         2 * 1024 * 1024,
+
+     ImageDimensions: []ImageDimension{
+
+          {Name: "thumbnail", Width: 1280, Height: 720},
+
+                {Name: "custom_thumbnail", Width: 1280, Height: 720},
+
+           },
+
+           SupportedVideoFormats: []string{"mp4", "mov", "avi", "wmv", "flv", "webm", "mkv"},
+
+           MaxVideoDuration: 43200, // 12 hours
+
+           MaxVideoSize:        256 * 1024 * 1024 * 1024,
+
+      },
+
+      "tiktok": {
+
+           Platform:         "TikTok",
+
+           MaxBodyLength:        2200,
+
+           MaxHashtags:         10,
+
+           SupportedVideoFormats: []string{"mp4", "mov", "webm"},
+
+           MaxVideoDuration: 600,
+
+           VideoDimensions: []VideoDimension{
+
+                {Name: "feed", Width: 1080, Height: 1920},
+
+           },
+
+      },
+
+}
+
+```
+
+
+
+2.2 Media Upload Pipeline
+
+
+
+```go
+
+type MediaUploadPipeline struct {
+
+      processors []MediaProcessor
+
+      cdnUploader *CDNUploader
+
+      transcoder *MediaTranscoder
+
+    optimizer    *MediaOptimizer
+
+}
+
+
+
+type MediaProcessor interface {
+
+    Process(ctx context.Context, media *MediaAsset) (*ProcessedMedia, error)
+
+    SupportedFormats() []string
+
+}
+
+
+
+type MediaUploadJob struct {
+
+    JobID       string         `json:"job_id"`
+
+    ContentID      string        `json:"content_id"`
+
+    OriginalMedia *MediaAsset           `json:"original_media"`
+
+    Variants     []MediaVariant      `json:"variants"`
+
+    Status       MediaUploadStatus `json:"status"`
+
+    Progress      float64        `json:"progress"`
+
+    Results      []MediaUploadResult `json:"results"`
+
+}
+
+
+
+type MediaVariant struct {
+
+    Platform      string        `json:"platform"`
+
+    Format       string         `json:"format"`
+
+    Dimensions         ImageDimension    `json:"dimensions,omitempty"`
+
+    Quality      int          `json:"quality"`      // 1-100
+
+    CompressionLevel int            `json:"compression_level"`
+
+}
+
+type MediaUploadResult struct {
+
+    Platform       string `json:"platform"`
+
+    Variant       string `json:"variant"`
+
+    URL           string `json:"url"`
+
+    CDNURL          string `json:"cdn_url"`
+
+    FileSize      int64         `json:"file_size"`
+
+    Format         string `json:"format"`
+
+    Width          int         `json:"width"`
+
+    Height        int          `json:"height"`
+
+    UploadedAt time.Time `json:"uploaded_at"`
+
+    PlatformID string `json:"platform_id,omitempty"`
+
+}
+
+
+
+func (mup *MediaUploadPipeline) ProcessMedia(
+
+    ctx context.Context,
+
+    media *MediaAsset,
+
+    platforms []string,
+
+) (*MediaUploadJob, error) {
+
+
+
+    job := &MediaUploadJob{
+
+        JobID:           uuid.NewV7().String(),
+
+        ContentID:         media.ContentID,
+
+        OriginalMedia: media,
+
+        Status:          MediaUploadStatusProcessing,
+
+        Progress:         0,
+
+    }
+
+// 1. Determine required variants for each platform
+
+for _, platform := range platforms {
+
+    rules := GetPlatformRules(platform)
+
+    variants := mup.determineVariants(media, rules)
+
+    job.Variants = append(job.Variants, variants...)
+
+}
+
+
+
+totalVariants := len(job.Variants)
+
+
+
+// 2. Process variants in parallel
+
+var mu sync.Mutex
+
+var wg sync.WaitGroup
+
+results := make(chan MediaUploadResult, totalVariants)
+
+semaphore := make(chan struct{}, 5) // Limit concurrent uploads
+
+
+
+for _, variant := range job.Variants {
+
+    wg.Add(1)
+
+    go func(v MediaVariant) {
+
+      defer wg.Done()
+
+      semaphore <- struct{}{}
+
+      defer func() { <-semaphore }()
+
+
+
+      // Process variant
+
+      processed, err := mup.processVariant(ctx, media, v)
+
+      if err != nil {
+
+    log.Error().Err(err).Str("platform", v.Platform).Msg("Variant processing failed")
+
+    return
+
+}
+
+
+
+// Upload to CDN
+
+cdnURL, err := mup.cdnUploader.Upload(ctx, processed)
+
+if err != nil {
+
+    log.Error().Err(err).Msg("CDN upload failed")
+
+    return
+
+}
+
+
+
+result := MediaUploadResult{
+
+    Platform: v.Platform,
+
+    Variant: fmt.Sprintf("%dx%d", v.Dimensions.Width, v.Dimensions.Height),
+
+    URL:      cdnURL,
+
+    CDNURL:        cdnURL,
+
+    FileSize: processed.Size,
+
+    Format:       processed.Format,
+
+    Width:        processed.Width,
+
+    Height:       processed.Height,
+
+    UploadedAt: time.Now(),
+
+}
+
+
+
+results <- result
+
+
+
+mu.Lock()
+
+            job.Progress = float64(len(job.Results)+1) / float64(totalVariants)
+
+            mu.Unlock()
+
+          }(variant)
+
+      }
+
+
+
+      wg.Wait()
+
+      close(results)
+
+
+
+      for result := range results {
+
+          job.Results = append(job.Results, result)
+
+      }
+
+
+
+      job.Status = MediaUploadStatusComplete
+
+      job.Progress = 1.0
+
+
+
+      return job, nil
+
+}
+
+```
+
+
+
+---
+
+
+
+PART III — ANALYTICS & INSIGHTS ENGINE
+
+
+
+3.1 Analytics Architecture
+
+
+
+```
+
+ANALYTICS ARCHITECTURE:
+
+┌─────────────────────────────────────────────────────────────────────────┐
+
+│            ANALYTICS & INSIGHTS ENGINE                      │
+
+├─────────────────────────────────────────────────────────────────────────┤
+
+│                                          │
+
+│ DATA INGESTION LAYER                                │
+
+│ ┌────────────────────────────────────────────────────────────────────┐ │
+
+│ │ PLATFORM APIs │ WEBHOOKS │ SDK EVENTS │ KAFKA STREAMS                   ││
+
+│ │ (Pull hourly) │ (Push) │ (Real-time) │ (Internal events) │ │
+
+│ └───────────────────────┬────────────────────────────────────────────┘ │
+
+│              │                           │
+
+│ ┌───────────────────────▼────────────────────────────────────────────┐ │
+
+│ │           EVENT NORMALIZATION LAYER                       ││
+
+│ │ • Schema validation • Platform normalization • Deduplication │ │
+
+│ │ • Enrichment (story_id, campaign_id, author_id)                ││
+
+│ └───────────────────────┬────────────────────────────────────────────┘ │
+
+│              │                           │
+
+│ ┌───────────────────────▼────────────────────────────────────────────┐ │
+
+│ │            DATA LAKE (S3 + Iceberg)               ││
+
+│ │ • Raw events • Normalized events • Aggregations • ML features │ │
+
+│ └───────┬───────────────────────────┬────────────────────────────────┘ │
+
+│     │                │                       │
+
+│ ┌───────▼──────────┐        ┌──────────▼──────────┐                   │
+
+│ │ REAL-TIME      │   │ BATCH         │              │
+
+│ │ ANALYTICS      │   │ ANALYTICS         │              │
+
+│ │ (ClickHouse) │     │ (Spark)      │               │
+
+│ │            │    │                │                │
+
+│ │ • Dashboards        │       │ • ML Training       │             │
+
+│ │ • Alerts       │    │ • Deep Analysis         │             │
+
+│ │ • Live Metrics │        │ • Trend Detection │                       │
+
+│ │ • Breaking News │            │ • Historical Reports│                    │
+
+│ └───────┬──────────┘                └──────────┬──────────┘                           │
+
+│        │                  │                         │
+
+│ ┌───────▼───────────────────────────▼────────────────────────────────┐ │
+
+│ │                INSIGHTS LAYER                          ││
+
+│ │ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────────────┐ │ │
+
+│ │ │ AUDIENCE │ │ CONTENT │ │ PLATFORM │ │ AI OPTIMIZATION                            │ ││
+
+│ │ │INSIGHTS │ │INSIGHTS │ │INSIGHTS │ │ FEEDBACK                              │ ││
+
+│ │ └────┬─────┘ └────┬─────┘ └────┬─────┘ └──────────┬───────────┘ │ │
+
+│ └───────┼────────────┼────────────┼───────────────────┼─────────────┘ │
+
+│        │     │            │            │            │
+
+│ ┌───────▼────────────▼────────────▼───────────────────▼─────────────┐ │
+
+│ │                API LAYER (gRPC + REST)                  ││
+
+│ │ • Dashboards • Reports • Alerts • Recommendations • Export │ │
+
+│ └────────────────────────────────────────────────────────────────────┘ │
+
+└─────────────────────────────────────────────────────────────────────────┘
+
+```
+
+
+
+3.2 Unified Analytics Schema
+
+
+
+```sql
+
+-- ClickHouse: Real-time Analytics
+
+CREATE TABLE analytics_events (
+
+  -- Identifiers
+
+  event_id UUID,
+
+  tenant_id UUID,
+
+  story_id UUID,
+
+  content_id UUID,
+
+  platform_post_id String,
+
+
+
+  -- Event Details
+
+  event_type String,       -- IMPRESSION, CLICK, ENGAGEMENT, SHARE, etc.
+
+  event_subtype String,      -- LIKE, COMMENT, RETWEET, SAVE, etc.
+
+  platform String,        -- WEB, TWITTER, FACEBOOK, INSTAGRAM, etc.
+
+
+
+  -- Metrics
+
+  metric_name String,
+
+  metric_value Float64,
+
+
+
+  -- User/Demographics
+
+  user_id String,
+
+  session_id String,
+
+  device_type String,
+
+  country String,
+
+  region String,
+
+  language String,
+
+  referrer String,
+
+utm_source String,
+
+utm_medium String,
+
+utm_campaign String,
+
+
+
+-- Timestamps
+
+event_timestamp DateTime64(3),
+
+ingested_at DateTime64(3) DEFAULT now64(3),
+
+
+
+-- Content Metadata
+
+content_type String,
+
+content_category String,
+
+content_author String,
+
+content_length Int32,
+
+content_archetype String,
+
+
+
+-- AI Metadata
+
+ai_model_used String,
+
+ai_confidence Float32,
+
+generation_version String,
+
+
+
+-- Engagement Details
+
+read_depth Float32,        -- 0-100 percentage
+
+time_on_page Int32,        -- seconds
+
+scroll_depth Float32,      -- 0-100 percentage
+
+video_watch_time Float32, -- seconds
+
+video_completion_rate Float32,
+
+      audio_listen_time Float32,
+
+
+
+      -- Revenue
+
+      revenue_impact Float32,
+
+      subscription_conversion Boolean,
+
+      ad_impressions Int32,
+
+      ad_revenue Float32,
+
+
+
+      -- Indexes
+
+      INDEX idx_story story_id TYPE bloom_filter GRANULARITY 1,
+
+      INDEX idx_platform platform TYPE set(0) GRANULARITY 1,
+
+      INDEX idx_event_type event_type TYPE set(0) GRANULARITY 1
+
+) ENGINE = MergeTree()
+
+PARTITION BY toYYYYMM(event_timestamp)
+
+ORDER BY (tenant_id, story_id, platform, event_type, event_timestamp)
+
+TTL event_timestamp + INTERVAL 90 DAY DELETE;
+
+```
+
+
+
+3.3 Real-Time Analytics Processing
+
+
+
+```go
+
+type RealTimeAnalyticsEngine struct {
+
+      clickhouse *clickhouse.Client
+
+      redis    *redis.Client
+
+      kafka    *kafka.Consumer
+
+      alertEngine *AlertEngine
+
+}
+
+
+
+type StoryMetrics struct {
+
+    StoryID        string               `json:"story_id"`
+
+    Title         string              `json:"title"`
+
+    PublishedAt       time.Time               `json:"published_at"`
+
+
+
+    // Aggregate Metrics
+
+    TotalImpressions int64                   `json:"total_impressions"`
+
+    TotalClicks        int64             `json:"total_clicks"`
+
+    TotalEngagements int64                     `json:"total_engagements"`
+
+    CTR             float64             `json:"ctr"`
+
+    EngagementRate            float64          `json:"engagement_rate"`
+
+
+
+    // Platform Breakdown
+
+    PlatformMetrics         map[string]*PlatformStoryMetrics `json:"platform_metrics"`
+
+
+
+    // Time Series (last 24h)
+
+    HourlyMetrics           []HourlyMetric       `json:"hourly_metrics"`
+
+
+
+    // Real-time
+
+    CurrentVelocity         float64          `json:"current_velocity"`     // engagements/minute
+
+    IsTrending         bool              `json:"is_trending"`
+
+    ViralProbability float64                 `json:"viral_probability"`
+
+
+
+    // AI Performance
+
+    AIQualityScore     float64           `json:"ai_quality_score"`
+
+    PredictedPerformance float64              `json:"predicted_performance"`
+
+    ActualPerformance float64              `json:"actual_performance"`
+
+    PerformanceGap         float64         `json:"performance_gap"`
+
+}
+
+
+
+type PlatformStoryMetrics struct {
+
+    Platform       string `json:"platform"`
+
+    Impressions      int64 `json:"impressions"`
+
+    Clicks     int64 `json:"clicks"`
+
+    CTR          float64 `json:"ctr"`
+
+    Engagements       int64 `json:"engagements"`
+
+    EngagementRate float64 `json:"engagement_rate"`
+
+    Shares        int64 `json:"shares"`
+
+    Comments         int64 `json:"comments"`
+
+    Likes      int64 `json:"likes"`
+
+    Saves         int64 `json:"saves"`
+
+    VideoViews       int64 `json:"video_views,omitempty"`
+
+    WatchTimeSeconds float64 `json:"watch_time_seconds,omitempty"`
+
+    CompletionRate float64 `json:"completion_rate,omitempty"`
+
+    RevenueGenerated float64 `json:"revenue_generated"`
+
+}
+
+
+
+func (rtae *RealTimeAnalyticsEngine) ProcessEvent(
+
+    ctx context.Context,
+
+    event *AnalyticsEvent,
+
+) error {
+
+
+
+  // 1. Write to ClickHouse
+
+  if err := rtae.clickhouse.Insert(ctx, "analytics_events", event); err != nil {
+
+      return fmt.Errorf("clickhouse insert: %w", err)
+
+  }
+
+
+
+  // 2. Update real-time counters in Redis
+
+  pipeline := rtae.redis.Pipeline()
+
+
+
+  // Increment total counters
+
+  pipeline.HIncrBy(ctx, fmt.Sprintf("story:%s:metrics", event.StoryID),
+
+      fmt.Sprintf("%s_%s", event.Platform, event.EventType), 1)
+
+
+
+  // Update velocity counter (sliding window)
+
+  now := time.Now().Unix()
+
+  windowKey := fmt.Sprintf("story:%s:velocity:%d", event.StoryID, now/60) // Per-minute
+window
+
+  pipeline.Incr(ctx, windowKey)
+
+  pipeline.Expire(ctx, windowKey, 5*time.Minute)
+
+
+
+  // Update trending score
+
+  pipeline.ZIncrBy(ctx, "trending:stories", 1, event.StoryID)
+
+
+
+  if _, err := pipeline.Exec(ctx); err != nil {
+
+      return fmt.Errorf("redis update: %w", err)
+
+    }
+
+
+
+    // 3. Check alerts
+
+    rtae.checkAlerts(ctx, event)
+
+
+
+    return nil
+
+}
+
+
+
+func (rtae *RealTimeAnalyticsEngine) GetStoryMetrics(
+
+    ctx context.Context,
+
+    storyID string,
+
+) (*StoryMetrics, error) {
+
+
+
+    // Get real-time metrics from Redis
+
+    redisData, _ := rtae.redis.HGetAll(ctx, fmt.Sprintf("story:%s:metrics", storyID)).Result()
+
+
+
+    // Get detailed metrics from ClickHouse
+
+    query := `
+
+        SELECT
+
+          platform,
+
+          event_type,
+
+          count() as count
+
+        FROM analytics_events
+
+        WHERE story_id = ?
+
+        AND event_timestamp >= now() - INTERVAL 24 HOUR
+
+        GROUP BY platform, event_type
+
+`
+
+
+
+rows, err := rtae.clickhouse.Query(ctx, query, storyID)
+
+if err != nil {
+
+    return nil, err
+
+}
+
+defer rows.Close()
+
+
+
+metrics := &StoryMetrics{
+
+    StoryID:        storyID,
+
+    PlatformMetrics: make(map[string]*PlatformStoryMetrics),
+
+}
+
+
+
+for rows.Next() {
+
+    var platform, eventType string
+
+    var count int64
+
+    rows.Scan(&platform, &eventType, &count)
+
+
+
+    if metrics.PlatformMetrics[platform] == nil {
+
+        metrics.PlatformMetrics[platform] = &PlatformStoryMetrics{
+
+            Platform: platform,
+
+        }
+
+    }
+
+
+
+    pm := metrics.PlatformMetrics[platform]
+
+    switch eventType {
+
+      case "IMPRESSION":
+
+          pm.Impressions = count
+
+      case "CLICK":
+
+          pm.Clicks = count
+
+      case "ENGAGEMENT":
+
+          pm.Engagements = count
+
+      case "SHARE":
+
+          pm.Shares = count
+
+      case "COMMENT":
+
+          pm.Comments = count
+
+      case "LIKE":
+
+          pm.Likes = count
+
+      case "SAVE":
+
+          pm.Saves = count
+
+      }
+
+
+
+      metrics.TotalImpressions += count
+
+  }
+
+
+
+  // Calculate derived metrics
+
+  if metrics.TotalImpressions > 0 {
+
+      metrics.CTR = float64(metrics.TotalClicks) / float64(metrics.TotalImpressions) * 100
+
+     metrics.EngagementRate = float64(metrics.TotalEngagements) /
+float64(metrics.TotalImpressions) * 100
+
+  }
+
+      // Calculate velocity
+
+      metrics.CurrentVelocity = rtae.calculateVelocity(ctx, storyID)
+
+
+
+      // Check if trending
+
+      metrics.IsTrending = metrics.CurrentVelocity > 10.0 // 10+ engagements/min
+
+      metrics.ViralProbability = rtae.calculateViralProbability(ctx, metrics)
+
+
+
+      return metrics, nil
+
+}
+
+```
+
+
+
+3.4 Batch Analytics & ML Training
+
+
+
+```python
+
+class BatchAnalyticsEngine:
+
+      """
+
+      Spark-based batch analytics for deep analysis and ML training.
+
+      """
+
+
+
+      def __init__(self, spark_session, data_lake_path, feature_store):
+
+        self.spark = spark_session
+
+        self.data_lake = data_lake_path
+
+        self.feature_store = feature_store
+
+
+
+      def run_daily_analytics(self, date: str) -> DailyAnalyticsReport:
+
+        """
+
+Generate comprehensive daily analytics report.
+
+"""
+
+
+
+# Load day's events
+
+events = self.spark.read.format("iceberg") \
+
+  .load(f"{self.data_lake}/analytics_events") \
+
+  .filter(f"date(event_timestamp) = '{date}'")
+
+
+
+report = DailyAnalyticsReport(date=date)
+
+
+
+# 1. Story Performance Analysis
+
+report.story_performance = self.analyze_story_performance(events)
+
+
+
+# 2. Platform Comparison
+
+report.platform_comparison = self.analyze_platforms(events)
+
+
+
+# 3. Audience Analysis
+
+report.audience_insights = self.analyze_audience(events)
+
+
+
+# 4. AI Performance Analysis
+
+report.ai_performance = self.analyze_ai_performance(events)
+
+
+
+# 5. Content Type Analysis
+
+report.content_type_analysis = self.analyze_content_types(events)
+
+
+
+# 6. Time-of-Day Analysis
+
+    report.timing_analysis = self.analyze_posting_times(events)
+
+
+
+    # 7. Viral Content Analysis
+
+    report.viral_analysis = self.analyze_viral_content(events)
+
+
+
+    # 8. Revenue Attribution
+
+    report.revenue_attribution = self.analyze_revenue(events)
+
+
+
+    return report
+
+
+
+  def analyze_story_performance(self, events) -> StoryPerformanceReport:
+
+    """
+
+    Analyze performance of all stories.
+
+    """
+
+
+
+    return events.groupBy("story_id", "content_type", "content_category") \
+
+      .agg(
+
+          F.countDistinct("user_id").alias("unique_readers"),
+
+        F.sum(F.when(F.col("event_type") == "IMPRESSION",
+1).otherwise(0)).alias("impressions"),
+
+          F.sum(F.when(F.col("event_type") == "CLICK", 1).otherwise(0)).alias("clicks"),
+
+        F.sum(F.when(F.col("event_type") == "ENGAGEMENT",
+1).otherwise(0)).alias("engagements"),
+
+          F.sum(F.when(F.col("event_type") == "SHARE", 1).otherwise(0)).alias("shares"),
+
+          F.avg("read_depth").alias("avg_read_depth"),
+
+          F.avg("time_on_page").alias("avg_time_on_page"),
+
+          F.sum("revenue_impact").alias("total_revenue"),
+
+      )\
+
+      .withColumn("ctr", F.col("clicks") / F.col("impressions") * 100) \
+
+      .withColumn("engagement_rate", F.col("engagements") / F.col("impressions") * 100) \
+
+      .orderBy(F.col("engagements").desc())
+
+
+
+  def analyze_viral_content(self, events) -> ViralContentReport:
+
+    """
+
+    Identify viral content patterns.
+
+    """
+
+
+
+    # Define viral threshold (top 1% by engagement velocity)
+
+    velocity_window = Window.partitionBy("story_id").orderBy("event_timestamp")
+
+
+
+    viral_candidates = events \
+
+      .withColumn("engagement_count",
+
+        F.when(F.col("event_type").isin(["LIKE", "SHARE", "COMMENT", "RETWEET"]),
+1).otherwise(0)) \
+
+      .withColumn("hour", F.window("event_timestamp", "1 hour")) \
+
+      .groupBy("story_id", "hour") \
+
+      .agg(F.sum("engagement_count").alias("hourly_engagements")) \
+
+      .withColumn("velocity", F.col("hourly_engagements") / 3600)
+
+
+
+    # Identify viral patterns
+
+    viral_stories = viral_candidates \
+
+      .groupBy("story_id") \
+
+      .agg(
+
+              F.max("velocity").alias("peak_velocity"),
+
+              F.avg("velocity").alias("avg_velocity"),
+
+              F.sum("hourly_engagements").alias("total_engagements"),
+
+          )\
+
+          .filter(F.col("peak_velocity") > 100) # 100+ engagements/hour
+
+
+
+      # Analyze common characteristics
+
+      viral_characteristics = events \
+
+          .filter(F.col("story_id").isin([r.story_id for r in viral_stories.collect()])) \
+
+          .groupBy("content_type", "content_category", "content_archetype") \
+
+          .agg(
+
+              F.countDistinct("story_id").alias("viral_stories"),
+
+              F.avg("read_depth").alias("avg_read_depth"),
+
+          )
+
+
+
+      return ViralContentReport(
+
+          viral_stories=viral_stories,
+
+          characteristics=viral_characteristics,
+
+      )
+
+```
+
+
+
+---
+
+
+
+PART IV — AUDIENCE INTELLIGENCE
+
+
+
+4.1 Audience Profiling Engine
+
+```go
+
+type AudienceIntelligenceEngine struct {
+
+    clickhouse *clickhouse.Client
+
+    neo4j       neo4j.Driver
+
+    redis       *redis.Client
+
+    segmentation *SegmentationEngine
+
+}
+
+
+
+type AudienceProfile struct {
+
+    ProfileID        string        `json:"profile_id"`
+
+    SegmentName           string        `json:"segment_name"`
+
+
+
+    // Demographics
+
+    Demographics         DemographicProfile     `json:"demographics"`
+
+
+
+    // Behavior
+
+    BehaviorPatterns BehaviorProfile          `json:"behavior_patterns"`
+
+
+
+    // Content Preferences
+
+    ContentPreferences ContentPreferenceProfile `json:"content_preferences"`
+
+
+
+    // Engagement
+
+    EngagementMetrics EngagementProfile           `json:"engagement_metrics"`
+
+
+
+    // Platform Usage
+
+    PlatformPreferences PlatformPreferenceProfile `json:"platform_preferences"`
+
+
+
+    // Predictive
+
+    ChurnRisk         float64         `json:"churn_risk"`
+
+    SubscriptionProbability float64           `json:"subscription_probability"`
+
+    LifetimeValue      float64         `json:"lifetime_value"`
+
+    NextBestAction      string             `json:"next_best_action"`
+
+
+
+    // Size
+
+    SegmentSize        int64           `json:"segment_size"`
+
+    LastUpdated        time.Time            `json:"last_updated"`
+
+}
+
+
+
+type DemographicProfile struct {
+
+    AgeGroups         map[string]float64       `json:"age_groups"`       // 18-24: 0.25, etc.
+
+    GenderDistribution map[string]float64         `json:"gender_distribution"`
+
+    TopCountries       []CountryAffinity      `json:"top_countries"`
+
+    TopLanguages        []LanguageAffinity      `json:"top_languages"`
+
+    IncomeBrackets      map[string]float64       `json:"income_brackets"`
+
+    EducationLevels     map[string]float64       `json:"education_levels"`
+
+    Occupations        []OccupationAffinity `json:"occupations"`
+
+}
+
+
+
+type BehaviorProfile struct {
+
+    AverageSessionDuration float64              `json:"average_session_duration"`
+
+    AveragePagesPerSession float64              `json:"average_pages_per_session"`
+
+    PeakActivityHours       []int          `json:"peak_activity_hours"` // 8, 12, 20
+
+    PeakActivityDays        []int         `json:"peak_activity_days"`     // 1=Monday
+
+    AverageReadDepth          float64         `json:"average_read_depth"`
+
+    BounceRate           float64          `json:"bounce_rate"`
+
+    ReturnFrequency          float64         `json:"return_frequency"`      // days between visits
+
+    ContentInteractionRate float64             `json:"content_interaction_rate"`
+
+    SharingBehavior         string         `json:"sharing_behavior"`      // HIGH, MEDIUM, LOW
+
+}
+
+
+
+type ContentPreferenceProfile struct {
+
+    TopCategories          []CategoryAffinity `json:"top_categories"`
+
+    TopTopics           []TopicAffinity    `json:"top_topics"`
+
+    PreferredContentTypes []ContentTypeAffinity `json:"preferred_content_types"`
+
+  PreferredArticleLength string               `json:"preferred_article_length"` // SHORT, MEDIUM,
+LONG
+
+    PreferredTone          string         `json:"preferred_tone"`
+
+    AvoidedTopics          []string        `json:"avoided_topics"`
+
+    VideoVsText          float64          `json:"video_vs_text"`        // 0=text only, 1=video only
+
+    ReadingLevel         string           `json:"reading_level"`
+
+}
+
+
+
+func (aie *AudienceIntelligenceEngine) BuildAudienceProfile(
+
+    ctx context.Context,
+
+    segmentID string,
+
+) (*AudienceProfile, error) {
+
+profile := &AudienceProfile{
+
+    ProfileID: uuid.NewV7().String(),
+
+    LastUpdated: time.Now(),
+
+}
+
+
+
+// 1. Demographic analysis
+
+demographics, err := aie.analyzeDemographics(ctx, segmentID)
+
+if err != nil {
+
+    return nil, fmt.Errorf("demographics: %w", err)
+
+}
+
+profile.Demographics = *demographics
+
+
+
+// 2. Behavior pattern analysis
+
+behavior, err := aie.analyzeBehavior(ctx, segmentID)
+
+if err != nil {
+
+    return nil, fmt.Errorf("behavior: %w", err)
+
+}
+
+profile.BehaviorPatterns = *behavior
+
+
+
+// 3. Content preference analysis
+
+preferences, err := aie.analyzeContentPreferences(ctx, segmentID)
+
+if err != nil {
+
+    return nil, fmt.Errorf("preferences: %w", err)
+
+}
+
+profile.ContentPreferences = *preferences
+
+      // 4. Engagement metrics
+
+      engagement, err := aie.analyzeEngagement(ctx, segmentID)
+
+      if err != nil {
+
+          return nil, fmt.Errorf("engagement: %w", err)
+
+      }
+
+      profile.EngagementMetrics = *engagement
+
+
+
+      // 5. Platform preferences
+
+      platforms, err := aie.analyzePlatformPreferences(ctx, segmentID)
+
+      if err != nil {
+
+          return nil, fmt.Errorf("platforms: %w", err)
+
+      }
+
+      profile.PlatformPreferences = *platforms
+
+
+
+      // 6. Predictive modeling
+
+      profile.ChurnRisk = aie.predictChurnRisk(ctx, segmentID)
+
+      profile.SubscriptionProbability = aie.predictSubscriptionProbability(ctx, segmentID)
+
+      profile.LifetimeValue = aie.calculateLifetimeValue(ctx, profile)
+
+      profile.NextBestAction = aie.recommendNextBestAction(ctx, profile)
+
+
+
+      // Cache profile
+
+      aie.cacheProfile(ctx, profile)
+
+
+
+      return profile, nil
+
+}
+
+```
+
+4.2 Recommendation Engine
+
+
+
+```go
+
+type RecommendationEngine struct {
+
+    neo4j        neo4j.Driver
+
+    redis        *redis.Client
+
+    clickhouse *clickhouse.Client
+
+    modelRegistry *ModelRegistry
+
+}
+
+
+
+type ContentRecommendation struct {
+
+    StoryID         string         `json:"story_id"`
+
+    Title         string         `json:"title"`
+
+    Score          float64         `json:"score"`
+
+    RecommendationType string               `json:"recommendation_type"`
+
+    Reason           string        `json:"reason"`
+
+    PersonalizationFactors []string        `json:"personalization_factors"`
+
+}
+
+
+
+func (re *RecommendationEngine) GetRecommendations(
+
+    ctx context.Context,
+
+    userID string,
+
+    context RecommendationContext,
+
+    limit int,
+
+) ([]*ContentRecommendation, error) {
+
+// 1. Get user profile
+
+userProfile, err := re.getUserProfile(ctx, userID)
+
+if err != nil {
+
+    // Fall back to non-personalized recommendations
+
+    return re.getTrendingRecommendations(ctx, limit)
+
+}
+
+
+
+// 2. Multi-strategy recommendation blending
+
+strategies := []RecommendationStrategy{
+
+    &CollaborativeFiltering{weight: 0.35},
+
+    &ContentBasedFiltering{weight: 0.30},
+
+    &TrendingBoost{weight: 0.15},
+
+    &FreshnessBoost{weight: 0.10},
+
+    &ExplorationDiversification{weight: 0.10},
+
+}
+
+
+
+// 3. Generate candidates from each strategy
+
+var allCandidates []*ContentRecommendation
+
+var mu sync.Mutex
+
+var wg sync.WaitGroup
+
+
+
+for _, strategy := range strategies {
+
+    wg.Add(1)
+
+    go func(s RecommendationStrategy) {
+
+      defer wg.Done()
+
+      candidates, err := s.GetCandidates(ctx, userProfile, context, limit*2)
+
+      if err != nil {
+
+          return
+
+      }
+
+
+
+      // Apply strategy weight
+
+      for _, c := range candidates {
+
+          c.Score *= s.GetWeight()
+
+      }
+
+
+
+      mu.Lock()
+
+      allCandidates = append(allCandidates, candidates...)
+
+      mu.Unlock()
+
+    }(strategy)
+
+}
+
+
+
+wg.Wait()
+
+
+
+// 4. Merge and deduplicate
+
+merged := re.mergeAndDeduplicate(allCandidates)
+
+
+
+// 5. Re-rank with ML model
+
+ranked, err := re.rankWithML(ctx, userProfile, merged, context)
+
+if err != nil {
+
+    // Fall back to score-based ranking
+
+        sort.Slice(merged, func(i, j int) bool {
+
+             return merged[i].Score > merged[j].Score
+
+        })
+
+        ranked = merged
+
+    }
+
+
+
+    // 6. Apply diversity and freshness constraints
+
+    diversified := re.ensureDiversity(ranked)
+
+
+
+    // 7. Apply business rules
+
+    filtered := re.applyBusinessRules(ctx, diversified, userID)
+
+
+
+    if len(filtered) > limit {
+
+        filtered = filtered[:limit]
+
+    }
+
+
+
+    return filtered, nil
+
+}
+
+
+
+func (re *RecommendationEngine) rankWithML(
+
+    ctx context.Context,
+
+    userProfile *UserProfile,
+
+    candidates []*ContentRecommendation,
+
+    context RecommendationContext,
+
+) ([]*ContentRecommendation, error) {
+
+      // Load ranking model
+
+      model, err := re.modelRegistry.LoadModel("content_ranking_v3")
+
+      if err != nil {
+
+           return nil, err
+
+      }
+
+
+
+      // Build feature vectors for each candidate
+
+      features := make([]float64, len(candidates))
+
+
+
+      for i, candidate := range candidates {
+
+           featureVector := re.buildFeatureVector(userProfile, candidate, context)
+
+           score, _ := model.Predict(featureVector)
+
+           candidate.Score = score
+
+      }
+
+
+
+      // Sort by predicted score
+
+      sort.Slice(candidates, func(i, j int) bool {
+
+           return candidates[i].Score > candidates[j].Score
+
+      })
+
+
+
+      return candidates, nil
+
+}
+
+```
+
+
+
+---
+
+PART V — AI OPTIMIZATION ENGINE
+
+
+
+5.1 Continuous Learning Feedback Loop
+
+
+
+```
+
+CLOSED-LOOP AI OPTIMIZATION:
+
+┌─────────────────────────────────────────────────────────────────────────┐
+
+│          AI OPTIMIZATION FEEDBACK LOOP                                   │
+
+├─────────────────────────────────────────────────────────────────────────┤
+
+│                                              │
+
+│ ┌──────────────────┐                                             │
+
+│ │ CONTENT CREATION │──── Generates Content ────┐                             │
+
+│ │ (AI Agents)   │                │                   │
+
+│ └────────┬─────────┘                         │                       │
+
+│      │                   ▼                       │
+
+│      │              ┌──────────────────┐                         │
+
+│      │              │ DISTRIBUTION │                         │
+
+│      │              │   ENGINE       │               │
+
+│      │              └────────┬─────────┘                             │
+
+│      │                  │                    │
+
+│      │                  ▼                        │
+
+│      │              ┌──────────────────┐                         │
+
+│      │              │ ANALYTICS          │               │
+
+│      │              │   ENGINE       │               │
+
+│      │              └────────┬─────────┘                             │
+
+│      │                  │                    │
+
+│      │                   ▼                  │
+
+│      │              ┌──────────────────┐                    │
+
+│      │              │ PERFORMANCE │                     │
+
+│      │              │ MEASUREMENT │                     │
+
+│      │              └────────┬─────────┘                        │
+
+│      │                   │              │
+
+│      │                   ▼                  │
+
+│      │              ┌──────────────────┐                    │
+
+│      │              │ OPTIMIZATION │                │
+
+│      │              │ SIGNALS       │           │
+
+│      │              └────────┬─────────┘                        │
+
+│      │                   │              │
+
+│      └─────────── FEEDBACK        ─────────────┘                    │
+
+│                                         │
+
+│ FEEDBACK SIGNALS:                                   │
+
+│ • Headline CTR by pattern → Adjust headline generation prompts              │
+
+│ • Optimal post times by audience → Adjust scheduling algorithm              │
+
+│ • Content length vs engagement → Adjust article generation parameters │
+
+│ • Image style performance → Adjust image prompt generation                  │
+
+│ • Topic performance trends → Adjust story selection/priority            │
+
+│ • Platform-specific patterns → Adjust per-platform adaptation           │
+
+└─────────────────────────────────────────────────────────────────────────┘
+
+```
+
+
+
+5.2 Optimization Engine
+
+```go
+
+type AIOptimizationEngine struct {
+
+    featureStore *FeatureStore
+
+    modelRegistry *ModelRegistry
+
+    experimentEngine *ExperimentEngine
+
+    feedbackBus     kafka.Producer
+
+}
+
+
+
+type OptimizationSignal struct {
+
+    SignalID     string          `json:"signal_id"`
+
+    SignalType     OptimizationType `json:"signal_type"`
+
+    Target       string         `json:"target"`       // Which AI component to update
+
+    CurrentPerformance float64           `json:"current_performance"`
+
+    TargetPerformance float64           `json:"target_performance"`
+
+    RecommendedChange string               `json:"recommended_change"`
+
+    Confidence      float64         `json:"confidence"`
+
+    Evidence      []EvidencePoint      `json:"evidence"`
+
+    GeneratedAt      time.Time         `json:"generated_at"`
+
+}
+
+
+
+type OptimizationType string
+
+const (
+
+    OptHeadlineGeneration OptimizationType = "HEADLINE_GENERATION"
+
+    OptContentStructure OptimizationType = "CONTENT_STRUCTURE"
+
+    OptPublishingTime         OptimizationType = "PUBLISHING_TIME"
+
+    OptImageGeneration         OptimizationType = "IMAGE_GENERATION"
+
+    OptPlatformAdaptation OptimizationType = "PLATFORM_ADAPTATION"
+
+    OptHashtagSelection OptimizationType = "HASHTAG_SELECTION"
+
+    OptStorySelection       OptimizationType = "STORY_SELECTION"
+
+    OptContentLength         OptimizationType = "CONTENT_LENGTH"
+
+    OptToneSelection        OptimizationType = "TONE_SELECTION"
+
+)
+
+
+
+func (aoe *AIOptimizationEngine) GenerateOptimizationSignals(
+
+    ctx context.Context,
+
+    timeWindow time.Duration,
+
+) ([]*OptimizationSignal, error) {
+
+
+
+    var signals []*OptimizationSignal
+
+
+
+    // 1. Headline Optimization
+
+    headlineSignals, err := aoe.optimizeHeadlines(ctx, timeWindow)
+
+    if err == nil {
+
+        signals = append(signals, headlineSignals...)
+
+    }
+
+
+
+    // 2. Publishing Time Optimization
+
+    timingSignals, err := aoe.optimizePublishingTimes(ctx, timeWindow)
+
+    if err == nil {
+
+        signals = append(signals, timingSignals...)
+
+    }
+
+// 3. Content Structure Optimization
+
+structureSignals, err := aoe.optimizeContentStructure(ctx, timeWindow)
+
+if err == nil {
+
+    signals = append(signals, structureSignals...)
+
+}
+
+
+
+// 4. Platform Adaptation Optimization
+
+platformSignals, err := aoe.optimizePlatformAdaptation(ctx, timeWindow)
+
+if err == nil {
+
+    signals = append(signals, platformSignals...)
+
+}
+
+
+
+// 5. Image/Thumbnail Optimization
+
+imageSignals, err := aoe.optimizeImages(ctx, timeWindow)
+
+if err == nil {
+
+    signals = append(signals, imageSignals...)
+
+}
+
+
+
+// 6. Hashtag Optimization
+
+hashtagSignals, err := aoe.optimizeHashtags(ctx, timeWindow)
+
+if err == nil {
+
+    signals = append(signals, hashtagSignals...)
+
+}
+
+
+
+// Publish signals to AI agents
+
+for _, signal := range signals {
+
+        aoe.feedbackBus.Publish(ctx, "ai.optimization.signal", signal)
+
+    }
+
+
+
+    return signals, nil
+
+}
+
+
+
+func (aoe *AIOptimizationEngine) optimizeHeadlines(
+
+    ctx context.Context,
+
+    timeWindow time.Duration,
+
+) ([]*OptimizationSignal, error) {
+
+
+
+    // Analyze headline performance patterns
+
+    query := `
+
+        SELECT
+
+          headline_pattern,
+
+          count() as usage_count,
+
+          avg(ctr) as avg_ctr,
+
+          avg(engagement_rate) as avg_engagement
+
+        FROM headline_performance
+
+        WHERE published_at >= now() - INTERVAL ?
+
+        GROUP BY headline_pattern
+
+        HAVING usage_count > 100
+
+        ORDER BY avg_ctr DESC
+
+    `
+
+
+
+    results, _ := aoe.clickhouse.Query(ctx, query, timeWindow)
+
+      signals := []*OptimizationSignal{}
+
+
+
+      // Identify top-performing patterns
+
+      for _, result := range results {
+
+          if result.AvgCTR > baselineCTR * 1.2 {
+
+              signals = append(signals, &OptimizationSignal{
+
+                   SignalType: OptHeadlineGeneration,
+
+                   Target:      "headline_generation_prompt",
+
+                   RecommendedChange: fmt.Sprintf("Increase usage of pattern: %s", result.Pattern),
+
+                   Confidence: min(result.AvgCTR/baselineCTR, 1.0),
+
+                   Evidence: []EvidencePoint{
+
+                        {Metric: "avg_ctr", Value: result.AvgCTR, Baseline: baselineCTR},
+
+                        {Metric: "usage_count", Value: float64(result.UsageCount)},
+
+                   },
+
+              })
+
+          }
+
+      }
+
+
+
+      return signals, nil
+
+}
+
+```
+
+
+
+5.3 A/B Testing & Multi-Armed Bandit
+
+
+
+```go
+
+type ExperimentEngine struct {
+
+    experimentStore *ExperimentStore
+
+    banditSolver *BanditSolver
+
+    metricsClient *ClickHouseClient
+
+}
+
+
+
+type ContentExperiment struct {
+
+    ExperimentID string               `json:"experiment_id"`
+
+    Name          string         `json:"name"`
+
+    Status       ExperimentStatus        `json:"status"`
+
+    Variants      []ExperimentVariant     `json:"variants"`
+
+    TrafficSplit map[string]float64      `json:"traffic_split"`
+
+    Metric        string        `json:"primary_metric"`
+
+    StartTime      time.Time          `json:"start_time"`
+
+    EndTime        *time.Time           `json:"end_time"`
+
+    Results       *ExperimentResults      `json:"results,omitempty"`
+
+}
+
+
+
+type ExperimentVariant struct {
+
+    VariantID      string        `json:"variant_id"`
+
+    Name          string         `json:"name"`
+
+    Parameters      map[string]interface{} `json:"parameters"`
+
+    Impressions     int64           `json:"impressions"`
+
+    Conversions     int64           `json:"conversions"`
+
+    ConversionRate float64              `json:"conversion_rate"`
+
+    ConfidenceInterval ConfidenceInterval `json:"confidence_interval"`
+
+    IsWinner      bool            `json:"is_winner"`
+
+    ImprovementOverBaseline float64         `json:"improvement_over_baseline"`
+
+}
+
+
+
+type BanditSolver struct {
+
+    algorithm string // THOMPSON_SAMPLING, UCB, EPSILON_GREEDY
+
+}
+
+
+
+func (bs *BanditSolver) SelectVariant(
+
+    ctx context.Context,
+
+    experiment *ContentExperiment,
+
+) (*ExperimentVariant, error) {
+
+
+
+    switch bs.algorithm {
+
+    case "THOMPSON_SAMPLING":
+
+        return bs.thompsonSampling(experiment)
+
+    case "UCB":
+
+        return bs.upperConfidenceBound(experiment)
+
+    case "EPSILON_GREEDY":
+
+        return bs.epsilonGreedy(experiment, 0.1)
+
+    default:
+
+        return bs.thompsonSampling(experiment)
+
+    }
+
+}
+
+
+
+func (bs *BanditSolver) thompsonSampling(
+
+    experiment *ContentExperiment,
+
+) (*ExperimentVariant, error) {
+
+
+
+    var bestVariant *ExperimentVariant
+
+    var bestSample float64
+
+
+
+    for i := range experiment.Variants {
+
+        variant := &experiment.Variants[i]
+
+
+
+        // Beta distribution sampling
+
+        alpha := float64(variant.Conversions + 1)
+
+        beta := float64(variant.Impressions - variant.Conversions + 1)
+
+
+
+        sample := sampleBetaDistribution(alpha, beta)
+
+
+
+        if sample > bestSample {
+
+            bestSample = sample
+
+            bestVariant = variant
+
+        }
+
+    }
+
+
+
+    return bestVariant, nil
+
+}
+
+
+
+func (ee *ExperimentEngine) AnalyzeExperiment(
+
+    ctx context.Context,
+
+  experimentID string,
+
+) (*ExperimentResults, error) {
+
+
+
+  experiment, err := ee.experimentStore.Get(ctx, experimentID)
+
+  if err != nil {
+
+      return nil, err
+
+  }
+
+
+
+  // Calculate statistics for each variant
+
+  for i := range experiment.Variants {
+
+      variant := &experiment.Variants[i]
+
+
+
+      // Calculate conversion rate
+
+      if variant.Impressions > 0 {
+
+          variant.ConversionRate = float64(variant.Conversions) / float64(variant.Impressions)
+
+      }
+
+
+
+      // Calculate confidence interval (Wilson score)
+
+      variant.ConfidenceInterval = calculateWilsonCI(
+
+          variant.Conversions, variant.Impressions, 0.95,
+
+      )
+
+  }
+
+
+
+  // Find winner using statistical test
+
+  baseline := &experiment.Variants[0] // First variant is control
+
+  for i := 1; i < len(experiment.Variants); i++ {
+
+          variant := &experiment.Variants[i]
+
+
+
+          // Perform chi-squared test
+
+          pValue := chiSquaredTest(
+
+              variant.Conversions, variant.Impressions,
+
+              baseline.Conversions, baseline.Impressions,
+
+          )
+
+
+
+          if pValue < 0.05 && variant.ConversionRate > baseline.ConversionRate {
+
+              variant.IsWinner = true
+
+              variant.ImprovementOverBaseline =
+
+                (variant.ConversionRate - baseline.ConversionRate) / baseline.ConversionRate * 100
+
+          }
+
+      }
+
+
+
+      results := &ExperimentResults{
+
+          ExperimentID: experimentID,
+
+          Variants:    experiment.Variants,
+
+          DeclaredWinner: findWinner(experiment.Variants),
+
+          StatisticalPower: calculateStatisticalPower(experiment),
+
+          Recommendation: generateRecommendation(experiment),
+
+      }
+
+
+
+      return results, nil
+
+}
+
+```
+
+---
+
+
+
+PART VI — CONTINUOUS STORY MONITORING
+
+
+
+6.1 Story Health Monitoring
+
+
+
+```go
+
+type StoryMonitor struct {
+
+    clickhouse *clickhouse.Client
+
+    redis      *redis.Client
+
+    alertEngine *AlertEngine
+
+    eventBus      kafka.Producer
+
+}
+
+
+
+type StoryHealthStatus struct {
+
+    StoryID        string        `json:"story_id"`
+
+    PublishedAt      time.Time        `json:"published_at"`
+
+    TimeSincePublish time.Duration        `json:"time_since_publish"`
+
+
+
+    // Health Indicators
+
+    HealthScore       float64       `json:"health_score"`     // 0-100
+
+    Status        StoryHealthState `json:"status"`
+
+
+
+    // Engagement
+
+    CurrentEngagement float64            `json:"current_engagement"` // per minute
+
+    EngagementTrend string                 `json:"engagement_trend"`         // RISING, STABLE, FALLING
+
+    PeakEngagement         float64          `json:"peak_engagement"`
+
+    TimeToPeak         time.Duration        `json:"time_to_peak"`
+
+
+
+    // Virality
+
+    ViralScore       float64          `json:"viral_score"`        // 0-100
+
+    IsViral        bool            `json:"is_viral"`
+
+    ShareVelocity      float64          `json:"share_velocity"`
+
+
+
+    // Decay
+
+    DecayRate         float64          `json:"decay_rate"`         // % engagement decline/hour
+
+    EstimatedLifespan time.Duration            `json:"estimated_lifespan"`
+
+    IsDecaying       bool             `json:"is_decaying"`
+
+
+
+    // Opportunities
+
+    RepublishOpportunity bool               `json:"republish_opportunity"`
+
+    UpdateRecommended bool                     `json:"update_recommended"`
+
+    RefreshReason         string         `json:"refresh_reason,omitempty"`
+
+
+
+    // Alerts
+
+    ActiveAlerts     []StoryAlert        `json:"active_alerts"`
+
+}
+
+
+
+type StoryHealthState string
+
+const (
+
+    HealthRising     StoryHealthState = "RISING"
+
+    HealthPeaking StoryHealthState = "PEAKING"
+
+    HealthStable      StoryHealthState = "STABLE"
+
+    HealthDecaying StoryHealthState = "DECAYING"
+
+    HealthDormant StoryHealthState = "DORMANT"
+
+    HealthResurging StoryHealthState = "RESURGING"
+
+)
+
+
+
+func (sm *StoryMonitor) MonitorStoryHealth(
+
+    ctx context.Context,
+
+    storyID string,
+
+) (*StoryHealthStatus, error) {
+
+
+
+    status := &StoryHealthStatus{
+
+        StoryID: storyID,
+
+    }
+
+
+
+    // Get current metrics
+
+    metrics, err := sm.getCurrentMetrics(ctx, storyID)
+
+    if err != nil {
+
+        return nil, err
+
+    }
+
+
+
+    status.CurrentEngagement = metrics.EngagementVelocity
+
+    status.ShareVelocity = metrics.ShareVelocity
+
+
+
+    // Calculate health score
+
+status.HealthScore = sm.calculateHealthScore(metrics)
+
+
+
+// Determine engagement trend
+
+status.EngagementTrend = sm.determineTrend(ctx, storyID)
+
+
+
+// Calculate viral score
+
+status.ViralScore = sm.calculateViralScore(ctx, metrics)
+
+status.IsViral = status.ViralScore > 75
+
+
+
+// Calculate decay
+
+status.DecayRate, status.EstimatedLifespan = sm.calculateDecay(ctx, storyID)
+
+status.IsDecaying = status.DecayRate > 5.0 // 5%+ decline per hour
+
+
+
+// Determine health state
+
+status.Status = sm.determineHealthState(status)
+
+
+
+// Check for opportunities
+
+if status.Status == HealthDormant && sm.hasEvergreenPotential(ctx, storyID) {
+
+    status.RepublishOpportunity = true
+
+    status.RefreshReason = "Evergreen content with historical engagement"
+
+}
+
+
+
+if status.Status == HealthDecaying && status.HealthScore > 40 {
+
+    status.UpdateRecommended = true
+
+    status.RefreshReason = "Content decaying but still has engagement potential"
+
+}
+
+    // Check alerts
+
+    status.ActiveAlerts = sm.checkAlerts(ctx, status)
+
+
+
+    return status, nil
+
+}
+
+
+
+func (sm *StoryMonitor) calculateViralScore(
+
+    ctx context.Context,
+
+    metrics *StoryMetrics,
+
+) float64 {
+
+
+
+    // Viral score based on:
+
+    // 1. Share velocity relative to baseline
+
+    // 2. Engagement velocity acceleration
+
+    // 3. External referrer diversity
+
+    // 4. Comment sentiment velocity
+
+
+
+    shareScore := normalizeScore(metrics.ShareVelocity, 0, 100)
+
+    accelerationScore := normalizeScore(metrics.EngagementAcceleration, -10, 50)
+
+    referrerScore := normalizeScore(float64(metrics.UniqueReferrers), 0, 50)
+
+    sentimentScore := normalizeScore(metrics.PositiveSentimentRatio, 0, 1) * 100
+
+
+
+    weights := map[string]float64{
+
+      "share": 0.35,
+
+      "acceleration": 0.30,
+
+        "referrer": 0.20,
+
+        "sentiment": 0.15,
+
+    }
+
+
+
+    viralScore := shareScore*weights["share"] +
+
+        accelerationScore*weights["acceleration"] +
+
+        referrerScore*weights["referrer"] +
+
+        sentimentScore*weights["sentiment"]
+
+
+
+    return math.Min(100, viralScore)
+
+}
+
+
+
+func (sm *StoryMonitor) hasEvergreenPotential(
+
+    ctx context.Context,
+
+    storyID string,
+
+) bool {
+
+
+
+    // Check if story has characteristics of evergreen content
+
+    query := `
+
+        SELECT
+
+          content_category,
+
+          content_type,
+
+          avg(engagement_rate) as historical_avg
+
+        FROM analytics_events
+
+        WHERE story_id = ?
+
+        AND event_timestamp >= now() - INTERVAL 30 DAY
+
+          GROUP BY content_category, content_type
+
+      `
+
+
+
+      result, _ := sm.clickhouse.Query(ctx, query, storyID)
+
+
+
+      // Evergreen categories
+
+      evergreenCategories := []string{
+
+          "EXPLAINER", "HOW_TO", "REFERENCE", "HISTORY",
+
+          "SCIENCE", "TECHNOLOGY_EXPLAINED",
+
+      }
+
+
+
+      for _, cat := range evergreenCategories {
+
+          if strings.Contains(result.Category, cat) {
+
+              return true
+
+          }
+
+      }
+
+
+
+      return false
+
+}
+
+```
+
+
+
+6.2 Virality Detection & Alerting
+
+
+
+```go
+
+type ViralityDetector struct {
+
+      clickhouse *clickhouse.Client
+
+    redis      *redis.Client
+
+    alertEngine *AlertEngine
+
+    eventBus kafka.Producer
+
+}
+
+
+
+type ViralityAlert struct {
+
+    AlertID       string         `json:"alert_id"`
+
+    StoryID       string         `json:"story_id"`
+
+    AlertType      ViralityAlertType `json:"alert_type"`
+
+    Severity      string         `json:"severity"`
+
+    CurrentMetrics *StoryMetrics          `json:"current_metrics"`
+
+    ThresholdExceeded float64            `json:"threshold_exceeded"`
+
+    RecommendedAction string              `json:"recommended_action"`
+
+    CreatedAt       time.Time        `json:"created_at"`
+
+}
+
+
+
+type ViralityAlertType string
+
+const (
+
+    AlertGoingViral        ViralityAlertType = "GOING_VIRAL"
+
+    AlertPeakReached         ViralityAlertType = "PEAK_REACHED"
+
+    AlertEngagementDrop ViralityAlertType = "ENGAGEMENT_DROP"
+
+    AlertNegativeViral ViralityAlertType = "NEGATIVE_VIRAL"
+
+    AlertCompetitorResponse ViralityAlertType = "COMPETITOR_RESPONSE"
+
+)
+
+
+
+func (vd *ViralityDetector) MonitorForVirality(
+
+     ctx context.Context,
+
+){
+
+
+
+     ticker := time.NewTicker(30 * time.Second)
+
+     defer ticker.Stop()
+
+
+
+     for {
+
+       select {
+
+       case <-ticker.C:
+
+             // Check all active stories for viral patterns
+
+             stories := vd.getActiveStories(ctx)
+
+
+
+             for _, story := range stories {
+
+                 metrics := vd.getMetrics(ctx, story.StoryID)
+
+
+
+                 // Check viral thresholds
+
+                 if metrics.ViralScore > 80 && !story.ViralAlertSent {
+
+                     vd.sendViralAlert(ctx, story, metrics)
+
+                 }
+
+
+
+                 // Check for negative viral patterns
+
+                 if metrics.NegativeSentimentRatio > 0.3 && metrics.EngagementVelocity > 50 {
+
+                     vd.sendNegativeViralAlert(ctx, story, metrics)
+
+                 }
+
+             }
+
+         case <-ctx.Done():
+
+             return
+
+         }
+
+     }
+
+}
+
+
+
+func (vd *ViralityDetector) sendViralAlert(
+
+     ctx context.Context,
+
+     story *ActiveStory,
+
+     metrics *StoryMetrics,
+
+){
+
+
+
+     alert := &ViralityAlert{
+
+         AlertID: uuid.NewV7().String(),
+
+         StoryID: story.StoryID,
+
+         AlertType: AlertGoingViral,
+
+         Severity: "HIGH",
+
+         CurrentMetrics: metrics,
+
+         CreatedAt: time.Now(),
+
+     }
+
+
+
+     // Determine recommended action
+
+     if metrics.EngagementVelocity > 100 {
+
+    alert.RecommendedAction = "BOOST_DISTRIBUTION - Content is going viral, increase
+promotion"
+
+     } else {
+
+     alert.RecommendedAction = "MONITOR - Content showing viral potential, prepare
+distribution boost"
+
+      }
+
+
+
+      // Send alert
+
+      vd.alertEngine.TriggerAlert(ctx, "VIRALITY_DETECTED", alert)
+
+
+
+      // Publish event
+
+      vd.eventBus.Publish(ctx, "monitoring.virality.detected", alert)
+
+}
+
+```
+
+
+
+---
+
+
+
+PART VII — APIs & EVENT CONTRACTS
+
+
+
+7.1 Complete API Specifications
+
+
+
+```protobuf
+
+// api/analytics/v1/analytics.proto
+
+service AnalyticsService {
+
+      // Real-time Metrics
+
+      rpc GetStoryMetrics(GetStoryMetricsRequest) returns (StoryMetrics);
+
+      rpc GetBatchStoryMetrics(GetBatchStoryMetricsRequest) returns (stream StoryMetrics);
+
+      rpc StreamRealTimeMetrics(StreamRequest) returns (stream RealtimeMetric);
+
+    // Dashboards
+
+    rpc GetDashboardData(GetDashboardRequest) returns (DashboardData);
+
+    rpc GetExecutiveSummary(GetExecutiveSummaryRequest) returns (ExecutiveSummary);
+
+
+
+    // Audience
+
+    rpc GetAudienceProfile(GetAudienceProfileRequest) returns (AudienceProfile);
+
+    rpc GetAudienceSegments(GetAudienceSegmentsRequest) returns (AudienceSegments);
+
+
+
+    // Recommendations
+
+  rpc GetContentRecommendations(GetRecommendationsRequest) returns
+(RecommendationsResponse);
+
+
+
+    // Experiments
+
+    rpc CreateExperiment(CreateExperimentRequest) returns (ContentExperiment);
+
+    rpc GetExperimentResults(GetExperimentResultsRequest) returns (ExperimentResults);
+
+
+
+    // Optimization
+
+ rpc GetOptimizationSignals(GetOptimizationSignalsRequest) returns (stream
+OptimizationSignal);
+
+
+
+    // Monitoring
+
+    rpc GetStoryHealth(GetStoryHealthRequest) returns (StoryHealthStatus);
+
+    rpc MonitorStory(MonitorStoryRequest) returns (stream StoryHealthStatus);
+
+}
+
+
+
+// api/analytics/v1/events.proto
+
+message AnalyticsEvent {
+
+      string event_id = 1;
+
+      string tenant_id = 2;
+
+      string story_id = 3;
+
+      string content_id = 4;
+
+      string platform = 5;
+
+      string event_type = 6;
+
+      string event_subtype = 7;
+
+      double metric_value = 8;
+
+      string user_id = 9;
+
+      string session_id = 10;
+
+      string device_type = 11;
+
+      string country = 12;
+
+      string referrer = 13;
+
+      double revenue_impact = 14;
+
+      int64 event_timestamp = 15;
+
+      map<string, string> metadata = 16;
+
+}
+
+```
+
+
+
+7.2 Kafka Event Contracts
+
+
+
+```yaml
+
+topics:
+
+    # Analytics Events
+
+    analytics.events.raw:
+
+      partitions: 60
+
+ replication_factor: 3
+
+ retention_ms: 604800000 # 7 days
+
+ schema: AnalyticsEvent
+
+
+
+analytics.events.normalized:
+
+ partitions: 30
+
+ replication_factor: 3
+
+ retention_ms: 2592000000 # 30 days
+
+ schema: NormalizedAnalyticsEvent
+
+
+
+# Metrics Events
+
+analytics.metrics.story:
+
+ partitions: 12
+
+ replication_factor: 3
+
+ retention_ms: 86400000 # 24 hours
+
+ schema: StoryMetrics
+
+
+
+analytics.metrics.platform:
+
+ partitions: 12
+
+ replication_factor: 3
+
+ retention_ms: 86400000
+
+ schema: PlatformMetrics
+
+
+
+# Optimization Events
+
+ai.optimization.signal:
+
+ partitions: 6
+
+ replication_factor: 3
+
+ retention_ms: 604800000
+
+ schema: OptimizationSignal
+
+
+
+# Monitoring Events
+
+monitoring.story.health:
+
+ partitions: 12
+
+ replication_factor: 3
+
+ retention_ms: 86400000
+
+ schema: StoryHealthStatus
+
+
+
+monitoring.virality.detected:
+
+ partitions: 6
+
+ replication_factor: 3
+
+ retention_ms: 86400000
+
+ schema: ViralityAlert
+
+
+
+# Experiment Events
+
+experiments.assignment:
+
+ partitions: 6
+
+ replication_factor: 3
+
+ retention_ms: 604800000
+
+ schema: ExperimentAssignment
+
+
+
+experiments.impression:
+
+ partitions: 12
+
+      replication_factor: 3
+
+      retention_ms: 604800000
+
+      schema: ExperimentImpression
+
+
+
+ experiments.conversion:
+
+      partitions: 12
+
+      replication_factor: 3
+
+      retention_ms: 604800000
+
+      schema: ExperimentConversion
+
+
+
+ # Feedback Events
+
+ feedback.ai.performance:
+
+      partitions: 6
+
+      replication_factor: 3
+
+      retention_ms: 2592000000
+
+      schema: AIFeedbackEvent
+
+```
+
+
+
+7.3 Webhook Specifications
+
+
+
+```yaml
+
+webhooks:
+
+ platform_events:
+
+      endpoints:
+
+       facebook:
+
+        url: "https://api.agbofa.com/webhooks/facebook"
+
+  events:
+
+   - post_impression
+
+   - post_engagement
+
+   - comment_created
+
+   - share_created
+
+  verification_token: "${FACEBOOK_VERIFY_TOKEN}"
+
+
+
+ twitter:
+
+  url: "https://api.agbofa.com/webhooks/twitter"
+
+  events:
+
+   - tweet_impression
+
+   - tweet_engagement
+
+   - mention_created
+
+  consumer_secret: "${TWITTER_CONSUMER_SECRET}"
+
+
+
+ youtube:
+
+  url: "https://api.agbofa.com/webhooks/youtube"
+
+  events:
+
+   - video_view
+
+   - comment_added
+
+   - like_added
+
+  pubsub_verify_token: "${YOUTUBE_VERIFY_TOKEN}"
+
+
+
+security:
+
+ signature_verification: required
+
+ signature_header: "X-Hub-Signature-256"
+
+       signature_algorithm: "sha256"
+
+       ip_whitelisting: enabled
+
+```
+
+
+
+---
+
+
+
+PART VIII — SECURITY, RELIABILITY & PERFORMANCE
+
+
+
+8.1 Security Architecture
+
+
+
+```yaml
+
+security:
+
+ authentication:
+
+      service_to_service: SPIFFE/SPIRE mTLS
+
+      user_facing: OAuth 2.0 + JWT
+
+      api_keys: For external integrations only
+
+
+
+ authorization:
+
+      rbac:
+
+       ANALYTICS_ADMIN:
+
+        - view_all_analytics
+
+        - configure_dashboards
+
+        - export_data
+
+        - manage_experiments
+
+       ANALYTICS_VIEWER:
+
+        - view_dashboards
+
+   - view_reports
+
+   - export_limited_data
+
+  EDITOR:
+
+   - view_story_metrics
+
+   - view_audience_insights
+
+   - receive_recommendations
+
+  AI_SYSTEM:
+
+   - read_analytics
+
+   - write_optimization_signals
+
+   - manage_experiments
+
+
+
+data_protection:
+
+ pii_masking: Enabled for all user-level data
+
+ data_retention:
+
+  raw_events: 90 days
+
+  aggregated_metrics: 2 years
+
+  audience_profiles: Duration of active account
+
+ anonymization:
+
+  user_ids: Hashed with salt
+
+  ip_addresses: Truncated to /24
+
+  geolocation: City-level only
+
+
+
+encryption:
+
+ at_rest: AES-256-GCM
+
+ in_transit: TLS 1.3
+
+ key_management: AWS KMS / HashiCorp Vault
+
+```
+
+
+
+8.2 Performance Architecture
+
+
+
+```yaml
+
+performance:
+
+ caching:
+
+      redis_clusters:
+
+       real_time_metrics:
+
+        nodes: 6
+
+        max_memory: 32GB
+
+        eviction_policy: volatile-lru
+
+        ttl: 5 minutes
+
+
+
+       audience_profiles:
+
+        nodes: 3
+
+        max_memory: 16GB
+
+        ttl: 1 hour
+
+
+
+       recommendation_cache:
+
+        nodes: 3
+
+        max_memory: 16GB
+
+        ttl: 15 minutes
+
+
+
+      cdn:
+
+       static_assets: CloudFront/CloudFlare
+
+  api_responses: Cache-Control headers with ETag
+
+
+
+scaling:
+
+ clickhouse:
+
+  shards: 12
+
+  replicas: 3
+
+  storage: SSD (gp3)
+
+
+
+ real_time_processing:
+
+  min_replicas: 5
+
+  max_replicas: 50
+
+  scale_metric: kafka_consumer_lag
+
+
+
+ batch_processing:
+
+  spark_cluster:
+
+   worker_nodes: 20
+
+   auto_scaling: enabled
+
+   spot_instances: 50%
+
+
+
+query_performance:
+
+ dashboard_queries: <2 seconds (p99)
+
+ ad_hoc_queries: <10 seconds (p95)
+
+ real_time_metrics: <500ms (p99)
+
+
+
+slos:
+
+ analytics_api_availability: 99.9%
+
+      real_time_metric_freshness: <10 seconds
+
+      event_ingestion_latency: <5 seconds (p99)
+
+      dashboard_refresh: <3 seconds
+
+      experiment_assignment_latency: <50ms (p99)
+
+```
+
+
+
+8.3 Disaster Recovery
+
+
+
+```go
+
+type DisasterRecoveryPlan struct {
+
+      rpo time.Duration // Recovery Point Objective
+
+      rto time.Duration // Recovery Time Objective
+
+}
+
+
+
+var AnalyticsDR = DisasterRecoveryPlan{
+
+      rpo: 5 * time.Minute, // Max 5 minutes of data loss
+
+      rto: 15 * time.Minute, // Recovery within 15 minutes
+
+}
+
+
+
+var RecoveryProcedures = map[string]string{
+
+      "clickhouse_failure": `
+
+        1. Promote replica to primary
+
+        2. Re-route traffic via DNS
+
+        3. Replay Kafka events from last checkpoint
+
+        4. Validate data integrity
+
+        5. Notify stakeholders
+
+      `,
+
+      "redis_cluster_failure": `
+
+           1. Failover to replica cluster
+
+           2. Rebuild cache from ClickHouse
+
+           3. Resume normal operations
+
+      `,
+
+      "kafka_cluster_failure": `
+
+           1. Switch producers to backup cluster
+
+           2. Resume consumer from last committed offset
+
+           3. Monitor for message loss
+
+      `,
+
+}
+
+```
+
+
+
+---
+
+
+
+PART IX — ARCHITECTURE DECISION RECORDS
+
+
+
+```markdown
+
+## ADR-ANA-001: Unified Analytics Data Lake
+
+**Decision:** All events → S3/Iceberg → Specialized stores
+
+**Rationale:** Single source of truth, schema evolution, time travel
+
+**Trade-offs:** Additional storage layer, but prevents data discrepancies
+
+
+
+## ADR-ANA-002: Real-Time + Batch Dual Path
+
+**Decision:** Separate real-time (ClickHouse) and batch (Spark) processing
+
+**Rationale:** Different latency requirements for dashboards vs ML training
+
+**Trade-offs:** Infrastructure complexity, but optimal for each use case
+
+
+
+## ADR-ANA-003: Closed-Loop AI Optimization
+
+**Decision:** Automated performance feedback to AI agents
+
+**Rationale:** Manual feedback doesn't scale; continuous improvement required
+
+**Trade-offs:** Risk of reward hacking; mitigated by human oversight
+
+
+
+## ADR-ANA-004: Platform-Agnostic Analytics
+
+**Decision:** Normalize all platform metrics to unified schema
+
+**Rationale:** Cross-platform comparison, API abstraction
+
+**Trade-offs:** Some platform nuance lost, but essential for unified view
+
+
+
+## ADR-ANA-005: Redis for Real-Time, ClickHouse for Analytics
+
+**Decision:** Redis for sub-second counters, ClickHouse for analytical queries
+
+**Rationale:** Different data access patterns require different stores
+
+**Trade-offs:** Two systems to maintain, but optimal performance
+
+
+
+## ADR-ANA-006: Thompson Sampling for Multi-Armed Bandit
+
+**Decision:** Use Thompson Sampling for A/B test optimization
+
+**Rationale:** Better exploration-exploitation balance than epsilon-greedy
+
+**Trade-offs:** Slightly more complex implementation, but better convergence
+
+
+
+## ADR-ANA-007: Event Sourcing for Experiment Tracking
+
+**Decision:** All experiment events stored as immutable event stream
+
+**Rationale:** Complete audit trail, replay capability, prevents data manipulation
+
+**Trade-offs:** Storage overhead, but essential for experiment validity
+
+```
+
+
+
+---
+
+
+
+PART X — EXECUTIVE SUMMARY
+
+
+
+10.1 Architecture Overview
+
+
+
+The Distribution, Analytics & Insights Engine completes the Agbofa Nexus AI autonomous
+newsroom by providing the post-publication intelligence layer. It transforms published content
+into measurable performance data, generates actionable insights, and feeds optimization
+signals back to AI agents for continuous improvement.
+
+
+
+Key Capabilities:
+
+
+
+· Unified Distribution: Single orchestration layer across 10+ platforms
+
+· Real-Time Analytics: Sub-second metrics for breaking news monitoring
+
+· Audience Intelligence: Deep behavioral profiling and segmentation
+
+· AI Optimization: Closed-loop feedback for continuous content improvement
+
+· Viral Detection: Early warning system for trending content
+
+· A/B Testing: Automated experimentation for content optimization
+
+
+
+10.2 Implementation Roadmap
+
+
+
+MVP (Months 1-3)
+
+```
+
+      Basic publishing pipeline (Web, Twitter, Facebook)
+
+      Real-time metrics collection
+
+      Basic dashboards (story performance)
+
+      Simple recommendation engine
+
+      Manual A/B testing
+
+```
+
+
+
+Growth (Months 4-9)
+
+
+
+```
+
+      All platform connectors
+
+      Advanced analytics (ClickHouse)
+
+      Audience profiling
+
+      Viral detection
+
+      Multi-armed bandit optimization
+
+      Automated optimization signals
+
+      Batch analytics (Spark)
+
+```
+
+
+
+Enterprise (Months 10-18)
+
+
+
+```
+
+      Predictive analytics
+
+      Real-time personalization
+
+      Cross-platform attribution
+
+      Revenue optimization
+
+      Custom ML models per tenant
+
+      Global multi-region deployment
+
+      White-label analytics
+
+```
+
+
+
+10.3 Integration Points
+
+
+
+From To Purpose
+
+Distribution Engine (Vol 17) Analytics Engine Publishing events
+
+Content Factory (Vol 15) AI Optimization Content generation feedback
+
+Truth Engine (Vol 13) Analytics Verification performance
+
+Compliance Gatekeeper (Vol 16) Analytics Compliance metrics
+
+Foundation (Vol 11) All Services IAM, Config, Observability
+
+
+
+10.4 Readiness Assessment
+
+
+
+Component Readiness Risk Level
+
+Publishing Pipeline       Ready Low
+
+Platform Connectors           Ready Medium
+
+Real-Time Analytics       Ready Low
+
+Batch Analytics       Ready Medium
+
+Audience Intelligence         Ready Medium
+
+AI Optimization       Ready Medium
+
+Viral Detection     Ready Low
+
+A/B Testing       Ready Low
+
+Story Monitoring      Ready Low
+
+
+
+---
+
+
+
+END OF VOLUME 18 & 19
+
+
+
+Document Approval:
+
+
+
+· Enterprise Solution Architect: _________________
+
+· Principal Data Engineer: _________________
+
+· AI Research Scientist: _________________
+
+· Staff Platform Engineer: _________________
+
+· Analytics Platform Architect: _________________
+
+· Site Reliability Engineer: _________________
+
+
+
+Date: 2026-08-07
+
+Version: 1.0.0 - Implementation-Ready
+
+
+
+This volume completes the Phase 2 Enterprise Engineering Specifications for the Agbofa Nexus
+AI platform. All bounded contexts are now fully specified and implementation-ready.
+

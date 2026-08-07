@@ -1,0 +1,4005 @@
+VOLUME 12: CONTENT ORIGINATION ENGINE
+
+
+
+Implementation Specification
+
+
+
+Document Reference: AGBA-NEXUS-VOL12-IMPL-1.0
+
+Status: Implementation-Ready
+
+Approved Baseline: Volumes 1–11 (Immutable)
+
+Bounded Context: Content Origination
+
+Quality Level: US$50M Enterprise Platform Specification
+
+
+
+---
+
+
+
+ARCHITECTURE DECISION RECORDS (ADR)
+
+
+
+ADR-ORIG-001: Polyglot Persistence for Content Origination
+
+
+
+Decision: Use PostgreSQL+pgvector for source registry, MongoDB for raw ingest documents,
+Neo4j for Story Graph.
+
+Rationale: Each store matches access patterns—PostgreSQL for relational source management,
+MongoDB for schema-flexible raw content, Neo4j for graph-native story relationships.
+
+Alternatives Considered: Single PostgreSQL for everything (rejected due to graph traversal
+performance).
+
+
+
+ADR-ORIG-002: LangGraph-Inspired State Machines
+
+
+
+Decision: Implement content origination workflows using a Golang-native state machine library
+with DAG execution, inspired by LangGraph's node-edge model.
+
+Rationale: Production-grade reliability, type safety, and performance of compiled Golang
+combined with the proven state machine patterns from LangGraph.
+
+Alternatives Considered: Temporal.io (overhead), direct Python LangGraph (performance
+mismatch for high-throughput pipeline).
+
+
+
+ADR-ORIG-003: Dual-Mode Ingestion (Poll + Stream)
+
+
+
+Decision: RSS/scheduled sources use configurable polling; News APIs use webhook/streaming;
+breaking news sources use persistent connections.
+
+Rationale: Matches source capabilities while maintaining consistent internal event-driven
+architecture via Kafka.
+
+
+
+---
+
+
+
+PART I — CONTENT ORIGINATION DOMAIN
+
+
+
+1.1 Domain Overview
+
+
+
+Executive Summary:
+
+The Content Origination Engine is the genesis point of the Agbofa Nexus AI autonomous
+newsroom. It transforms the chaotic external information landscape into structured,
+deduplicated, classified, and prioritized Story Graph entries. This engine operates 24/7/365,
+processing approximately 500,000 raw documents per day across 10,000+ sources in 40+
+languages at full enterprise scale.
+
+
+
+1.2 Business Objectives
+
+
+
+Objective KPI Target
+
+Coverage Completeness % of known events detected 99.5%
+
+Duplicate Prevention % of stories that are true duplicates <0.1%
+
+Time-to-Detect Latency from publication to Story Graph entry <60s (breaking), <5min (standard)
+
+Source Reliability False story prevention rate 99.9%
+
+Operational Cost Cost per 1,000 stories processed <$0.50
+
+
+
+1.3 Domain Responsibilities
+
+
+
+1. Continuous Discovery: Monitor and ingest from all configured sources
+
+2. Signal Extraction: Identify newsworthy events from raw content
+
+3. Entity Resolution: Unify references to same entities across sources
+
+4. Story Formation: Cluster related content into coherent story structures
+
+5. Deduplication: Prevent duplicate story creation
+
+6. Classification: Apply taxonomy and priority assessment
+
+7. Graph Initialization: Create canonical Story Graph entry for downstream processing
+
+
+
+1.4 Domain Boundaries
+
+```
+
+CONTENT ORIGINATION BOUNDED CONTEXT
+
+├── INBOUND: External Sources (RSS, APIs, Crawlers)
+
+├── INBOUND: Manual Editorial Submission
+
+├── INBOUND: Breaking News Alerts
+
+├── OUTBOUND: Story Graph (to Neo4j)
+
+├── OUTBOUND: Kafka Events (to all downstream contexts)
+
+├── OUTBOUND: Truth Engine Verification Queue (Volume 13)
+
+└── INTERNAL: Source Registry, Story Detection, Deduplication
+
+```
+
+
+
+1.5 Ubiquitous Language
+
+
+
+Term Definition
+
+RawIngestDocument Unprocessed content from a source before any transformation
+
+Signal Extractable newsworthy element from raw content
+
+ContentAtom Smallest unit of newsworthy information (claim, fact, quote)
+
+StoryCluster Group of documents about the same event
+
+CanonicalStory Authoritative merged representation of a story
+
+StoryVariant Specific perspective or update to a story
+
+SourceReliability 0-100 score for a source's trustworthiness
+
+DetectionConfidence 0-100 score for story detection certainty
+
+
+
+1.6 Aggregate Roots
+
+
+
+StoryAggregate
+
+```
+
+StoryAggregate
+
+├── StoryID (UUIDv7)
+
+├── CanonicalStory
+
+│ ├── Headline
+
+│ ├── Summary
+
+│ ├── Entities[]
+
+│ ├── Timeline[]
+
+│ └── Claims[]
+
+├── StoryVariants[]
+
+├── SourceReferences[]
+
+├── StoryState
+
+└── VersionHistory
+
+```
+
+
+
+SourceAggregate
+
+
+
+```
+
+SourceAggregate
+
+├── SourceID (UUIDv7)
+
+├── SourceConfig
+
+├── SourceReliability
+
+├── SourceHealth
+
+├── IngestionSchedule
+
+└── AuthenticationConfig
+
+```
+
+
+
+1.7 Domain Services
+
+
+
+Service Responsibility
+
+IngestionOrchestrator Manages all source connections and data collection
+
+StoryDetectionEngine AI-powered identification of news events
+
+DeduplicationService Prevents duplicate story creation
+
+StoryClassificationService Applies taxonomy and priority
+
+StoryGraphService Creates and manages Story Graph entries
+
+SourceHealthMonitor Tracks source availability and quality
+
+
+
+1.8 Value Objects
+
+
+
+· SourceURL: Validated, normalized URL with protocol
+
+· EntityReference: Normalized entity (person, org, location)
+
+· ConfidenceScore: 0-100 integer with validation
+
+· StoryPriority: CRITICAL, HIGH, MEDIUM, LOW
+
+· GeographicScope: Point, Region, Country, Global
+
+· LanguageCode: ISO 639-1 validated
+
+
+
+---
+
+
+
+PART II — NEWS INGESTION ENGINE
+
+2.1 Architecture Overview
+
+
+
+```
+
+┌─────────────────────────────────────────────────────────────┐
+
+│          INGESTION ORCHESTRATOR                       │
+
+├─────────────────────────────────────────────────────────────┤
+
+│ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌─────────────┐ │
+
+│ │ RSS │ │ API │ │ WEB │ │ STREAMING │ │
+
+│ │ Ingest │ │ Ingest │ │ Crawl │ │ Ingest │ │
+
+│ └────┬─────┘ └────┬─────┘ └────┬─────┘ └──────┬──────┘ │
+
+│     │      │        │         │       │
+
+│     └──────────────┴──────────────┴───────────────┘       │
+
+│                │                  │
+
+│          ┌───────▼────────┐                       │
+
+│          │ INGESTION │                        │
+
+│          │ PIPELINE │                     │
+
+│          └───────┬────────┘                       │
+
+└────────────────────────────┼─────────────────────────────────┘
+
+                 │
+
+          ┌────────▼─────────┐
+
+          │ RAW INGEST      │
+
+          │ TOPIC (Kafka) │
+
+          └────────┬─────────┘
+
+                 │
+
+          ┌────────▼─────────┐
+
+          │ STORY DETECTION │
+
+                │   ENGINE         │
+
+                └──────────────────┘
+
+```
+
+
+
+2.2 Ingestion Strategies
+
+
+
+2.2.1 RSS/Atom Ingestion
+
+
+
+```go
+
+// Polling Configuration
+
+type RSSIngestionConfig struct {
+
+      PollInterval time.Duration // Default: 5min, Breaking: 30s
+
+      BatchSize     int          // Max items per poll: 100
+
+      BackoffStrategy BackoffConfig
+
+      Timeout       time.Duration // 30s
+
+}
+
+
+
+// Polling Algorithm
+
+func (r *RSSIngestor) Poll(ctx context.Context) error {
+
+      // 1. Check source health status
+
+      if !source.IsHealthy() {
+
+          return ErrSourceUnhealthy
+
+      }
+
+
+
+      // 2. Respect rate limiting
+
+      if rateLimiter.IsLimited(source.ID) {
+
+          schedule := calculateNextPollTime(source)
+
+          return scheduleRetry(schedule)
+
+      }
+
+
+
+      // 3. Fetch with conditional GET (ETag/Last-Modified)
+
+      resp, err := r.fetchWithConditional(source.URL, source.LastETag)
+
+      if resp.StatusCode == 304 { // Not Modified
+
+          return nil
+
+      }
+
+
+
+      // 4. Parse and validate each item
+
+      for _, item := range resp.Items {
+
+          if !r.isAlreadyProcessed(item.GUID) {
+
+              document := r.transformToIngestDocument(item)
+
+              r.publishToKafka(document)
+
+          }
+
+      }
+
+
+
+      // 5. Update source metadata
+
+      source.LastETag = resp.ETag
+
+      source.LastPollTime = time.Now()
+
+
+
+      return nil
+
+}
+
+```
+
+2.2.2 News API Integration
+
+
+
+```
+
+RATE LIMIT HANDLING:
+
+┌──────────────┐          ┌──────────────┐       ┌──────────────┐
+
+│ Request │────           │ Rate Limiter │────    │ API Call │
+
+│ Queue      │       │ (Redis)   │   │ Executor │
+
+└──────────────┘          └──────┬───────┘        └──────┬───────┘
+
+                 │               │
+
+           ┌──────▼───────┐            ┌──────▼───────┐
+
+           │ Tokens         │    │ Response │
+
+           │ Available? │        │ Handler │
+
+           └──────────────┘           └──────────────┘
+
+```
+
+
+
+API Ingestion Specs:
+
+
+
+· Reuters API: REST, OAuth2, 1000 calls/hour, breaking news webhook
+
+· AP News: REST, API Key, 500 calls/hour, content streaming for breaking
+
+· Bloomberg: WebSocket, Enterprise auth, real-time stream
+
+· Custom REST APIs: Configurable connector with JSON Path extraction
+
+
+
+2.2.3 Web Crawling Strategy
+
+
+
+```yaml
+
+crawling_config:
+
+ respect_robots_txt: true
+
+ crawl_delay: 10 # seconds minimum
+
+ user_agent: "AgbofaNexusAI/1.0 (News Crawler; +https://agbofa.com/bot)"
+
+ max_depth: 3
+
+ extraction:
+
+      content_selectors: ["article", ".article-body", ".story-body"]
+
+      headline_selectors: ["h1", ".headline", ".article-title"]
+
+      timestamp_selectors: ["time", ".published-date", "[datetime]"]
+
+ filtering:
+
+      min_content_length: 200
+
+      duplicate_threshold: 0.85 # cosine similarity
+
+```
+
+
+
+2.2.4 Social Media Monitoring
+
+
+
+```
+
+MONITORED PLATFORMS:
+
+├── Twitter/X (Enterprise API, filtered stream)
+
+├── Reddit (r/news, r/worldnews, location-based subreddits)
+
+├── Public Telegram Channels (verified news sources only)
+
+└── Official Government Social Media Accounts
+
+
+
+FILTERING RULES:
+
+├── Minimum follower threshold: 1000
+
+├── Verified accounts priority
+
+├── Geographic relevance filter
+
+└── Keyword/entity-based filtering
+
+```
+
+
+
+2.2.5 Government & Official Feeds
+
+
+
+```protobuf
+
+message GovernmentFeed {
+
+      string source_id = 1;
+
+      GovernmentLevel level = 2; // FEDERAL, STATE, LOCAL, INTERNATIONAL
+
+      FeedType type = 3; // PRESS_RELEASE, EMERGENCY_ALERT, LEGISLATIVE, REGULATORY
+
+      Priority priority = 4; // CRITICAL for emergency alerts
+
+      GeoLocation coverage = 5;
+
+      repeated string jurisdictions = 6;
+
+}
+
+
+
+enum GovernmentLevel {
+
+      INTERNATIONAL_ORG = 0; // UN, WHO, IMF
+
+      FEDERAL = 1;
+
+      STATE_PROVINCE = 2;
+
+      MUNICIPAL = 3;
+
+}
+
+```
+
+
+
+2.3 Queue Architecture
+
+
+
+```
+
+┌────────────────────────────────────────────────────────┐
+
+│         INGESTION QUEUE SYSTEM                │
+
+├────────────────────────────────────────────────────────┤
+
+│                              │
+
+│ PRIORITY QUEUES (Redis Streams):                  │
+
+│ ┌──────────────────┐ Priority: CRITICAL                   │
+
+│ │ Breaking News │ Max Latency: 1s             │
+
+│ │ Queue       │ Consumer Group: breaking-workers │
+
+│ └──────────────────┘                      │
+
+│                              │
+
+│ ┌──────────────────┐ Priority: HIGH                   │
+
+│ │ Official Sources│ Max Latency: 30s          │
+
+│ │ Queue       │ Consumer Group: official-workers │
+
+│ └──────────────────┘                      │
+
+│                              │
+
+│ ┌──────────────────┐ Priority: MEDIUM                         │
+
+│ │ Standard News │ Max Latency: 5min                   │
+
+│ │ Queue       │ Consumer Group: standard-workers │
+
+│ └──────────────────┘                      │
+
+│                              │
+
+│ ┌──────────────────┐ Priority: LOW                    │
+
+│ │ Historical/SEO │ Max Latency: 30min             │
+
+│ │ Queue       │ Consumer Group: background-worker│
+
+│ └──────────────────┘                      │
+
+│                              │
+
+│ DEAD LETTER QUEUE (DLQ):                  │
+
+│ ┌──────────────────┐                              │
+
+│ │ Failed Ingest │ Max Retries: 3                  │
+
+│ │ DLQ         │ Retention: 7 days             │
+
+│ └──────────────────┘                              │
+
+└────────────────────────────────────────────────────────┘
+
+```
+
+
+
+2.4 Retry Logic & Failure Recovery
+
+
+
+```
+
+RETRY STRATEGY:
+
+┌──────────────┐
+
+│ Attempt │
+
+│ #1      │──Fail──    Wait 1s ──       Attempt #2
+
+└──────────────┘                │
+
+               ┌─────────▼─────────┐
+
+               │ Attempt #2         │──Fail──       Wait 5s ──   Attempt #3
+
+               └───────────────────┘                      │
+
+                                     ┌─────────▼─────────┐
+
+                                     │ Attempt #3        │──Fail──   Wait 30s ──   DLQ
+
+                                     └───────────────────┘
+
+
+
+FAILURE CLASSIFICATION:
+
+├── TRANSIENT: Network timeout, rate limit → Retry with backoff
+
+├── PERMANENT: Invalid credentials, source discontinued → Alert + Disable source
+
+├── DATA_QUALITY: Malformed content, schema violation → Log + Skip item
+
+└── SYSTEM: Database down, Kafka unavailable → Circuit breaker + Alert
+
+```
+
+
+
+2.5 Source Health Monitoring
+
+
+
+```go
+
+type SourceHealth struct {
+
+      SourceID        string
+
+      AvailabilityScore float64 // 0-100, calculated from recent polls
+
+      LatencyP99       time.Duration
+
+      SuccessRate      float64 // % of successful fetches
+
+      ErrorRate       float64
+
+      LastSuccessfulFetch time.Time
+
+      ConsecutiveFailures int
+
+      Status        SourceStatus // HEALTHY, DEGRADED, FAILING, DISABLED
+
+}
+
+
+
+// Health Scoring Algorithm
+
+func calculateHealth(source SourceHealth) float64 {
+
+      availabilityWeight := 0.4
+
+      successRateWeight := 0.3
+
+      latencyWeight := 0.2
+
+      errorRateWeight := 0.1
+
+
+
+      score := (source.AvailabilityScore * availabilityWeight) +
+
+           (source.SuccessRate * successRateWeight) +
+
+           (100 - normalizeLatency(source.LatencyP99)) * latencyWeight +
+
+           ((100 - source.ErrorRate) * errorRateWeight)
+
+
+
+      return score
+
+}
+
+```
+
+
+
+---
+
+
+
+PART III — SOURCE MANAGEMENT
+
+
+
+3.1 Source Registry Data Model
+
+
+
+```sql
+
+-- PostgreSQL Schema
+
+CREATE TABLE source_registry (
+
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+      tenant_id UUID NOT NULL REFERENCES tenants(id),
+
+      name VARCHAR(255) NOT NULL,
+
+      source_type source_type_enum NOT NULL,
+
+      category source_category_enum NOT NULL,
+
+
+
+      -- Reliability & Trust
+
+      reliability_score DECIMAL(5,2) DEFAULT 50.00 CHECK (reliability_score BETWEEN 0 AND 100),
+
+      trust_tier trust_tier_enum DEFAULT 'STANDARD',
+
+      verification_required BOOLEAN DEFAULT true,
+
+     -- Coverage
+
+     geographic_coverage GEOGRAPHY(MULTIPOLYGON),
+
+     languages TEXT[] DEFAULT '{en}',
+
+     topics TEXT[], -- Array of topic categories
+
+
+
+     -- Technical
+
+     base_url TEXT NOT NULL,
+
+     auth_config JSONB, -- Encrypted authentication details
+
+     rate_limit_config JSONB,
+
+     poll_interval INTERVAL DEFAULT '5 minutes',
+
+
+
+     -- Status
+
+     status source_status DEFAULT 'ACTIVE',
+
+     health_score DECIMAL(5,2) DEFAULT 100.00,
+
+     last_polled_at TIMESTAMPTZ,
+
+     created_at TIMESTAMPTZ DEFAULT now(),
+
+     updated_at TIMESTAMPTZ DEFAULT now(),
+
+
+
+     -- Indexes
+
+     CONSTRAINT unique_source_per_tenant UNIQUE(tenant_id, base_url)
+
+);
+
+
+
+CREATE TYPE source_type_enum AS ENUM (
+
+     'RSS', 'REST_API', 'GRAPHQL', 'WEBSOCKET', 'WEB_CRAWL',
+
+     'SOCIAL_MEDIA', 'GOVERNMENT_FEED', 'PRESS_RELEASE',
+
+      'EMERGENCY_ALERT', 'MANUAL_SUBMISSION', 'LICENSED_WIRE',
+
+      'CUSTOM_CONNECTOR'
+
+);
+
+
+
+CREATE TYPE source_category_enum AS ENUM (
+
+      'OFFICIAL_GOVERNMENT', 'LICENSED_NEWS_WIRE', 'TRUSTED_MEDIA',
+
+      'VERIFIED_INDEPENDENT', 'COMMUNITY_NEWS', 'SOCIAL_MEDIA',
+
+      'INTERNATIONAL_ORGANIZATION', 'ACADEMIC_INSTITUTION',
+
+      'CORPORATE_COMMUNICATIONS', 'EMERGENCY_SERVICES'
+
+);
+
+
+
+CREATE TYPE trust_tier_enum AS ENUM (
+
+      'VERIFIED_OFFICIAL', 'HIGH_TRUST', 'STANDARD',
+
+      'LOW_TRUST', 'UNVERIFIED', 'DEPRECATED'
+
+);
+
+```
+
+
+
+3.2 Source Categories & Trust Model
+
+
+
+```
+
+SOURCE HIERARCHY & TRUST:
+
+┌─────────────────────────────────────────────────────────┐
+
+│              TRUST TIERS               │
+
+├─────────────────────────────────────────────────────────┤
+
+│                                  │
+
+│ TIER 1: VERIFIED OFFICIAL (Trust Score: 90-100)      │
+
+│ ├── Government Press Offices                        │
+
+│ ├── Supreme Court / Official Court Records                      │
+
+│ ├── Central Bank Statements                         │
+
+│ └── International Treaties/UN Resolutions                   │
+
+│                                  │
+
+│ TIER 2: HIGH TRUST (Trust Score: 75-89)                 │
+
+│ ├── Licensed News Wires (Reuters, AP, AFP)                          │
+
+│ ├── Peer-Reviewed Academic Journals                             │
+
+│ └── Official Company SEC/Regulatory Filings                     │
+
+│                                  │
+
+│ TIER 3: STANDARD (Trust Score: 50-74)                   │
+
+│ ├── Established Newspapers with Editorial Boards                        │
+
+│ ├── Verified Broadcast Media                        │
+
+│ └── Industry Association Publications                   │
+
+│                                  │
+
+│ TIER 4: LOW TRUST (Trust Score: 25-49)                  │
+
+│ ├── New/Unestablished Digital Media                         │
+
+│ ├── Aggregator Sites                      │
+
+│ └── Advocacy Organization Publications                      │
+
+│                                  │
+
+│ TIER 5: UNVERIFIED (Trust Score: 0-24)                  │
+
+│ ├── Social Media Posts                      │
+
+│ ├── Anonymous Sources                           │
+
+│ └── Unverified Citizen Reports                  │
+
+└─────────────────────────────────────────────────────────┘
+
+```
+
+
+
+3.3 Source Reliability Scoring
+
+
+
+```go
+
+type ReliabilityCalculator struct {
+
+      factCheckHistory []FactCheckResult
+
+      correctionRate float64
+
+      sourceAge      time.Duration
+
+      expertReviewScore float64
+
+}
+
+
+
+func (rc *ReliabilityCalculator) CalculateScore() float64 {
+
+      // Base score from trust tier
+
+      baseScore := rc.getBaseTierScore()
+
+
+
+      // Adjust for fact-check accuracy (from Truth Engine feedback)
+
+      factCheckAdjustment := rc.calculateFactCheckScore()
+
+
+
+      // Penalty for corrections/retractions
+
+      correctionPenalty := rc.correctionRate * 0.5
+
+
+
+      // Bonus for longevity
+
+      longevityBonus := math.Min(rc.sourceAge.Hours()/8760*5, 5) // Max 5 points
+
+
+
+      // Community/expert review adjustment
+
+      reviewAdjustment := (rc.expertReviewScore - 50) * 0.1
+
+
+
+  finalScore := baseScore + factCheckAdjustment - correctionPenalty + longevityBonus +
+reviewAdjustment
+
+
+
+      return clamp(finalScore, 0, 100)
+
+}
+
+```
+
+
+
+---
+
+
+
+PART IV — STORY DETECTION ENGINE
+
+
+
+4.1 Detection Pipeline Architecture
+
+
+
+```
+
+┌──────────────────────────────────────────────────────────────┐
+
+│              STORY DETECTION PIPELINE                 │
+
+├──────────────────────────────────────────────────────────────┤
+
+│                                        │
+
+│ RAW INGEST ──           ┌─────────────┐                     │
+
+│ (Kafka)        │ NLP PRE- │                   │
+
+│              │ PROCESSING │                   │
+
+│              └──────┬──────┘                      │
+
+│                  │                     │
+
+│              ┌──────▼──────┐                      │
+
+│   │ ENTITY │             │
+
+│   │ EXTRACTION │                 │
+
+│   └──────┬──────┘                    │
+
+│      │               │
+
+│   ┌──────▼──────┐                    │
+
+│   │ TOPIC    │           │
+
+│   │ DETECTION │              │
+
+│   └──────┬──────┘                    │
+
+│      │               │
+
+│   ┌──────▼──────┐                    │
+
+│   │ EVENT    │           │
+
+│   │ EXTRACTION │                 │
+
+│   └──────┬──────┘                    │
+
+│      │               │
+
+│   ┌──────▼──────┐                    │
+
+│   │ CLUSTERING │             │
+
+│   │ ENGINE       │       │
+
+│   └──────┬──────┘                    │
+
+│      │               │
+
+│   ┌──────▼──────┐                    │
+
+│   │ DUPLICATE │              │
+
+│   │ DETECTION │              │
+
+│   └──────┬──────┘                    │
+
+│      │               │
+
+│   ┌──────▼──────┐                    │
+
+│   │ STORY    │           │
+
+│              │ FORMATION │                       │
+
+│              └──────────────┘                        │
+
+└──────────────────────────────────────────────────────────────┘
+
+```
+
+
+
+4.2 NLP Pre-Processing
+
+
+
+```python
+
+# Python-based NLP service (gRPC called from Golang orchestrator)
+
+class NLPPipeline:
+
+      def process_document(self, raw_text: str, language: str) -> ProcessedDocument:
+
+        # 1. Language detection and validation
+
+        detected_lang = self.detect_language(raw_text)
+
+
+
+        # 2. Text cleaning and normalization
+
+        cleaned_text = self.clean_text(raw_text)
+
+
+
+        # 3. Sentence segmentation
+
+        sentences = self.segment_sentences(cleaned_text)
+
+
+
+        # 4. Named Entity Recognition
+
+        entities = self.extract_entities(cleaned_text)
+
+
+
+        # 5. Key phrase extraction
+
+        key_phrases = self.extract_key_phrases(cleaned_text)
+
+        # 6. Generate embeddings for similarity
+
+        embedding = self.generate_embedding(cleaned_text)
+
+
+
+        return ProcessedDocument(
+
+            text=cleaned_text,
+
+            sentences=sentences,
+
+            entities=entities,
+
+            key_phrases=key_phrases,
+
+            embedding=embedding,
+
+            language=detected_lang
+
+        )
+
+```
+
+
+
+4.3 Story Clustering Algorithm
+
+
+
+```go
+
+// Golang service using pgvector for similarity search
+
+type ClusteringEngine struct {
+
+      vectorStore *pgvector.Store
+
+      graphDB        neo4j.Driver
+
+      similarityThreshold float64
+
+}
+
+
+
+func (ce *ClusteringEngine) FindOrCreateCluster(doc ProcessedDocument) (*StoryCluster, error)
+{
+
+      // 1. Generate embedding for the document
+
+embedding := doc.Embedding
+
+
+
+// 2. Query pgvector for similar existing documents
+
+similarDocs, err := ce.vectorStore.FindSimilar(
+
+    context.Background(),
+
+    embedding,
+
+    ce.similarityThreshold, // Cosine similarity > 0.85
+
+    10, // Top N results
+
+)
+
+
+
+if len(similarDocs) == 0 {
+
+    // No similar content - create new cluster
+
+    return ce.createNewCluster(doc)
+
+}
+
+
+
+// 3. For each similar document, check graph relationships
+
+for _, similar := range similarDocs {
+
+    existingCluster := ce.getClusterForDocument(similar.ID)
+
+
+
+    // 4. Validate temporal proximity (same event should be close in time)
+
+    if ce.isTemporallyProximate(doc.Timestamp, existingCluster.EarliestTimestamp) {
+
+      // 5. Validate entity overlap
+
+      if ce.calculateEntityOverlap(doc.Entities, existingCluster.Entities) > 0.6 {
+
+          // Add to existing cluster
+
+          return ce.addToCluster(existingCluster, doc)
+
+      }
+
+          }
+
+      }
+
+
+
+      // No good match found - create new cluster
+
+      return ce.createNewCluster(doc)
+
+}
+
+
+
+func (ce *ClusteringEngine) calculateEntityOverlap(entities1, entities2 []Entity) float64 {
+
+      set1 := make(map[string]bool)
+
+      for _, e := range entities1 {
+
+          set1[e.CanonicalID] = true
+
+      }
+
+
+
+      overlap := 0
+
+      for _, e := range entities2 {
+
+          if set1[e.CanonicalID] {
+
+              overlap++
+
+          }
+
+      }
+
+
+
+      return float64(overlap) / float64(math.Min(float64(len(entities1)), float64(len(entities2))))
+
+}
+
+```
+
+
+
+4.4 Duplicate Detection Algorithm
+
+```
+
+DUPLICATE DETECTION DECISION TREE:
+
+
+
+            ┌─────────────┐
+
+            │ New Content │
+
+            └──────┬──────┘
+
+               │
+
+            ┌──────▼──────┐
+
+            │ Embedding │
+
+            │ Similarity │
+
+            │ > 0.85?     │
+
+            └──────┬──────┘
+
+               │
+
+        ┌─────────▼─────────┐
+
+        │       YES       │   NO
+
+        │                ├──────────          NEW STORY
+
+        │ ┌────────────────▼────────┐
+
+        │ │ Entity Overlap             │
+
+        │ │ > 60%?                 │
+
+        │ └────────┬─────────────────┘
+
+        │          │
+
+        │ ┌──────▼──────┐
+
+        │ │        YES    │ NO
+
+        │ │              ├──────           STORY VARIANT
+
+        │ │ ┌──────────▼──────────┐
+
+        │ │ │ Temporal Proximity │
+
+             │ │ │ < 24 hours?            │
+
+             │ │ └─────────┬────────────┘
+
+             │ │           │
+
+             │ │      ┌──────▼──────┐
+
+             │ │      │    YES       │ NO
+
+             │ │      │          ├──────       RELATED STORY
+
+             │ │      │ ┌──────────▼──────────┐
+
+             │ │      │ │ Quote/Claim            │
+
+             │ │      │ │ Overlap > 80%?         │
+
+             │ │      │ └─────────┬────────────┘
+
+             │ │      │          │
+
+             │ │      │    ┌──────▼──────┐
+
+             │ │      │    │     YES    │ NO
+
+             │ │      │    │           ├──────       MERGE CANDIDATE
+
+             │ │      │    │ ┌──────────▼──────────┐
+
+             │ │      │    │ │ TRUE DUPLICATE         │
+
+             │ │      │    │ │ (Discard)         │
+
+             │ │      │    │ └─────────────────────┘
+
+```
+
+
+
+4.5 Breaking News Detection
+
+
+
+```go
+
+type BreakingNewsDetector struct {
+
+      velocityTracker *VelocityTracker
+
+      sourceWeights       map[string]float64
+
+    keywordPatterns []BreakingPattern
+
+    mlModel         *tensorflow.SavedModel
+
+}
+
+
+
+type BreakingPattern struct {
+
+    Keywords       []string
+
+    SourceTypes     []SourceType
+
+    MinSources      int
+
+    TimeWindow        time.Duration
+
+    UrgencyThreshold float64
+
+}
+
+
+
+func (bd *BreakingNewsDetector) EvaluateBreaking(cluster *StoryCluster) BreakingAssessment
+{
+
+    assessment := BreakingAssessment{
+
+        IsBreaking: false,
+
+        UrgencyScore: 0,
+
+        Confidence: 0,
+
+    }
+
+
+
+    // 1. Velocity Check: How fast is this cluster growing?
+
+    velocity := bd.velocityTracker.CalculateVelocity(cluster.ID)
+
+    if velocity > 10 { // 10+ sources in 5 minutes
+
+        assessment.UrgencyScore += 30
+
+    }
+
+      // 2. Source Authority: Are high-trust sources reporting?
+
+      authorityScore := bd.calculateSourceAuthority(cluster.Sources)
+
+      assessment.UrgencyScore += authorityScore * 0.25
+
+
+
+      // 3. Keyword Pattern Match
+
+      patternScore := bd.matchBreakingPatterns(cluster.KeyPhrases)
+
+      assessment.UrgencyScore += patternScore * 0.25
+
+
+
+      // 4. Geographic Proximity to Known Hotspots
+
+      if bd.isNearConflictZone(cluster.PrimaryLocation) {
+
+          assessment.UrgencyScore += 15
+
+      }
+
+
+
+      // 5. ML Model Evaluation
+
+      mlScore := bd.evaluateMLModel(cluster)
+
+      assessment.UrgencyScore += mlScore * 0.25
+
+
+
+      // Thresholds
+
+      if assessment.UrgencyScore >= 75 {
+
+          assessment.IsBreaking = true
+
+          assessment.Confidence = math.Min(assessment.UrgencyScore, 100)
+
+      }
+
+
+
+      return assessment
+
+}
+
+```
+
+---
+
+
+
+PART V — BREAKING NEWS PIPELINE
+
+
+
+5.1 High-Priority Workflow
+
+
+
+```
+
+BREAKING NEWS FAST PATH:
+
+┌─────────────────────────────────────────────────────────┐
+
+│          BREAKING NEWS DETECTED       │
+
+│          Urgency Score >= 75      │
+
+└──────────────────────┬──────────────────────────────────┘
+
+            │
+
+       ┌────────▼────────┐
+
+       │ IMMEDIATE ALERT │
+
+       │ • Push notify │
+
+       │ • Dashboard flag│
+
+       │ • Slack/Teams │
+
+       └────────┬────────┘
+
+            │
+
+       ┌────────▼────────┐
+
+       │ RAPID VERIFY │
+
+       │ • Cross-ref 3 │
+
+       │ trusted srcs │
+
+       │ • Timeout: 30s │
+
+      └────────┬────────┘
+
+          │
+
+      ┌────────▼────────┐
+
+      │ DEVELOPING        │
+
+      │ STORY CREATED │
+
+      │ State: DEVELOPING│
+
+      └────────┬────────┘
+
+          │
+
+      ┌────────▼────────┐
+
+      │ EDITORIAL QUEUE│
+
+      │ Priority: TOP │
+
+      │ SLA: 2 min   │
+
+      └────────┬────────┘
+
+          │
+
+      ┌────────▼────────┐
+
+      │ STORY GRAPH │
+
+      │ INITIALIZED │
+
+      └────────┬────────┘
+
+          │
+
+      ┌────────▼────────┐
+
+      │ CONTINUOUS        │
+
+      │ UPDATE STREAM │
+
+      │ (Real-time) │
+
+      └─────────────────┘
+
+```
+
+5.2 Escalation Logic
+
+
+
+```go
+
+type EscalationManager struct {
+
+    editorialQueue *EditorialQueue
+
+    notificationSvc *NotificationService
+
+    truthEngine      *TruthEngineClient
+
+}
+
+
+
+func (em *EscalationManager) HandleBreakingStory(story *CanonicalStory) error {
+
+    // Level 1: Automated Verification (30 second timeout)
+
+    ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+
+    defer cancel()
+
+
+
+    verification, err := em.truthEngine.RapidVerify(ctx, story.Claims)
+
+    if err != nil || verification.Confidence < 60 {
+
+        // Level 2: Human Review Required
+
+        return em.escalateToEditor(story, "AUTOMATED_VERIFICATION_FAILED")
+
+    }
+
+
+
+    // Level 3: Auto-publish with monitoring
+
+    story.State = StoryStatePublished
+
+    story.PublishedAt = time.Now()
+
+
+
+    // Set up continuous monitoring for updates
+
+    go em.setupContinuousMonitoring(story.ID)
+
+      // Notify distribution engine
+
+      em.publishBreakingNewsEvent(story)
+
+
+
+      return nil
+
+}
+
+```
+
+
+
+---
+
+
+
+PART VI — STORY GRAPH INITIALIZATION
+
+
+
+6.1 Canonical Story Model
+
+
+
+```go
+
+type CanonicalStory struct {
+
+      // Identity
+
+      StoryID      string `json:"story_id"`    // UUIDv7
+
+      EventID       string `json:"event_id"`   // UUIDv7, links to event
+
+      ClusterID string `json:"cluster_id"` // Original cluster reference
+
+
+
+      // Content
+
+      Headline string `json:"headline"`
+
+      Summary        string `json:"summary"`      // 2-3 sentence AI-generated
+
+      LeadParagraph string `json:"lead_paragraph"`
+
+// Structure
+
+Timeline []TimelineEvent `json:"timeline"`
+
+Entities []EntityReference `json:"entities"`
+
+Claims     []Claim       `json:"claims"`
+
+Sources    []SourceReference `json:"sources"`
+
+
+
+// Classification
+
+Categories []string       `json:"categories"`
+
+Priority   StoryPriority `json:"priority"`
+
+GeographicScope GeoScope          `json:"geographic_scope"`
+
+Language       string     `json:"language"`
+
+
+
+// State Management
+
+State      StoryState     `json:"state"`
+
+Version     int64        `json:"version"`
+
+ParentStoryID string        `json:"parent_story_id,omitempty"`
+
+ChildStoryIDs []string     `json:"child_story_ids,omitempty"`
+
+
+
+// Metadata
+
+CreatedAt time.Time          `json:"created_at"`
+
+UpdatedAt time.Time           `json:"updated_at"`
+
+FirstSourceAt time.Time       `json:"first_source_at"`
+
+LastSourceAt time.Time        `json:"last_source_at"`
+
+SourceCount int           `json:"source_count"`
+
+
+
+// AI Metadata
+
+      DetectionConfidence float64 `json:"detection_confidence"`
+
+      InitialVeracityScore float64 `json:"initial_veracity_score"`
+
+      AIGeneratedSummary bool        `json:"ai_generated_summary"`
+
+
+
+      // Version History
+
+      VersionHistory []StoryVersion `json:"version_history,omitempty"`
+
+}
+
+
+
+type StoryState string
+
+const (
+
+      StoryStateDiscovered StoryState = "DISCOVERED"
+
+      StoryStateCandidate StoryState = "CANDIDATE"
+
+      StoryStateClustered StoryState = "CLUSTERED"
+
+      StoryStateUnderReview StoryState = "UNDER_REVIEW"
+
+      StoryStateAccepted StoryState = "ACCEPTED"
+
+      StoryStateRejected StoryState = "REJECTED"
+
+      StoryStateBreaking StoryState = "BREAKING"
+
+      StoryStateDeveloping StoryState = "DEVELOPING"
+
+      StoryStateActive     StoryState = "ACTIVE"
+
+      StoryStateArchived StoryState = "ARCHIVED"
+
+)
+
+```
+
+
+
+6.2 Story Graph Neo4j Schema
+
+
+
+```cypher
+
+// Node Creation
+
+CREATE (s:Story {
+
+      story_id: $story_id,
+
+      headline: $headline,
+
+      summary: $summary,
+
+      state: $state,
+
+      priority: $priority,
+
+      created_at: datetime(),
+
+      version: 1
+
+})
+
+
+
+// Relationships
+
+CREATE (s)-[:COVERS_EVENT]->(e:Event {event_id: $event_id})
+
+CREATE (s)-[:SOURCED_FROM]->(src:Source {source_id: $source_id})
+
+CREATE (s)-[:INVOLVES_ENTITY]->(ent:Entity {entity_id: $entity_id})
+
+CREATE (s)-[:BELONGS_TO_CLUSTER]->(c:Cluster {cluster_id: $cluster_id})
+
+CREATE (s)-[:PARENT_OF]->(child:Story {story_id: $child_id})
+
+CREATE (s)-[:EVOLVED_FROM]->(parent:Story {story_id: $parent_id})
+
+
+
+// Indexes
+
+CREATE INDEX story_id_index FOR (s:Story) ON (s.story_id);
+
+CREATE INDEX story_state_index FOR (s:Story) ON (s.state);
+
+CREATE INDEX story_created_index FOR (s:Story) ON (s.created_at);
+
+```
+
+
+
+---
+
+PART VII — STORY STATE ENGINE
+
+
+
+7.1 State Machine Definition
+
+
+
+```
+
+STORY LIFECYCLE STATE MACHINE:
+
+
+
+          ┌─────────────┐
+
+          │ DISCOVERED │
+
+          └──────┬──────┘
+
+              │
+
+              │ AI Detection
+
+              ▼
+
+          ┌─────────────┐
+
+          │ CANDIDATE │
+
+          └──────┬──────┘
+
+              │
+
+          ┌──────▼──────┐
+
+          │ CLUSTERED │
+
+          └──────┬──────┘
+
+              │
+
+          ┌──────▼──────┐
+
+          │ UNDER_REVIEW│◄────────────┐
+
+          └──┬───┬───┬──┘          │
+
+            │ │ │              │
+
+           ┌────────▼┐ │ ┌▼────────┐             │
+
+           │ ACCEPTED │ │ │ REJECTED │      │
+
+           └────┬─────┘ │ └─────────┘            │
+
+                │       │      │
+
+         ┌────────▼──┐ ┌───▼──────┐                  │
+
+         │ DEVELOPING │ │ BREAKING │         │
+
+         └─────┬──────┘ └────┬─────┘                     │
+
+            │           │      │
+
+            └──────┬──────┘             │
+
+                    │         │
+
+            ┌──────▼──────┐             │
+
+            │ ACTIVE │─────────────────┘
+
+            └──────┬──────┘ (if updated)
+
+                    │
+
+            ┌──────▼──────┐
+
+            │ ARCHIVED │
+
+            └─────────────┘
+
+```
+
+
+
+7.2 State Transition Rules
+
+
+
+```go
+
+type StateMachine struct {
+
+      transitions map[StoryState]map[StoryEvent]StoryState
+
+      validators map[StoryEvent]TransitionValidator
+
+}
+
+func NewStoryStateMachine() *StateMachine {
+
+  sm := &StateMachine{
+
+    transitions: map[StoryState]map[StoryEvent]StoryState{
+
+      StoryStateDiscovered: {
+
+           EventAIDetection: StoryStateCandidate,
+
+           EventTimeout:    StoryStateRejected,
+
+      },
+
+      StoryStateCandidate: {
+
+           EventClusterFound: StoryStateClustered,
+
+           EventNoiseDetected: StoryStateRejected,
+
+      },
+
+      StoryStateClustered: {
+
+           EventEditorReview: StoryStateUnderReview,
+
+           EventAutoAccept: StoryStateAccepted,
+
+      },
+
+      StoryStateUnderReview: {
+
+           EventEditorAccept: StoryStateAccepted,
+
+           EventEditorReject: StoryStateRejected,
+
+           EventBreakingDetected: StoryStateBreaking,
+
+      },
+
+      StoryStateAccepted: {
+
+           EventPublish:   StoryStateActive,
+
+           EventBreakingDetected: StoryStateBreaking,
+
+      },
+
+      StoryStateBreaking: {
+
+                  EventVerifyComplete: StoryStateActive,
+
+                  EventDebunked:     StoryStateRejected,
+
+             },
+
+             StoryStateActive: {
+
+                  EventNewDevelopment: StoryStateDeveloping,
+
+                  EventArchive:    StoryStateArchived,
+
+             },
+
+             StoryStateDeveloping: {
+
+                  EventUpdateMerged: StoryStateActive,
+
+             },
+
+        },
+
+    }
+
+    return sm
+
+}
+
+
+
+func (sm *StateMachine) Transition(story *CanonicalStory, event StoryEvent) error {
+
+    validNextStates, exists := sm.transitions[story.State]
+
+    if !exists {
+
+        return ErrInvalidState
+
+    }
+
+
+
+    nextState, valid := validNextStates[event]
+
+    if !valid {
+
+        return ErrInvalidTransition
+
+    }
+
+      // Validate transition preconditions
+
+      if validator, hasValidator := sm.validators[event]; hasValidator {
+
+           if err := validator.Validate(story); err != nil {
+
+               return fmt.Errorf("transition validation failed: %w", err)
+
+           }
+
+      }
+
+
+
+      // Record version before state change
+
+      story.VersionHistory = append(story.VersionHistory, StoryVersion{
+
+           FromState: story.State,
+
+           ToState: nextState,
+
+           Event:     event,
+
+           Timestamp: time.Now(),
+
+      })
+
+
+
+      story.State = nextState
+
+      story.Version++
+
+      story.UpdatedAt = time.Now()
+
+
+
+      return nil
+
+}
+
+```
+
+
+
+---
+
+
+
+PART VIII — CONTENT MAESTRO ORCHESTRATION
+
+8.1 Supervisor Agent Architecture
+
+
+
+```
+
+CONTENT MAESTRO SUPERVISOR:
+
+┌─────────────────────────────────────────────────────────┐
+
+│           CONTENT MAESTRO                 │
+
+│            (Supervisor)               │
+
+├─────────────────────────────────────────────────────────┤
+
+│                               │
+
+│ ┌──────────────────────────────────────────────────┐ │
+
+│ │       WORKFLOW ORCHESTRATOR (LangGraph)               │ │
+
+│ └──────────────────────────────────────────────────┘ │
+
+│              │                    │
+
+│     ┌───────────────┼───────────────┐                    │
+
+│     │         │           │       │
+
+│ ┌──────▼─────┐ ┌──────▼─────┐ ┌──────▼─────┐                      │
+
+│ │ DISCOVERY │ │ DETECTION │ │ CLASSIFIER │          │
+
+│ │ AGENTS │ │ AGENTS │ │ AGENTS │               │
+
+│ └────────────┘ └────────────┘ └────────────┘                  │
+
+│                               │
+
+│ ┌──────────────────────────────────────────────────┐ │
+
+│ │       AGENT POOL (5-10 workers each)        │ │
+
+│ └──────────────────────────────────────────────────┘ │
+
+└─────────────────────────────────────────────────────────┘
+
+```
+
+8.2 Workflow Definition
+
+
+
+```go
+
+type ContentMaestroWorkflow struct {
+
+    graph *langgraph.StateGraph
+
+}
+
+
+
+func NewContentMaestroWorkflow() *ContentMaestroWorkflow {
+
+    wf := &ContentMaestroWorkflow{}
+
+
+
+    // Define workflow nodes
+
+    wf.graph = langgraph.NewStateGraph()
+
+
+
+    // Add nodes
+
+    wf.graph.AddNode("ingest", wf.ingestionNode)
+
+    wf.graph.AddNode("nlp_process", wf.nlpProcessingNode)
+
+    wf.graph.AddNode("detect_stories", wf.storyDetectionNode)
+
+    wf.graph.AddNode("deduplicate", wf.deduplicationNode)
+
+    wf.graph.AddNode("classify", wf.classificationNode)
+
+    wf.graph.AddNode("prioritize", wf.prioritizationNode)
+
+    wf.graph.AddNode("create_story_graph", wf.storyGraphCreationNode)
+
+    wf.graph.AddNode("human_review", wf.humanReviewNode)
+
+
+
+    // Define edges
+
+    wf.graph.AddEdge("ingest", "nlp_process")
+
+      wf.graph.AddEdge("nlp_process", "detect_stories")
+
+      wf.graph.AddEdge("detect_stories", "deduplicate")
+
+      wf.graph.AddEdge("deduplicate", "classify")
+
+      wf.graph.AddEdge("classify", "prioritize")
+
+
+
+      // Conditional routing
+
+      wf.graph.AddConditionalEdges("prioritize", wf.routeByPriority, map[string]string{
+
+           "breaking":   "human_review",
+
+           "standard":   "create_story_graph",
+
+           "low_priority": "create_story_graph",
+
+      })
+
+
+
+      wf.graph.AddEdge("human_review", "create_story_graph")
+
+      wf.graph.SetFinishPoint("create_story_graph")
+
+
+
+      return wf
+
+}
+
+
+
+func (wf *ContentMaestroWorkflow) routeByPriority(state *WorkflowState) string {
+
+      if state.Story.Priority == PriorityCritical {
+
+           return "breaking"
+
+      }
+
+      return "standard"
+
+}
+
+```
+
+8.3 Agent Task Delegation
+
+
+
+```go
+
+type AgentOrchestrator struct {
+
+    discoveryAgents *AgentPool
+
+    detectionAgents *AgentPool
+
+    classifierAgents *AgentPool
+
+}
+
+
+
+type AgentPool struct {
+
+    agents []*AIAgent
+
+    semaphore chan struct{} // Controls concurrency
+
+    maxWorkers int
+
+}
+
+
+
+func (ap *AgentPool) DelegateTask(ctx context.Context, task AgentTask) (*AgentResult, error) {
+
+    // Acquire semaphore slot
+
+    select {
+
+    case ap.semaphore <- struct{}{}:
+
+        defer func() { <-ap.semaphore }()
+
+    case <-ctx.Done():
+
+        return nil, ctx.Err()
+
+    }
+
+
+
+    // Find available agent
+
+    agent := ap.findAvailableAgent()
+
+    if agent == nil {
+
+        // Queue task and wait
+
+        return ap.queueTask(ctx, task)
+
+    }
+
+
+
+    // Execute with timeout and retry
+
+    result, err := ap.executeWithRetry(ctx, agent, task, 3)
+
+    return result, err
+
+}
+
+
+
+func (ap *AgentPool) executeWithRetry(
+
+    ctx context.Context,
+
+    agent *AIAgent,
+
+    task AgentTask,
+
+    maxRetries int,
+
+) (*AgentResult, error) {
+
+    var lastErr error
+
+
+
+    for attempt := 0; attempt <= maxRetries; attempt++ {
+
+        taskCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+
+        defer cancel()
+
+
+
+        result, err := agent.Execute(taskCtx, task)
+
+        if err == nil {
+
+            return result, nil
+
+        }
+
+          lastErr = err
+
+
+
+          // Classify error for retry decision
+
+          if !isRetryable(err) {
+
+              return nil, fmt.Errorf("non-retryable error: %w", err)
+
+          }
+
+
+
+          // Exponential backoff
+
+          if attempt < maxRetries {
+
+              backoff := time.Duration(math.Pow(2, float64(attempt))) * time.Second
+
+              time.Sleep(backoff)
+
+          }
+
+      }
+
+
+
+      return nil, fmt.Errorf("max retries exceeded: %w", lastErr)
+
+}
+
+```
+
+
+
+---
+
+
+
+PART IX — API & EVENT SPECIFICATIONS
+
+
+
+9.1 gRPC Service Definitions
+
+
+
+```protobuf
+
+// api/content_origination/v1/ingestion.proto
+
+service IngestionService {
+
+    // Source Management
+
+    rpc RegisterSource(RegisterSourceRequest) returns (Source);
+
+    rpc UpdateSource(UpdateSourceRequest) returns (Source);
+
+    rpc GetSource(GetSourceRequest) returns (Source);
+
+    rpc ListSources(ListSourcesRequest) returns (ListSourcesResponse);
+
+    rpc GetSourceHealth(GetSourceHealthRequest) returns (SourceHealth);
+
+
+
+    // Manual Ingestion
+
+    rpc SubmitContent(SubmitContentRequest) returns (SubmitContentResponse);
+
+    rpc SubmitBulkContent(stream SubmitContentRequest) returns (BulkSubmitResponse);
+
+
+
+    // Pipeline Control
+
+    rpc TriggerIngestion(TriggerIngestionRequest) returns (TriggerIngestionResponse);
+
+    rpc PauseSource(PauseSourceRequest) returns (PauseSourceResponse);
+
+    rpc ResumeSource(ResumeSourceRequest) returns (ResumeSourceResponse);
+
+}
+
+
+
+service StoryDetectionService {
+
+    // Story Operations
+
+    rpc DetectStories(DetectStoriesRequest) returns (DetectStoriesResponse);
+
+    rpc GetStoryCluster(GetStoryClusterRequest) returns (StoryCluster);
+
+    rpc MergeStories(MergeStoriesRequest) returns (Story);
+
+    rpc SplitStory(SplitStoryRequest) returns (SplitStoryResponse);
+
+    // Story Graph
+
+    rpc CreateStoryGraphEntry(CreateStoryGraphRequest) returns (Story);
+
+    rpc UpdateStoryState(UpdateStoryStateRequest) returns (Story);
+
+    rpc GetStoryHistory(GetStoryHistoryRequest) returns (StoryHistory);
+
+
+
+    // Streaming
+
+    rpc StreamBreakingNews(StreamBreakingNewsRequest) returns (stream BreakingNewsAlert);
+
+    rpc WatchStoryDevelopment(WatchStoryRequest) returns (stream StoryUpdate);
+
+}
+
+
+
+// Messages for key operations
+
+message RegisterSourceRequest {
+
+    string tenant_id = 1;
+
+    string name = 2;
+
+    SourceType type = 3;
+
+    string base_url = 4;
+
+    SourceConfig config = 5;
+
+    map<string, string> auth_credentials = 6; // Encrypted
+
+}
+
+
+
+message SubmitContentRequest {
+
+    string tenant_id = 1;
+
+    string source_id = 2;
+
+    string content_type = 3;
+
+    bytes content = 4;
+
+    map<string, string> metadata = 5;
+
+      string idempotency_key = 6; // UUID for dedup
+
+}
+
+
+
+message CreateStoryGraphRequest {
+
+      string cluster_id = 1;
+
+      string headline = 2;
+
+      string summary = 3;
+
+      StoryPriority priority = 4;
+
+      repeated string source_references = 5;
+
+      repeated EntityReference entities = 6;
+
+      repeated Claim claims = 7;
+
+}
+
+```
+
+
+
+9.2 REST API Endpoints
+
+
+
+```yaml
+
+openapi: 3.0.3
+
+info:
+
+    title: Agbofa Nexus AI - Content Origination API
+
+    version: 1.0.0
+
+
+
+paths:
+
+    /api/v1/sources:
+
+      get:
+
+       summary: List all sources
+
+parameters:
+
+ - name: status
+
+  in: query
+
+  schema:
+
+   type: string
+
+   enum: [ACTIVE, DISABLED, ERROR]
+
+ - name: category
+
+  in: query
+
+  schema:
+
+   type: string
+
+ - name: page
+
+  in: query
+
+  schema:
+
+   type: integer
+
+   default: 1
+
+ - name: page_size
+
+  in: query
+
+  schema:
+
+   type: integer
+
+   default: 50
+
+   maximum: 200
+
+responses:
+
+ '200':
+
+  description: Successful response
+
+  content:
+
+   application/json:
+
+         schema:
+
+          $ref: '#/components/schemas/SourceList'
+
+
+
+ post:
+
+  summary: Register new source
+
+  requestBody:
+
+   required: true
+
+   content:
+
+    application/json:
+
+        schema:
+
+         $ref: '#/components/schemas/SourceRegistration'
+
+  responses:
+
+   '201':
+
+    description: Source created
+
+   '409':
+
+    description: Source already exists
+
+
+
+/api/v1/stories:
+
+ get:
+
+  summary: Search and list stories
+
+  parameters:
+
+   - name: state
+
+    in: query
+
+    schema:
+
+        type: string
+
+        enum: [BREAKING, ACTIVE, DEVELOPING, ARCHIVED]
+
+   - name: priority
+
+    in: query
+
+    schema:
+
+        type: string
+
+        enum: [CRITICAL, HIGH, MEDIUM, LOW]
+
+   - name: from_date
+
+    in: query
+
+    schema:
+
+        type: string
+
+        format: date-time
+
+   - name: to_date
+
+    in: query
+
+    schema:
+
+        type: string
+
+        format: date-time
+
+   - name: category
+
+    in: query
+
+    schema:
+
+        type: string
+
+  responses:
+
+   '200':
+
+    description: Stories list
+
+
+
+/api/v1/stories/breaking:
+
+ get:
+
+  summary: Get current breaking news
+
+  responses:
+
+   '200':
+
+    description: Breaking news stories
+
+
+
+/api/v1/stories/{story_id}:
+
+ get:
+
+  summary: Get story details
+
+  parameters:
+
+   - name: story_id
+
+    in: path
+
+    required: true
+
+    schema:
+
+        type: string
+
+        format: uuid
+
+  responses:
+
+   '200':
+
+    description: Story details
+
+   '404':
+
+    description: Story not found
+
+
+
+/api/v1/stories/{story_id}/history:
+
+ get:
+
+  summary: Get story version history
+
+  parameters:
+
+   - name: story_id
+
+    in: path
+
+         required: true
+
+         schema:
+
+          type: string
+
+          format: uuid
+
+       responses:
+
+        '200':
+
+         description: Version history
+
+```
+
+
+
+9.3 Kafka Topics & Event Schemas
+
+
+
+```yaml
+
+topics:
+
+ content_origination.raw_ingest:
+
+      partitions: 30
+
+      replication_factor: 3
+
+      retention_ms: 604800000 # 7 days
+
+      message_schema:
+
+       type: object
+
+       properties:
+
+        event_id:
+
+         type: string
+
+         format: uuid
+
+        event_type:
+
+         type: string
+
+         enum: [RAW_CONTENT_INGESTED]
+
+   source_id:
+
+    type: string
+
+   content_type:
+
+    type: string
+
+   content:
+
+    type: string
+
+   metadata:
+
+    type: object
+
+   ingest_timestamp:
+
+    type: string
+
+    format: date-time
+
+
+
+content_origination.stories.detected:
+
+ partitions: 12
+
+ replication_factor: 3
+
+ retention_ms: 2592000000 # 30 days
+
+ message_schema:
+
+  type: object
+
+  properties:
+
+   event_id:
+
+    type: string
+
+   event_type:
+
+    type: string
+
+    enum: [STORY_DETECTED, STORY_UPDATED, STORY_MERGED, STORY_REJECTED]
+
+   story_id:
+
+    type: string
+
+   cluster_id:
+
+    type: string
+
+   headline:
+
+    type: string
+
+   confidence_score:
+
+    type: number
+
+   priority:
+
+    type: string
+
+   timestamp:
+
+    type: string
+
+
+
+content_origination.breaking_news:
+
+ partitions: 6
+
+ replication_factor: 3
+
+ retention_ms: 86400000 # 24 hours
+
+ message_schema:
+
+  type: object
+
+  properties:
+
+   alert_id:
+
+    type: string
+
+   story_id:
+
+    type: string
+
+   urgency_level:
+
+    type: string
+
+    enum: [CRITICAL, HIGH, MODERATE]
+
+   headline:
+
+         type: string
+
+        source_count:
+
+         type: integer
+
+        detection_time:
+
+         type: string
+
+```
+
+
+
+---
+
+
+
+PART X — DATA MODEL SPECIFICATIONS
+
+
+
+10.1 Logical Data Models
+
+
+
+```sql
+
+-- PostgreSQL Tables (Complete Schema)
+
+
+
+-- Raw Ingest Documents
+
+CREATE TABLE raw_ingest_documents (
+
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+      tenant_id UUID NOT NULL,
+
+      source_id UUID NOT NULL,
+
+      external_id TEXT, -- ID from source system
+
+      content_type VARCHAR(50) NOT NULL,
+
+      raw_content TEXT NOT NULL,
+
+      content_hash VARCHAR(64) NOT NULL, -- SHA-256 for dedup
+
+      metadata JSONB DEFAULT '{}',
+
+     ingested_at TIMESTAMPTZ DEFAULT now(),
+
+     processed BOOLEAN DEFAULT false,
+
+     processing_errors TEXT[],
+
+
+
+     -- Indexes
+
+     CONSTRAINT unique_external_id UNIQUE(tenant_id, source_id, external_id)
+
+);
+
+
+
+CREATE INDEX idx_raw_ingest_source ON raw_ingest_documents(tenant_id, source_id);
+
+CREATE INDEX idx_raw_ingest_hash ON raw_ingest_documents(content_hash);
+
+CREATE INDEX idx_raw_ingest_processed ON raw_ingest_documents(processed, ingested_at);
+
+
+
+-- Story Clusters (MongoDB - schema represented as JSON)
+
+/*
+
+{
+
+     "_id": ObjectId,
+
+     "cluster_id": UUID,
+
+     "tenant_id": UUID,
+
+     "created_at": ISODate,
+
+     "last_updated": ISODate,
+
+     "document_count": Int32,
+
+     "primary_topic": String,
+
+     "entities": [
+
+       {
+
+           "entity_id": UUID,
+
+           "name": String,
+
+              "type": "PERSON" | "ORGANIZATION" | "LOCATION",
+
+              "relevance_score": Double
+
+          }
+
+     ],
+
+     "documents": [
+
+          {
+
+              "document_id": UUID,
+
+              "added_at": ISODate
+
+          }
+
+     ],
+
+     "centroid_embedding": [Double], // Average of all document embeddings
+
+     "state": "ACTIVE" | "MERGED" | "DISBANDED",
+
+     "velocity_metrics": {
+
+          "documents_last_hour": Int32,
+
+          "documents_last_24h": Int32,
+
+          "trend_direction": "INCREASING" | "STABLE" | "DECREASING"
+
+     }
+
+}
+
+*/
+
+
+
+-- Story Graph (Neo4j)
+
+/*
+
+(:Story {
+
+     story_id: UUID,
+
+     headline: String,
+
+     summary: String,
+
+     state: String,
+
+     priority: String,
+
+     created_at: DateTime,
+
+     updated_at: DateTime,
+
+     version: Integer,
+
+     language: String,
+
+     category: String
+
+})
+
+
+
+(:Event {
+
+     event_id: UUID,
+
+     event_type: String,
+
+     occurrence_time: DateTime,
+
+     location: Point,
+
+     magnitude: Float
+
+})
+
+
+
+(:Entity {
+
+     entity_id: UUID,
+
+     name: String,
+
+     type: String,
+
+     canonical_name: String,
+
+     wikidata_id: String
+
+})
+
+
+
+(:Source {
+
+      source_id: UUID,
+
+      name: String,
+
+      source_type: String,
+
+      reliability_score: Float,
+
+      url: String
+
+})
+
+
+
+// Relationships
+
+(:Story)-[:COVERS_EVENT]->(:Event)
+
+(:Story)-[:SOURCED_FROM]->(:Source)
+
+(:Story)-[:INVOLVES_ENTITY {role: String}]->(:Entity)
+
+(:Story)-[:EVOLVED_FROM]->(:Story)
+
+(:Story)-[:PARENT_OF]->(:Story)
+
+(:Event)-[:RELATED_TO]->(:Event)
+
+(:Entity)-[:SAME_AS]->(:Entity)
+
+*/
+
+```
+
+
+
+10.2 Indexing Strategy
+
+
+
+```sql
+
+-- PostgreSQL Performance Indexes
+
+CREATE INDEX CONCURRENTLY idx_stories_state_priority
+
+      ON stories(state, priority, created_at DESC);
+
+
+
+CREATE INDEX CONCURRENTLY idx_stories_entities
+
+      USING GIN (entities jsonb_path_ops);
+
+
+
+CREATE INDEX CONCURRENTLY idx_sources_reliability
+
+      ON source_registry(reliability_score DESC, status);
+
+
+
+-- pgvector Index for Similarity Search
+
+CREATE INDEX ON document_embeddings
+
+      USING ivfflat (embedding vector_cosine_ops)
+
+      WITH (lists = 100);
+
+
+
+-- Partial indexes for common queries
+
+CREATE INDEX idx_active_stories
+
+      ON stories(created_at)
+
+      WHERE state IN ('ACTIVE', 'BREAKING', 'DEVELOPING');
+
+
+
+CREATE INDEX idx_high_priority
+
+      ON stories(created_at)
+
+      WHERE priority IN ('CRITICAL', 'HIGH');
+
+```
+
+
+
+---
+
+
+
+PART XI — SECURITY & OBSERVABILITY
+
+
+
+11.1 Zero Trust Implementation
+
+```go
+
+// SPIFFE/SPIRE Integration
+
+type SpiffeIdentity struct {
+
+    spiffeID string
+
+    cert          *x509.Certificate
+
+    key           crypto.PrivateKey
+
+}
+
+
+
+func (si *SpiffeIdentity) GetGRPCCredentials() credentials.TransportCredentials {
+
+    tlsConfig := &tls.Config{
+
+        Certificates: []tls.Certificate{
+
+             {
+
+                  Certificate: [][]byte{si.cert.Raw},
+
+                  PrivateKey: si.key,
+
+             },
+
+        },
+
+        MinVersion: tls.VersionTLS13,
+
+    }
+
+
+
+    return credentials.NewTLS(tlsConfig)
+
+}
+
+
+
+// OPA Authorization
+
+func AuthorizeRequest(ctx context.Context, spiffeID string, action string, resource string) error {
+
+    query := fmt.Sprintf(`
+
+        data.agbofa.content_origination.allow
+
+      `)
+
+
+
+      input := map[string]interface{}{
+
+           "caller": map[string]string{
+
+                "spiffe_id": spiffeID,
+
+           },
+
+           "action": action,
+
+           "resource": resource,
+
+           "context": map[string]string{
+
+                "tenant_id": ctx.Value("tenant_id").(string),
+
+                "time":    time.Now().Format(time.RFC3339),
+
+           },
+
+      }
+
+
+
+      result, err := opa.Eval(ctx, query, input)
+
+      if err != nil {
+
+           return err
+
+      }
+
+
+
+      if !result.Allowed() {
+
+           return ErrUnauthorized
+
+      }
+
+
+
+      return nil
+
+}
+
+```
+
+11.2 Observability Stack
+
+
+
+```yaml
+
+observability:
+
+ metrics:
+
+  prometheus:
+
+   endpoints:
+
+    - /metrics on port 9090
+
+   key_metrics:
+
+    # Business Metrics
+
+    - stories_detected_total{priority, state}
+
+    - breaking_news_alerts_total
+
+    - duplicates_detected_total
+
+    - source_health_score{source_id}
+
+    - ingestion_latency_seconds{source_type}
+
+
+
+    # Technical Metrics
+
+    - kafka_consumer_lag{topic, partition}
+
+    - grpc_request_duration_seconds{method, status}
+
+    - database_query_duration_seconds{operation}
+
+    - redis_connection_pool_size
+
+
+
+    # AI Metrics
+
+    - story_detection_confidence{model_version}
+
+    - nlp_processing_duration_seconds
+
+   - embedding_generation_errors_total
+
+
+
+logging:
+
+ structured_logging:
+
+  format: json
+
+  fields:
+
+   - timestamp
+
+   - level
+
+   - service_name
+
+   - trace_id
+
+   - span_id
+
+   - tenant_id
+
+   - user_id
+
+   - message
+
+  levels:
+
+   DEBUG: Development only
+
+   INFO: Normal operations
+
+   WARN: Retryable errors, degraded performance
+
+   ERROR: Service failures, data loss risks
+
+   FATAL: System crashes
+
+
+
+tracing:
+
+ opentelemetry:
+
+  sampling:
+
+   strategy: parentbased_traceidratio
+
+   ratio: 0.1 # 10% sampling for production
+
+  exporters:
+
+   - jaeger
+
+   - prometheus
+
+  propagation:
+
+   - w3c_tracecontext
+
+   - baggage
+
+
+
+alerts:
+
+ prometheus_rules:
+
+  - alert: HighIngestionLatency
+
+   expr: ingestion_latency_seconds > 30
+
+   for: 5m
+
+   severity: warning
+
+
+
+  - alert: SourceHealthDegraded
+
+   expr: source_health_score < 50
+
+   for: 10m
+
+   severity: critical
+
+
+
+  - alert: BreakingNewsBacklog
+
+   expr: breaking_news_queue_size > 100
+
+   for: 2m
+
+   severity: critical
+
+
+
+  - alert: StoryDetectionAnomaly
+
+   expr: rate(stories_detected_total[1h]) < 100
+
+        for: 30m
+
+        severity: warning
+
+```
+
+
+
+11.3 SLOs & Error Budgets
+
+
+
+```yaml
+
+slos:
+
+ ingestion_pipeline:
+
+      availability: 99.95%
+
+      latency_p99: 5s
+
+      error_budget: 0.05% # 21.6 minutes/month downtime
+
+
+
+ story_detection:
+
+      accuracy: 99.5%
+
+      latency_p99: 30s
+
+      false_positive_rate: <1%
+
+      false_negative_rate: <0.5%
+
+
+
+ breaking_news:
+
+      detection_time_p99: 60s
+
+      alert_delivery_p99: 5s
+
+      availability: 99.99%
+
+
+
+ api_endpoints:
+
+      availability: 99.9%
+
+      latency_p99: 200ms
+
+      error_rate: <0.1%
+
+
+
+error_budgets:
+
+ monthly_calculation:
+
+      total_minutes: 43200 # 30 days
+
+      allowed_downtime:
+
+       ingestion: 21.6 minutes
+
+       breaking_news: 4.3 minutes
+
+       api: 43.2 minutes
+
+```
+
+
+
+---
+
+
+
+PART XII — IMPLEMENTATION READINESS
+
+
+
+12.1 Architecture Decision Records (Complete)
+
+
+
+ADR ID Decision Rationale Impact
+
+ORIG-001 Polyglot Persistence Different stores for different access patterns Multiple database
+expertise required
+
+ORIG-002 LangGraph State Machines Type-safe, production-grade workflows Golang
+implementation required
+
+ORIG-003 Dual-Mode Ingestion Match source capabilities Complex scheduling logic
+
+ORIG-004 pgvector for Embeddings Unified operational and vector store PostgreSQL expertise
+sufficient
+
+ORIG-005 Redis Streams for Queues Low-latency priority queuing Redis operational complexity
+
+ORIG-006 SPIFFE/SPIRE for Identity Zero-trust service mesh Infrastructure complexity
+
+ORIG-007 OPA for Authorization Fine-grained policy control Policy authoring learning curve
+
+
+
+12.2 Risk Assessment
+
+
+
+Risk Probability Impact Mitigation
+
+Source API Changes High Medium Abstraction layer, version-specific connectors
+
+AI Model Accuracy Degradation Medium High Continuous monitoring, A/B testing, fallback
+models
+
+Breaking News False Positives Medium Critical Multi-source verification, human-in-loop
+
+Database Performance at Scale Low High Partitioning, read replicas, caching layers
+
+Kafka Message Loss Low Critical Multi-datacenter replication, persistent storage
+
+Source Credential Leaks Very Low Critical Vault integration, encryption at rest, access audit
+
+Regulatory Compliance Changes Medium High Modular compliance engine, regional routing
+
+
+
+12.3 MVP vs Growth vs Enterprise
+
+
+
+MVP (Months 1-3)
+
+
+
+```
+
+INCLUDES:
+
+      RSS ingestion (top 100 sources)
+
+      2 News APIs (Reuters, AP)
+
+      Basic NLP (entity extraction, topic detection)
+
+      Simple story clustering
+
+      Basic duplicate detection
+
+      PostgreSQL + pgvector for storage
+
+      Simple story state machine
+
+      Manual editorial submission UI
+
+
+
+EXCLUDES:
+
+      Social media monitoring
+
+      Web crawling
+
+      Breaking news pipeline
+
+      Neo4j Story Graph
+
+      Government feeds
+
+      Multi-language support
+
+      Custom connector framework
+
+```
+
+
+
+Growth Phase (Months 4-9)
+
+
+
+```
+
+ADDITIONS:
+
+      Neo4j Story Graph integration
+
+      Breaking news detection pipeline
+
+      Social media monitoring (Twitter/X)
+
+      Web crawling (top domains)
+
+      Advanced NLP (full NER, relation extraction)
+
+      Real-time streaming for breaking news
+
+      Enhanced duplicate detection with ML
+
+      Government feed integration (US, UK, EU)
+
+      Multi-language support (10 languages)
+
+      Custom connector SDK
+
+```
+
+
+
+Enterprise Scale (Months 10-18)
+
+
+
+```
+
+FULL SCALE:
+
+      10,000+ sources across 40 languages
+
+      All social platforms
+
+      Premium news wire services
+
+      Real-time breaking news with <30s detection
+
+      Advanced AI with continuous learning
+
+      Full LangGraph-inspired multi-agent orchestration
+
+      Cross-tenant source sharing
+
+      Automated compliance monitoring
+
+      DR site active-active
+
+      Custom ML model training pipeline
+
+      Full observability with AI-driven anomaly detection
+
+```
+
+
+
+12.4 Engineering Checklist
+
+
+
+```markdown
+
+## Pre-Implementation
+
+- [ ] Confirm PostgreSQL 15+ with pgvector extension
+
+- [ ] Verify Neo4j Enterprise 5.x cluster availability
+
+- [ ] Confirm Kafka cluster with 30+ partitions capacity
+
+- [ ] Set up Vault for credential management
+
+- [ ] Provision Kubernetes namespaces and resource quotas
+
+- [ ] Configure SPIFFE/SPIRE for service identity
+
+- [ ] Set up CI/CD pipeline for Golang and Python services
+
+- [ ] Create observability dashboards in Grafana
+
+
+
+## Core Services
+
+- [ ] Implement Source Registry service (Golang)
+
+- [ ] Implement Ingestion Orchestrator (Golang)
+
+- [ ] Implement NLP Pipeline service (Python)
+
+- [ ] Implement Story Detection Engine (Golang + pgvector)
+
+- [ ] Implement Duplicate Detection service (Golang)
+
+- [ ] Implement Story Graph service (Golang + Neo4j)
+
+- [ ] Implement Content Maestro orchestration (Golang)
+
+
+
+## Supporting Services
+
+- [ ] Set up Redis Streams for priority queuing
+
+- [ ] Configure Kafka Connect for source connectors
+
+- [ ] Implement Source Health Monitor
+
+- [ ] Set up dead letter queue handling
+
+- [ ] Implement API Gateway routing
+
+## Testing
+
+- [ ] Unit tests (>90% coverage)
+
+- [ ] Integration tests for all gRPC services
+
+- [ ] Performance tests (500k documents/day)
+
+- [ ] Chaos engineering tests
+
+- [ ] Security penetration testing
+
+- [ ] AI accuracy validation suite
+
+
+
+## Documentation
+
+- [ ] API documentation (OpenAPI/gRPC reflection)
+
+- [ ] Runbook for common operational tasks
+
+- [ ] Failure recovery procedures
+
+- [ ] Source onboarding guide
+
+- [ ] Development environment setup guide
+
+```
+
+
+
+12.5 AI Coding Agent Implementation Notes
+
+
+
+```markdown
+
+## IMPLEMENTATION GUIDELINES FOR AI CODING AGENTS
+
+
+
+1. SERVICE SKELETON GENERATION:
+
+  - Use `go mod init github.com/agbofa/origination-service`
+
+  - Implement clean architecture: handlers → services → repositories
+
+  - All interfaces defined in `internal/ports`
+
+  - All business logic in `internal/core`
+
+ - All adapters in `internal/adapters`
+
+
+
+2. CODE GENERATION PATTERNS:
+
+ - Generate gRPC from protobuf: `protoc --go_out=. --go-grpc_out=.`
+
+ - Generate OpenAPI from protobuf annotations
+
+ - Use `go:generate` for mock generation with `mockgen`
+
+ - Implement repository pattern with interfaces for testability
+
+
+
+3. ERROR HANDLING:
+
+ - Use custom error types with error codes
+
+ - Implement `errors.Is()` for error checking
+
+ - Always wrap errors with context: `fmt.Errorf("operation: %w", err)`
+
+ - Log errors at service boundary only
+
+
+
+4. CONCURRENCY PATTERNS:
+
+ - Use `errgroup` for parallel operations
+
+ - Implement circuit breaker with `gobreaker`
+
+ - Use `rate.Limiter` from `golang.org/x/time/rate`
+
+ - Context propagation for cancellation
+
+
+
+5. DATABASE PATTERNS:
+
+ - Use connection pooling: `pgxpool`
+
+ - Implement repository interfaces
+
+ - Use `sqlx` for complex queries
+
+ - Always use prepared statements
+
+ - Implement optimistic locking with version columns
+
+6. KAFKA PATTERNS:
+
+  - Use `sarama` for Kafka client
+
+  - Implement idempotent producers
+
+  - Consumer groups for parallel processing
+
+  - Manual offset commit after processing
+
+
+
+7. TESTING:
+
+  - Use `testcontainers-go` for integration tests
+
+  - Implement table-driven tests
+
+  - Use `httptest` for HTTP handlers
+
+  - Mock external dependencies with generated mocks
+
+
+
+8. OBSERVABILITY:
+
+  - Always create spans for external calls
+
+  - Add metrics for business operations
+
+  - Use structured logging with `zerolog`
+
+  - Implement health check endpoints
+
+
+
+9. SECURITY:
+
+  - Never log credentials or PII
+
+  - Validate all inputs at boundaries
+
+  - Use constant-time comparisons for secrets
+
+  - Implement rate limiting on all public endpoints
+
+  - Rotate credentials from Vault
+
+```
+
+---
+
+
+
+END OF VOLUME 12
+
+
+
+Document Approval:
+
+
+
+· Chief AI Officer: _________________
+
+· Enterprise Solution Architect: _________________
+
+· Principal Software Architect: _________________
+
+· Distinguished Backend Engineer: _________________
+
+· Enterprise Security Architect: _________________
+
+
+
+Date: _________________
+
+Version: 1.0.0 - Implementation-Ready
+
+Next Volume: Volume 13 – Truth Engine Implementation Specification
+
+
+

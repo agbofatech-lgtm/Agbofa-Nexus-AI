@@ -22,7 +22,7 @@
         "SVC-019",
         "SVC-014"
       ],
-      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "status": "Batch 1 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 3",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11738-11742",
       "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
@@ -43,7 +43,7 @@
         "SVC-019",
         "SVC-014"
       ],
-      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "status": "Batch 1 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 3",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11742-11744",
       "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
@@ -64,7 +64,7 @@
         "SVC-019",
         "SVC-020"
       ],
-      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "status": "Batch 1 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 3",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11744-11748",
       "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
@@ -84,7 +84,7 @@
       "consumers": [
         "SVC-019"
       ],
-      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "status": "Batch 1 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 3",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11748-11754",
       "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
@@ -104,7 +104,7 @@
       "consumers": [
         "SVC-020"
       ],
-      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "status": "Batch 1 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 3",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11758-11763",
       "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
@@ -124,7 +124,7 @@
       "consumers": [
         "SVC-020"
       ],
-      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "status": "Batch 1 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 3",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11762-11768",
       "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
@@ -145,7 +145,7 @@
         "SVC-022",
         "SVC-014"
       ],
-      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "status": "Batch 1 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 3",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11770-11774",
       "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
@@ -166,7 +166,7 @@
         "SVC-022",
         "SVC-014"
       ],
-      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "status": "Batch 1 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 3",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11774-11776",
       "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
@@ -187,7 +187,7 @@
         "SVC-022",
         "SVC-014"
       ],
-      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "status": "Batch 1 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 3",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11776-11778",
       "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
@@ -208,7 +208,7 @@
         "SVC-023",
         "SVC-014"
       ],
-      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "status": "Batch 1 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 3",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11778-11788",
       "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
@@ -228,7 +228,7 @@
       "consumers": [
         "SVC-014"
       ],
-      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "status": "Batch 1 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 3",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11778-11788",
       "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
@@ -248,7 +248,7 @@
       "consumers": [
         "SVC-023"
       ],
-      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "status": "Batch 1 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 3",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11785-11788; 11310-11320",
       "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
@@ -269,7 +269,7 @@
         "SVC-009",
         "SVC-022"
       ],
-      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "status": "Batch 1 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 3",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11790-11804",
       "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
@@ -289,7 +289,7 @@
       "consumers": [
         "SVC-014"
       ],
-      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "status": "Batch 1 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 3",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11792-11796",
       "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
@@ -309,7 +309,7 @@
       "consumers": [
         "SVC-009"
       ],
-      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "status": "Batch 1 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 3",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11804-11808",
       "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
@@ -331,7 +331,7 @@
         "SVC-019",
         "SVC-023"
       ],
-      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "status": "Batch 1 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 3",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11808-11814",
       "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
@@ -351,7 +351,7 @@
       "consumers": [
         "SVC-022"
       ],
-      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "status": "Batch 1 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 3",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11314-11318; 11816-11822",
       "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
@@ -371,7 +371,7 @@
       "consumers": [
         "SVC-014"
       ],
-      "status": "Extracted from Batch 1 — Pending Review Approval",
+      "status": "Batch 1 Approved for Indexing — Not Implementation Authorization",
       "primary_volume": "Volume 3",
       "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:11320-11328",
       "payload_contract": "Payload shape listed in source where applicable; detailed schema pending implementation spec",
@@ -382,6 +382,395 @@
       "tests_required": "Producer/consumer contract and idempotency tests required",
       "implementation_status": "Not started",
       "related_adrs": []
+    },
+    {
+      "id": "EVT-019",
+      "name": "StorySubmittedEvent",
+      "topic_stream": "truth_engine.story.submitted",
+      "producer": "SVC-030",
+      "consumers": [
+        "SVC-020"
+      ],
+      "status": "Extracted from Batch 2 — Pending Review Approval",
+      "primary_volume": "Volume 13",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:118503-118657",
+      "related_adrs": [],
+      "payload_contract": "Defined or referenced in source; schema extraction pending",
+      "ordering_requirement": "Pending detailed architecture validation",
+      "idempotency_requirement": "Required where event processing changes state",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event unless otherwise classified",
+      "tests_required": "Producer/consumer contract, ordering/idempotency and replay tests required",
+      "implementation_status": "Not started"
+    },
+    {
+      "id": "EVT-020",
+      "name": "SourceUpdatedEvent",
+      "topic_stream": "truth_engine.source.updated",
+      "producer": "SVC-032",
+      "consumers": [
+        "SVC-037"
+      ],
+      "status": "Extracted from Batch 2 — Pending Review Approval",
+      "primary_volume": "Volume 13",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:118503-118525",
+      "related_adrs": [],
+      "payload_contract": "Defined or referenced in source; schema extraction pending",
+      "ordering_requirement": "Pending detailed architecture validation",
+      "idempotency_requirement": "Required where event processing changes state",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event unless otherwise classified",
+      "tests_required": "Producer/consumer contract, ordering/idempotency and replay tests required",
+      "implementation_status": "Not started"
+    },
+    {
+      "id": "EVT-021",
+      "name": "SourceEvaluatedEvent",
+      "topic_stream": "truth_engine.source.evaluated",
+      "producer": "SVC-037",
+      "consumers": [
+        "SVC-020"
+      ],
+      "status": "Extracted from Batch 2 — Pending Review Approval",
+      "primary_volume": "Volume 13",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:118679-118699",
+      "related_adrs": [],
+      "payload_contract": "Defined or referenced in source; schema extraction pending",
+      "ordering_requirement": "Pending detailed architecture validation",
+      "idempotency_requirement": "Required where event processing changes state",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event unless otherwise classified",
+      "tests_required": "Producer/consumer contract, ordering/idempotency and replay tests required",
+      "implementation_status": "Not started"
+    },
+    {
+      "id": "EVT-022",
+      "name": "ClaimVerifiedEvent",
+      "topic_stream": "truth_engine.claim.verified",
+      "producer": "SVC-039",
+      "consumers": [
+        "SVC-044"
+      ],
+      "status": "Extracted from Batch 2 — Pending Review Approval",
+      "primary_volume": "Volume 13",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:118699-118721",
+      "related_adrs": [],
+      "payload_contract": "Defined or referenced in source; schema extraction pending",
+      "ordering_requirement": "Pending detailed architecture validation",
+      "idempotency_requirement": "Required where event processing changes state",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event unless otherwise classified",
+      "tests_required": "Producer/consumer contract, ordering/idempotency and replay tests required",
+      "implementation_status": "Not started"
+    },
+    {
+      "id": "EVT-023",
+      "name": "ConfidenceCalculatedEvent",
+      "topic_stream": "truth_engine.confidence.calculated",
+      "producer": "SVC-044",
+      "consumers": [
+        "SVC-045"
+      ],
+      "status": "Extracted from Batch 2 — Pending Review Approval",
+      "primary_volume": "Volume 13",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:118721-118741",
+      "related_adrs": [],
+      "payload_contract": "Defined or referenced in source; schema extraction pending",
+      "ordering_requirement": "Pending detailed architecture validation",
+      "idempotency_requirement": "Required where event processing changes state",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event unless otherwise classified",
+      "tests_required": "Producer/consumer contract, ordering/idempotency and replay tests required",
+      "implementation_status": "Not started"
+    },
+    {
+      "id": "EVT-024",
+      "name": "StoryVerifiedEvent",
+      "topic_stream": "truth_engine.story.verified",
+      "producer": "SVC-020",
+      "consumers": [
+        "SVC-048",
+        "SVC-065"
+      ],
+      "status": "Extracted from Batch 2 — Pending Review Approval",
+      "primary_volume": "Volume 13",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:118741-118763",
+      "related_adrs": [],
+      "payload_contract": "Defined or referenced in source; schema extraction pending",
+      "ordering_requirement": "Pending detailed architecture validation",
+      "idempotency_requirement": "Required where event processing changes state",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event unless otherwise classified",
+      "tests_required": "Producer/consumer contract, ordering/idempotency and replay tests required",
+      "implementation_status": "Not started"
+    },
+    {
+      "id": "EVT-025",
+      "name": "MisinfoDetectedEvent",
+      "topic_stream": "truth_engine.misinfo.detected",
+      "producer": "SVC-041",
+      "consumers": [
+        "SVC-045",
+        "SVC-057"
+      ],
+      "status": "Extracted from Batch 2 — Pending Review Approval",
+      "primary_volume": "Volume 13",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:118763-118785",
+      "related_adrs": [],
+      "payload_contract": "Defined or referenced in source; schema extraction pending",
+      "ordering_requirement": "Pending detailed architecture validation",
+      "idempotency_requirement": "Required where event processing changes state",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event unless otherwise classified",
+      "tests_required": "Producer/consumer contract, ordering/idempotency and replay tests required",
+      "implementation_status": "Not started"
+    },
+    {
+      "id": "EVT-026",
+      "name": "StoryVersionedEvent",
+      "topic_stream": "truth_engine.story.versioned",
+      "producer": "SVC-043",
+      "consumers": [
+        "SVC-046"
+      ],
+      "status": "Extracted from Batch 2 — Pending Review Approval",
+      "primary_volume": "Volume 13",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:117157",
+      "related_adrs": [],
+      "payload_contract": "Defined or referenced in source; schema extraction pending",
+      "ordering_requirement": "Pending detailed architecture validation",
+      "idempotency_requirement": "Required where event processing changes state",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event unless otherwise classified",
+      "tests_required": "Producer/consumer contract, ordering/idempotency and replay tests required",
+      "implementation_status": "Not started"
+    },
+    {
+      "id": "EVT-027",
+      "name": "DistributionStateChangedEvent",
+      "topic_stream": "distribution.state.changed",
+      "producer": "SVC-065",
+      "consumers": [
+        "SVC-075",
+        "SVC-082"
+      ],
+      "status": "Extracted from Batch 2 — Pending Review Approval",
+      "primary_volume": "Volumes 18-19",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:143799",
+      "related_adrs": [],
+      "payload_contract": "Defined or referenced in source; schema extraction pending",
+      "ordering_requirement": "Pending detailed architecture validation",
+      "idempotency_requirement": "Required where event processing changes state",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event unless otherwise classified",
+      "tests_required": "Producer/consumer contract, ordering/idempotency and replay tests required",
+      "implementation_status": "Not started"
+    },
+    {
+      "id": "EVT-028",
+      "name": "Publishing Content Submitted",
+      "topic_stream": "distribution.publishing",
+      "producer": "SVC-066",
+      "consumers": [
+        "SVC-074"
+      ],
+      "status": "Extracted from Batch 2 — Pending Review Approval",
+      "primary_volume": "Volumes 18-19",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:143698-143700",
+      "related_adrs": [],
+      "payload_contract": "Defined or referenced in source; schema extraction pending",
+      "ordering_requirement": "Pending detailed architecture validation",
+      "idempotency_requirement": "Required where event processing changes state",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event unless otherwise classified",
+      "tests_required": "Producer/consumer contract, ordering/idempotency and replay tests required",
+      "implementation_status": "Not started"
+    },
+    {
+      "id": "EVT-029",
+      "name": "Publishing Validation Passed",
+      "topic_stream": "distribution.publishing",
+      "producer": "SVC-074",
+      "consumers": [
+        "SVC-067"
+      ],
+      "status": "Extracted from Batch 2 — Pending Review Approval",
+      "primary_volume": "Volumes 18-19",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:143700-143704",
+      "related_adrs": [],
+      "payload_contract": "Defined or referenced in source; schema extraction pending",
+      "ordering_requirement": "Pending detailed architecture validation",
+      "idempotency_requirement": "Required where event processing changes state",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event unless otherwise classified",
+      "tests_required": "Producer/consumer contract, ordering/idempotency and replay tests required",
+      "implementation_status": "Not started"
+    },
+    {
+      "id": "EVT-030",
+      "name": "Publishing Platform Success",
+      "topic_stream": "distribution.publishing",
+      "producer": "SVC-067",
+      "consumers": [
+        "SVC-075"
+      ],
+      "status": "Extracted from Batch 2 — Pending Review Approval",
+      "primary_volume": "Volumes 18-19",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:143714-143718",
+      "related_adrs": [],
+      "payload_contract": "Defined or referenced in source; schema extraction pending",
+      "ordering_requirement": "Pending detailed architecture validation",
+      "idempotency_requirement": "Required where event processing changes state",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event unless otherwise classified",
+      "tests_required": "Producer/consumer contract, ordering/idempotency and replay tests required",
+      "implementation_status": "Not started"
+    },
+    {
+      "id": "EVT-031",
+      "name": "Publishing Platform Failed",
+      "topic_stream": "distribution.publishing",
+      "producer": "SVC-067",
+      "consumers": [
+        "SVC-072"
+      ],
+      "status": "Extracted from Batch 2 — Pending Review Approval",
+      "primary_volume": "Volumes 18-19",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:143714-143724",
+      "related_adrs": [],
+      "payload_contract": "Defined or referenced in source; schema extraction pending",
+      "ordering_requirement": "Pending detailed architecture validation",
+      "idempotency_requirement": "Required where event processing changes state",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event unless otherwise classified",
+      "tests_required": "Producer/consumer contract, ordering/idempotency and replay tests required",
+      "implementation_status": "Not started"
+    },
+    {
+      "id": "EVT-032",
+      "name": "Retraction Started",
+      "topic_stream": "distribution.publishing",
+      "producer": "SVC-071",
+      "consumers": [
+        "SVC-067",
+        "SVC-075"
+      ],
+      "status": "Extracted from Batch 2 — Pending Review Approval",
+      "primary_volume": "Volumes 18-19",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:143726-143728",
+      "related_adrs": [],
+      "payload_contract": "Defined or referenced in source; schema extraction pending",
+      "ordering_requirement": "Pending detailed architecture validation",
+      "idempotency_requirement": "Required where event processing changes state",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event unless otherwise classified",
+      "tests_required": "Producer/consumer contract, ordering/idempotency and replay tests required",
+      "implementation_status": "Not started"
+    },
+    {
+      "id": "EVT-033",
+      "name": "Retraction Complete",
+      "topic_stream": "distribution.publishing",
+      "producer": "SVC-071",
+      "consumers": [
+        "SVC-075",
+        "SVC-046"
+      ],
+      "status": "Extracted from Batch 2 — Pending Review Approval",
+      "primary_volume": "Volumes 18-19",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:143726-143728",
+      "related_adrs": [],
+      "payload_contract": "Defined or referenced in source; schema extraction pending",
+      "ordering_requirement": "Pending detailed architecture validation",
+      "idempotency_requirement": "Required where event processing changes state",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event unless otherwise classified",
+      "tests_required": "Producer/consumer contract, ordering/idempotency and replay tests required",
+      "implementation_status": "Not started"
+    },
+    {
+      "id": "EVT-034",
+      "name": "AnalyticsEvent",
+      "topic_stream": "analytics.events",
+      "producer": "SVC-075",
+      "consumers": [
+        "SVC-076",
+        "SVC-077"
+      ],
+      "status": "Extracted from Batch 2 — Pending Review Approval",
+      "primary_volume": "Volumes 18-19",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:147387-147445",
+      "related_adrs": [],
+      "payload_contract": "Defined or referenced in source; schema extraction pending",
+      "ordering_requirement": "Pending detailed architecture validation",
+      "idempotency_requirement": "Required where event processing changes state",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event unless otherwise classified",
+      "tests_required": "Producer/consumer contract, ordering/idempotency and replay tests required",
+      "implementation_status": "Not started"
+    },
+    {
+      "id": "EVT-035",
+      "name": "NormalizedAnalyticsEvent",
+      "topic_stream": "analytics.normalized",
+      "producer": "SVC-075",
+      "consumers": [
+        "SVC-076",
+        "SVC-077"
+      ],
+      "status": "Extracted from Batch 2 — Pending Review Approval",
+      "primary_volume": "Volumes 18-19",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:147445-147457",
+      "related_adrs": [],
+      "payload_contract": "Defined or referenced in source; schema extraction pending",
+      "ordering_requirement": "Pending detailed architecture validation",
+      "idempotency_requirement": "Required where event processing changes state",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event unless otherwise classified",
+      "tests_required": "Producer/consumer contract, ordering/idempotency and replay tests required",
+      "implementation_status": "Not started"
+    },
+    {
+      "id": "EVT-036",
+      "name": "OptimizationEvent",
+      "topic_stream": "analytics.optimization",
+      "producer": "SVC-080",
+      "consumers": [
+        "SVC-016",
+        "SVC-018",
+        "SVC-048"
+      ],
+      "status": "Extracted from Batch 2 — Pending Review Approval",
+      "primary_volume": "Volumes 18-19",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:147487-147501",
+      "related_adrs": [],
+      "payload_contract": "Defined or referenced in source; schema extraction pending",
+      "ordering_requirement": "Pending detailed architecture validation",
+      "idempotency_requirement": "Required where event processing changes state",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event unless otherwise classified",
+      "tests_required": "Producer/consumer contract, ordering/idempotency and replay tests required",
+      "implementation_status": "Not started"
+    },
+    {
+      "id": "EVT-037",
+      "name": "AIFeedbackEvent",
+      "topic_stream": "analytics.ai_feedback",
+      "producer": "SVC-080",
+      "consumers": [
+        "SVC-016"
+      ],
+      "status": "Extracted from Batch 2 — Pending Review Approval",
+      "primary_volume": "Volumes 18-19",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:147565-147575",
+      "related_adrs": [],
+      "payload_contract": "Defined or referenced in source; schema extraction pending",
+      "ordering_requirement": "Pending detailed architecture validation",
+      "idempotency_requirement": "Required where event processing changes state",
+      "retention": "Pending detailed extraction",
+      "security_classification": "Internal platform event unless otherwise classified",
+      "tests_required": "Producer/consumer contract, ordering/idempotency and replay tests required",
+      "implementation_status": "Not started"
     }
   ]
 }

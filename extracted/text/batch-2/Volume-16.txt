@@ -1,0 +1,5934 @@
+VOLUME 16: COMPLIANCE GATEKEEPER
+
+
+
+Implementation Specification — Legal Review, Rights Management & Regulatory Compliance
+
+
+
+Document Reference: AGBA-NEXUS-VOL16-IMPL-1.0
+
+Status: Implementation-Ready
+
+Approved Baseline: Volumes 1–15 (Immutable)
+
+Bounded Context: Compliance Gatekeeper
+
+Quality Level: US$50M Enterprise Platform Specification
+
+
+
+---
+
+
+
+ARCHITECTURE DECISION RECORDS (ADR)
+
+
+
+ADR-CMP-001: Pre-Publication Compliance Gateway
+
+
+
+Decision: All content must pass through the Compliance Gatekeeper as a synchronous gateway
+before any distribution occurs. No content reaches any platform without explicit compliance
+clearance.
+
+Rationale: Legal and regulatory risks of AI-generated content require a hard gateway, not an
+advisory service. Post-publication corrections are reputationally damaging and legally
+insufficient.
+
+Alternatives Considered: Asynchronous advisory compliance (rejected — too risky for
+automated publishing at scale).
+
+
+
+ADR-CMP-002: Tiered Risk Classification with Automated Triage
+
+
+
+Decision: Implement a four-tier risk classification system (LOW, MEDIUM, HIGH, CRITICAL) with
+automated handling for LOW/MEDIUM and mandatory human review for HIGH/CRITICAL.
+
+Rationale: 85% of content is expected to be LOW/MEDIUM risk. Full human review of all
+content is not scalable. Risk-based routing optimizes human reviewer utilization.
+
+Alternatives Considered: Human review for all content (rejected — not scalable); fully
+automated for all (rejected — too risky).
+
+
+
+ADR-CMP-003: Independent Compliance Scoring Engine
+
+
+
+Decision: Compliance scores are calculated by an independent engine that aggregates multiple
+specialized checkers, with no single checker having veto power except for CRITICAL findings.
+
+Rationale: Prevents any single compliance dimension from unnecessarily blocking publication
+while ensuring CRITICAL issues always stop distribution.
+
+Alternatives Considered: Sequential gating (rejected — creates bottlenecks); simple AND-gating
+(rejected — too restrictive).
+
+
+
+ADR-CMP-004: Immutable Compliance Audit Trail
+
+
+
+Decision: Every compliance decision, including automated approvals, must be recorded in an
+immutable, cryptographically-chained audit log with complete provenance.
+
+Rationale: Regulatory compliance and legal defensibility require incontrovertible evidence of
+compliance review for every published piece of content.
+
+Consequences: Additional storage and write latency, but essential for legal protection.
+
+---
+
+
+
+PART I — COMPLIANCE GATEKEEPER OVERVIEW
+
+
+
+1.1 Purpose, Scope & Responsibilities
+
+
+
+Purpose: The Compliance Gatekeeper is the final safeguard before any AI-generated content
+reaches an audience. It ensures every piece of content is legally safe, copyright compliant,
+privacy-respecting, and ethically sound before publication.
+
+
+
+Core Responsibilities:
+
+
+
+Responsibility Description Criticality
+
+Copyright Protection Detect and prevent copyright infringement CRITICAL
+
+Plagiarism Detection Identify copied or overly similar content HIGH
+
+Legal Review Screen for defamation, libel, illegal content CRITICAL
+
+Privacy Protection Detect and redact PII, ensure data privacy compliance CRITICAL
+
+AI Safety Detect hallucinations, fabricated content, unsupported claims CRITICAL
+
+Platform Compliance Ensure content meets each platform's policies HIGH
+
+Editorial Authorization Route high-risk content for human review HIGH
+
+Audit & Traceability Maintain complete compliance decision records CRITICAL
+
+
+
+1.2 Position in Platform Architecture
+
+
+
+```
+
+┌──────────────────────────────────────────────────────────────────┐
+
+│             AGBAFA NEXUS AI PLATFORM                  │
+
+├──────────────────────────────────────────────────────────────────┤
+
+│                                 │
+
+│ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐               │
+
+│ │ CONTENT │ │ TRUTH       │ │ CONTENT │            │
+
+│ │ ORIGINATION │──    │ ENGINE │──        │ FACTORY │──┐       │
+
+│ │ (Vol 12) │ │ (Vol 13) │ │ (Vol 14) │ │     │
+
+│ └─────────────┘ └─────────────┘ └─────────────┘ │             │
+
+│                           │     │
+
+│ ┌─────────────────────────────────────────────────────▼───────┐ │
+
+│ │        COMPLIANCE GATEKEEPER (Vol 16)           ││
+
+│ │ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────┐ │ │
+
+│ │ │ RIGHTS │ │ LEGAL │ │ PRIVACY │ │ AI SAFETY │ │ │
+
+│ │ │ MGMT │ │ REVIEW │ │ PROTECT │ │ REVIEW             │ ││
+
+│ │ └────┬─────┘ └────┬─────┘ └────┬─────┘ └──────┬───────┘ │ │
+
+│ │     └─────────────┴────────────┴──────────────┘             ││
+
+│ │             │                 ││
+
+│ │ ┌──────────────────────▼──────────────────────────────┐ │ │
+
+│ │ │      COMPLIANCE SCORING ENGINE               │ ││
+
+│ │ └──────────────────────┬──────────────────────────────┘ │ │
+
+│ │             │                 ││
+
+│ │ ┌──────────────────────▼──────────────────────────────┐ │ │
+
+│ │ │      EDITORIAL APPROVAL WORKFLOW              │ ││
+
+│ │ └──────────────────────┬──────────────────────────────┘ │ │
+
+│ └─────────────────────────┼───────────────────────────────────┘ │
+
+│               │                  │
+
+│               ▼                      │
+
+│ ┌─────────────────────────────────────────────────────────────┐ │
+
+│ │       DISTRIBUTION ENGINE (Vol 17)       ││
+
+│ └─────────────────────────────────────────────────────────────┘ │
+
+│                                    │
+
+│ ┌─────────────────────────────────────────────────────────────┐ │
+
+│ │       FOUNDATION PLATFORM (Vol 11)        ││
+
+│ └─────────────────────────────────────────────────────────────┘ │
+
+└──────────────────────────────────────────────────────────────────┘
+
+```
+
+
+
+1.3 Compliance Gateway Workflow
+
+
+
+```
+
+CONTENT SUBMISSION → COMPLIANCE GATEKEEPER → DISTRIBUTION ENGINE
+
+
+
+         ┌──────────────────────────┐
+
+         │ CONTENT PACKAGE IN         │
+
+         │ (from Content Factory) │
+
+         └────────────┬─────────────┘
+
+                │
+
+         ┌────────────▼─────────────┐
+
+         │ PARALLEL COMPLIANCE           │
+
+         │ CHECKS           │
+
+         │              │
+
+         │ ┌─────────────────────┐ │
+
+         │ │ • Copyright Check │ │
+
+│ │ • Plagiarism Check │ │
+
+│ │ • Legal Review       ││
+
+│ │ • Privacy Scan       ││
+
+│ │ • AI Safety Review │ │
+
+│ │ • Platform Policy │ │
+
+│ └─────────────────────┘ │
+
+└────────────┬─────────────┘
+
+       │
+
+┌────────────▼─────────────┐
+
+│ COMPLIANCE SCORING              │
+
+│ ENGINE             │
+
+└────────────┬─────────────┘
+
+       │
+
+┌────────────▼─────────────┐
+
+│ RISK CLASSIFICATION         │
+
+└──────┬──────────┬────────┘
+
+   │       │
+
+LOW/MEDIUM HIGH/CRITICAL
+
+   │       │
+
+┌──────▼──────┐ ┌─▼──────────────┐
+
+│ AUTO-        │ │ HUMAN REVIEW │
+
+│ APPROVE │ │ QUEUE                   │
+
+└──────┬──────┘ └─┬───────────────┘
+
+   │       │
+
+   └────┬─────┘
+
+       │
+
+           ┌───────────▼───────────┐
+
+           │ PUBLICATION DECISION │
+
+           └───────────┬───────────┘
+
+                  │
+
+           ┌───────────▼───────────┐
+
+           │ APPROVED?            │
+
+           └────┬────────────┬──────┘
+
+              │ YES      │ NO
+
+           ┌────▼────┐ ┌───▼──────────┐
+
+           │DISTRIBUTE│ │ RETURN TO          │
+
+           │ (Vol 17) │ │ CONTENT        │
+
+           └─────────┘ │ FACTORY WITH │
+
+                   │ CORRECTIONS │
+
+                   └───────────────┘
+
+```
+
+
+
+1.4 Enterprise Principles
+
+
+
+1. Safety Before Speed: Compliance must never be sacrificed for publication speed
+
+2. Defense in Depth: Multiple independent checks, no single point of failure
+
+3. Presumption of Review: When uncertain, route to human review
+
+4. Complete Auditability: Every decision must be explainable and traceable
+
+5. Privacy by Design: PII protection is proactive, not reactive
+
+6. Jurisdictional Awareness: Compliance rules adapt to geographic and regulatory context
+
+7. Continuous Learning: Feedback from human reviewers improves automated checks
+
+---
+
+
+
+PART II — RIGHTS MANAGEMENT SERVICE
+
+
+
+Service ID: SVC-CMP-RIGHTS-MGMT
+
+Runtime: Golang
+
+Primary Store: PostgreSQL
+
+
+
+2.1 Service Overview
+
+
+
+The Rights Management Service ensures all content and media assets comply with copyright
+law, licensing agreements, and attribution requirements.
+
+
+
+2.2 Domain Model
+
+
+
+```go
+
+package rightsmgmt
+
+
+
+type RightsManagementService struct {
+
+    copyrightChecker CopyrightChecker
+
+    licenseValidator LicenseValidator
+
+    fairUseAssessor FairUseAssessor
+
+    attributionManager AttributionManager
+
+    rightsRegistry   RightsRegistry
+
+    assetTracker     AssetTracker
+
+}
+
+type RightsCheckResult struct {
+
+    CheckID         string           `json:"check_id"`
+
+    ContentID        string           `json:"content_id"`
+
+    OverallStatus     RightsStatus        `json:"overall_status"`
+
+    AssetChecks       []AssetRightsCheck `json:"asset_checks"`
+
+    TextCopyrightCheck *TextCopyrightResult `json:"text_copyright_check"`
+
+    RequiredActions []RightsAction           `json:"required_actions"`
+
+    RiskLevel       RiskLevel          `json:"risk_level"`
+
+    CheckedAt        time.Time           `json:"checked_at"`
+
+}
+
+
+
+type RightsStatus string
+
+const (
+
+    RightsStatusCleared       RightsStatus = "CLEARED"
+
+    RightsStatusConditional RightsStatus = "CONDITIONAL" // Requires attribution
+
+    RightsStatusBlocked       RightsStatus = "BLOCKED"        // Cannot use
+
+    RightsStatusNeedsReview RightsStatus = "NEEDS_REVIEW" // Human review required
+
+)
+
+
+
+type AssetRightsCheck struct {
+
+    AssetID       string         `json:"asset_id"`
+
+    AssetType       string        `json:"asset_type"`        // IMAGE, VIDEO, AUDIO, FONT
+
+  AssetSource string                 `json:"asset_source"`     // AI_GENERATED, LICENSED,
+PUBLIC_DOMAIN, STAFF
+
+    LicenseType     string         `json:"license_type"`
+
+      LicenseValid    bool             `json:"license_valid"`
+
+      LicenseExpiry *time.Time             `json:"license_expiry"`
+
+      AttributionRequired bool            `json:"attribution_required"`
+
+      AttributionText string            `json:"attribution_text,omitempty"`
+
+      CommercialUse bool                  `json:"commercial_use"`
+
+      ModificationAllowed bool             `json:"modification_allowed"`
+
+      TerritoryRestrictions []string      `json:"territory_restrictions"`
+
+      Issues       []RightsIssue       `json:"issues"`
+
+}
+
+
+
+type RightsIssue struct {
+
+      IssueID    string `json:"issue_id"`
+
+      IssueType string `json:"issue_type"`
+
+      Severity   string `json:"severity"`     // CRITICAL, HIGH, MEDIUM, LOW
+
+      Description string `json:"description"`
+
+      Resolution string `json:"resolution"`
+
+}
+
+```
+
+
+
+2.3 Copyright Detection
+
+
+
+```go
+
+type CopyrightChecker struct {
+
+      fingerprintDB FingerprintDatabase
+
+      externalAPIs    []CopyrightAPI
+
+      similarityEngine SimilarityEngine
+
+}
+
+
+
+type CopyrightAPI interface {
+
+  CheckContent(ctx context.Context, content []byte, contentType string)
+(*ExternalCopyrightResult, error)
+
+    Name() string
+
+}
+
+
+
+type TextCopyrightResult struct {
+
+    OriginalityScore float64              `json:"originality_score"` // 0-100
+
+    MatchedSources         []MatchedSource         `json:"matched_sources"`
+
+    FairUseAssessment *FairUseAssessment             `json:"fair_use_assessment"`
+
+    RiskLevel         RiskLevel         `json:"risk_level"`
+
+}
+
+
+
+type MatchedSource struct {
+
+    SourceURL         string `json:"source_url"`
+
+    MatchPercentage float64 `json:"match_percentage"`
+
+    MatchType         string `json:"match_type"`      // EXACT, PARAPHRASE, STRUCTURAL
+
+    SourceLicense string `json:"source_license"`
+
+    RequiresAttribution bool `json:"requires_attribution"`
+
+}
+
+
+
+func (cc *CopyrightChecker) CheckTextCopyright(
+
+    ctx context.Context,
+
+    content string,
+
+  metadata ContentMetadata,
+
+) (*TextCopyrightResult, error) {
+
+
+
+  result := &TextCopyrightResult{}
+
+
+
+  // 1. Generate content fingerprint
+
+  fingerprint := cc.generateFingerprint(content)
+
+
+
+  // 2. Check against internal fingerprint database
+
+  internalMatches, err := cc.fingerprintDB.FindMatches(ctx, fingerprint, 0.85)
+
+  if err != nil {
+
+      return nil, fmt.Errorf("internal fingerprint check: %w", err)
+
+  }
+
+
+
+  // 3. Check against external copyright APIs
+
+  var externalMatches []MatchedSource
+
+  for _, api := range cc.externalAPIs {
+
+      extResult, err := api.CheckContent(ctx, []byte(content), "text/plain")
+
+      if err != nil {
+
+          // Log but continue with other APIs
+
+          log.Warn().Err(err).Str("api", api.Name()).Msg("External copyright API failed")
+
+          continue
+
+      }
+
+      externalMatches = append(externalMatches, extResult.Matches...)
+
+  }
+
+    // 4. Merge and deduplicate matches
+
+    allMatches := cc.mergeMatches(internalMatches, externalMatches)
+
+    result.MatchedSources = allMatches
+
+
+
+    // 5. Calculate originality score
+
+    result.OriginalityScore = cc.calculateOriginality(content, allMatches)
+
+
+
+    // 6. Assess fair use if matches found
+
+    if len(allMatches) > 0 {
+
+        result.FairUseAssessment = cc.fairUseAssessor.Assess(content, allMatches, metadata)
+
+    }
+
+
+
+    // 7. Determine risk level
+
+    result.RiskLevel = cc.determineRisk(result)
+
+
+
+    return result, nil
+
+}
+
+
+
+func (cc *CopyrightChecker) calculateOriginality(
+
+    content string,
+
+    matches []MatchedSource,
+
+) float64 {
+
+    if len(matches) == 0 {
+
+        return 100.0
+
+    }
+
+      // Weight by match percentage and source type
+
+      totalDeduction := 0.0
+
+
+
+      for _, match := range matches {
+
+          deduction := match.MatchPercentage
+
+
+
+          // Exact matches are more severe
+
+          if match.MatchType == "EXACT" {
+
+              deduction *= 1.5
+
+          }
+
+
+
+          // Structural matches are less severe
+
+          if match.MatchType == "STRUCTURAL" {
+
+              deduction *= 0.5
+
+          }
+
+
+
+          totalDeduction += deduction
+
+      }
+
+
+
+      originality := 100.0 - math.Min(totalDeduction, 100.0)
+
+      return math.Max(0, originality)
+
+}
+
+```
+
+
+
+2.4 Fair Use Assessment
+
+```go
+
+type FairUseAssessor struct {
+
+    legalKnowledgeBase LegalKnowledgeBase
+
+}
+
+
+
+type FairUseAssessment struct {
+
+    IsFairUse         bool            `json:"is_fair_use"`
+
+    Confidence         float64           `json:"confidence"`      // 0-1
+
+    Factors          []FairUseFactor      `json:"factors"`
+
+    Recommendation           string         `json:"recommendation"`
+
+    RequiresHumanReview bool                   `json:"requires_human_review"`
+
+}
+
+
+
+type FairUseFactor struct {
+
+    Factor      string `json:"factor"`     // PURPOSE, NATURE, AMOUNT, EFFECT
+
+    Weight       float64 `json:"weight"`      // How heavily this factor weighs
+
+    Score       float64 `json:"score"`      // -1 to 1 (-1 = against fair use, 1 = supports)
+
+    Analysis string `json:"analysis"`
+
+}
+
+
+
+func (fa *FairUseAssessor) Assess(
+
+    content string,
+
+    matches []MatchedSource,
+
+    metadata ContentMetadata,
+
+) *FairUseAssessment {
+
+assessment := &FairUseAssessment{
+
+    Factors: []FairUseFactor{
+
+         fa.assessPurposeAndCharacter(content, metadata),
+
+         fa.assessNatureOfCopyrightedWork(matches),
+
+         fa.assessAmountAndSubstantiality(content, matches),
+
+         fa.assessEffectOnMarket(matches, metadata),
+
+    },
+
+}
+
+
+
+// Calculate overall score
+
+totalScore := 0.0
+
+totalWeight := 0.0
+
+
+
+for _, factor := range assessment.Factors {
+
+    totalScore += factor.Score * factor.Weight
+
+    totalWeight += factor.Weight
+
+}
+
+
+
+overallScore := totalScore / totalWeight
+
+
+
+// Determine fair use
+
+assessment.IsFairUse = overallScore > 0.3
+
+assessment.Confidence = math.Abs(overallScore)
+
+assessment.RequiresHumanReview = math.Abs(overallScore) < 0.5
+
+
+
+// Generate recommendation
+
+    if assessment.IsFairUse && assessment.Confidence > 0.7 {
+
+        assessment.Recommendation = "LIKELY_FAIR_USE_CAN_PROCEED"
+
+    } else if assessment.IsFairUse {
+
+        assessment.Recommendation = "POSSIBLE_FAIR_USE_HUMAN_REVIEW_RECOMMENDED"
+
+    } else if assessment.Confidence > 0.7 {
+
+        assessment.Recommendation = "UNLIKELY_FAIR_USE_SEEK_PERMISSION"
+
+    } else {
+
+        assessment.Recommendation = "UNCERTAIN_HUMAN_REVIEW_REQUIRED"
+
+    }
+
+
+
+    return assessment
+
+}
+
+
+
+func (fa *FairUseAssessor) assessPurposeAndCharacter(
+
+    content string,
+
+    metadata ContentMetadata,
+
+) FairUseFactor {
+
+    factor := FairUseFactor{
+
+        Factor: "PURPOSE_AND_CHARACTER",
+
+        Weight: 0.30,
+
+    }
+
+
+
+    score := 0.0
+
+    analyses := []string{}
+
+
+
+    // News reporting favors fair use
+
+if metadata.ContentType == "NEWS" {
+
+    score += 0.5
+
+    analyses = append(analyses, "News reporting purpose supports fair use")
+
+}
+
+
+
+// Transformative use favors fair use
+
+if metadata.IsTransformative {
+
+    score += 0.3
+
+    analyses = append(analyses, "Content is transformative")
+
+}
+
+
+
+// Commercial use weighs against fair use
+
+if metadata.IsCommercial {
+
+    score -= 0.3
+
+    analyses = append(analyses, "Commercial use weighs against fair use")
+
+}
+
+
+
+// Educational use favors fair use
+
+if metadata.IsEducational {
+
+    score += 0.4
+
+    analyses = append(analyses, "Educational purpose supports fair use")
+
+}
+
+
+
+factor.Score = math.Max(-1, math.Min(1, score))
+
+factor.Analysis = strings.Join(analyses, "; ")
+
+    return factor
+
+}
+
+
+
+func (fa *FairUseAssessor) assessAmountAndSubstantiality(
+
+    content string,
+
+    matches []MatchedSource,
+
+) FairUseFactor {
+
+    factor := FairUseFactor{
+
+        Factor: "AMOUNT_AND_SUBSTANTIALITY",
+
+        Weight: 0.25,
+
+    }
+
+
+
+    score := 0.0
+
+    analyses := []string{}
+
+
+
+    // Calculate percentage of content that is matched
+
+    for _, match := range matches {
+
+        if match.MatchPercentage < 10 {
+
+          score += 0.3
+
+          analyses = append(analyses, "Small portion used")
+
+        } else if match.MatchPercentage < 30 {
+
+          score += 0.1
+
+          analyses = append(analyses, "Moderate portion used")
+
+        } else {
+
+          score -= 0.3
+
+          analyses = append(analyses, "Substantial portion used")
+
+          }
+
+
+
+          // Check if the matched portion is the "heart" of the work
+
+          if match.IsCoreContent {
+
+              score -= 0.4
+
+              analyses = append(analyses, "Core/heart of the work was used")
+
+          }
+
+      }
+
+
+
+      factor.Score = math.Max(-1, math.Min(1, score))
+
+      factor.Analysis = strings.Join(analyses, "; ")
+
+
+
+      return factor
+
+}
+
+```
+
+
+
+2.5 License Management
+
+
+
+```go
+
+type LicenseValidator struct {
+
+      licenseDB LicenseDatabase
+
+}
+
+
+
+type LicenseInfo struct {
+
+      LicenseID        string        `json:"license_id"`
+
+      LicenseType       LicenseType       `json:"license_type"`
+
+    AssetID       string        `json:"asset_id"`
+
+    ValidFrom      time.Time          `json:"valid_from"`
+
+    ValidUntil    *time.Time          `json:"valid_until"`
+
+    TerritoryRestrictions []string      `json:"territory_restrictions"`
+
+    UsageLimits     UsageLimits         `json:"usage_limits"`
+
+    AttributionText string           `json:"attribution_text"`
+
+    Cost         *LicenseCost        `json:"cost"`
+
+    RenewalPolicy RenewalPolicy            `json:"renewal_policy"`
+
+}
+
+
+
+type LicenseType string
+
+const (
+
+    LicensePublicDomain LicenseType = "PUBLIC_DOMAIN"
+
+    LicenseCreativeCommons LicenseType = "CREATIVE_COMMONS"
+
+    LicenseCommercial        LicenseType = "COMMERCIAL"
+
+    LicenseEditorial       LicenseType = "EDITORIAL"
+
+    LicenseAIGenerated       LicenseType = "AI_GENERATED"
+
+    LicenseStaffCreated LicenseType = "STAFF_CREATED"
+
+    LicenseUnknown           LicenseType = "UNKNOWN"
+
+)
+
+
+
+type UsageLimits struct {
+
+    MaxImpressions *int64         `json:"max_impressions"`
+
+    MaxPublications *int        `json:"max_publications"`
+
+    AllowedPlatforms []string `json:"allowed_platforms"`
+
+    AllowedFormats []string `json:"allowed_formats"`
+
+    ModificationAllowed bool        `json:"modification_allowed"`
+
+}
+
+
+
+func (lv *LicenseValidator) ValidateLicense(
+
+    ctx context.Context,
+
+    assetID string,
+
+    usage UsageContext,
+
+) (*LicenseValidationResult, error) {
+
+
+
+    // Get license
+
+    license, err := lv.licenseDB.GetLicense(ctx, assetID)
+
+    if err != nil {
+
+        return nil, fmt.Errorf("get license: %w", err)
+
+    }
+
+
+
+    result := &LicenseValidationResult{
+
+        AssetID: assetID,
+
+        License: license,
+
+        IsValid: true,
+
+    }
+
+
+
+    // Check expiration
+
+    if license.ValidUntil != nil && time.Now().After(*license.ValidUntil) {
+
+        result.IsValid = false
+
+        result.Issues = append(result.Issues, LicenseIssue{
+
+          Type:       "EXPIRED",
+
+         Severity: "CRITICAL",
+
+         Message: fmt.Sprintf("License expired on %s", license.ValidUntil.Format("2006-01-02")),
+
+    })
+
+}
+
+
+
+// Check territory restrictions
+
+if len(license.TerritoryRestrictions) > 0 {
+
+    if !contains(license.TerritoryRestrictions, usage.TargetTerritory) {
+
+         result.IsValid = false
+
+         result.Issues = append(result.Issues, LicenseIssue{
+
+              Type:   "TERRITORY_RESTRICTION",
+
+              Severity: "HIGH",
+
+              Message: fmt.Sprintf("License not valid in %s", usage.TargetTerritory),
+
+         })
+
+    }
+
+}
+
+
+
+// Check usage limits
+
+if license.UsageLimits.MaxPublications != nil {
+
+    currentUsage, _ := lv.licenseDB.GetUsageCount(ctx, assetID)
+
+    if currentUsage >= *license.UsageLimits.MaxPublications {
+
+         result.IsValid = false
+
+         result.Issues = append(result.Issues, LicenseIssue{
+
+              Type:   "USAGE_LIMIT_EXCEEDED",
+
+              Severity: "HIGH",
+
+              Message: "Maximum publication limit reached",
+
+         })
+
+    }
+
+}
+
+
+
+// Check platform restrictions
+
+if len(license.UsageLimits.AllowedPlatforms) > 0 {
+
+    if !contains(license.UsageLimits.AllowedPlatforms, usage.TargetPlatform) {
+
+         result.IsValid = false
+
+         result.Issues = append(result.Issues, LicenseIssue{
+
+              Type:    "PLATFORM_RESTRICTION",
+
+              Severity: "MEDIUM",
+
+              Message: fmt.Sprintf("License not valid for platform: %s", usage.TargetPlatform),
+
+         })
+
+    }
+
+}
+
+
+
+// Check modification rights
+
+if usage.IsModified && !license.UsageLimits.ModificationAllowed {
+
+    result.IsValid = false
+
+    result.Issues = append(result.Issues, LicenseIssue{
+
+         Type:        "MODIFICATION_NOT_ALLOWED",
+
+         Severity: "HIGH",
+
+         Message: "License does not permit modifications",
+
+    })
+
+}
+
+      // Check attribution requirements
+
+      if license.AttributionText != "" && !usage.IncludesAttribution {
+
+          result.RequiresAttribution = true
+
+          result.RequiredAttribution = license.AttributionText
+
+          result.Issues = append(result.Issues, LicenseIssue{
+
+               Type:   "ATTRIBUTION_REQUIRED",
+
+               Severity: "MEDIUM",
+
+               Message: "Attribution required but not present",
+
+          })
+
+      }
+
+
+
+      return result, nil
+
+}
+
+```
+
+
+
+2.6 Database Schema
+
+
+
+```sql
+
+-- Rights Management Database
+
+CREATE TABLE rights_assets (
+
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+      asset_id VARCHAR(100) UNIQUE NOT NULL,
+
+      asset_type VARCHAR(50) NOT NULL, -- IMAGE, VIDEO, AUDIO, TEXT, FONT
+
+      asset_source VARCHAR(50) NOT NULL, -- AI_GENERATED, LICENSED, PUBLIC_DOMAIN, STAFF
+
+      content_hash VARCHAR(64) NOT NULL,
+
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+);
+
+
+
+CREATE TABLE licenses (
+
+     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+     license_id VARCHAR(100) UNIQUE NOT NULL,
+
+     asset_id VARCHAR(100) NOT NULL REFERENCES rights_assets(asset_id),
+
+     license_type VARCHAR(50) NOT NULL,
+
+     license_url TEXT,
+
+     valid_from TIMESTAMPTZ NOT NULL,
+
+     valid_until TIMESTAMPTZ,
+
+     territory_restrictions TEXT[],
+
+     usage_limits JSONB NOT NULL DEFAULT '{}',
+
+     attribution_text TEXT,
+
+     cost_info JSONB,
+
+     renewal_policy JSONB,
+
+     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+);
+
+
+
+CREATE TABLE copyright_checks (
+
+     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+     check_id VARCHAR(100) UNIQUE NOT NULL,
+
+     content_id VARCHAR(100) NOT NULL,
+
+     content_type VARCHAR(50) NOT NULL,
+
+     originality_score DECIMAL(5,2),
+
+     fair_use_assessment JSONB,
+
+      risk_level VARCHAR(20) NOT NULL,
+
+      matched_sources JSONB DEFAULT '[]',
+
+      checked_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+      checker_version VARCHAR(20) NOT NULL
+
+);
+
+
+
+CREATE TABLE rights_clearances (
+
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+      clearance_id VARCHAR(100) UNIQUE NOT NULL,
+
+      content_package_id VARCHAR(100) NOT NULL,
+
+      status VARCHAR(30) NOT NULL, -- CLEARED, CONDITIONAL, BLOCKED
+
+      required_actions JSONB DEFAULT '[]',
+
+      cleared_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+      cleared_by VARCHAR(100), -- SYSTEM or USER_ID
+
+      expires_at TIMESTAMPTZ,
+
+      metadata JSONB DEFAULT '{}'
+
+);
+
+
+
+CREATE INDEX idx_copyright_content ON copyright_checks(content_id);
+
+CREATE INDEX idx_licenses_asset ON licenses(asset_id);
+
+CREATE INDEX idx_rights_clearances_package ON rights_clearances(content_package_id);
+
+```
+
+
+
+---
+
+
+
+PART III — PLAGIARISM DETECTION SERVICE
+
+Service ID: SVC-CMP-PLAGIARISM
+
+Runtime: Python (NLP/ML) + Golang (orchestration)
+
+Primary Store: pgvector (PostgreSQL), Redis (caching)
+
+
+
+3.1 Plagiarism Detection Engine
+
+
+
+```python
+
+class PlagiarismDetectionService:
+
+  """
+
+  Multi-strategy plagiarism detection for AI-generated content.
+
+  """
+
+
+
+  def __init__(self):
+
+    self.semantic_matcher = SemanticSimilarityMatcher()
+
+    self.sentence_matcher = SentenceLevelMatcher()
+
+    self.cross_lingual = CrossLingualPlagiarismDetector()
+
+    self.ai_plagiarism = AIGeneratedPlagiarismDetector()
+
+    self.internal_duplicate = InternalDuplicateDetector()
+
+    self.citation_validator = CitationValidator()
+
+
+
+  async def detect_plagiarism(
+
+    self,
+
+    content: str,
+
+    metadata: ContentMetadata,
+
+    locked_facts: LockedFactSet,
+
+) -> PlagiarismReport:
+
+  """
+
+  Comprehensive plagiarism detection.
+
+  """
+
+
+
+  # Run all detection strategies in parallel
+
+  tasks = [
+
+      self.semantic_matcher.check(content, metadata),
+
+      self.sentence_matcher.check(content, metadata),
+
+      self.cross_lingual.check(content, metadata),
+
+      self.ai_plagiarism.check(content, metadata, locked_facts),
+
+      self.internal_duplicate.check(content, metadata),
+
+  ]
+
+
+
+  results = await asyncio.gather(*tasks, return_exceptions=True)
+
+
+
+  report = PlagiarismReport(
+
+      content_id=metadata.content_id,
+
+      checked_at=datetime.utcnow(),
+
+  )
+
+
+
+  # Aggregate results
+
+  all_matches = []
+
+  for i, result in enumerate(results):
+
+      if isinstance(result, Exception):
+
+        report.add_error(f"Strategy {i} failed: {result}")
+
+          continue
+
+    all_matches.extend(result.matches)
+
+
+
+  # Deduplicate matches
+
+  report.matches = self.deduplicate_matches(all_matches)
+
+
+
+  # Calculate overall scores
+
+  report.originality_score = self.calculate_originality(content, report.matches)
+
+  report.plagiarism_risk = self.calculate_risk(report)
+
+
+
+  # Generate recommendations
+
+  report.recommended_actions = self.generate_actions(report)
+
+
+
+  return report
+
+
+
+async def check_semantic_similarity(
+
+  self,
+
+  content: str,
+
+  metadata: ContentMetadata,
+
+) -> SimilarityResult:
+
+  """
+
+  Check for semantic similarity with known content.
+
+  """
+
+
+
+  # Generate embedding
+
+  embedding = await self.generate_embedding(content)
+
+# Search vector database
+
+similar = await self.vector_db.search(
+
+    embedding=embedding,
+
+    threshold=0.85, # High similarity threshold
+
+    top_k=20,
+
+    filters={
+
+        "exclude_self": metadata.content_id,
+
+        "date_range": "last_90_days",
+
+    }
+
+)
+
+
+
+matches = []
+
+for match in similar:
+
+    if match.similarity > 0.90:
+
+        severity = "HIGH"
+
+    elif match.similarity > 0.85:
+
+        severity = "MEDIUM"
+
+    else:
+
+        severity = "LOW"
+
+
+
+    matches.append(PlagiarismMatch(
+
+        source_url=match.url,
+
+        source_title=match.title,
+
+        similarity_score=match.similarity,
+
+        match_type="SEMANTIC",
+
+          severity=severity,
+
+          matched_excerpt=match.excerpt,
+
+    ))
+
+
+
+  return SimilarityResult(matches=matches)
+
+
+
+async def check_sentence_level(
+
+  self,
+
+  content: str,
+
+  metadata: ContentMetadata,
+
+) -> SimilarityResult:
+
+  """
+
+  Check for exact or near-exact sentence matches.
+
+  """
+
+
+
+  sentences = self.segment_sentences(content)
+
+  matches = []
+
+
+
+  for sentence in sentences:
+
+    if len(sentence.split()) < 5:
+
+          continue # Skip very short sentences
+
+
+
+    # Search for exact and fuzzy matches
+
+    exact_matches = await self.search_exact_matches(sentence)
+
+    fuzzy_matches = await self.search_fuzzy_matches(sentence, threshold=0.90)
+
+        for match in exact_matches:
+
+          matches.append(PlagiarismMatch(
+
+               source_url=match.url,
+
+               similarity_score=1.0,
+
+               match_type="EXACT_SENTENCE",
+
+               severity="CRITICAL",
+
+               matched_excerpt=sentence,
+
+          ))
+
+
+
+        for match in fuzzy_matches:
+
+          severity = "HIGH" if match.similarity > 0.95 else "MEDIUM"
+
+          matches.append(PlagiarismMatch(
+
+               source_url=match.url,
+
+               similarity_score=match.similarity,
+
+               match_type="NEAR_EXACT_SENTENCE",
+
+               severity=severity,
+
+               matched_excerpt=sentence,
+
+          ))
+
+
+
+      return SimilarityResult(matches=matches)
+
+```
+
+
+
+3.2 AI-Generated Plagiarism Detection
+
+
+
+```python
+
+class AIGeneratedPlagiarismDetector:
+
+"""
+
+Specialized detection for AI-generated content that may memorize training data.
+
+"""
+
+
+
+def __init__(self):
+
+  self.memorization_detector = MemorizationDetector()
+
+  self.training_data_checker = TrainingDataChecker()
+
+
+
+async def check(
+
+  self,
+
+  content: str,
+
+  metadata: ContentMetadata,
+
+  locked_facts: LockedFactSet,
+
+) -> SimilarityResult:
+
+  """
+
+  Check if AI-generated content contains memorized training data.
+
+  """
+
+
+
+  matches = []
+
+
+
+  # 1. Check for verbatim memorization patterns
+
+  memorized = await self.memorization_detector.detect(content)
+
+  for mem in memorized:
+
+      matches.append(PlagiarismMatch(
+
+          source_url="AI_TRAINING_DATA",
+
+          similarity_score=mem.confidence,
+
+               match_type="AI_MEMORIZATION",
+
+               severity="CRITICAL",
+
+               matched_excerpt=mem.text,
+
+               metadata={"model": mem.likely_model},
+
+          ))
+
+
+
+        # 2. Check if content is too similar to known training sources
+
+        training_matches = await self.training_data_checker.check(content)
+
+        matches.extend(training_matches)
+
+
+
+        # 3. Verify all quotes and facts are from locked fact set
+
+        # (This catches AI fabricating quotes that happen to match real ones)
+
+        for match in matches:
+
+          if not self.is_in_locked_facts(match.matched_excerpt, locked_facts):
+
+               match.severity = "CRITICAL"
+
+               match.match_type = "AI_MEMORIZATION_UNVERIFIED"
+
+
+
+        return SimilarityResult(matches=matches)
+
+```
+
+
+
+3.3 Plagiarism Scoring & Thresholds
+
+
+
+```go
+
+type PlagiarismThresholds struct {
+
+      ExactSentenceCritical float64 `json:"exact_sentence_critical"` // 1.0 (exact match)
+
+      NearExactSentenceHigh float64 `json:"near_exact_sentence_high"` // 0.95
+
+    SemanticHigh              float64 `json:"semantic_high"`       // 0.90
+
+    SemanticMedium              float64 `json:"semantic_medium"`        // 0.85
+
+    OverallOriginalityPass float64 `json:"overall_originality_pass"` // 85.0
+
+}
+
+
+
+func (pds *PlagiarismDetectionService) calculateRisk(
+
+    report *PlagiarismReport,
+
+) RiskLevel {
+
+
+
+    criticalCount := 0
+
+    highCount := 0
+
+
+
+    for _, match := range report.Matches {
+
+        switch match.Severity {
+
+        case "CRITICAL":
+
+            criticalCount++
+
+        case "HIGH":
+
+            highCount++
+
+        }
+
+    }
+
+
+
+    if criticalCount > 0 {
+
+        return RiskLevelCritical
+
+    }
+
+
+
+    if highCount > 3 {
+
+          return RiskLevelHigh
+
+      }
+
+
+
+      if highCount > 0 {
+
+          return RiskLevelMedium
+
+      }
+
+
+
+      if report.OriginalityScore < 80 {
+
+          return RiskLevelMedium
+
+      }
+
+
+
+      return RiskLevelLow
+
+}
+
+```
+
+
+
+3.4 API Specifications
+
+
+
+```protobuf
+
+// api/compliance/v1/plagiarism.proto
+
+service PlagiarismDetectionService {
+
+      rpc CheckPlagiarism(CheckPlagiarismRequest) returns (PlagiarismReport);
+
+      rpc CheckBatch(CheckBatchRequest) returns (stream PlagiarismReport);
+
+      rpc GetPlagiarismHistory(GetHistoryRequest) returns (PlagiarismHistory);
+
+}
+
+
+
+message CheckPlagiarismRequest {
+
+    string tenant_id = 1;
+
+    string content_id = 2;
+
+    string content_text = 3;
+
+    ContentMetadata metadata = 4;
+
+    PlagiarismOptions options = 5;
+
+    string idempotency_key = 6;
+
+}
+
+
+
+message PlagiarismOptions {
+
+    bool check_semantic = 1;         // Default: true
+
+    bool check_sentence_level = 2; // Default: true
+
+    bool check_cross_lingual = 3; // Default: false (expensive)
+
+    bool check_ai_memorization = 4; // Default: true
+
+    bool check_internal = 5;        // Default: true
+
+    double semantic_threshold = 6; // Default: 0.85
+
+}
+
+
+
+message PlagiarismReport {
+
+    string report_id = 1;
+
+    string content_id = 2;
+
+    double originality_score = 3;
+
+    RiskLevel plagiarism_risk = 4;
+
+    repeated PlagiarismMatch matches = 5;
+
+    repeated RecommendedAction recommended_actions = 6;
+
+    int64 checked_at = 7;
+
+    double check_duration_ms = 8;
+
+}
+
+```
+
+
+
+---
+
+
+
+PART IV — LEGAL REVIEW SERVICE
+
+
+
+Service ID: SVC-CMP-LEGAL-REVIEW
+
+Runtime: Python (NLP/ML) + Golang (orchestration)
+
+
+
+4.1 Legal Policy Engine
+
+
+
+```python
+
+class LegalReviewService:
+
+      """
+
+      Automated legal review for AI-generated content.
+
+      Screens for defamation, libel, hate speech, and other legal risks.
+
+      """
+
+
+
+      RISK_CATEGORIES = {
+
+        "defamation": {
+
+            "severity_base": "CRITICAL",
+
+            "automatic_action": "BLOCK",
+
+            "requires_human_review": True,
+
+            "check_patterns": [
+
+              "accusation_of_crime",
+
+          "damage_to_reputation",
+
+          "false_statement_of_fact",
+
+          "identifiable_subject",
+
+     ],
+
+},
+
+"libel": {
+
+     "severity_base": "CRITICAL",
+
+     "automatic_action": "BLOCK",
+
+     "requires_human_review": True,
+
+     "check_patterns": [
+
+          "written_defamation",
+
+          "published_statement",
+
+          "provably_false",
+
+     ],
+
+},
+
+"hate_speech": {
+
+     "severity_base": "CRITICAL",
+
+     "automatic_action": "BLOCK",
+
+     "requires_human_review": False, # Auto-block
+
+     "check_patterns": [
+
+          "protected_class_attack",
+
+          "incitement_to_hatred",
+
+          "dehumanizing_language",
+
+     ],
+
+},
+
+"election_integrity": {
+
+     "severity_base": "HIGH",
+
+     "automatic_action": "HUMAN_REVIEW",
+
+     "requires_human_review": True,
+
+     "check_patterns": [
+
+          "election_misinformation",
+
+          "voter_suppression",
+
+          "candidate_defamation",
+
+          "results_manipulation_claim",
+
+     ],
+
+},
+
+"medical_misinformation": {
+
+     "severity_base": "CRITICAL",
+
+     "automatic_action": "BLOCK",
+
+     "requires_human_review": True,
+
+     "check_patterns": [
+
+          "unverified_treatment_claim",
+
+          "vaccine_misinformation",
+
+          "public_health_risk",
+
+          "false_cure_claim",
+
+     ],
+
+},
+
+"financial_misinformation": {
+
+     "severity_base": "HIGH",
+
+     "automatic_action": "HUMAN_REVIEW",
+
+     "requires_human_review": True,
+
+     "check_patterns": [
+
+          "market_manipulation",
+
+          "insider_information_leak",
+
+          "fraudulent_investment_advice",
+
+     ],
+
+},
+
+"public_safety": {
+
+     "severity_base": "CRITICAL",
+
+     "automatic_action": "BLOCK",
+
+     "requires_human_review": True,
+
+     "check_patterns": [
+
+          "imminent_threat",
+
+          "incitement_to_violence",
+
+          "terrorism_content",
+
+          "self_harm_encouragement",
+
+     ],
+
+},
+
+"geopolitical_sensitivity": {
+
+     "severity_base": "MEDIUM",
+
+     "automatic_action": "HUMAN_REVIEW",
+
+     "requires_human_review": True,
+
+     "check_patterns": [
+
+          "territorial_disputes",
+
+          "diplomatic_tensions",
+
+          "sanctions_violations",
+
+     ],
+
+},
+
+}
+
+
+
+async def review_content(
+
+    self,
+
+    content: str,
+
+    metadata: ContentMetadata,
+
+    locked_facts: LockedFactSet,
+
+    target_jurisdictions: List[str],
+
+) -> LegalReviewResult:
+
+    """
+
+    Comprehensive legal review of content.
+
+    """
+
+
+
+    result = LegalReviewResult(
+
+        content_id=metadata.content_id,
+
+        reviewed_at=datetime.utcnow(),
+
+    )
+
+
+
+    # Run all category checks in parallel
+
+    tasks = []
+
+    for category, rules in self.RISK_CATEGORIES.items():
+
+        task = self.check_category(content, category, rules, metadata, locked_facts)
+
+        tasks.append(task)
+
+
+
+    category_results = await asyncio.gather(*tasks)
+
+# Aggregate results
+
+critical_findings = []
+
+high_findings = []
+
+
+
+for cat_result in category_results:
+
+  result.category_results.append(cat_result)
+
+
+
+  for finding in cat_result.findings:
+
+     if finding.severity == "CRITICAL":
+
+        critical_findings.append(finding)
+
+     elif finding.severity == "HIGH":
+
+        high_findings.append(finding)
+
+
+
+# Determine overall risk level
+
+if len(critical_findings) > 0:
+
+  result.overall_risk = RiskLevel.CRITICAL
+
+  result.recommended_action = "BLOCK"
+
+elif len(high_findings) > 2:
+
+  result.overall_risk = RiskLevel.HIGH
+
+  result.recommended_action = "HUMAN_REVIEW"
+
+elif len(high_findings) > 0:
+
+  result.overall_risk = RiskLevel.MEDIUM
+
+  result.recommended_action = "HUMAN_REVIEW"
+
+else:
+
+  result.overall_risk = RiskLevel.LOW
+
+  result.recommended_action = "PROCEED"
+
+  # Check jurisdiction-specific rules
+
+  jurisdiction_issues = await self.check_jurisdictions(
+
+      content, target_jurisdictions
+
+  )
+
+  result.jurisdiction_issues = jurisdiction_issues
+
+
+
+  return result
+
+
+
+async def check_defamation(
+
+  self,
+
+  content: str,
+
+  metadata: ContentMetadata,
+
+  locked_facts: LockedFactSet,
+
+) -> CategoryResult:
+
+  """
+
+  Check for potential defamation.
+
+  """
+
+
+
+  result = CategoryResult(category="defamation")
+
+
+
+  # 1. Identify all statements about identifiable persons/organizations
+
+  statements = await self.extract_statements_about_subjects(content)
+
+
+
+  for statement in statements:
+
+      # 2. Check if statement is factual (not opinion)
+
+if await self.is_opinion(statement):
+
+  continue # Opinions are generally protected
+
+
+
+# 3. Check if statement is negative/damaging
+
+if not await self.is_potentially_damaging(statement):
+
+  continue
+
+
+
+# 4. Verify statement against locked facts
+
+fact_match = await self.verify_against_facts(statement, locked_facts)
+
+
+
+if not fact_match.is_verified:
+
+  # Potentially defamatory - false statement of fact
+
+  finding = LegalFinding(
+
+      category="defamation",
+
+      subcategory="false_statement",
+
+      severity="CRITICAL",
+
+      statement=statement.text,
+
+      subject=statement.subject,
+
+      reason=f"Unverified damaging statement: {statement.text[:100]}...",
+
+      recommendation="Remove or verify statement before publication",
+
+  )
+
+  result.findings.append(finding)
+
+
+
+# 5. Check for accusation of criminal conduct
+
+if await self.is_criminal_accusation(statement):
+
+  if not fact_match.has_legal_verification:
+
+                finding = LegalFinding(
+
+                    category="defamation",
+
+                    subcategory="criminal_accusation",
+
+                    severity="CRITICAL",
+
+                    statement=statement.text,
+
+                    subject=statement.subject,
+
+                    reason="Accusation of criminal conduct without legal verification",
+
+                    recommendation="BLOCK - Requires legal verification of criminal conduct",
+
+                )
+
+                result.findings.append(finding)
+
+
+
+        return result
+
+```
+
+
+
+4.2 Defamation Detection Algorithm
+
+
+
+```python
+
+class DefamationDetector:
+
+      """
+
+      Specialized defamation and libel detection.
+
+      """
+
+
+
+      DEFAMATION_INDICATORS = {
+
+        "criminal_conduct": [
+
+            "stole", "robbed", "murdered", "assaulted", "committed",
+
+            "arrested for", "charged with", "convicted of", "guilty of",
+
+         "crime", "criminal", "illegal", "fraud", "embezzled",
+
+    ],
+
+    "professional_misconduct": [
+
+         "incompetent", "negligent", "malpractice", "corrupt",
+
+         "bribed", "unethical", "violated", "breached",
+
+    ],
+
+    "personal_misconduct": [
+
+         "lied", "cheated", "affair", "addict", "alcoholic",
+
+         "bankrupt", "dishonest", "infidelity",
+
+    ],
+
+    "disease_claims": [
+
+         "has HIV", "has AIDS", "has STD", "infected with",
+
+         "mentally ill", "insane", "crazy",
+
+    ],
+
+}
+
+
+
+async def detect_defamation_risk(
+
+    self,
+
+    content: str,
+
+    subjects: List[Entity],
+
+    locked_facts: LockedFactSet,
+
+) -> List[DefamationRisk]:
+
+    """
+
+    Detect potential defamation risks in content.
+
+    """
+
+risks = []
+
+
+
+for subject in subjects:
+
+  # Get all statements about this subject
+
+  statements = self.extract_statements_about(content, subject)
+
+
+
+  for statement in statements:
+
+     # Check for defamation indicators
+
+     indicators_found = []
+
+     for category, terms in self.DEFAMATION_INDICATORS.items():
+
+        for term in terms:
+
+             if term.lower() in statement.lower():
+
+               indicators_found.append({
+
+                    "category": category,
+
+                    "term": term,
+
+               })
+
+
+
+     if not indicators_found:
+
+        continue
+
+
+
+     # Verify statement against locked facts
+
+     verification = await self.verify_statement(statement, locked_facts)
+
+
+
+     if not verification.verified:
+
+        risk = DefamationRisk(
+
+             subject=subject,
+
+              statement=statement,
+
+              indicators=indicators_found,
+
+              verification=verification,
+
+              risk_level=self.calculate_defamation_risk(
+
+                   indicators_found, verification, subject
+
+              ),
+
+          )
+
+          risks.append(risk)
+
+
+
+  return risks
+
+
+
+def calculate_defamation_risk(
+
+  self,
+
+  indicators: List[dict],
+
+  verification: VerificationResult,
+
+  subject: Entity,
+
+) -> RiskLevel:
+
+  """
+
+  Calculate defamation risk level.
+
+  """
+
+
+
+  base_risk = RiskLevel.LOW
+
+
+
+  # Criminal accusations are highest risk
+
+  if any(i["category"] == "criminal_conduct" for i in indicators):
+
+    base_risk = RiskLevel.CRITICAL
+
+  # Professional misconduct is high risk
+
+  elif any(i["category"] == "professional_misconduct" for i in indicators):
+
+      base_risk = RiskLevel.HIGH
+
+
+
+  # Personal misconduct is medium risk
+
+  elif any(i["category"] == "personal_misconduct" for i in indicators):
+
+      base_risk = RiskLevel.MEDIUM
+
+
+
+  # If statement is unverified, escalate
+
+  if not verification.verified:
+
+      base_risk = self.escalate_risk(base_risk)
+
+
+
+  # Public figures have higher burden of proof (actual malice)
+
+  if subject.is_public_figure and verification.confidence < 0.9:
+
+      base_risk = self.escalate_risk(base_risk)
+
+
+
+  return base_risk
+
+
+
+def escalate_risk(self, current: RiskLevel) -> RiskLevel:
+
+  escalation = {
+
+      RiskLevel.LOW: RiskLevel.MEDIUM,
+
+      RiskLevel.MEDIUM: RiskLevel.HIGH,
+
+      RiskLevel.HIGH: RiskLevel.CRITICAL,
+
+      RiskLevel.CRITICAL: RiskLevel.CRITICAL,
+
+  }
+
+        return escalation.get(current, RiskLevel.CRITICAL)
+
+```
+
+
+
+4.3 Risk Level System
+
+
+
+```go
+
+type RiskLevel string
+
+
+
+const (
+
+      RiskLevelLow      RiskLevel = "LOW"    // Safe to auto-publish
+
+      RiskLevelMedium RiskLevel = "MEDIUM" // Minor concerns, log and proceed
+
+      RiskLevelHigh     RiskLevel = "HIGH"   // Requires human review
+
+      RiskLevelCritical RiskLevel = "CRITICAL" // Block publication
+
+)
+
+
+
+type RequiredAction string
+
+
+
+const (
+
+      ActionProceed       RequiredAction = "PROCEED"
+
+      ActionHumanReview RequiredAction = "HUMAN_REVIEW"
+
+      ActionBlock       RequiredAction = "BLOCK"
+
+      ActionLegalReview RequiredAction = "LEGAL_REVIEW"
+
+      ActionRedact       RequiredAction = "REDACT"
+
+      ActionAttribute     RequiredAction = "ATTRIBUTE"
+
+      ActionRemoveAsset RequiredAction = "REMOVE_ASSET"
+
+      ActionSeekPermission RequiredAction = "SEEK_PERMISSION"
+
+)
+
+```
+
+
+
+---
+
+
+
+PART V — PRIVACY PROTECTION SERVICE
+
+
+
+Service ID: SVC-CMP-PRIVACY
+
+Runtime: Python (NLP/NER) + Golang
+
+
+
+5.1 PII Detection Engine
+
+
+
+```python
+
+class PrivacyProtectionService:
+
+      """
+
+      Detects and protects personally identifiable information (PII).
+
+      """
+
+
+
+      PII_PATTERNS = {
+
+        "email": {
+
+             "regex": r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
+
+             "severity": "HIGH",
+
+             "action": "REDACT_OR_CONSENT",
+
+        },
+
+        "phone_number": {
+
+             "regex": r'\b(\+?\d{1,3}[-.]?)?\(?\d{3}\)?[-.]?\d{3}[-.]?\d{4}\b',
+
+     "severity": "HIGH",
+
+     "action": "REDACT_OR_CONSENT",
+
+},
+
+"ssn": {
+
+     "regex": r'\b\d{3}-\d{2}-\d{4}\b',
+
+     "severity": "CRITICAL",
+
+     "action": "BLOCK_REDACT",
+
+},
+
+"credit_card": {
+
+     "regex": r'\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b',
+
+     "severity": "CRITICAL",
+
+     "action": "BLOCK_REDACT",
+
+},
+
+"passport": {
+
+     "regex": r'\b[A-Z0-9]{8,9}\b',
+
+     "severity": "CRITICAL",
+
+     "action": "BLOCK_REDACT",
+
+     "context_required": ["passport", "travel document"],
+
+},
+
+"bank_account": {
+
+     "regex": r'\b\d{8,12}\b',
+
+     "severity": "CRITICAL",
+
+     "action": "BLOCK_REDACT",
+
+     "context_required": ["account", "bank", "routing"],
+
+},
+
+"street_address": {
+
+      "regex": r'\b\d{1,6}\s+[A-Za-z0-
+9\s]+\b(?:street|st|avenue|ave|road|rd|drive|dr|lane|ln|boulevard|blvd)\b',
+
+           "severity": "HIGH",
+
+           "action": "REDACT_OR_CONSENT",
+
+      },
+
+      "gps_coordinates": {
+
+           "regex": r'\b[-]?\d{1,3}\.\d{4,},\s*[-]?\d{1,3}\.\d{4,}\b',
+
+           "severity": "MEDIUM",
+
+           "action": "REVIEW",
+
+      },
+
+      "ip_address": {
+
+           "regex": r'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b',
+
+           "severity": "MEDIUM",
+
+           "action": "REDACT",
+
+      },
+
+  }
+
+
+
+  REGIONAL_RULES = {
+
+      "GDPR": {
+
+           "jurisdictions": ["EU", "EEA"],
+
+           "requires_consent": True,
+
+           "right_to_be_forgotten": True,
+
+           "data_minimization": True,
+
+           "additional_protections": [
+
+             "religious_beliefs",
+
+             "political_opinions",
+
+              "trade_union_membership",
+
+              "genetic_data",
+
+              "biometric_data",
+
+              "health_information",
+
+              "sexual_orientation",
+
+         ],
+
+    },
+
+    "CCPA": {
+
+         "jurisdictions": ["US-CA"],
+
+         "requires_consent": False, # Opt-out model
+
+         "right_to_delete": True,
+
+         "do_not_sell": True,
+
+    },
+
+}
+
+
+
+async def scan_for_pii(
+
+    self,
+
+    content: str,
+
+    metadata: ContentMetadata,
+
+    target_jurisdictions: List[str],
+
+) -> PIIReport:
+
+    """
+
+    Scan content for PII and generate protection recommendations.
+
+    """
+
+
+
+    report = PIIReport(
+
+    content_id=metadata.content_id,
+
+    scanned_at=datetime.utcnow(),
+
+)
+
+
+
+findings = []
+
+
+
+# 1. Regex-based PII detection
+
+for pii_type, config in self.PII_PATTERNS.items():
+
+    matches = re.finditer(config["regex"], content, re.IGNORECASE)
+
+
+
+    for match in matches:
+
+      # Check context requirements
+
+      if "context_required" in config:
+
+          if not self.has_context(match, content, config["context_required"]):
+
+            continue
+
+
+
+      finding = PIIFinding(
+
+          pii_type=pii_type,
+
+          severity=config["severity"],
+
+          recommended_action=config["action"],
+
+          match_text=match.group(),
+
+          location=(match.start(), match.end()),
+
+      )
+
+      findings.append(finding)
+
+
+
+# 2. NER-based PII detection (names, organizations that could be individuals)
+
+  ner_findings = await self.detect_pii_with_ner(content)
+
+  findings.extend(ner_findings)
+
+
+
+  # 3. Apply jurisdiction-specific rules
+
+  for jurisdiction in target_jurisdictions:
+
+    rules = self.get_jurisdiction_rules(jurisdiction)
+
+    if rules:
+
+        findings = self.apply_jurisdiction_rules(findings, rules)
+
+
+
+  # 4. Deduplicate and prioritize findings
+
+  report.findings = self.prioritize_findings(findings)
+
+
+
+  # 5. Generate redacted version
+
+  report.redacted_content = self.generate_redacted_version(content, findings)
+
+
+
+  # 6. Determine overall risk
+
+  report.overall_risk = self.determine_pii_risk(findings)
+
+
+
+  return report
+
+
+
+async def detect_pii_with_ner(self, content: str) -> List[PIIFinding]:
+
+  """
+
+  Use Named Entity Recognition to detect potential PII.
+
+  """
+
+
+
+  findings = []
+
+entities = await self.ner_model.extract_entities(content)
+
+
+
+for entity in entities:
+
+  if entity.type == "PERSON":
+
+     # Check if person is a public figure (exempt from PII in many cases)
+
+     is_public_figure = await self.is_public_figure(entity.text)
+
+
+
+     if not is_public_figure:
+
+       findings.append(PIIFinding(
+
+            pii_type="person_name",
+
+            severity="MEDIUM",
+
+            recommended_action="REVIEW",
+
+            match_text=entity.text,
+
+            context="Non-public figure name detected",
+
+       ))
+
+
+
+  elif entity.type == "ORGANIZATION":
+
+     # Some organizations are sole proprietorships (PII risk)
+
+     if await self.is_likely_individual_business(entity.text):
+
+       findings.append(PIIFinding(
+
+            pii_type="potential_individual_business",
+
+            severity="LOW",
+
+            recommended_action="REVIEW",
+
+            match_text=entity.text,
+
+       ))
+
+        return findings
+
+```
+
+
+
+5.2 Redaction & Anonymization
+
+
+
+```go
+
+type RedactionService struct {
+
+      patterns map[string]*RedactionPattern
+
+}
+
+
+
+type RedactionPattern struct {
+
+      PIType     PIType
+
+      Replacement string
+
+      Strategy   RedactionStrategy
+
+}
+
+
+
+type RedactionStrategy string
+
+const (
+
+      StrategyReplace RedactionStrategy = "REPLACE"       // Replace with [REDACTED]
+
+      StrategyMask        RedactionStrategy = "MASK"   // Partial masking (e.g., ***-****-1234)
+
+      StrategyAnonymize RedactionStrategy = "ANONYMIZE" // Replace with generic term
+
+      StrategyRemove       RedactionStrategy = "REMOVE"    // Remove entirely
+
+)
+
+
+
+var RedactionPatterns = map[PIType]*RedactionPattern{
+
+    PITypeEmail: {
+
+         Replacement: "[EMAIL REDACTED]",
+
+         Strategy: StrategyReplace,
+
+    },
+
+    PITypePhoneNumber: {
+
+         Replacement: "[PHONE REDACTED]",
+
+         Strategy: StrategyMask,
+
+    },
+
+    PITypeSSN: {
+
+         Replacement: "***-**-****",
+
+         Strategy: StrategyMask,
+
+    },
+
+    PITypePersonName: {
+
+         Replacement: "[NAME REDACTED]",
+
+         Strategy: StrategyAnonymize,
+
+    },
+
+    PITypeStreetAddress: {
+
+         Replacement: "[ADDRESS REDACTED]",
+
+         Strategy: StrategyReplace,
+
+    },
+
+}
+
+
+
+func (rs *RedactionService) RedactContent(
+
+    content string,
+
+    findings []PIIFinding,
+
+    strategy RedactionStrategy,
+
+) (string, error) {
+
+
+
+  // Sort findings by location (reverse order for safe replacement)
+
+  sort.Slice(findings, func(i, j int) bool {
+
+       return findings[i].Location.Start > findings[j].Location.Start
+
+  })
+
+
+
+  redacted := content
+
+
+
+  for _, finding := range findings {
+
+       pattern, ok := RedactionPatterns[finding.PIIType]
+
+       if !ok {
+
+           pattern = &RedactionPattern{
+
+               Replacement: "[REDACTED]",
+
+               Strategy: StrategyReplace,
+
+           }
+
+       }
+
+
+
+       replacement := pattern.Replacement
+
+
+
+       if strategy == StrategyMask {
+
+           replacement = rs.maskValue(finding.MatchText, finding.PIIType)
+
+       } else if strategy == StrategyAnonymize {
+
+           replacement = rs.anonymizeValue(finding.MatchText, finding.PIIType)
+
+       }
+
+          // Replace in content
+
+          redacted = redacted[:finding.Location.Start] +
+
+                  replacement +
+
+                  redacted[finding.Location.End:]
+
+      }
+
+
+
+      return redacted, nil
+
+}
+
+
+
+func (rs *RedactionService) maskValue(value string, piiType PIType) string {
+
+      switch piiType {
+
+      case PITypePhoneNumber:
+
+          // Mask all but last 4 digits
+
+          if len(value) >= 4 {
+
+              return strings.Repeat("*", len(value)-4) + value[len(value)-4:]
+
+          }
+
+      case PITypeSSN:
+
+          return "***-**-" + value[len(value)-4:]
+
+      case PITypeCreditCard:
+
+          return "****-****-****-" + value[len(value)-4:]
+
+      default:
+
+          return "[MASKED]"
+
+      }
+
+}
+
+```
+
+---
+
+
+
+PART VI — AI SAFETY REVIEW SERVICE
+
+
+
+Service ID: SVC-CMP-AI-SAFETY
+
+Runtime: Python (ML)
+
+
+
+6.1 AI Safety Detection
+
+
+
+```python
+
+class AISafetyReviewService:
+
+  """
+
+  Reviews AI-generated content for safety and reliability.
+
+  """
+
+
+
+  def __init__(self):
+
+      self.hallucination_detector = HallucinationDetector()
+
+      self.quote_validator = QuoteValidator()
+
+      self.statistic_validator = StatisticValidator()
+
+      self.source_validator = SourceValidator()
+
+      self.citation_validator = CitationValidator()
+
+      self.coherence_checker = CoherenceChecker()
+
+
+
+  async def review_ai_safety(
+
+      self,
+
+      content: GeneratedContent,
+
+  locked_facts: LockedFactSet,
+
+  generation_metadata: GenerationMetadata,
+
+) -> AISafetyReport:
+
+  """
+
+  Comprehensive AI safety review.
+
+  """
+
+
+
+  report = AISafetyReport(
+
+      content_id=content.id,
+
+      reviewed_at=datetime.utcnow(),
+
+  )
+
+
+
+  # Run all checks in parallel
+
+  tasks = [
+
+      self.hallucination_detector.check(content, locked_facts),
+
+      self.quote_validator.check(content, locked_facts),
+
+      self.statistic_validator.check(content, locked_facts),
+
+      self.source_validator.check(content, locked_facts),
+
+      self.citation_validator.check(content, locked_facts),
+
+      self.coherence_checker.check(content),
+
+  ]
+
+
+
+  results = await asyncio.gather(*tasks)
+
+
+
+  # Aggregate results
+
+  for result in results:
+
+    report.check_results.append(result)
+
+
+
+  # Calculate AI Safety Score
+
+  report.ai_safety_score = self.calculate_safety_score(results)
+
+
+
+  # Calculate Trust Score
+
+  report.trust_score = self.calculate_trust_score(results, generation_metadata)
+
+
+
+  # Calculate Confidence Score
+
+  report.confidence_score = self.calculate_confidence(report)
+
+
+
+  # Generate publication recommendation
+
+  report.publication_recommendation = self.generate_recommendation(report)
+
+
+
+  return report
+
+
+
+async def detect_hallucinations(
+
+  self,
+
+  content: GeneratedContent,
+
+  locked_facts: LockedFactSet,
+
+) -> HallucinationReport:
+
+  """
+
+  Detect AI hallucinations in generated content.
+
+  """
+
+
+
+  report = HallucinationReport()
+
+# Extract all factual claims from generated content
+
+generated_claims = await self.extract_claims(content.full_text)
+
+
+
+hallucinations = []
+
+
+
+for claim in generated_claims:
+
+  # Check claim against locked facts
+
+  match = self.find_matching_fact(claim, locked_facts)
+
+
+
+  if not match:
+
+    # Potential hallucination
+
+    confidence = await self.assess_hallucination_confidence(claim, content)
+
+
+
+    hallucinations.append(HallucinationFinding(
+
+         claim=claim.text,
+
+         claim_type=claim.type,
+
+         confidence=confidence,
+
+         severity="CRITICAL" if confidence > 0.8 else "HIGH",
+
+         evidence="Claim not found in verified fact set",
+
+    ))
+
+  elif not self.is_accurate_representation(claim, match):
+
+    # Distortion of verified fact
+
+    hallucinations.append(HallucinationFinding(
+
+         claim=claim.text,
+
+         claim_type=claim.type,
+
+               confidence=0.9,
+
+               severity="HIGH",
+
+               evidence=f"Claim distorts verified fact: {match.FactText[:100]}",
+
+          ))
+
+
+
+  # Check for fabricated entities
+
+  entities = self.extract_entities(content.full_text)
+
+  for entity in entities:
+
+    if not self.entity_in_locked_facts(entity, locked_facts):
+
+          if not await self.is_well_known_entity(entity):
+
+               hallucinations.append(HallucinationFinding(
+
+                    claim=f"Entity: {entity.name}",
+
+                    claim_type="ENTITY",
+
+                    confidence=0.7,
+
+                    severity="MEDIUM",
+
+                    evidence="Entity not in verified fact set",
+
+               ))
+
+
+
+  report.hallucinations = hallucinations
+
+  report.hallucination_count = len(hallucinations)
+
+  report.critical_count = len([h for h in hallucinations if h.severity == "CRITICAL"])
+
+
+
+  return report
+
+
+
+async def validate_quotes(
+
+  self,
+
+  content: GeneratedContent,
+
+  locked_facts: LockedFactSet,
+
+) -> QuoteValidationReport:
+
+  """
+
+  Verify all quotes in content match verified quotes exactly.
+
+  """
+
+
+
+  report = QuoteValidationReport()
+
+
+
+  # Extract all quotes from content
+
+  content_quotes = self.extract_quotes(content.full_text)
+
+
+
+  issues = []
+
+
+
+  for quote in content_quotes:
+
+    # Find matching verified quote
+
+    verified_quote = self.find_matching_quote(quote, locked_facts.AttributedQuotes)
+
+
+
+    if not verified_quote:
+
+        issues.append(QuoteIssue(
+
+             quote_text=quote.text[:100],
+
+             issue_type="FABRICATED_QUOTE",
+
+             severity="CRITICAL",
+
+             detail="Quote not found in verified source",
+
+        ))
+
+        continue
+
+        # Check verbatim accuracy
+
+        if quote.text != verified_quote.QuoteText:
+
+          issues.append(QuoteIssue(
+
+               quote_text=quote.text[:100],
+
+               issue_type="QUOTE_ALTERED",
+
+               severity="CRITICAL",
+
+               detail="Quote text differs from verified original",
+
+               expected=verified_quote.QuoteText[:100],
+
+          ))
+
+
+
+        # Check attribution
+
+        if quote.attribution != verified_quote.Attribution:
+
+          issues.append(QuoteIssue(
+
+               quote_text=quote.text[:100],
+
+               issue_type="ATTRIBUTION_MISMATCH",
+
+               severity="HIGH",
+
+               detail=f"Attribution mismatch. Expected: {verified_quote.Attribution}",
+
+          ))
+
+
+
+      report.issues = issues
+
+      report.is_valid = len(issues) == 0
+
+
+
+      return report
+
+```
+
+6.2 AI Safety Scoring
+
+
+
+```go
+
+type AISafetyScorer struct {
+
+    weights SafetyScoreWeights
+
+}
+
+
+
+type SafetyScoreWeights struct {
+
+    HallucinationWeight float64 // 0.35
+
+    QuoteAccuracyWeight float64 // 0.25
+
+    StatisticAccuracyWeight float64 // 0.20
+
+    SourceAttributionWeight float64 // 0.10
+
+    CoherenceWeight        float64 // 0.10
+
+}
+
+
+
+func (ass *AISafetyScorer) CalculateAISafetyScore(
+
+    report *AISafetyReport,
+
+) float64 {
+
+
+
+    score := 100.0
+
+
+
+    // Hallucination penalty
+
+    if report.HallucinationResult != nil {
+
+      criticalHals := report.HallucinationResult.CriticalCount
+
+      totalHals := report.HallucinationResult.HallucinationCount
+
+          score -= float64(criticalHals) * 25.0 // Each critical hallucination: -25
+
+          score -= float64(totalHals-criticalHals) * 10.0 // Each non-critical: -10
+
+      }
+
+
+
+      // Quote accuracy penalty
+
+      if report.QuoteValidationResult != nil {
+
+          fabricatedQuotes := len(report.QuoteValidationResult.FabricatedQuotes)
+
+          alteredQuotes := len(report.QuoteValidationResult.AlteredQuotes)
+
+
+
+          score -= float64(fabricatedQuotes) * 30.0
+
+          score -= float64(alteredQuotes) * 15.0
+
+      }
+
+
+
+      // Statistic accuracy penalty
+
+      if report.StatisticValidationResult != nil {
+
+          score -= float64(report.StatisticValidationResult.InaccurateStats) * 10.0
+
+      }
+
+
+
+      return math.Max(0, math.Min(100, score))
+
+}
+
+```
+
+
+
+---
+
+
+
+PART VII — PLATFORM POLICY COMPLIANCE
+
+Service ID: SVC-CMP-PLATFORM-POLICY
+
+Runtime: Golang
+
+
+
+7.1 Platform Policy Engine
+
+
+
+```go
+
+type PlatformPolicyService struct {
+
+    platformPolicies map[string]*PlatformPolicy
+
+    policyUpdater PolicyUpdater
+
+}
+
+
+
+type PlatformPolicy struct {
+
+    Platform       string          `json:"platform"`
+
+    LastUpdated      time.Time           `json:"last_updated"`
+
+    Version       string         `json:"version"`
+
+
+
+    // Content Restrictions
+
+    ProhibitedTopics []string         `json:"prohibited_topics"`
+
+    RestrictedTopics []RestrictedTopic      `json:"restricted_topics"`
+
+    ContentRules     []ContentRule        `json:"content_rules"`
+
+
+
+    // Format Requirements
+
+    FormatRules      FormatRules          `json:"format_rules"`
+
+    MediaRequirements MediaRequirements             `json:"media_requirements"`
+
+
+
+    // Metadata Requirements
+
+    RequiredDisclosures []string             `json:"required_disclosures"`
+
+    LabelingRequirements []LabelRequirement `json:"labeling_requirements"`
+
+}
+
+
+
+type RestrictedTopic struct {
+
+    Topic          string `json:"topic"`
+
+    AllowedWith           []string `json:"allowed_with"`   // Conditions for allowance
+
+    RequiresLabel bool           `json:"requires_label"`
+
+    LabelText           string `json:"label_text"`
+
+}
+
+
+
+var PlatformPolicies = map[string]*PlatformPolicy{
+
+    "facebook": {
+
+      Platform: "Facebook",
+
+      ProhibitedTopics: []string{
+
+           "hate_speech",
+
+           "graphic_violence",
+
+           "adult_content",
+
+           "firearms_sales",
+
+           "illegal_drugs",
+
+           "terrorism_content",
+
+      },
+
+      RestrictedTopics: []RestrictedTopic{
+
+           {
+
+               Topic:      "covid_misinformation",
+
+               AllowedWith: []string{"official_source", "fact_check"},
+
+               RequiresLabel: true,
+
+               LabelText: "COVID-19 Information",
+
+          },
+
+          {
+
+               Topic:    "election_integrity",
+
+               AllowedWith: []string{"official_announcement", "verified_results"},
+
+               RequiresLabel: true,
+
+               LabelText: "Election Information",
+
+          },
+
+     },
+
+     ContentRules: []ContentRule{
+
+          {
+
+               RuleID: "FB_CLICKBAIT",
+
+               Description: "No engagement bait or clickbait headlines",
+
+               Check: checkClickbait,
+
+          },
+
+          {
+
+               RuleID: "FB_MISLEADING_METADATA",
+
+               Description: "Metadata must accurately represent content",
+
+               Check: checkMetadataAccuracy,
+
+          },
+
+     },
+
+},
+
+"youtube": {
+
+     Platform: "YouTube",
+
+     ProhibitedTopics: []string{
+
+          "hate_speech",
+
+          "graphic_violence",
+
+          "harassment",
+
+          "spam",
+
+          "impersonation",
+
+     },
+
+     RestrictedTopics: []RestrictedTopic{
+
+          {
+
+               Topic:    "medical_misinformation",
+
+               AllowedWith: []string{"authoritative_source"},
+
+               RequiresLabel: true,
+
+               LabelText: "Includes context from health authorities",
+
+          },
+
+     },
+
+     ContentRules: []ContentRule{
+
+          {
+
+               RuleID: "YT_CLICKBAIT_THUMBNAIL",
+
+               Description: "Thumbnails must accurately represent video content",
+
+               Check: checkThumbnailAccuracy,
+
+          },
+
+     },
+
+},
+
+"tiktok": {
+
+     Platform: "TikTok",
+
+     ProhibitedTopics: []string{
+
+          "hate_speech",
+
+              "dangerous_acts",
+
+              "illegal_activities",
+
+              "minor_safety_violations",
+
+         },
+
+         ContentRules: []ContentRule{
+
+              {
+
+                   RuleID: "TT_MISLEADING_CONTENT",
+
+                   Description: "No misleading or deceptive content",
+
+                   Check: checkMisleadingContent,
+
+              },
+
+         },
+
+    },
+
+}
+
+
+
+func (pps *PlatformPolicyService) ValidateForPlatform(
+
+    ctx context.Context,
+
+    content *ContentPackage,
+
+    platform string,
+
+) (*PlatformComplianceResult, error) {
+
+
+
+    policy, exists := pps.platformPolicies[platform]
+
+    if !exists {
+
+         return nil, fmt.Errorf("unknown platform: %s", platform)
+
+    }
+
+
+
+    result := &PlatformComplianceResult{
+
+    Platform: platform,
+
+    ContentID: content.ID,
+
+    CheckedAt: time.Now(),
+
+    IsCompliant: true,
+
+}
+
+
+
+// 1. Check prohibited topics
+
+for _, topic := range policy.ProhibitedTopics {
+
+    if pps.containsTopic(content, topic) {
+
+        result.IsCompliant = false
+
+        result.Violations = append(result.Violations, PolicyViolation{
+
+             Type:   "PROHIBITED_TOPIC",
+
+             Topic: topic,
+
+             Severity: "CRITICAL",
+
+             Message: fmt.Sprintf("Content contains prohibited topic: %s", topic),
+
+             Action: "REMOVE_OR_BLOCK",
+
+        })
+
+    }
+
+}
+
+
+
+// 2. Check restricted topics
+
+for _, restricted := range policy.RestrictedTopics {
+
+    if pps.containsTopic(content, restricted.Topic) {
+
+        if !pps.meetsRequirements(content, restricted.AllowedWith) {
+
+             result.IsCompliant = false
+
+             result.Violations = append(result.Violations, PolicyViolation{
+
+                    Type:    "RESTRICTED_TOPIC",
+
+                    Topic: restricted.Topic,
+
+                    Severity: "HIGH",
+
+            Message: fmt.Sprintf("Content contains restricted topic without required conditions:
+%s", restricted.Topic),
+
+                    Action: "ADD_REQUIREMENTS_OR_REMOVE",
+
+               })
+
+          }
+
+          if restricted.RequiresLabel {
+
+               result.RequiredLabels = append(result.RequiredLabels, restricted.LabelText)
+
+          }
+
+      }
+
+  }
+
+
+
+  // 3. Check content rules
+
+  for _, rule := range policy.ContentRules {
+
+      if !rule.Check(content) {
+
+          result.Violations = append(result.Violations, PolicyViolation{
+
+               Type:        "CONTENT_RULE",
+
+               RuleID: rule.RuleID,
+
+               Severity: "MEDIUM",
+
+               Message: rule.Description,
+
+               Action: "CORRECT",
+
+          })
+
+      }
+
+  }
+
+    // 4. Check format requirements
+
+    formatViolations := pps.checkFormatRequirements(content, policy.FormatRules)
+
+    result.Violations = append(result.Violations, formatViolations...)
+
+
+
+    // 5. Check required disclosures
+
+    for _, disclosure := range policy.RequiredDisclosures {
+
+        if !pps.hasDisclosure(content, disclosure) {
+
+            result.RequiredDisclosures = append(result.RequiredDisclosures, disclosure)
+
+        }
+
+    }
+
+
+
+    // Generate corrections if possible
+
+    if !result.IsCompliant {
+
+        result.SuggestedCorrections = pps.generateCorrections(result.Violations)
+
+    }
+
+
+
+    return result, nil
+
+}
+
+
+
+func (pps *PlatformPolicyService) checkClickbait(content *ContentPackage) bool {
+
+    // Check for clickbait patterns
+
+    clickbaitPatterns := []string{
+
+        "you won't believe",
+
+        "what happens next",
+
+        "this will shock you",
+
+          "mind blowing",
+
+          "doctors hate",
+
+          "one weird trick",
+
+          "secret they don't want you to know",
+
+      }
+
+
+
+      text := strings.ToLower(content.Headline)
+
+      for _, pattern := range clickbaitPatterns {
+
+          if strings.Contains(text, pattern) {
+
+              return false
+
+          }
+
+      }
+
+
+
+      return true
+
+}
+
+```
+
+
+
+---
+
+
+
+PART VIII — EDITORIAL APPROVAL WORKFLOW
+
+
+
+8.1 Approval State Machine
+
+
+
+```go
+
+type ApprovalWorkflowEngine struct {
+
+      stateMachine *ApprovalStateMachine
+
+    routingEngine *RoutingEngine
+
+    notificationSvc NotificationService
+
+    auditLogger    AuditLogger
+
+}
+
+
+
+type ApprovalState string
+
+const (
+
+    ApprovalStateSubmitted       ApprovalState = "SUBMITTED"
+
+    ApprovalStateAIReview        ApprovalState = "AI_REVIEW"
+
+    ApprovalStateComplianceReview ApprovalState = "COMPLIANCE_REVIEW"
+
+    ApprovalStateLegalReview      ApprovalState = "LEGAL_REVIEW"
+
+    ApprovalStateHumanReview        ApprovalState = "HUMAN_REVIEW"
+
+    ApprovalStateApproved        ApprovalState = "APPROVED"
+
+    ApprovalStateRejected        ApprovalState = "REJECTED"
+
+    ApprovalStateReturnedForEdit ApprovalState = "RETURNED_FOR_EDIT"
+
+    ApprovalStatePublished       ApprovalState = "PUBLISHED"
+
+    ApprovalStateEmergencyOverride ApprovalState = "EMERGENCY_OVERRIDE"
+
+)
+
+
+
+type ApprovalWorkflow struct {
+
+    WorkflowID      string       `json:"workflow_id"`
+
+    ContentPackageID string         `json:"content_package_id"`
+
+    CurrentState ApprovalState        `json:"current_state"`
+
+    RiskLevel     RiskLevel      `json:"risk_level"`
+
+    ReviewPath     ReviewPath        `json:"review_path"`
+
+    RequiredReviews []ReviewType          `json:"required_reviews"`
+
+    CompletedReviews []CompletedReview `json:"completed_reviews"`
+
+    Deadline       *time.Time       `json:"deadline"`
+
+    CreatedAt      time.Time        `json:"created_at"`
+
+    UpdatedAt       time.Time       `json:"updated_at"`
+
+}
+
+
+
+type ReviewPath string
+
+const (
+
+    ReviewPathStandard ReviewPath = "STANDARD" // Normal review flow
+
+    ReviewPathBreaking ReviewPath = "BREAKING" // Accelerated for breaking news
+
+    ReviewPathHighRisk ReviewPath = "HIGH_RISK" // Enhanced review for risky content
+
+    ReviewPathEmergency ReviewPath = "EMERGENCY" // Emergency override path
+
+)
+
+
+
+func (awe *ApprovalWorkflowEngine) RouteContent(
+
+    ctx context.Context,
+
+    content *ContentPackage,
+
+    complianceResult *ComplianceResult,
+
+) (*ApprovalWorkflow, error) {
+
+
+
+    workflow := &ApprovalWorkflow{
+
+      WorkflowID:       uuid.NewV7().String(),
+
+      ContentPackageID: content.ID,
+
+      CurrentState:    ApprovalStateSubmitted,
+
+      RiskLevel:      complianceResult.OverallRisk,
+
+      CreatedAt:      time.Now(),
+
+}
+
+
+
+// Determine review path based on risk and content type
+
+workflow.ReviewPath = awe.determineReviewPath(content, complianceResult)
+
+
+
+// Determine required reviews
+
+workflow.RequiredReviews = awe.determineRequiredReviews(complianceResult)
+
+
+
+// Set deadline based on review path
+
+workflow.Deadline = awe.calculateDeadline(workflow.ReviewPath)
+
+
+
+// Route to first review stage
+
+switch workflow.ReviewPath {
+
+case ReviewPathStandard:
+
+    workflow.CurrentState = ApprovalStateAIReview
+
+
+
+case ReviewPathBreaking:
+
+    // Breaking news: parallel AI + human review, 5-minute deadline
+
+    workflow.CurrentState = ApprovalStateHumanReview
+
+    workflow.Deadline = timePtr(time.Now().Add(5 * time.Minute))
+
+
+
+case ReviewPathHighRisk:
+
+    // High risk: mandatory legal review
+
+    workflow.CurrentState = ApprovalStateLegalReview
+
+
+
+case ReviewPathEmergency:
+
+        // Emergency: override with post-publication review
+
+        workflow.CurrentState = ApprovalStateEmergencyOverride
+
+    }
+
+
+
+    // Save workflow
+
+    if err := awe.saveWorkflow(ctx, workflow); err != nil {
+
+        return nil, fmt.Errorf("save workflow: %w", err)
+
+    }
+
+
+
+    // Notify appropriate reviewers
+
+    awe.notifyReviewers(ctx, workflow)
+
+
+
+    // Log workflow creation
+
+    awe.auditLogger.LogWorkflowCreated(ctx, workflow)
+
+
+
+    return workflow, nil
+
+}
+
+
+
+func (awe *ApprovalWorkflowEngine) determineReviewPath(
+
+    content *ContentPackage,
+
+    result *ComplianceResult,
+
+) ReviewPath {
+
+
+
+    // Emergency content (public safety, imminent threat warnings)
+
+    if content.IsEmergencyContent {
+
+        return ReviewPathEmergency
+
+    }
+
+
+
+    // Breaking news
+
+    if content.IsBreakingNews && result.OverallRisk <= RiskLevelMedium {
+
+        return ReviewPathBreaking
+
+    }
+
+
+
+    // High-risk content
+
+    if result.OverallRisk >= RiskLevelHigh {
+
+        return ReviewPathHighRisk
+
+    }
+
+
+
+    return ReviewPathStandard
+
+}
+
+
+
+func (awe *ApprovalWorkflowEngine) determineRequiredReviews(
+
+    result *ComplianceResult,
+
+) []ReviewType {
+
+
+
+    reviews := []ReviewType{ReviewTypeAIReview}
+
+
+
+    if result.CopyrightRisk >= RiskLevelMedium {
+
+        reviews = append(reviews, ReviewTypeRightsReview)
+
+    }
+
+
+
+    if result.LegalRisk >= RiskLevelHigh {
+
+          reviews = append(reviews, ReviewTypeLegalReview)
+
+      }
+
+
+
+      if result.PrivacyRisk >= RiskLevelMedium {
+
+          reviews = append(reviews, ReviewTypePrivacyReview)
+
+      }
+
+
+
+      if result.AISafetyRisk >= RiskLevelHigh {
+
+          reviews = append(reviews, ReviewTypeAISafetyReview)
+
+      }
+
+
+
+      if result.OverallRisk >= RiskLevelHigh {
+
+          reviews = append(reviews, ReviewTypeHumanEditorial)
+
+      }
+
+
+
+      return reviews
+
+}
+
+```
+
+
+
+8.2 Emergency Publication Override
+
+
+
+```go
+
+type EmergencyOverrideService struct {
+
+      authorizationChecker AuthorizationChecker
+
+      auditLogger       AuditLogger
+
+      notificationSvc    NotificationService
+
+}
+
+
+
+type EmergencyOverride struct {
+
+    OverrideID string `json:"override_id"`
+
+    ContentID      string `json:"content_id"`
+
+    RequestedBy string `json:"requested_by"`
+
+    Reason        string `json:"reason"`
+
+    Authorization string `json:"authorization"` // Multi-factor auth token
+
+    OverriddenChecks []string `json:"overridden_checks"`
+
+    PostPublishReview bool `json:"post_publish_review"` // Must be true
+
+    CreatedAt      time.Time `json:"created_at"`
+
+    ExpiresAt     time.Time `json:"expires_at"` // Override validity window
+
+}
+
+
+
+func (eos *EmergencyOverrideService) RequestEmergencyOverride(
+
+    ctx context.Context,
+
+    contentID string,
+
+    requestedBy string,
+
+    reason string,
+
+    authorizationToken string,
+
+) (*EmergencyOverride, error) {
+
+
+
+    // 1. Verify authorization (requires senior editor or above)
+
+    if !eos.authorizationChecker.HasEmergencyAuthority(ctx, requestedBy) {
+
+        return nil, ErrInsufficientAuthority
+
+    }
+
+// 2. Verify multi-factor authorization
+
+if !eos.authorizationChecker.VerifyMFA(ctx, requestedBy, authorizationToken) {
+
+    return nil, ErrMFARRequired
+
+}
+
+
+
+// 3. Validate emergency reason
+
+if !eos.isValidEmergencyReason(reason) {
+
+    return nil, ErrInvalidEmergencyReason
+
+}
+
+
+
+// 4. Create override
+
+override := &EmergencyOverride{
+
+    OverrideID: uuid.NewV7().String(),
+
+    ContentID:    contentID,
+
+    RequestedBy: requestedBy,
+
+    Reason:      reason,
+
+    Authorization: authorizationToken,
+
+    PostPublishReview: true, // Always required
+
+    CreatedAt:    time.Now(),
+
+    ExpiresAt:   time.Now().Add(1 * time.Hour),
+
+}
+
+
+
+// 5. Log override (critical audit event)
+
+eos.auditLogger.LogEmergencyOverride(ctx, override)
+
+      // 6. Notify legal/compliance teams
+
+      eos.notificationSvc.NotifyEmergencyOverride(ctx, override)
+
+
+
+      // 7. Schedule post-publication review
+
+      eos.schedulePostPublishReview(ctx, override, 1*time.Hour)
+
+
+
+      return override, nil
+
+}
+
+```
+
+
+
+---
+
+
+
+PART IX — COMPLIANCE SCORING ENGINE
+
+
+
+Service ID: SVC-CMP-SCORING
+
+Runtime: Golang
+
+
+
+9.1 Scoring Algorithm
+
+
+
+```go
+
+type ComplianceScoringEngine struct {
+
+      weights ComplianceWeights
+
+      thresholds ComplianceThresholds
+
+}
+
+
+
+type ComplianceWeights struct {
+
+    CopyrightWeight float64 `json:"copyright_weight"` // 0.20
+
+    PlagiarismWeight float64 `json:"plagiarism_weight"` // 0.15
+
+    LegalWeight      float64 `json:"legal_weight"`    // 0.25
+
+    PrivacyWeight float64 `json:"privacy_weight"`          // 0.15
+
+    AISafetyWeight float64 `json:"ai_safety_weight"` // 0.15
+
+    PlatformWeight float64 `json:"platform_weight"` // 0.10
+
+}
+
+
+
+type ComplianceScore struct {
+
+    ContentID         string       `json:"content_id"`
+
+
+
+    // Individual Scores (0-100)
+
+    CopyrightScore      float64       `json:"copyright_score"`
+
+    PlagiarismScore     float64       `json:"plagiarism_score"`
+
+    LegalScore        float64       `json:"legal_score"`
+
+    PrivacyScore      float64        `json:"privacy_score"`
+
+    AISafetyScore      float64       `json:"ai_safety_score"`
+
+    PlatformScore      float64       `json:"platform_score"`
+
+
+
+    // Composite Scores
+
+    OverallComplianceScore float64         `json:"overall_compliance_score"`
+
+    PublicationReadinessScore float64      `json:"publication_readiness_score"`
+
+    RiskScore         float64      `json:"risk_score"`
+
+
+
+    // Status
+
+    PublicationRecommendation string         `json:"publication_recommendation"`
+
+    RiskLevel          RiskLevel      `json:"risk_level"`
+
+    BlockingIssues         []string     `json:"blocking_issues"`
+
+    Warnings            []string      `json:"warnings"`
+
+
+
+    CalculatedAt time.Time               `json:"calculated_at"`
+
+}
+
+
+
+func (cse *ComplianceScoringEngine) CalculateComplianceScore(
+
+    ctx context.Context,
+
+    results *AggregatedComplianceResults,
+
+) (*ComplianceScore, error) {
+
+
+
+    score := &ComplianceScore{
+
+        ContentID: results.ContentID,
+
+        CalculatedAt: time.Now(),
+
+    }
+
+
+
+    // Calculate individual scores
+
+    score.CopyrightScore = cse.calculateCopyrightScore(results.RightsResult)
+
+    score.PlagiarismScore = cse.calculatePlagiarismScore(results.PlagiarismResult)
+
+    score.LegalScore = cse.calculateLegalScore(results.LegalResult)
+
+    score.PrivacyScore = cse.calculatePrivacyScore(results.PrivacyResult)
+
+    score.AISafetyScore = cse.calculateAISafetyScore(results.AISafetyResult)
+
+    score.PlatformScore = cse.calculatePlatformScore(results.PlatformResults)
+
+
+
+    // Calculate overall compliance score
+
+w := cse.weights
+
+score.OverallComplianceScore =
+
+    (score.CopyrightScore * w.CopyrightWeight) +
+
+    (score.PlagiarismScore * w.PlagiarismWeight) +
+
+    (score.LegalScore * w.LegalWeight) +
+
+    (score.PrivacyScore * w.PrivacyWeight) +
+
+    (score.AISafetyScore * w.AISafetyWeight) +
+
+    (score.PlatformScore * w.PlatformWeight)
+
+
+
+// Calculate risk score (inverse of compliance, weighted by severity)
+
+score.RiskScore = 100 - score.OverallComplianceScore
+
+
+
+// Identify blocking issues (any score below critical threshold)
+
+thresholds := map[string]float64{
+
+    "copyright": 60.0,
+
+    "plagiarism": 70.0,
+
+    "legal": 50.0,
+
+    "privacy": 50.0,
+
+    "ai_safety": 60.0,
+
+}
+
+
+
+for category, threshold := range thresholds {
+
+    categoryScore := cse.getCategoryScore(score, category)
+
+    if categoryScore < threshold {
+
+      score.BlockingIssues = append(score.BlockingIssues,
+
+        fmt.Sprintf("%s score %.1f below threshold %.1f", category, categoryScore, threshold))
+
+        }
+
+    }
+
+
+
+    // Calculate publication readiness
+
+    score.PublicationReadinessScore = cse.calculatePublicationReadiness(score)
+
+
+
+    // Determine risk level
+
+    score.RiskLevel = cse.determineRiskLevel(score)
+
+
+
+    // Generate publication recommendation
+
+    score.PublicationRecommendation = cse.generateRecommendation(score)
+
+
+
+    return score, nil
+
+}
+
+
+
+func (cse *ComplianceScoringEngine) calculatePublicationReadiness(
+
+    score *ComplianceScore,
+
+) float64 {
+
+
+
+    readiness := score.OverallComplianceScore
+
+
+
+    // Reduce readiness if any blocking issues exist
+
+    readiness -= float64(len(score.BlockingIssues)) * 10.0
+
+
+
+    // Reduce readiness for CRITICAL risk
+
+    if score.RiskLevel == RiskLevelCritical {
+
+        readiness -= 30.0
+
+    }
+
+
+
+    return math.Max(0, math.Min(100, readiness))
+
+}
+
+
+
+func (cse *ComplianceScoringEngine) determineRiskLevel(
+
+    score *ComplianceScore,
+
+) RiskLevel {
+
+
+
+    if len(score.BlockingIssues) > 0 {
+
+        // Check for critical issues
+
+        for _, issue := range score.BlockingIssues {
+
+            if strings.Contains(issue, "legal") ||
+
+                strings.Contains(issue, "privacy") {
+
+                return RiskLevelCritical
+
+            }
+
+        }
+
+        return RiskLevelHigh
+
+    }
+
+
+
+    if score.OverallComplianceScore < 70 {
+
+        return RiskLevelHigh
+
+    }
+
+
+
+    if score.OverallComplianceScore < 85 {
+
+        return RiskLevelMedium
+
+    }
+
+
+
+    return RiskLevelLow
+
+}
+
+
+
+func (cse *ComplianceScoringEngine) generateRecommendation(
+
+    score *ComplianceScore,
+
+) string {
+
+
+
+    switch score.RiskLevel {
+
+    case RiskLevelCritical:
+
+        return "BLOCK - Critical compliance issues must be resolved before publication"
+
+    case RiskLevelHigh:
+
+     return "HUMAN_REVIEW_REQUIRED - Significant compliance concerns require editorial
+review"
+
+    case RiskLevelMedium:
+
+        if score.PublicationReadinessScore >= 80 {
+
+       return "PROCEED_WITH_CAUTION - Minor issues noted, proceed with automated
+publication"
+
+        }
+
+    return "HUMAN_REVIEW_RECOMMENDED - Moderate concerns, human review
+recommended"
+
+    case RiskLevelLow:
+
+        return "APPROVED - Content passes all compliance checks, safe to publish"
+
+    default:
+
+        return "REVIEW_REQUIRED"
+
+      }
+
+}
+
+```
+
+
+
+---
+
+
+
+PART X — AUDIT & TRACEABILITY
+
+
+
+10.1 Immutable Audit Log
+
+
+
+```go
+
+type ComplianceAuditService struct {
+
+      auditLog *ImmutableAuditLog
+
+      eventBus kafka.Producer
+
+}
+
+
+
+type ComplianceAuditEntry struct {
+
+      EntryID     string         `json:"entry_id"`
+
+      PreviousHash string            `json:"previous_hash"`
+
+      Timestamp      time.Time         `json:"timestamp"`
+
+      Actor       AuditActor       `json:"actor"`
+
+      Action      AuditAction       `json:"action"`
+
+      ContentID     string         `json:"content_id"`
+
+      Decision     ComplianceDecision `json:"decision"`
+
+      Evidence     json.RawMessage       `json:"evidence"`
+
+      Hash        string         `json:"hash"`
+
+}
+
+
+
+type ComplianceDecision struct {
+
+    DecisionID      string      `json:"decision_id"`
+
+    DecisionType string           `json:"decision_type"`
+
+    Result        string      `json:"result"`
+
+    Scores        *ComplianceScore `json:"scores,omitempty"`
+
+    ReviewerID       string      `json:"reviewer_id,omitempty"`
+
+    ReviewerType string            `json:"reviewer_type"` // AI, HUMAN, HYBRID
+
+    Notes         string      `json:"notes,omitempty"`
+
+    OverrideReason string           `json:"override_reason,omitempty"`
+
+}
+
+
+
+func (cas *ComplianceAuditService) RecordDecision(
+
+    ctx context.Context,
+
+    actor AuditActor,
+
+    contentID string,
+
+    decision ComplianceDecision,
+
+    evidence interface{},
+
+) (*ComplianceAuditEntry, error) {
+
+
+
+    // Get last entry for chain continuity
+
+    lastEntry, _ := cas.auditLog.GetLastEntry(ctx, contentID)
+
+
+
+    previousHash := ""
+
+    if lastEntry != nil {
+
+    previousHash = lastEntry.Hash
+
+}
+
+
+
+// Serialize evidence
+
+evidenceJSON, _ := json.Marshal(evidence)
+
+
+
+// Create entry
+
+entry := &ComplianceAuditEntry{
+
+    EntryID:    uuid.NewV7().String(),
+
+    PreviousHash: previousHash,
+
+    Timestamp: time.Now(),
+
+    Actor:      actor,
+
+    Action:     cas.determineAction(decision),
+
+    ContentID: contentID,
+
+    Decision:    decision,
+
+    Evidence:    evidenceJSON,
+
+}
+
+
+
+// Calculate hash (cryptographic chain)
+
+entry.Hash = cas.calculateHash(entry)
+
+
+
+// Append to immutable log
+
+if err := cas.auditLog.Append(ctx, entry); err != nil {
+
+    return nil, fmt.Errorf("append to audit log: %w", err)
+
+}
+
+    // Publish audit event
+
+    cas.eventBus.Publish(ctx, "compliance.audit.entry", entry)
+
+
+
+    return entry, nil
+
+}
+
+
+
+func (cas *ComplianceAuditService) VerifyAuditChain(
+
+    ctx context.Context,
+
+    contentID string,
+
+) (*ChainVerificationReport, error) {
+
+
+
+    entries, err := cas.auditLog.GetFullChain(ctx, contentID)
+
+    if err != nil {
+
+        return nil, err
+
+    }
+
+
+
+    report := &ChainVerificationReport{
+
+        ContentID:        contentID,
+
+        TotalEntries: len(entries),
+
+        Verified:     true,
+
+        CheckedAt:        time.Now(),
+
+    }
+
+
+
+    var previousHash string
+
+
+
+    for i, entry := range entries {
+
+        // Verify chain link
+
+        if entry.PreviousHash != previousHash {
+
+            report.Verified = false
+
+            report.BreakPoint = i
+
+            report.ExpectedHash = previousHash
+
+            report.FoundHash = entry.PreviousHash
+
+            break
+
+        }
+
+
+
+        // Verify entry integrity
+
+        calculatedHash := cas.calculateHash(&entry)
+
+        if calculatedHash != entry.Hash {
+
+            report.Verified = false
+
+            report.BreakPoint = i
+
+            report.ExpectedHash = calculatedHash
+
+            report.FoundHash = entry.Hash
+
+            break
+
+        }
+
+
+
+        previousHash = entry.Hash
+
+    }
+
+
+
+    return report, nil
+
+}
+
+
+
+func (cas *ComplianceAuditService) GetComplianceHistory(
+
+      ctx context.Context,
+
+      contentID string,
+
+) (*ComplianceHistory, error) {
+
+
+
+      entries, err := cas.auditLog.GetFullChain(ctx, contentID)
+
+      if err != nil {
+
+          return nil, err
+
+      }
+
+
+
+      history := &ComplianceHistory{
+
+          ContentID: contentID,
+
+          Timeline: make([]ComplianceEvent, 0),
+
+      }
+
+
+
+      for _, entry := range entries {
+
+          history.Timeline = append(history.Timeline, ComplianceEvent{
+
+               Timestamp: entry.Timestamp,
+
+               Actor:   entry.Actor,
+
+               Action: entry.Action,
+
+               Decision: entry.Decision,
+
+          })
+
+      }
+
+
+
+      return history, nil
+
+}
+
+```
+
+10.2 Audit Database Schema
+
+
+
+```sql
+
+-- Immutable Compliance Audit Log
+
+CREATE TABLE compliance_audit_log (
+
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+  entry_id VARCHAR(64) UNIQUE NOT NULL,
+
+  previous_hash VARCHAR(64) NOT NULL,
+
+  entry_hash VARCHAR(64) NOT NULL,
+
+  content_id VARCHAR(100) NOT NULL,
+
+  actor_id VARCHAR(100) NOT NULL,
+
+  actor_type VARCHAR(20) NOT NULL, -- AI, HUMAN, SYSTEM
+
+  action VARCHAR(50) NOT NULL,
+
+  decision_type VARCHAR(50) NOT NULL,
+
+  decision_result VARCHAR(50) NOT NULL,
+
+  compliance_score DECIMAL(5,2),
+
+  risk_level VARCHAR(20),
+
+  reviewer_id VARCHAR(100),
+
+  reviewer_notes TEXT,
+
+  evidence JSONB,
+
+  override_reason TEXT,
+
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+
+
+  -- Ensures immutability - no UPDATE or DELETE allowed
+
+  CONSTRAINT immutable_entry CHECK (true)
+
+);
+
+
+
+-- Prevent modifications
+
+CREATE RULE no_update AS ON UPDATE TO compliance_audit_log
+
+     DO INSTEAD NOTHING;
+
+CREATE RULE no_delete AS ON DELETE TO compliance_audit_log
+
+     DO INSTEAD NOTHING;
+
+
+
+CREATE INDEX idx_audit_content ON compliance_audit_log(content_id, created_at DESC);
+
+CREATE INDEX idx_audit_actor ON compliance_audit_log(actor_id, created_at DESC);
+
+CREATE INDEX idx_audit_hash ON compliance_audit_log(entry_hash);
+
+
+
+-- Compliance Decisions Registry
+
+CREATE TABLE compliance_decisions (
+
+     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+
+     decision_id VARCHAR(100) UNIQUE NOT NULL,
+
+     content_package_id VARCHAR(100) NOT NULL,
+
+     overall_score DECIMAL(5,2) NOT NULL,
+
+     copyright_score DECIMAL(5,2),
+
+     plagiarism_score DECIMAL(5,2),
+
+     legal_score DECIMAL(5,2),
+
+     privacy_score DECIMAL(5,2),
+
+     ai_safety_score DECIMAL(5,2),
+
+     platform_score DECIMAL(5,2),
+
+     risk_level VARCHAR(20) NOT NULL,
+
+     publication_recommendation VARCHAR(100) NOT NULL,
+
+      blocking_issues JSONB DEFAULT '[]',
+
+      decided_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+      decided_by VARCHAR(100) NOT NULL,
+
+      expires_at TIMESTAMPTZ,
+
+      version INTEGER NOT NULL DEFAULT 1
+
+);
+
+
+
+CREATE INDEX idx_decisions_package ON compliance_decisions(content_package_id);
+
+CREATE INDEX idx_decisions_risk ON compliance_decisions(risk_level, decided_at DESC);
+
+```
+
+
+
+---
+
+
+
+PART XI — SECURITY & OBSERVABILITY
+
+
+
+11.1 Security Controls
+
+
+
+```yaml
+
+security:
+
+ access_control:
+
+      rbac:
+
+       roles:
+
+        COMPLIANCE_ADMIN:
+
+         permissions: [read_all, write_all, override_emergency, configure_policies]
+
+        COMPLIANCE_REVIEWER:
+
+         permissions: [read_all, review_content, approve_low_risk, escalate]
+
+   LEGAL_REVIEWER:
+
+    permissions: [read_all, legal_review, block_content, override_legal]
+
+   SENIOR_EDITOR:
+
+    permissions: [read_all, approve_medium_risk, emergency_override]
+
+   EDITOR:
+
+    permissions: [read_all, review_assigned, approve_low_risk]
+
+   AI_SYSTEM:
+
+    permissions: [read_all, auto_approve_low_risk, flag_for_review]
+
+
+
+ abac:
+
+  policies:
+
+   - name: "emergency_override_requires_mfa"
+
+    description: "Emergency publication overrides require multi-factor authentication"
+
+    rule: "action == 'EMERGENCY_OVERRIDE' AND user.mfa_verified == true"
+
+
+
+   - name: "legal_review_for_critical_risk"
+
+    description: "Content with CRITICAL legal risk requires legal reviewer"
+
+    rule: "content.legal_risk == 'CRITICAL' AND user.role == 'LEGAL_REVIEWER'"
+
+
+
+encryption:
+
+ at_rest:
+
+  algorithm: AES-256-GCM
+
+  key_management: AWS KMS / HashiCorp Vault
+
+ in_transit:
+
+  minimum_tls: TLS 1.3
+
+  mtls_required: true
+
+ secrets:
+
+      management: HashiCorp Vault
+
+      rotation: 30 days for API keys, 90 days for certificates
+
+
+
+ rate_limiting:
+
+      compliance_check_endpoint: 100 requests/second per tenant
+
+      human_review_endpoint: 10 requests/second per user
+
+      emergency_override: 5 requests/hour per user
+
+
+
+ audit:
+
+      immutable_log: true
+
+      cryptographic_chaining: SHA-256
+
+      retention: 7 years minimum
+
+      tamper_detection: enabled
+
+```
+
+
+
+11.2 Observability
+
+
+
+```yaml
+
+metrics:
+
+ compliance:
+
+      checks:
+
+       total_checks:
+
+        type: counter
+
+        labels: [check_type, result]
+
+ check_duration_seconds:
+
+  type: histogram
+
+  buckets: [0.1, 0.5, 1, 5, 10, 30]
+
+  labels: [check_type]
+
+
+
+scores:
+
+ compliance_score_distribution:
+
+  type: histogram
+
+  buckets: [0, 50, 70, 80, 90, 95, 100]
+
+  labels: [risk_level]
+
+
+
+ blocking_issues_count:
+
+  type: gauge
+
+  labels: [issue_category]
+
+
+
+reviews:
+
+ human_review_queue_depth:
+
+  type: gauge
+
+  labels: [priority]
+
+
+
+ human_review_duration_seconds:
+
+  type: histogram
+
+  buckets: [60, 300, 600, 1800, 3600, 7200]
+
+
+
+ auto_approval_rate:
+
+  type: gauge
+
+   labels: [risk_level]
+
+
+
+ overrides:
+
+  emergency_overrides_total:
+
+   type: counter
+
+   labels: [reason]
+
+
+
+  override_rate:
+
+   type: gauge
+
+
+
+slos:
+
+ compliance_check_availability: 99.99%
+
+ compliance_check_latency_p99: 10s
+
+ human_review_assignment_latency_p99: 60s (CRITICAL), 300s (other)
+
+ audit_log_write_availability: 99.999%
+
+ emergency_override_availability: 99.99%
+
+
+
+alerts:
+
+ - alert: ComplianceCheckHighLatency
+
+  expr: histogram_quantile(0.99, compliance_check_duration_seconds) > 10
+
+  for: 5m
+
+  severity: warning
+
+
+
+ - alert: HighBlockingIssueRate
+
+  expr: rate(compliance_blocking_issues_count[1h]) > 10
+
+  for: 15m
+
+  severity: warning
+
+
+
+- alert: HumanReviewQueueBacklog
+
+  expr: compliance_human_review_queue_depth{priority="CRITICAL"} > 5
+
+  for: 2m
+
+  severity: critical
+
+
+
+- alert: EmergencyOverrideSpike
+
+  expr: rate(compliance_emergency_overrides_total[1h]) > 3
+
+  for: 1h
+
+  severity: warning
+
+
+
+- alert: AuditLogWriteFailure
+
+  expr: rate(compliance_audit_write_errors_total[5m]) > 0
+
+  for: 1m
+
+  severity: critical
+
+
+
+- alert: HighAutoApprovalOfRiskyContent
+
+  expr: compliance_auto_approval_rate{risk_level="HIGH"} > 0.05
+
+  for: 30m
+
+  severity: critical
+
+
+
+dashboards:
+
+compliance_overview:
+
+ panels:
+
+   - title: "Compliance Check Throughput"
+
+       metrics: [rate(compliance_total_checks[5m])]
+
+      - title: "Risk Distribution"
+
+       metrics: [compliance_score_distribution]
+
+      - title: "Blocking Issues by Category"
+
+       metrics: [compliance_blocking_issues_count]
+
+      - title: "Human Review Queue"
+
+       metrics: [compliance_human_review_queue_depth]
+
+      - title: "Auto-Approval Rate"
+
+       metrics: [compliance_auto_approval_rate]
+
+      - title: "Emergency Override Trend"
+
+       metrics: [rate(compliance_emergency_overrides_total[1h])]
+
+```
+
+
+
+---
+
+
+
+PART XII — ENTERPRISE ADRs
+
+
+
+```markdown
+
+## ADR-CMP-001: Pre-Publication Compliance Gateway
+
+**Status:** Accepted
+
+**Decision:** All content must pass through Compliance Gatekeeper synchronously before
+distribution.
+
+**Rationale:** Legal and regulatory risks require a hard gateway. Post-publication corrections
+are reputationally damaging.
+
+**Consequences:** Added latency to publishing pipeline, but essential risk mitigation.
+
+
+
+## ADR-CMP-002: Tiered Risk Classification
+
+**Status:** Accepted
+
+**Decision:** Four-tier system (LOW, MEDIUM, HIGH, CRITICAL) with automated handling for
+lower tiers.
+
+**Rationale:** 85% of content expected LOW/MEDIUM risk. Human review for everything
+doesn't scale.
+
+**Consequences:** Some risk of automated misclassification, mitigated by continuous model
+improvement.
+
+
+
+## ADR-CMP-003: Immutable Cryptographic Audit Trail
+
+**Status:** Accepted
+
+**Decision:** SHA-256 chained audit log for all compliance decisions.
+
+**Rationale:** Regulatory compliance and legal defensibility require tamper-proof records.
+
+**Consequences:** Storage overhead for audit logs, but essential for legal protection.
+
+
+
+## ADR-CMP-004: Independent Scoring Engine
+
+**Status:** Accepted
+
+**Decision:** Compliance scores calculated independently from individual checkers.
+
+**Rationale:** Prevents single checker from dominating decision; enables weighted, nuanced
+scoring.
+
+**Consequences:** More complex scoring logic but more accurate risk assessment.
+
+
+
+## ADR-CMP-005: Emergency Override with Post-Publication Review
+
+**Status:** Accepted
+
+**Decision:** Emergency override available for public safety content, but always triggers post-
+publication review.
+
+**Rationale:** Public safety sometimes requires speed over thoroughness, but accountability
+must follow.
+
+**Consequences:** Risk of misuse, mitigated by MFA requirement and mandatory post-review.
+
+## ADR-CMP-006: Jurisdiction-Aware Privacy Protection
+
+**Status:** Accepted
+
+**Decision:** Privacy rules adapt based on target jurisdictions (GDPR, CCPA, etc.).
+
+**Rationale:** Different jurisdictions have different requirements; one-size-fits-all is
+insufficient.
+
+**Consequences:** More complex rule management but necessary for global compliance.
+
+
+
+## ADR-CMP-007: Platform Policy as Configurable Rules
+
+**Status:** Accepted
+
+**Decision:** Platform policies stored as configurable rule sets, not hardcoded logic.
+
+**Rationale:** Platform policies change frequently; configurable rules enable rapid adaptation.
+
+**Consequences:** Rule management overhead but critical for platform compliance.
+
+```
+
+
+
+---
+
+
+
+PART XIII — EXECUTIVE SUMMARY
+
+
+
+13.1 Implementation Roadmap
+
+
+
+MVP (Months 1-3)
+
+
+
+```
+
+INCLUDES:
+
+      Copyright detection (basic fingerprinting)
+
+      Plagiarism detection (sentence-level + semantic)
+
+      Basic legal review (defamation, hate speech)
+
+      PII detection (regex-based)
+
+      Basic AI safety review (hallucination detection)
+
+      Platform policy validation (Facebook, Twitter)
+
+      Compliance scoring engine
+
+      Basic audit logging
+
+      Human review for HIGH/CRITICAL risk only
+
+```
+
+
+
+Growth (Months 4-9)
+
+
+
+```
+
+ADDITIONS:
+
+      Advanced copyright (fair use assessment)
+
+      Cross-lingual plagiarism detection
+
+      Full legal review (all categories)
+
+      Advanced PII detection (NER-based)
+
+      Full AI safety review
+
+      All platform policies
+
+      Immutable cryptographic audit log
+
+      Emergency override workflow
+
+      Jurisdiction-aware privacy rules
+
+```
+
+Enterprise (Months 10-18)
+
+
+
+```
+
+FULL SCALE:
+
+      Real-time compliance checking
+
+      AI-powered legal risk prediction
+
+      Automated fair use defense generation
+
+      Global privacy compliance (all jurisdictions)
+
+      Custom compliance policies per publication
+
+      Compliance analytics and trend detection
+
+      Automated regulatory filing
+
+      Third-party compliance API integration
+
+      Continuous compliance monitoring
+
+```
+
+
+
+13.2 Integration Points
+
+
+
+From (Upstream) Compliance Gatekeeper To (Downstream)
+
+Content Factory (Vol 14) ← Content Packages → Distribution Engine (Vol 17)
+
+Truth Engine (Vol 13) ← Verified Facts → Human Review System
+
+Story Graph (Vol 14) ← Canonical Stories → Audit & Analytics
+
+Foundation (Vol 11) ← IAM, Config → Notification Service
+
+
+
+13.3 Key Risk Mitigations
+
+Risk Mitigation
+
+False negatives (unsafe content published) Multi-layer checks, human review for high risk
+
+False positives (safe content blocked) Tiered risk system, appeal workflow
+
+Performance bottleneck Parallel checking, caching, async where possible
+
+Regulatory non-compliance Jurisdiction-aware rules, regular policy updates
+
+Audit tampering Cryptographic chaining, immutable storage
+
+Emergency override abuse MFA requirement, mandatory post-review, audit
+
+
+
+---
+
+
+
+END OF VOLUME 16
+
+
+
+Document Approval:
+
+
+
+· Chief AI Officer: _________________
+
+· Enterprise Solution Architect: _________________
+
+· Legal Technology Architect: _________________
+
+· Principal Software Architect: _________________
+
+· Enterprise Security Architect: _________________
+
+· AI Governance Specialist: _________________
+
+
+
+Date: 2026-08-07
+
+Version: 1.0.0 - Implementation-Ready
+
+Next Volume: Volume 17 – Distribution Engine (Multi-Platform Publishing & Syndication)
+
+
+

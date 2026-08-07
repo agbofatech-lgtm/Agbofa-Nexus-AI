@@ -611,6 +611,706 @@
       "related_apis_events_databases": [],
       "supersedes": "Pending reconciliation",
       "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-044",
+      "title": "ADR-ORIG-001 — Polyglot Persistence for Content Origination",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Content Origination",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:109664",
+      "related_volumes": [
+        "Volume 12"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-045",
+      "title": "ADR-ORIG-002 — LangGraph-Inspired State Machines",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Content Origination",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:109679",
+      "related_volumes": [
+        "Volume 12"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-046",
+      "title": "ADR-ORIG-003 — Dual-Mode Ingestion (Poll + Stream)",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Content Origination",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:109694",
+      "related_volumes": [
+        "Volume 12"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-047",
+      "title": "ADR-TRUTH-001 — Multi-Factor Confidence Scoring Model",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Truth Engine",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:121030",
+      "related_volumes": [
+        "Volume 13"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-048",
+      "title": "ADR-TRUTH-002 — Neo4j as Primary Story Graph Store",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Truth Engine",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:121049",
+      "related_volumes": [
+        "Volume 13"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-049",
+      "title": "ADR-TRUTH-003 — Append-Only Audit Log with Cryptographic Chaining",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Truth Engine",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:121067",
+      "related_volumes": [
+        "Volume 13"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-050",
+      "title": "ADR-TRUTH-004 — Human-in-the-Loop for High-Risk Categories",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Truth Engine",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:121085",
+      "related_volumes": [
+        "Volume 13"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-051",
+      "title": "ADR-TRUTH-005 — Dual-Path Verification",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Truth Engine",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:121102",
+      "related_volumes": [
+        "Volume 13"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-052",
+      "title": "ADR-TRUTH-006 — External Fact-Check API Integration",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Truth Engine",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:121118",
+      "related_volumes": [
+        "Volume 13"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-053",
+      "title": "ADR-TRUTH-007 — Evidence-Based Verdict Classification",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Truth Engine",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:121135",
+      "related_volumes": [
+        "Volume 13"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-054",
+      "title": "ADR-TRUTH-008 — Confidence Score Decay for Time-Sensitive Claims",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Truth Engine",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:121152",
+      "related_volumes": [
+        "Volume 13"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-055",
+      "title": "ADR-CF-001 — Multi-Stage Content Generation Pipeline / Fact-Locking Alias",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Content Factory",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:127510; 127823",
+      "related_volumes": [
+        "Volume 14/15"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-056",
+      "title": "ADR-CF-002 — LLM-Agnostic Gateway / Multi-Pass Generation Alias",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Content Factory",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:127523; 127838",
+      "related_volumes": [
+        "Volume 14/15"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-057",
+      "title": "ADR-CF-003 — Platform-Specific Templates / Platform-Native Generation Alias",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Content Factory",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:127535; 127851",
+      "related_volumes": [
+        "Volume 14/15"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-058",
+      "title": "ADR-CF-004 — Mandatory QA Before Distribution",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Content Factory",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:127548",
+      "related_volumes": [
+        "Volume 14"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-059",
+      "title": "ADR-CF-005 — Translation with Cultural Adaptation",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Content Factory",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:127558",
+      "related_volumes": [
+        "Volume 14"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-060",
+      "title": "ADR-CF-006 — Content Versioning with Rollback",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Content Factory",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:127570",
+      "related_volumes": [
+        "Volume 14"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-061",
+      "title": "ADR-CF-007 — Cost-Optimized Model Selection",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Content Factory",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:127580",
+      "related_volumes": [
+        "Volume 14"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-062",
+      "title": "ADR-CF-008 — Real-Time Content Updates",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Content Factory",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:127591",
+      "related_volumes": [
+        "Volume 14"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-063",
+      "title": "ADR-CMP-001 — Pre-Publication Compliance Gateway",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Compliance",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:132443; 138088",
+      "related_volumes": [
+        "Volume 16"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-064",
+      "title": "ADR-CMP-002 — Tiered Risk Classification",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Compliance",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:132460; 138102",
+      "related_volumes": [
+        "Volume 16"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-065",
+      "title": "ADR-CMP-003 — Independent Compliance Scoring Engine",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Compliance",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:132475; 138129",
+      "related_volumes": [
+        "Volume 16"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-066",
+      "title": "ADR-CMP-004 — Immutable Compliance Audit Trail",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Compliance",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:132490; 138117",
+      "related_volumes": [
+        "Volume 16"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-067",
+      "title": "ADR-CMP-005 — Emergency Override with Post-Publication Review",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Compliance",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:138142",
+      "related_volumes": [
+        "Volume 16"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-068",
+      "title": "ADR-CMP-006 — Jurisdiction-Aware Privacy Protection",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Compliance",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:138154",
+      "related_volumes": [
+        "Volume 16"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-069",
+      "title": "ADR-CMP-007 — Platform Policy as Configurable Rules",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Compliance",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:138167",
+      "related_volumes": [
+        "Volume 16"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-070",
+      "title": "ADR-DIST-001 — Connector Plugin Architecture",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Distribution",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:138375; 143171",
+      "related_volumes": [
+        "Volume 17"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-071",
+      "title": "ADR-DIST-002 — Event-Sourced Publication State",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Distribution",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:138391; 143184",
+      "related_volumes": [
+        "Volume 17"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-072",
+      "title": "ADR-DIST-003 — Priority-Based Publication Queues",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Distribution",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:138406; 143196",
+      "related_volumes": [
+        "Volume 17"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-073",
+      "title": "ADR-DIST-004 — Idempotent Publication",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Distribution",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:138421; 143208",
+      "related_volumes": [
+        "Volume 17"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-074",
+      "title": "ADR-DIST-005 — Breaking News Separate Path",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Distribution",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:143220",
+      "related_volumes": [
+        "Volume 17"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-075",
+      "title": "ADR-DIST-006 — Platform Policy as Code",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Distribution",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:143232",
+      "related_volumes": [
+        "Volume 17"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-076",
+      "title": "ADR-DIST-007 — Analytics Feedback Loop",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Distribution",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:143245",
+      "related_volumes": [
+        "Volume 17"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-077",
+      "title": "ADR-ANA-001 — Unified Analytics Data Lake",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Analytics",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:143477; 147947",
+      "related_volumes": [
+        "Volumes 18-19"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-078",
+      "title": "ADR-ANA-002 — Real-Time + Batch Analytics Dual Path",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Analytics",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:143493; 147957",
+      "related_volumes": [
+        "Volumes 18-19"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-079",
+      "title": "ADR-ANA-003 — Closed-Loop AI Optimization",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Analytics",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:143508; 147967",
+      "related_volumes": [
+        "Volumes 18-19"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-080",
+      "title": "ADR-ANA-004 — Platform-Agnostic Analytics Abstraction",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Analytics",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:143522; 147977",
+      "related_volumes": [
+        "Volumes 18-19"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-081",
+      "title": "ADR-ANA-005 — Redis for Real-Time, ClickHouse for Analytics",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Analytics",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:147987",
+      "related_volumes": [
+        "Volumes 18-19"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-082",
+      "title": "ADR-ANA-006 — Thompson Sampling for Multi-Armed Bandit",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Analytics",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:147997",
+      "related_volumes": [
+        "Volumes 18-19"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-083",
+      "title": "ADR-ANA-007 — Event Sourcing for Experiment Tracking",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Analytics",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:148007",
+      "related_volumes": [
+        "Volumes 18-19"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-084",
+      "title": "ADR-OPS-001 — Multi-Region Active-Active Deployment",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Operations",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:148231; 152557",
+      "related_volumes": [
+        "Volume 20"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-085",
+      "title": "ADR-OPS-002 — Istio Ambient Mesh for Service Communication",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Operations",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:148250; 152567",
+      "related_volumes": [
+        "Volume 20"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-086",
+      "title": "ADR-OPS-003 — GitOps with Flux CD",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Operations",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:148267; 152577",
+      "related_volumes": [
+        "Volume 20"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-087",
+      "title": "ADR-OPS-004 — Tiered Storage Lifecycle",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Operations",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:148284; 152587",
+      "related_volumes": [
+        "Volume 20"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-088",
+      "title": "ADR-OPS-005 — OpenTelemetry for Observability",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Operations",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:152597",
+      "related_volumes": [
+        "Volume 20"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-089",
+      "title": "ADR-OPS-006 — SPIFFE/SPIRE for Workload Identity",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Operations",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:152607",
+      "related_volumes": [
+        "Volume 20"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-090",
+      "title": "ADR-OPS-007 — Aurora Global Database for PostgreSQL",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Operations",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:152617",
+      "related_volumes": [
+        "Volume 20"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-091",
+      "title": "ADR-OPS-008 — Canary Deployments with Argo Rollouts",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Operations",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:152627",
+      "related_volumes": [
+        "Volume 20"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-092",
+      "title": "ADR-OPS-009 — FinOps with Automated Optimization",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Operations",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:152637",
+      "related_volumes": [
+        "Volume 20"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
+    },
+    {
+      "id": "ADR-093",
+      "title": "ADR-OPS-010 — Immutable Infrastructure",
+      "status": "Extracted from Batch 2 — Pending ADR Reconciliation",
+      "decision_area": "Operations",
+      "source_reference": "source/original-text/Agbofa%20Nexus%20Media%20-%20Arena.txt:152647",
+      "related_volumes": [
+        "Volume 20"
+      ],
+      "related_services": [],
+      "related_apis_events_databases": [],
+      "supersedes": "Pending reconciliation",
+      "implementation_impact": "Must be reconciled before implementation; no code generation from ADR assumptions."
     }
   ]
 }

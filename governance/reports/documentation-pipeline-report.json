@@ -1,6 +1,6 @@
 {
   "source_files": 1,
-  "extracted_files": 10,
+  "extracted_files": 19,
   "checksums_recorded": 1,
   "errors": [],
   "source_paths": [
@@ -16,6 +16,15 @@
     "extracted/text/batch-1/Volume-07.txt",
     "extracted/text/batch-1/Volume-08.txt",
     "extracted/text/batch-1/Volume-09.txt",
-    "extracted/text/batch-1/Volume-10.txt"
+    "extracted/text/batch-1/Volume-10.txt",
+    "extracted/text/batch-2/Volume-11.txt",
+    "extracted/text/batch-2/Volume-12.txt",
+    "extracted/text/batch-2/Volume-13.txt",
+    "extracted/text/batch-2/Volume-14.txt",
+    "extracted/text/batch-2/Volume-15.txt",
+    "extracted/text/batch-2/Volume-16.txt",
+    "extracted/text/batch-2/Volume-17.txt",
+    "extracted/text/batch-2/Volume-20.txt",
+    "extracted/text/batch-2/Volumes-18-19.txt"
   ]
 }
