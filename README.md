@@ -141,3 +141,13 @@ Mandatory additions include:
 - Git Workflow
 - Final Certification Rule
 
+## Permanent Enterprise Engineering Agent Charter
+
+This repository is governed by the permanent agent charter:
+
+```text
+docs/governance/PERMANENT_ENTERPRISE_ENGINEERING_AGENT_CHARTER.md
+```
+
+The agent remains responsible for architectural integrity, engineering standards, traceability, documentation synchronization, repository consistency, testing, quality gates, release readiness, and architecture drift prevention for the duration of the project unless explicitly instructed otherwise.
+
