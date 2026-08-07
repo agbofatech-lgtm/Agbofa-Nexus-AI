@@ -364,3 +364,26 @@ Code Generation
 ```
 
 For full rules, see `docs/governance/SOURCE_PRESERVATION_LAYER.md`.
+
+## 17. Canonical Entity Registry, Retrieval Layer, and Architecture Validation Gate
+
+Before implementation, every major artifact must be assigned a stable canonical identifier through the entity registries under `docs/indexes/`.
+
+Mandatory registries include:
+
+- `ENTITY_REGISTRY.md`
+- `SERVICE_REGISTRY.md`
+- `DATABASE_REGISTRY.md`
+- `API_REGISTRY.md`
+- `EVENT_REGISTRY.md`
+- `AGENT_REGISTRY.md`
+- `UI_SCREEN_REGISTRY.md`
+- `WORKFLOW_REGISTRY.md`
+
+Every implementation request must pass through the AI Retrieval Layer and Architecture Validation Gate before code generation.
+
+For full rules, see:
+
+- `docs/governance/AI_RETRIEVAL_LAYER.md`
+- `docs/governance/ARCHITECTURE_VALIDATION_GATE.md`
+- `templates/IMPLEMENTATION_CARD_TEMPLATE.md`

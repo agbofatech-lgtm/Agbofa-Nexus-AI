@@ -174,3 +174,29 @@ Original PDF → OCR JSON → Structured Markdown → Indexes & Manifest → Imp
 ```
 
 Full governance: `docs/governance/SOURCE_PRESERVATION_LAYER.md`
+
+## Canonical Registries, Retrieval, and Validation
+
+Before implementation, every major artifact must have a stable canonical ID and every implementation request must retrieve relevant documentation and pass an architecture validation gate.
+
+Key artifacts:
+
+```text
+docs/indexes/ENTITY_REGISTRY.md
+docs/indexes/SERVICE_REGISTRY.md
+docs/indexes/DATABASE_REGISTRY.md
+docs/indexes/API_REGISTRY.md
+docs/indexes/EVENT_REGISTRY.md
+docs/indexes/AGENT_REGISTRY.md
+docs/indexes/UI_SCREEN_REGISTRY.md
+docs/indexes/WORKFLOW_REGISTRY.md
+docs/governance/AI_RETRIEVAL_LAYER.md
+docs/governance/ARCHITECTURE_VALIDATION_GATE.md
+templates/IMPLEMENTATION_CARD_TEMPLATE.md
+```
+
+Implementation flow:
+
+```text
+User Request → Master Manifest → Entity Registries → Relevant Source Docs → Implementation Card → Architecture Validation Gate → Code Generation
+```

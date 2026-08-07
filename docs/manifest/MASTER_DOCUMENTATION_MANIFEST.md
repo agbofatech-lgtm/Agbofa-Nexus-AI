@@ -152,3 +152,24 @@ Pending source intake.
 | Extracted Images | `extracted/images/` | Derived diagrams/images from source docs | Pending extraction |
 
 Original source files must never be modified. All transformations must be traceable to source filename, checksum, volume, page range, and extraction method where available.
+
+## 23. Canonical Entity Registries
+
+| Registry | Path | Purpose | Status |
+|---|---|---|---|
+| Entity Registry | `docs/indexes/ENTITY_REGISTRY.md` | Canonical cross-artifact identity registry | Awaiting source intake |
+| Service Registry | `docs/indexes/SERVICE_REGISTRY.md` | Stable service and microservice IDs | Awaiting source intake |
+| Database Registry | `docs/indexes/DATABASE_REGISTRY.md` | Stable database ownership IDs | Awaiting source intake |
+| API Registry | `docs/indexes/API_REGISTRY.md` | Stable REST/gRPC/API contract IDs | Awaiting source intake |
+| Event Registry | `docs/indexes/EVENT_REGISTRY.md` | Stable event and topic IDs | Awaiting source intake |
+| Agent Registry | `docs/indexes/AGENT_REGISTRY.md` | Stable AI agent IDs | Awaiting source intake |
+| UI Screen Registry | `docs/indexes/UI_SCREEN_REGISTRY.md` | Stable frontend screen and route IDs | Awaiting source intake |
+| Workflow Registry | `docs/indexes/WORKFLOW_REGISTRY.md` | Stable workflow IDs | Awaiting source intake |
+
+## 24. Architecture Validation and Retrieval Gates
+
+| Gate/Layer | Path | Purpose | Status |
+|---|---|---|---|
+| AI Retrieval Layer | `docs/governance/AI_RETRIEVAL_LAYER.md` | Retrieve relevant documentation subset before implementation | Active |
+| Architecture Validation Gate | `docs/governance/ARCHITECTURE_VALIDATION_GATE.md` | Mandatory pre-code validation checklist | Active |
+| Implementation Card Template | `templates/IMPLEMENTATION_CARD_TEMPLATE.md` | Standard implementation planning artifact | Active |

@@ -9,3 +9,6 @@
 | Enterprise Engineering Constitution | Repository governance | User-provided strengthened AI implementation rules | Existing governance scaffold | Initialized | Not applicable | Yes | Pending | Pass | Complete |
 | Permanent Enterprise Engineering Agent Charter | Repository governance | User-provided permanent agent operating model | Engineering Constitution | Initialized | Not applicable | Yes | 1052248 | Pass | Complete |
 | Source Preservation Layer | Repository governance | User-provided source preservation workflow | Permanent Enterprise Engineering Agent Charter | Initialized | Not applicable | Yes | 6c9ef7c | Pass | Complete |
+| Canonical Entity Registries | Repository governance | User-provided entity registry requirement | Source Preservation Layer | Initialized | Not applicable | Yes | Pending current commit | Pass | Complete |
+| AI Retrieval Layer | Repository governance | User-provided retrieval workflow | Canonical Entity Registries | Initialized | Not applicable | Yes | Pending current commit | Pass | Complete |
+| Architecture Validation Gate | Repository governance | User-provided pre-code validation checklist | AI Retrieval Layer | Initialized | Not applicable | Yes | Pending current commit | Pass | Complete |
