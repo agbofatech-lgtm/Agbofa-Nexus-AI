@@ -11,3 +11,4 @@
 | Architecture validation | Active | Required before card approval |
 | Implementation Authorization Gate | Active | Required before eligibility/authorization |
 | Implementation eligibility | None | No component or sequence item eligible |
+| CARD-IMP-007 planning review | Accepted for Planning | Card remains Draft; no implementation authorization |
