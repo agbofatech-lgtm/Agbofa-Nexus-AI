@@ -1801,6 +1801,101 @@
       "related_apis_events_databases": [],
       "supersedes": "Pending reconciliation",
       "implementation_impact": "Binding only after M5.5 and final baseline certification."
+    },
+    {
+      "id": "ADR-129",
+      "title": "ADR-DEV-001 — GitOps with ArgoCD",
+      "status": "Phase 5 Document 2 Reviewed — Pending IMP-001 IAG",
+      "decision_area": "DevOps",
+      "source_reference": "source/original-text/phase5/PHASE5_DOCUMENT2_USER_PROVIDED.txt:Part XII",
+      "related_volumes": [
+        "Phase 5 Document 2"
+      ],
+      "related_services": [
+        "SVC-090",
+        "SVC-150",
+        "SVC-156",
+        "SVC-160"
+      ],
+      "related_apis_events_databases": [],
+      "supersedes": "Preserve source alias; no renumbering",
+      "implementation_impact": "Applies to repository/devops/delivery governance and IMP-001/IMP-002 planning."
+    },
+    {
+      "id": "ADR-130",
+      "title": "ADR-DEV-002 — Canary Deployments with Automated Analysis",
+      "status": "Phase 5 Document 2 Reviewed — Pending IMP-001 IAG",
+      "decision_area": "DevOps",
+      "source_reference": "source/original-text/phase5/PHASE5_DOCUMENT2_USER_PROVIDED.txt:Part XII",
+      "related_volumes": [
+        "Phase 5 Document 2"
+      ],
+      "related_services": [
+        "SVC-090",
+        "SVC-150",
+        "SVC-156",
+        "SVC-160"
+      ],
+      "related_apis_events_databases": [],
+      "supersedes": "Preserve source alias; no renumbering",
+      "implementation_impact": "Applies to repository/devops/delivery governance and IMP-001/IMP-002 planning."
+    },
+    {
+      "id": "ADR-131",
+      "title": "ADR-DEV-003 — Trunk-Based Development",
+      "status": "Phase 5 Document 2 Reviewed — Pending IMP-001 IAG",
+      "decision_area": "DevOps",
+      "source_reference": "source/original-text/phase5/PHASE5_DOCUMENT2_USER_PROVIDED.txt:Part XII",
+      "related_volumes": [
+        "Phase 5 Document 2"
+      ],
+      "related_services": [
+        "SVC-090",
+        "SVC-150",
+        "SVC-156",
+        "SVC-160"
+      ],
+      "related_apis_events_databases": [],
+      "supersedes": "Preserve source alias; no renumbering",
+      "implementation_impact": "Applies to repository/devops/delivery governance and IMP-001/IMP-002 planning."
+    },
+    {
+      "id": "ADR-132",
+      "title": "ADR-DEV-004 — Supply Chain Security (SLSA Level 3)",
+      "status": "Phase 5 Document 2 Reviewed — Pending IMP-001 IAG",
+      "decision_area": "Security / Supply Chain",
+      "source_reference": "source/original-text/phase5/PHASE5_DOCUMENT2_USER_PROVIDED.txt:Part XII",
+      "related_volumes": [
+        "Phase 5 Document 2"
+      ],
+      "related_services": [
+        "SVC-090",
+        "SVC-150",
+        "SVC-156",
+        "SVC-160"
+      ],
+      "related_apis_events_databases": [],
+      "supersedes": "Preserve source alias; no renumbering",
+      "implementation_impact": "Applies to repository/devops/delivery governance and IMP-001/IMP-002 planning."
+    },
+    {
+      "id": "ADR-133",
+      "title": "ADR-DEV-005 — Multi-Region Active-Active",
+      "status": "Phase 5 Document 2 Reviewed — Pending IMP-001 IAG",
+      "decision_area": "Infrastructure / DR",
+      "source_reference": "source/original-text/phase5/PHASE5_DOCUMENT2_USER_PROVIDED.txt:Part XII",
+      "related_volumes": [
+        "Phase 5 Document 2"
+      ],
+      "related_services": [
+        "SVC-090",
+        "SVC-150",
+        "SVC-156",
+        "SVC-160"
+      ],
+      "related_apis_events_databases": [],
+      "supersedes": "Preserve source alias; no renumbering",
+      "implementation_impact": "Applies to repository/devops/delivery governance and IMP-001/IMP-002 planning."
     }
   ]
 }

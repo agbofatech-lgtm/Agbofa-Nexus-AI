@@ -1,0 +1,163 @@
+PHASE 5: AI CODING MASTER SPECIFICATION
+
+Document 2: Repository Architecture, DevOps & Delivery Specification
+
+Document Reference: AGBA-NEXUS-PHASE5-DOC2-1.0
+
+Status: Authoritative — Binding on All Code Generation & Delivery
+
+Approved Baseline: Volumes 1–37, Phase 5 Document 1 (Immutable)
+
+Purpose: Repository Organization, CI/CD, Deployment & Operations Standards
+
+Quality Level: US$50M Enterprise Platform Standard
+
+---
+
+PREAMBLE
+
+Document 1 established the Engineering Constitution—the mandatory rules for how every line of code must be written. This Document 2 defines where everything lives, how it is built, tested, deployed, and operated. Together, these documents form the complete operational framework for the implementation phase.
+
+No deployment shall proceed that violates the standards herein.
+
+---
+
+PART I — REPOSITORY STRATEGY
+
+1.1 Monorepo Architecture
+
+Repository structure includes .github workflows, api/protobuf, services by bounded context, libs/go, libs/python, libs/node, apps, packages, ai, infrastructure, tests, tools, docs, and root governance/configuration files.
+
+API contracts are the single source of truth under api/, including protobuf, openapi, asyncapi, json-schema, and generated code.
+
+Services are organized under services/foundation, content-origination, truth-engine, content-factory, story-graph, distribution, analytics, and runtime.
+
+Infrastructure is organized under infrastructure/terraform, infrastructure/kubernetes, and infrastructure/helm.
+
+1.2 Repository Governance
+
+Repository governance uses CODEOWNERS with domain-based ownership, branch protection, required reviews, required checks, PR standards, labels, and AI generation disclosure.
+
+1.3 Branch Strategy
+
+Branch strategy is trunk-based development with main, feature/*, fix/*, hotfix/*, and release/* branches.
+
+---
+
+PART II — API GENERATION PIPELINE
+
+2.1 Protobuf Code Generation
+
+Tool: buf. Any change to api/protobuf triggers buf lint, buf breaking against main, and buf generate. Generated code is placed in api/gen and must not be edited manually.
+
+Breaking change policy: no breaking changes without MAJOR version bump. Forbidden breaking changes include removing or renaming fields, changing field types/numbers, and removing RPC methods.
+
+2.2 Database Migration Strategy
+
+Tool: golang-migrate. Migrations live in services/{domain}/{service}/migrations/ and use timestamp-based versioning. Every migration must have a down migration, be idempotent, never modify existing migration files, be tested before deployment, and run automatically as part of deployment.
+
+---
+
+PART III — DOCKER STANDARDS
+
+Docker standards require multi-stage builds, approved base images for Go/Python/Node, non-root runtime, read-only root filesystem where possible, no-new-privileges, dropped capabilities, multi-arch images, Trivy scanning, cosign signing, SBOM generation with syft, and defined tagging strategy.
+
+---
+
+PART IV — KUBERNETES STANDARDS
+
+Kubernetes standards define namespace strategy, resource quotas, default deny network policies, rolling updates, production replica minimums, anti-affinity, topology spread, resource requests/limits, health checks, security contexts, autoscaling, and pod disruption budgets.
+
+Helm chart standards define chart location, required values, environment-specific overlays, and ArgoCD GitOps deployment with automated sync, prune, and self-heal.
+
+---
+
+PART V — CI/CD PIPELINES
+
+CI/CD pipeline stages include pull request lint/test/SAST/secrets scan/dependency review/build, merge-to-main integration/security/build/SBOM/sign/deploy-staging/smoke test, staging validation with contract/AI/performance/security checks, and production deployment with manual approval and progressive canary.
+
+GitHub Actions workflows include ci-pull-request.yml, ci-merge-main.yml, cd-staging.yml, cd-production.yml, security-scan-scheduled.yml, dependency-update.yml, release.yml, and nightly-integration.yml.
+
+Canary deployment uses Argo Rollouts with 5%, 25%, 50%, and 100% stages and automatic rollback on error rate, latency, critical alerts, or AI hallucination-rate spike.
+
+---
+
+PART VI — ENVIRONMENT STRATEGY
+
+Environments include development, staging, production, and disaster recovery. Configuration hierarchy is command-line flags, environment variables, config files, HashiCorp Vault secrets, and defaults. Secrets use .env only for development and HashiCorp Vault for staging/production.
+
+---
+
+PART VII — RELEASE MANAGEMENT
+
+Release management uses semantic versioning, weekly minor releases, as-needed patches, quarterly major releases, release branches, full test suite, release notes generated from conventional commits, signed tags, canary production deployment, hypercare, and rollback procedures.
+
+---
+
+PART VIII — SUPPLY CHAIN SECURITY
+
+Supply chain security requires SBOM generation with syft, SPDX 2.3 JSON, image signing with cosign, AWS KMS key management, Kubernetes admission signature verification, approved dependency sources, Dependabot, license/security/maintenance review for new dependencies, SLSA Level 3 provenance, and provenance verification before deployment.
+
+---
+
+PART IX — INFRASTRUCTURE AS CODE
+
+Terraform standard is version >= 1.9. State backend is S3 with DynamoDB locking, encryption and versioning. Modules live under infrastructure/terraform/modules/ with semantic versioning. Environment separation covers production, staging and development. Secrets must not be stored in .tf files.
+
+---
+
+PART X — BACKUP & DISASTER RECOVERY
+
+Backup strategy covers PostgreSQL, Neo4j, Kafka, Kubernetes, and disaster recovery. RPO targets: PostgreSQL 5 minutes, Neo4j 1 hour, Kafka 5 minutes, Redis 24 hours, ClickHouse 1 hour. RTO targets: region failover 5 minutes, full platform 30 minutes, critical services 5 minutes. Testing includes quarterly tabletop, monthly AZ failover, quarterly region failover, and annual full restore.
+
+---
+
+PART XI — DEPLOYMENT HEALTH GATES
+
+Quality gates include pre-deployment lint, coverage, security scan, breaking-change checks, code review; staging validation with integration, contract, AI validation, performance; canary analysis with error-rate, latency and AI quality; and production sign-off by Engineering Lead, SRE Lead and Security Lead where applicable.
+
+---
+
+PART XII — ENTERPRISE DEVOPS ADRs
+
+## ADR-DEV-001: GitOps with ArgoCD
+
+Decision: ArgoCD for all application deployments.
+
+Rationale: Complete audit trail, drift detection, disaster recovery via Git.
+
+## ADR-DEV-002: Canary Deployments with Automated Analysis
+
+Decision: Progressive canary with metric-based validation.
+
+Rationale: Reduced blast radius, automated rollback.
+
+## ADR-DEV-003: Trunk-Based Development
+
+Decision: Short-lived branches, daily merges to main.
+
+Rationale: Enables rapid AI-assisted development.
+
+## ADR-DEV-004: Supply Chain Security (SLSA Level 3)
+
+Decision: SBOM, image signing, provenance generation.
+
+Rationale: Enterprise security compliance.
+
+## ADR-DEV-005: Multi-Region Active-Active
+
+Decision: Three-region deployment with global traffic management.
+
+Rationale: 99.99% availability, data sovereignty.
+
+---
+
+CERTIFICATION
+
+This Repository Architecture, DevOps & Delivery Specification is binding on all code organization, build pipelines, deployment processes, and operational procedures for the Agbofa Nexus AI platform.
+
+Document 2 of Phase 5 is complete. Proceed to Document 3: AI Code Generation Playbook & Implementation Execution Guide.
+
+---
+
+END OF DOCUMENT 2

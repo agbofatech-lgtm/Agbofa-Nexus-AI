@@ -1,7 +1,7 @@
 # Documentation Pipeline Report
 
-Source files: 2
+Source files: 3
 Extracted files: 36
-Checksums recorded: 2
+Checksums recorded: 3
 
 Source preservation directory validation passed.

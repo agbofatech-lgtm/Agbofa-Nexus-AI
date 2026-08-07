@@ -25,7 +25,7 @@ This document is now **conditionally certified** for governance, planning, docum
 | Batch 3 reviewed | Complete — approved for indexing only | `docs/locks/BATCH3_LOCK.md` |
 | Batch 4 reviewed | Complete — approved for indexing only | `docs/locks/BATCH4_LOCK.md` |
 | Phase 5 Document 1 reviewed | Partial/Detected | `review-reports/batch-4/BATCH4_DOCUMENTATION_REVIEW_REPORT.md` |
-| Phase 5 Document 2 reviewed | Blocked | Standalone body not clearly detected; see GAR-006 and GAR-014 |
+| Phase 5 Document 2 reviewed | Complete for governance/readiness | User-provided source preserved and reviewed |
 | Phase 5 Document 3 reviewed | Partial/Detected | `review-reports/batch-4/BATCH4_DOCUMENTATION_REVIEW_REPORT.md` |
 | Confidence register finalized | Pending | `docs/confidence/DOCUMENTATION_CONFIDENCE_REGISTER.md` |
 
@@ -39,7 +39,7 @@ Formal impact assessment: `docs/assessment/SOURCE_VERIFICATION_IMPACT_ASSESSMENT
 | Source Issue | Status | Impact | Required Resolution |
 |---|---|---|---|
 | Volume 11 source boundary | Open | May affect foundation-service implementation planning | Obtain source/OCR JSON, impact-assess, or accept uncertainty |
-| Phase 5 Document 2 body | Open | May affect repository/devops/delivery baseline | Obtain source/OCR JSON, impact-assess, or accept uncertainty |
+| Phase 5 Document 2 body | Resolved for IMP-001 readiness | User-provided source preserved and reviewed | No further action for IMP-001; OCR/PDF still preferred for archival quality |
 
 ---
 
@@ -48,7 +48,8 @@ Formal impact assessment: `docs/assessment/SOURCE_VERIFICATION_IMPACT_ASSESSMENT
 | GAR Group | Status | Evidence |
 |---|---|---|
 | GAR-001, GAR-002, GAR-003, GAR-004, GAR-005, GAR-009, GAR-010, GAR-011, GAR-012, GAR-015, GAR-016 | Provisionally accepted | `docs/reconciliation/M5_5_PROVISIONAL_DISPOSITION_RECORD.md` |
-| GAR-006, GAR-007, GAR-008, GAR-013, GAR-014 | Open | `docs/reconciliation/GLOBAL_ARCHITECTURE_RECONCILIATION_REGISTER.md` |
+| GAR-007 | Open | Volume 11 remains unresolved |
+| GAR-006, GAR-008, GAR-013, GAR-014 | Closed/dispositioned for IMP-001 readiness | `docs/reconciliation/PHASE5_DOCUMENT2_GAR_CLOSURE_RECORD.md` |
 | Final reconciliation approval | Pending | Human approval required |
 
 ---

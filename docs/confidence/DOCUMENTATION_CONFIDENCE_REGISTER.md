@@ -43,5 +43,5 @@
 | V36 | High | Derived text high; OCR JSON not supplied | Medium | Approved for indexing only | No | Batch 4 locked; implementation deferred |
 | V37 | High | Derived text high; OCR JSON not supplied | Medium | Approved for indexing only | No | Batch 4 locked; implementation deferred |
 | Phase 5 Doc 1 | Medium | Derived text medium; OCR JSON not supplied | Medium | Approved for indexing only | No | Detected and reviewed; implementation deferred |
-| Phase 5 Doc 2 | Low | Unknown | Low | Source verification pending | No | Referenced but standalone content not clearly detected |
+| Phase 5 Doc 2 | Medium-High | User-provided text; OCR JSON not supplied | Medium-High | Reviewed for governance/readiness | No | Preserved as source evidence; supports IMP-001 readiness review |
 | Phase 5 Doc 3 | Medium-High | Derived text plus user-provided text; OCR JSON not supplied | Medium-High | Approved for indexing only; additional source evidence preserved | No | User provided Document 3 text; implementation deferred |
