@@ -16,3 +16,4 @@
 | CARD-IMP-009 planning review | Accepted for Planning | Card remains Draft; no implementation authorization |
 | CARD-IMP-010 planning review | Accepted for Planning | Card remains Draft; no implementation authorization |
 | CARD-IMP-011 planning review | Accepted for Planning | Card remains Draft; no implementation authorization |
+| CARD-IMP-012 planning review | Accepted for Planning | Card remains Draft; no implementation authorization |
