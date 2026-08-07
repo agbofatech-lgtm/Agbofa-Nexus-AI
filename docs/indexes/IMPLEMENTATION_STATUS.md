@@ -30,6 +30,6 @@
 | Batch 4 Lock | Documentation governance | User approval with condition | Batch 4 Documentation Review | Locked for indexing only | Governance validation | Yes | 0dcce0d | Pass | Complete |
 | Implementation Sequence Register | Documentation governance | User recommendation | Implementation Readiness Register | Initialized | Governance validation | Yes | 0dcce0d | Pass | Active |
 | M5.5 Global Architecture Reconciliation Review | Architecture reconciliation | GAR-001 through GAR-016 | All batch reviews | Initial review complete; awaiting approval/source disposition | Governance validation | Yes | 0dcce0d | Pass | Awaiting approval |
-| M5.5 Provisional Disposition Record | Architecture reconciliation | User-approved non-source-blocked GAR dispositions | M5.5 Initial Review | Provisionally accepted; source-blocked GARs open | Governance validation | Yes | Pending current commit | Pass | Active |
-| Final Documentation Baseline Certification | Certification | User recommendation | M5.5 Provisional Disposition | Created; pending approval | Governance validation | Yes | Pending current commit | Pass | Pending |
-| Implementation Dependency Validator | Repository automation | User recommendation | Implementation Sequence Register | Implemented | Dependency validation | Yes | Pending current commit | Pass | Active |
+| M5.5 Provisional Disposition Record | Architecture reconciliation | User-approved non-source-blocked GAR dispositions | M5.5 Initial Review | Provisionally accepted; source-blocked GARs open | Governance validation | Yes | b3ed74d | Pass | Active |
+| Final Documentation Baseline Certification | Certification | User recommendation | M5.5 Provisional Disposition | Created; pending approval | Governance validation | Yes | b3ed74d | Pass | Pending |
+| Implementation Dependency Validator | Repository automation | User recommendation | Implementation Sequence Register | Implemented | Dependency validation | Yes | b3ed74d | Pass | Active |
