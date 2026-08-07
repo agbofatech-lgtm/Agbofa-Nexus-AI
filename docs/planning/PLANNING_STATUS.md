@@ -27,3 +27,4 @@
 | Phase 5 Document 2 source review | Complete for IMP-001 readiness | GAR-006/008/013/014 dispositioned for IMP-001; no implementation authorization |
 | IMP-001 readiness review | Not Ready | CARD-IMP-001 and card-level validation evidence required before eligibility |
 | Volume 11 source verification | Complete for governance/readiness | GAR-007 closed for source-verification purposes; no implementation authorization |
+| CARD-IMP-001 draft card | Created | Draft only; planning review and readiness review still required |
