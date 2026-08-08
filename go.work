@@ -1,4 +1,4 @@
-go 1.22
+go 1.22.0
 
 use ./services/foundation
 use ./libs/go
@@ -11,3 +11,4 @@ use ./services/compliance
 use ./services/distribution
 use ./services/analytics
 use ./services/operations
+use ./cmd/localdev
