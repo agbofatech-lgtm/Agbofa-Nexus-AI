@@ -272,7 +272,8 @@ def write_report(ctx: ValidationContext) -> None:
     if ctx.findings:
         lines.extend(["| Validator | Severity | Path | Message |", "|---|---|---|---|"])
         for f in ctx.findings:
-            lines.append(f"| {f.validator} | {f.severity} | {f.path} | {f.message.replace('|', '\\|')} |")
+            msg = f.message.replace('|', '\\|')
+            lines.append(f"| {f.validator} | {f.severity} | {f.path} | {msg} |")
     else:
         lines.append("All selected governance validations passed.")
     lines.append("")
