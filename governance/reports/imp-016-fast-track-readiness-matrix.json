@@ -1,0 +1,126 @@
+{
+  "target": "IMP-016",
+  "readiness": "PASS",
+  "gates": [
+    {
+      "gate": "Baseline evidence certificate",
+      "status": "PASS",
+      "evidence": "READINESS-BASELINE-001"
+    },
+    {
+      "gate": "CARD-IMP-016.md exists",
+      "status": "PASS",
+      "evidence": "implementation-cards/drafts/CARD-IMP-016.md"
+    },
+    {
+      "gate": "Dependency docs/implementation/imp-001/CLOSURE_RECORD.md",
+      "status": "PASS",
+      "evidence": "docs/implementation/imp-001/CLOSURE_RECORD.md"
+    },
+    {
+      "gate": "Dependency docs/implementation/imp-002/CLOSURE_RECORD.md",
+      "status": "PASS",
+      "evidence": "docs/implementation/imp-002/CLOSURE_RECORD.md"
+    },
+    {
+      "gate": "Dependency docs/implementation/imp-003/CLOSURE_RECORD.md",
+      "status": "PASS",
+      "evidence": "docs/implementation/imp-003/CLOSURE_RECORD.md"
+    },
+    {
+      "gate": "Dependency docs/implementation/imp-004/CLOSURE_RECORD.md",
+      "status": "PASS",
+      "evidence": "docs/implementation/imp-004/CLOSURE_RECORD.md"
+    },
+    {
+      "gate": "Dependency docs/implementation/imp-005/CLOSURE_RECORD.md",
+      "status": "PASS",
+      "evidence": "docs/implementation/imp-005/CLOSURE_RECORD.md"
+    },
+    {
+      "gate": "Dependency docs/implementation/imp-006/CLOSURE_RECORD.md",
+      "status": "PASS",
+      "evidence": "docs/implementation/imp-006/CLOSURE_RECORD.md"
+    },
+    {
+      "gate": "Dependency docs/implementation/imp-007/CLOSURE_RECORD.md",
+      "status": "PASS",
+      "evidence": "docs/implementation/imp-007/CLOSURE_RECORD.md"
+    },
+    {
+      "gate": "Dependency docs/implementation/imp-008/CLOSURE_RECORD.md",
+      "status": "PASS",
+      "evidence": "docs/implementation/imp-008/CLOSURE_RECORD.md"
+    },
+    {
+      "gate": "Dependency docs/implementation/imp-009/CLOSURE_RECORD.md",
+      "status": "PASS",
+      "evidence": "docs/implementation/imp-009/CLOSURE_RECORD.md"
+    },
+    {
+      "gate": "Dependency docs/implementation/imp-010/CLOSURE_RECORD.md",
+      "status": "PASS",
+      "evidence": "docs/implementation/imp-010/CLOSURE_RECORD.md"
+    },
+    {
+      "gate": "Dependency docs/implementation/imp-011/CLOSURE_RECORD.md",
+      "status": "PASS",
+      "evidence": "docs/implementation/imp-011/CLOSURE_RECORD.md"
+    },
+    {
+      "gate": "Dependency docs/implementation/imp-012/CLOSURE_RECORD.md",
+      "status": "PASS",
+      "evidence": "docs/implementation/imp-012/CLOSURE_RECORD.md"
+    },
+    {
+      "gate": "Dependency docs/implementation/imp-013/CLOSURE_RECORD.md",
+      "status": "PASS",
+      "evidence": "docs/implementation/imp-013/CLOSURE_RECORD.md"
+    },
+    {
+      "gate": "Dependency docs/implementation/imp-014/CLOSURE_RECORD.md",
+      "status": "PASS",
+      "evidence": "docs/implementation/imp-014/CLOSURE_RECORD.md"
+    },
+    {
+      "gate": "Dependency docs/implementation/imp-015/CLOSURE_RECORD.md",
+      "status": "PASS",
+      "evidence": "docs/implementation/imp-015/CLOSURE_RECORD.md"
+    },
+    {
+      "gate": "Registry dependencies",
+      "status": "PASS",
+      "evidence": "all referenced registry IDs resolve"
+    },
+    {
+      "gate": "GAR-014 disposition",
+      "status": "PASS",
+      "evidence": "docs/readiness/fast-track/IMP_016_GAR_DISPOSITION.md"
+    },
+    {
+      "gate": "GAR-015 disposition",
+      "status": "PASS",
+      "evidence": "docs/readiness/fast-track/IMP_016_GAR_DISPOSITION.md"
+    },
+    {
+      "gate": "GAR-016 disposition",
+      "status": "PASS",
+      "evidence": "docs/readiness/fast-track/IMP_016_GAR_DISPOSITION.md"
+    },
+    {
+      "gate": "Authorization boundary check",
+      "status": "PASS",
+      "evidence": "CARD-IMP-016.md authorization section"
+    },
+    {
+      "gate": "Dependency validation",
+      "status": "PASS",
+      "evidence": "implementation-dependency-validation-report.md"
+    },
+    {
+      "gate": "Governance validation",
+      "status": "PASS",
+      "evidence": "governance-validation-report.md"
+    }
+  ]
+}
