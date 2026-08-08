@@ -1,0 +1,8 @@
+{
+  "name": "@agbofa/api-client",
+  "version": "1.0.0",
+  "description": "Agbofa Nexus AI Frontend API Client (IMP-014, SVC-169, API-001-004, API-037)",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "private": true
+}
