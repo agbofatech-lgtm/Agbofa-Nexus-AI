@@ -3,7 +3,7 @@
  * Displays authoritative editorial, revenue, and audience dashboards with mandatory tenant filters.
  */
 
-import { resolveUserSession, checkPermission, validateTenantAccess, UserSessionState } from "../../packages/api-client/src/auth";
+import { resolveUserSession, checkPermission, validateTenantAccess, UserSessionState } from "../../../packages/api-client/src/auth.ts";
 
 export class AnalyticsCenter {
   constructor(private readonly tenantId: string, private readonly session: UserSessionState) {

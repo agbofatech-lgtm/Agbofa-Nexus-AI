@@ -3,7 +3,7 @@
  * Enforces ADMIN role access, tenant scope, destructive action confirmation, and audit telemetry.
  */
 
-import { resolveUserSession, checkPermission, validateTenantAccess, UserSessionState } from "../../packages/api-client/src/auth";
+import { resolveUserSession, checkPermission, validateTenantAccess, UserSessionState } from "../../../packages/api-client/src/auth.ts";
 
 export interface TenantAdminConfig {
   tenantId: string;

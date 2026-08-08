@@ -4,8 +4,8 @@
  * NOTE: Enterprise application centers and specialized newsroom dashboards are implemented in IMP-015.
  */
 
-import { defaultNexusConfig } from "../../packages/config/src/index";
-import { resolveUserSession, validateTenantAccess } from "../../packages/api-client/src/auth";
+import { defaultNexusConfig } from "../../../packages/config/src/index.ts";
+import { resolveUserSession, validateTenantAccess } from "../../../packages/api-client/src/auth.ts";
 
 export interface ShellNavigation {
   brandName: string;

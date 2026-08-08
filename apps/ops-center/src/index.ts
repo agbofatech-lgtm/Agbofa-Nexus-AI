@@ -3,7 +3,7 @@
  * Operational display only. Prohibits deployment automation or release certification (belonging to IMP-016).
  */
 
-import { resolveUserSession, checkPermission, validateTenantAccess, UserSessionState } from "../../packages/api-client/src/auth";
+import { resolveUserSession, checkPermission, validateTenantAccess, UserSessionState } from "../../../packages/api-client/src/auth.ts";
 
 export interface SystemStatusDisplay {
   tenantId: string;

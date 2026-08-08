@@ -4,9 +4,9 @@
  * Enforces CREATE -> EDIT -> VALIDATE -> COMPLIANCE -> APPROVE -> DISTRIBUTE -> ANALYZE.
  */
 
-import { resolveUserSession, checkPermission, validateTenantAccess, UserSessionState } from "../../packages/api-client/src/auth";
-import { defaultNexusConfig } from "../../packages/config/src/index";
-import { authorizeCenterRouteAction } from "../../packages/enterprise-centers/src/index";
+import { resolveUserSession, checkPermission, validateTenantAccess, UserSessionState } from "../../../packages/api-client/src/auth.ts";
+import { defaultNexusConfig } from "../../../packages/config/src/index.ts";
+import { authorizeCenterRouteAction } from "../../../packages/enterprise-centers/src/index.ts";
 
 export type EditorialStage = "CREATE" | "EDIT" | "VALIDATE" | "COMPLIANCE" | "APPROVE" | "DISTRIBUTE" | "ANALYZE";
 

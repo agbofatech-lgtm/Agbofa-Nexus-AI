@@ -3,8 +3,8 @@
  * Enforces TENANT -> USER SESSION -> ROLE/PERMISSIONS -> AUTHORIZED CENTER -> AUTHORIZED ROUTE -> AUTHORIZED ACTION.
  */
 
-import { defaultNexusConfig } from "../../packages/config/src/index";
-import { resolveUserSession, checkPermission, validateTenantAccess, UserSessionState } from "../../packages/api-client/src/auth";
+import { defaultNexusConfig } from "../../../packages/config/src/index.ts";
+import { resolveUserSession, checkPermission, validateTenantAccess, UserSessionState } from "../../../packages/api-client/src/auth.ts";
 
 export type CenterId = "NEWSROOM_CENTER" | "READER_CENTER" | "ADMIN_CENTER" | "AI_CONTROL_CENTER" | "OPS_CENTER" | "REPORTING_CENTER";
 

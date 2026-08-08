@@ -3,8 +3,8 @@
  * Authoritative shell for audience consumption, AI interaction, and telemetry integration.
  */
 
-import { defaultNexusConfig } from "../../packages/config/src/index";
-import { MockNexusApiClient, AnalyticsEventPayload } from "../../packages/api-client/src/index";
+import { defaultNexusConfig } from "../../../packages/config/src/index.ts";
+import { MockNexusApiClient, AnalyticsEventPayload } from "../../../packages/api-client/src/index.ts";
 
 export interface ReaderWorkspaceConfig {
   tenantId: string;

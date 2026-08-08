@@ -3,7 +3,7 @@
  * Controls model routing, prompt registry inspection, and quotas without exposing secrets or credentials.
  */
 
-import { resolveUserSession, checkPermission, validateTenantAccess, UserSessionState } from "../../packages/api-client/src/auth";
+import { resolveUserSession, checkPermission, validateTenantAccess, UserSessionState } from "../../../packages/api-client/src/auth.ts";
 
 export interface ModelRoutingDisplay {
   modelId: string;

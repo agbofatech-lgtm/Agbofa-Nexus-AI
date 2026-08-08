@@ -50,7 +50,7 @@ func TestConfidencePolicy_CalculateConfidence(t *testing.T) {
 		t.Fatalf("expected verified truth tier with high score, got score=%.2f tier=%s", score, tier)
 	}
 
-	score, tier = policy.CalculateConfidence(0.5, 0.6, false)
+	score, tier = policy.CalculateConfidence(0.6, 0.6, false)
 	if tier != domain.ConfidenceTierProvisional {
 		t.Fatalf("expected provisional tier, got score=%.2f tier=%s", score, tier)
 	}

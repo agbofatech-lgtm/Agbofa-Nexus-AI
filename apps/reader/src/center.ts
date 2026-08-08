@@ -3,7 +3,7 @@
  * Composed over IMP-014 reader shell. Enforces AI Gateway integration without client secret exposure.
  */
 
-import { resolveUserSession, validateTenantAccess, UserSessionState } from "../../packages/api-client/src/auth";
+import { resolveUserSession, validateTenantAccess, UserSessionState } from "../../../packages/api-client/src/auth.ts";
 import { emitPageViewTelemetry } from "./index";
 
 export interface AIInteractionQuery {

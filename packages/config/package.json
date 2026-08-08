@@ -4,5 +4,8 @@
   "description": "Agbofa Nexus AI Frontend Configuration Package (IMP-014, SVC-167)",
   "main": "src/index.ts",
   "types": "src/index.ts",
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
 }

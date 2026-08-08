@@ -3,7 +3,7 @@
  * Orchestrates authorized user interaction with publishing queues, schedules, and breaking alerts.
  */
 
-import { resolveUserSession, checkPermission, validateTenantAccess, UserSessionState } from "../../packages/api-client/src/auth";
+import { resolveUserSession, checkPermission, validateTenantAccess, UserSessionState } from "../../../packages/api-client/src/auth.ts";
 
 export class PublishingCenter {
   constructor(private readonly tenantId: string, private readonly session: UserSessionState) {

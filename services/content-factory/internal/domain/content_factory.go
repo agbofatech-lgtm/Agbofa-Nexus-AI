@@ -6,12 +6,12 @@ import (
 )
 
 var (
-	ErrPackageNotFound         = errors.New("content package not found")
-	ErrBrandVoiceNotFound      = errors.New("brand voice profile not found")
-	ErrReviewDecisionNotFound  = errors.New("review decision not found")
+	ErrPackageNotFound          = errors.New("content package not found")
+	ErrBrandVoiceNotFound       = errors.New("brand voice profile not found")
+	ErrReviewDecisionNotFound   = errors.New("review decision not found")
 	ErrInvalidPackageTransition = errors.New("invalid content package state transition")
-	ErrCrossTenantViolation    = errors.New("prohibited cross-tenant package access or mutation")
-	ErrDownstreamBoundary      = errors.New("prohibited cross-boundary operation")
+	ErrCrossTenantViolation     = errors.New("prohibited cross-tenant package access or mutation")
+	ErrDownstreamBoundary       = errors.New("prohibited cross-boundary operation")
 )
 
 type ContentPackageRepository interface {
@@ -37,6 +37,9 @@ func (p PackageStatePolicy) ValidateTransition(from, to PackageStatus) error {
 		return nil
 	}
 	if to == PackageStatusRejected {
+		if from == PackageStatusApproved {
+			return fmt.Errorf("%w: cannot transition from %s to %s", ErrInvalidPackageTransition, from, to)
+		}
 		return nil
 	}
 

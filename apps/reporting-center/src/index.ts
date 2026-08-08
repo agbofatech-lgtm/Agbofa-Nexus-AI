@@ -3,7 +3,7 @@
  * Authoritative editorial and revenue reporting export interfaces with tenant isolation.
  */
 
-import { resolveUserSession, checkPermission, validateTenantAccess, UserSessionState } from "../../packages/api-client/src/auth";
+import { resolveUserSession, checkPermission, validateTenantAccess, UserSessionState } from "../../../packages/api-client/src/auth.ts";
 
 export interface ReportExportRequest {
   tenantId: string;

@@ -3,7 +3,7 @@
  * Orchestrates human compliance officer review queues and displays audit ledger provenance.
  */
 
-import { resolveUserSession, checkPermission, validateTenantAccess, UserSessionState } from "../../packages/api-client/src/auth";
+import { resolveUserSession, checkPermission, validateTenantAccess, UserSessionState } from "../../../packages/api-client/src/auth.ts";
 
 export class ComplianceCenter {
   constructor(private readonly tenantId: string, private readonly session: UserSessionState) {
