@@ -10,3 +10,4 @@
 | IMP-006 | `docs/authorization/IAG-DECISION-IMP-006.md` | Approved | Granted | Permitted within approved IMP-006 scope only | Does not authorize IMP-007 through IMP-016 |
 | IMP-007 | `docs/authorization/IAG-DECISION-IMP-007.md` | Approved | Granted | Permitted within approved IMP-007 scope only | Does not authorize IMP-008 through IMP-016 |
 | IMP-008 | `docs/authorization/IAG-DECISION-IMP-008.md` | Approved | Granted | Permitted within approved IMP-008 scope only | Does not authorize IMP-009 through IMP-016 |
+| IMP-009 | `docs/authorization/IAG-DECISION-IMP-009.md` | Approved | Granted | Permitted within approved IMP-009 scope only | Does not authorize IMP-010 through IMP-016 |

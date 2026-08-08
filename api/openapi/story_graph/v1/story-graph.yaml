@@ -1,0 +1,198 @@
+openapi: 3.0.3
+info:
+  title: Agbofa Nexus AI — Story Graph & Knowledge Intelligence API
+  version: 1.0.0
+  description: REST OpenAPI contract for Story Graph node synchronization, entity intelligence, similarity clustering, graph search, and versioning (API-017, API-032).
+paths:
+  /v1/storygraph/nodes:
+    post:
+      summary: Synchronize a Story Node into the Labeled Property Graph
+      operationId: syncStoryNode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncStoryGraphNodeRequest'
+      responses:
+        '200':
+          description: Story node synchronized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncStoryGraphNodeResponse'
+        '403':
+          description: Tenant unauthorized
+  /v1/storygraph/entities:
+    post:
+      summary: Manage canonical entity node within tenant graph boundary
+      operationId: manageEntityNode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ManageEntityNodeRequest'
+      responses:
+        '200':
+          description: Entity node managed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManageEntityNodeResponse'
+  /v1/storygraph/search:
+    post:
+      summary: Execute tenant-isolated knowledge graph search
+      operationId: searchStoryGraph
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchStoryGraphRequest'
+      responses:
+        '200':
+          description: Graph search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchStoryGraphResponse'
+  /v1/storygraph/similarity:
+    post:
+      summary: Calculate semantic narrative similarity between two stories
+      operationId: calculateSimilarity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalculateEntitySimilarityRequest'
+      responses:
+        '200':
+          description: Similarity score calculated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalculateEntitySimilarityResponse'
+components:
+  schemas:
+    SyncStoryGraphNodeRequest:
+      type: object
+      required: [tenant_id, story_id, title, truth_state, confidence_score]
+      properties:
+        tenant_id:
+          type: string
+        story_id:
+          type: string
+        title:
+          type: string
+        truth_state:
+          type: string
+        confidence_score:
+          type: number
+        source_id:
+          type: string
+        provenance_hash:
+          type: string
+    SyncStoryGraphNodeResponse:
+      type: object
+      properties:
+        node_id:
+          type: string
+        tenant_id:
+          type: string
+        story_id:
+          type: string
+        synchronized:
+          type: boolean
+        updated_at_unix:
+          type: integer
+    ManageEntityNodeRequest:
+      type: object
+      required: [tenant_id, canonical_id, name, entity_type]
+      properties:
+        tenant_id:
+          type: string
+        canonical_id:
+          type: string
+        name:
+          type: string
+        entity_type:
+          type: string
+          enum: [PERSON, ORGANIZATION, LOCATION, CONCEPT]
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+    ManageEntityNodeResponse:
+      type: object
+      properties:
+        entity_id:
+          type: string
+        tenant_id:
+          type: string
+        canonical_id:
+          type: string
+        created:
+          type: boolean
+    SearchStoryGraphRequest:
+      type: object
+      required: [tenant_id, query_text]
+      properties:
+        tenant_id:
+          type: string
+        query_text:
+          type: string
+        entity_types:
+          type: array
+          items:
+            type: string
+        min_confidence:
+          type: number
+    SearchStoryGraphResponse:
+      type: object
+      properties:
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/StoryGraphNode'
+    StoryGraphNode:
+      type: object
+      properties:
+        node_id:
+          type: string
+        tenant_id:
+          type: string
+        story_id:
+          type: string
+        title:
+          type: string
+        truth_state:
+          type: string
+        confidence_score:
+          type: number
+        version:
+          type: integer
+    CalculateEntitySimilarityRequest:
+      type: object
+      required: [tenant_id, source_story_id, target_story_id]
+      properties:
+        tenant_id:
+          type: string
+        source_story_id:
+          type: string
+        target_story_id:
+          type: string
+    CalculateEntitySimilarityResponse:
+      type: object
+      properties:
+        tenant_id:
+          type: string
+        source_story_id:
+          type: string
+        target_story_id:
+          type: string
+        similarity_score:
+          type: number
+        cluster_id:
+          type: string
