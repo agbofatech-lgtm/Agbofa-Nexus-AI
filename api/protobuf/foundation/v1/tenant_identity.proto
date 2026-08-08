@@ -1,0 +1,105 @@
+syntax = "proto3";
+
+package foundation.tenant_identity.v1;
+
+option go_package = "github.com/agbofa/nexus-api/gen/go/foundation/tenant_identity/v1;tenantidentityv1";
+
+service TenantIdentityService {
+  rpc ProvisionTenant(ProvisionTenantRequest) returns (ProvisionTenantResponse);
+  rpc GetTenant(GetTenantRequest) returns (Tenant);
+  rpc UpdateTenantConfig(UpdateTenantConfigRequest) returns (Tenant);
+  rpc CreateUser(CreateUserRequest) returns (User);
+  rpc AuthenticateUser(AuthenticateUserRequest) returns (AuthenticationTokens);
+  rpc RefreshToken(RefreshTokenRequest) returns (AuthenticationTokens);
+  rpc ValidateToken(ValidateTokenRequest) returns (TokenClaims);
+}
+
+message ProvisionTenantRequest {
+  string name = 1;
+  TenantConfig config = 2;
+  string bootstrap_principal_name = 3;
+}
+
+message ProvisionTenantResponse {
+  Tenant tenant = 1;
+  User bootstrap_user = 2;
+}
+
+message GetTenantRequest { string id = 1; }
+
+message UpdateTenantConfigRequest {
+  string tenant_id = 1;
+  TenantConfig config = 2;
+}
+
+message CreateUserRequest {
+  string tenant_id = 1;
+  string principal_name = 2;
+  repeated string roles = 3;
+}
+
+message Tenant {
+  string id = 1;
+  string name = 2;
+  TenantStatus status = 3;
+  TenantConfig config = 4;
+  string created_at = 5;
+}
+
+enum TenantStatus {
+  TENANT_STATUS_ACTIVE = 0;
+  TENANT_STATUS_SUSPENDED = 1;
+  TENANT_STATUS_DELETED = 2;
+}
+
+message TenantConfig {
+  string default_region = 1;
+  int32 max_users = 2;
+  repeated string allowed_auth_providers = 3;
+  SSOConfig sso = 4;
+}
+
+message SSOConfig {
+  string provider = 1;
+  string issuer_url = 2;
+  string client_id = 3;
+}
+
+message User {
+  string id = 1;
+  string tenant_id = 2;
+  string principal_name = 3;
+  UserStatus status = 4;
+  repeated string roles = 5;
+  string created_at = 6;
+}
+
+enum UserStatus {
+  USER_STATUS_ACTIVE = 0;
+  USER_STATUS_DISABLED = 1;
+  USER_STATUS_PASSWORD_RESET_REQUIRED = 2;
+}
+
+message AuthenticateUserRequest {
+  string tenant_name = 1;
+  string principal_name = 2;
+  string credential = 3;
+}
+
+message AuthenticationTokens {
+  string access_token = 1;
+  string refresh_token = 2;
+  int32 expires_in = 3;
+}
+
+message RefreshTokenRequest { string refresh_token = 1; }
+message ValidateTokenRequest { string access_token = 1; }
+
+message TokenClaims {
+  string subject = 1;
+  string tenant_id = 2;
+  repeated string roles = 3;
+  string issuer = 4;
+  repeated string audience = 5;
+  string token_id = 6;
+}

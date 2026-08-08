@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package foundation.configuration.v1;
+
+option go_package = "github.com/agbofa/nexus-api/gen/go/foundation/configuration/v1;configurationv1";
+
+service ConfigurationService {
+  rpc GetConfiguration(GetConfigurationRequest) returns (ConfigurationBundle);
+  rpc SetConfiguration(SetConfigurationRequest) returns (ConfigurationBundle);
+  rpc WatchConfiguration(WatchRequest) returns (stream ConfigurationEvent);
+}
+
+message GetConfigurationRequest { string namespace = 1; }
+
+message SetConfigurationRequest {
+  string namespace = 1;
+  map<string, string> key_values = 2;
+  string modified_by = 3;
+}
+
+message WatchRequest { string namespace = 1; }
+
+message ConfigurationBundle {
+  string namespace = 1;
+  map<string, string> key_values = 2;
+  int64 version = 3;
+}
+
+message ConfigurationEvent {
+  string namespace = 1;
+  repeated ConfigurationChange changes = 2;
+  int64 version = 3;
+}
+
+message ConfigurationChange {
+  string key = 1;
+  string old_value = 2;
+  string new_value = 3;
+}

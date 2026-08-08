@@ -45,9 +45,13 @@
         "IMP-001",
         "IMP-002"
       ],
-      "approval_status": "not_approved",
-      "implementation_eligible": false,
-      "evidence_status": "Volume 11 provided; still depends on upstream IMP-001/IMP-002 and IAG sequence"
+      "approval_status": "approved",
+      "implementation_eligible": true,
+      "evidence_status": "Volume 11 provided; still depends on upstream IMP-001/IMP-002 and IAG sequence",
+      "implementation_authorized": true,
+      "authorization_record": "docs/authorization/IAG-DECISION-IMP-003.md",
+      "production_code_generation": "permitted_within_imp_003_scope_only",
+      "readiness_status": "authorized"
     },
     {
       "id": "IMP-004",

@@ -40,3 +40,5 @@
 | IMP-002 implementation | Complete within authorized scope | Infrastructure foundation controls implemented; IMP-003 through IMP-016 remain unauthorized |
 | IMP-003 fast-track readiness matrix | Passed | IMP-001 and IMP-002 dependencies closed; implementation not authorized |
 | IMP-003 IAG evaluation | Recommendation Approve; Deferred | Human authorization not recorded; implementation remains prohibited |
+| IMP-003 implementation | Implemented within authorized scope | Validation and closure pending |
+| IMP-003 validation blocker | Open | Go toolchain unavailable; implementation closure blocked |
