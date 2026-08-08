@@ -2,8 +2,8 @@
 
 **Implementation Unit:** IMP-006 — AI Gateway, Prompt, Model & Agent Runtime Foundation  
 **Eligibility:** Yes, based on fast-track readiness matrix  
-**Authorization Status:** Not granted  
-**Production Code Generation:** Prohibited
+**Authorization Status:** Granted  
+**Production Code Generation:** Permitted within approved IMP-006 scope only
 
 Evidence:
 - `governance/reports/imp-006-fast-track-readiness-matrix.md`

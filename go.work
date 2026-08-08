@@ -2,3 +2,4 @@ go 1.22
 
 use ./services/foundation
 use ./libs/go
+use ./services/runtime

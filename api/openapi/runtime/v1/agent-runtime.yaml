@@ -1,0 +1,88 @@
+openapi: 3.0.3
+info:
+  title: Agbofa Nexus AI — Agent Runtime & Workflow API
+  version: 1.0.0
+  description: Foundation OpenAPI contract for Agent Orchestration and Enterprise Workflow Execution (API-009, API-035).
+paths:
+  /v1/agent/execute:
+    post:
+      summary: Execute an AI Agent definition within tenant boundary
+      operationId: executeAgent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecuteAgentRequest'
+      responses:
+        '200':
+          description: Agent execution accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecuteAgentResponse'
+        '403':
+          description: Unauthorized agent execution attempt
+  /v1/workflow/start:
+    post:
+      summary: Start an enterprise workflow instance
+      operationId: startWorkflow
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartWorkflowRequest'
+      responses:
+        '200':
+          description: Workflow instance created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StartWorkflowResponse'
+components:
+  schemas:
+    ExecuteAgentRequest:
+      type: object
+      required: [tenant_id, agent_id, input_parameters]
+      properties:
+        tenant_id:
+          type: string
+        agent_id:
+          type: string
+        correlation_id:
+          type: string
+        input_parameters:
+          type: object
+          additionalProperties:
+            type: string
+    ExecuteAgentResponse:
+      type: object
+      properties:
+        execution_id:
+          type: string
+        status:
+          type: string
+        output:
+          type: string
+        tokens_used:
+          type: integer
+    StartWorkflowRequest:
+      type: object
+      required: [tenant_id, workflow_id]
+      properties:
+        tenant_id:
+          type: string
+        workflow_id:
+          type: string
+        payload:
+          type: object
+          additionalProperties:
+            type: string
+    StartWorkflowResponse:
+      type: object
+      properties:
+        instance_id:
+          type: string
+        status:
+          type: string
