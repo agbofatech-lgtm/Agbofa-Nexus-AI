@@ -6,3 +6,4 @@ use ./services/runtime
 use ./services/content-origination
 use ./services/truth-engine
 use ./services/story-graph
+use ./services/content-factory

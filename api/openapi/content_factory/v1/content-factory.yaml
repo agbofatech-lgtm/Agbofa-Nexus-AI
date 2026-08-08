@@ -1,0 +1,138 @@
+openapi: 3.0.3
+info:
+  title: Agbofa Nexus AI — Content Factory API
+  version: 1.0.0
+  description: REST OpenAPI contract for Content Factory packaging, editorial generation, adaptation, localization, QA, and human review (API-019, API-031).
+paths:
+  /v1/contentfactory/packages:
+    post:
+      summary: Create a new Content Package from a verified Truth Story
+      operationId: createPackage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePackageRequest'
+      responses:
+        '200':
+          description: Content package created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatePackageResponse'
+        '403':
+          description: Tenant unauthorized
+  /v1/contentfactory/packages/{id}:
+    get:
+      summary: Get Content Package by ID
+      operationId: getPackage
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tenant_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Content package retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentPackage'
+  /v1/contentfactory/packages/{id}/review:
+    post:
+      summary: Submit human review decision for Content Package
+      operationId: reviewPackage
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewPackageRequest'
+      responses:
+        '200':
+          description: Package review decision recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewPackageResponse'
+components:
+  schemas:
+    CreatePackageRequest:
+      type: object
+      required: [tenant_id, story_id, title, summary]
+      properties:
+        tenant_id:
+          type: string
+        story_id:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+        brand_voice_id:
+          type: string
+        target_channels:
+          type: array
+          items:
+            type: string
+    CreatePackageResponse:
+      type: object
+      properties:
+        package_id:
+          type: string
+        status:
+          type: string
+        created_at_unix:
+          type: integer
+    ContentPackage:
+      type: object
+      properties:
+        package_id:
+          type: string
+        tenant_id:
+          type: string
+        story_id:
+          type: string
+        title:
+          type: string
+        status:
+          type: string
+          enum: [DRAFT, QA_PASSED, REVIEW_REQUIRED, APPROVED, REJECTED]
+        brand_voice_id:
+          type: string
+    ReviewPackageRequest:
+      type: object
+      required: [tenant_id, package_id, approved, reviewer_id]
+      properties:
+        tenant_id:
+          type: string
+        package_id:
+          type: string
+        approved:
+          type: boolean
+        reviewer_id:
+          type: string
+        comments:
+          type: string
+    ReviewPackageResponse:
+      type: object
+      properties:
+        package_id:
+          type: string
+        status:
+          type: string
+        reviewed_at_unix:
+          type: integer
