@@ -36,3 +36,4 @@
 | CARD-IMP-002 draft card | Created | Draft only; planning review and readiness review still required |
 | IMP-002 fast-track readiness matrix | Passed | Baseline evidence reused; unit-specific GAR checks passed; implementation not authorized |
 | IMP-002 IAG evaluation | Recommendation Approve; Deferred | Human authorization not recorded; implementation remains prohibited |
+| IMP-002 IAG authorization | Granted | Production code generation permitted within approved IMP-002 scope only |

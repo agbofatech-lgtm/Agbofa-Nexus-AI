@@ -43,7 +43,11 @@ def main():
     gates.append(status('GAR-008 disposition', (ROOT/'docs/readiness/fast-track/IMP_002_GAR_DISPOSITION.md').exists(), 'docs/readiness/fast-track/IMP_002_GAR_DISPOSITION.md'))
     gates.append(status('GAR-009 disposition', (ROOT/'docs/readiness/fast-track/IMP_002_GAR_DISPOSITION.md').exists(), 'docs/readiness/fast-track/IMP_002_GAR_DISPOSITION.md'))
     gates.append(status('GAR-016 disposition', (ROOT/'docs/readiness/fast-track/IMP_002_GAR_DISPOSITION.md').exists(), 'docs/readiness/fast-track/IMP_002_GAR_DISPOSITION.md'))
-    gates.append(status('Unauthorized scope check', 'Production Code Generation: Prohibited' in text and 'Implementation Authorized: No' in text, 'CARD-IMP-002 authorization section'))
+    auth_record = ROOT / 'docs' / 'authorization' / 'IAG-DECISION-IMP-002.md'
+    auth_text = auth_record.read_text() if auth_record.exists() else ''
+    pre_authorized_boundary = 'Production Code Generation: Prohibited' in text and 'Implementation Authorized: No' in text
+    post_authorized_boundary = 'Permitted within approved IMP-002 scope only' in text and 'Implementation Authorized | Yes' in text and 'Effective Authorization | Granted' in auth_text
+    gates.append(status('Authorization boundary check', pre_authorized_boundary or post_authorized_boundary, 'CARD-IMP-002 and IAG decision scope boundary'))
     dep_report=(ROOT/'governance/reports/implementation-dependency-validation-report.md').read_text() if (ROOT/'governance/reports/implementation-dependency-validation-report.md').exists() else ''
     gov_report=(ROOT/'governance/reports/governance-validation-report.md').read_text() if (ROOT/'governance/reports/governance-validation-report.md').exists() else ''
     gates.append(status('Dependency validation', 'Errors: 0' in dep_report and 'Findings: 0' in dep_report, 'implementation-dependency-validation-report.md'))

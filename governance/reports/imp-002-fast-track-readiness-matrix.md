@@ -9,7 +9,7 @@
 | GAR-008 disposition | PASS | docs/readiness/fast-track/IMP_002_GAR_DISPOSITION.md |
 | GAR-009 disposition | PASS | docs/readiness/fast-track/IMP_002_GAR_DISPOSITION.md |
 | GAR-016 disposition | PASS | docs/readiness/fast-track/IMP_002_GAR_DISPOSITION.md |
-| Unauthorized scope check | PASS | CARD-IMP-002 authorization section |
+| Authorization boundary check | PASS | CARD-IMP-002 and IAG decision scope boundary |
 | Dependency validation | PASS | implementation-dependency-validation-report.md |
 | Governance validation | PASS | governance-validation-report.md |
 

@@ -6,14 +6,14 @@
 |---|---|
 | Card ID | CARD-IMP-002 |
 | Implementation Unit | IMP-002 — Infrastructure Foundation |
-| Status | Draft |
+| Status | Authorized for Implementation — IMP-002 Scope Only |
 | Version | 0.1 |
 | Owner | Enterprise Engineering Agent / Human Approver |
 | Date | 2026-08-07 |
 | Baseline Status | Conditionally Certified; IMP-001 closed and validated |
-| Implementation Eligible | No |
-| Implementation Authorized | No |
-| Production Code Generation | Prohibited |
+| Implementation Eligible | Yes |
+| Implementation Authorized | Yes — IMP-002 Scope Only |
+| Production Code Generation | Permitted within approved IMP-002 scope only |
 
 ---
 
@@ -192,9 +192,9 @@ Planning-only acceptance criteria:
 ## 13. Authorization Section
 
 ```text
-Implementation Eligible: No
-Implementation Authorized: No
-Production Code Generation: Prohibited
+Implementation Eligible: Yes
+Implementation Authorized: Yes — IMP-002 Scope Only
+Production Code Generation: Permitted within approved IMP-002 scope only
 ```
 
 ---

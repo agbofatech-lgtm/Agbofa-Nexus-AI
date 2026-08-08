@@ -87,16 +87,15 @@ The IAG must fail if any of the following are true:
 ## 5. Current Global IAG Status
 
 ```text
-IMP-001 Implementation Eligible = Yes
 IMP-001 Implementation Authorized = Yes — IMP-001 Scope Only
-IMP-002 through IMP-016 Implementation Authorized = No
-Production Code Generation = Permitted only within approved IMP-001 scope
+IMP-002 Implementation Authorized = Yes — IMP-002 Scope Only
+IMP-003 through IMP-016 Implementation Authorized = No
+Production Code Generation = Permitted only within approved IMP-001 and IMP-002 scopes
 ```
 
 Reason:
 
-- IMP-001 readiness validation passed.
 - IMP-001 IAG decision has been recorded and approved.
-- Authorization is limited to repository foundation and engineering controls.
-- IMP-002 through IMP-016 remain unauthorized and require separate gates.
+- IMP-002 IAG decision has been recorded and approved.
+- IMP-003 through IMP-016 remain unauthorized and require separate gates.
 

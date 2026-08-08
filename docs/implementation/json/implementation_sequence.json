@@ -20,16 +20,22 @@
       "name": "Infrastructure Foundation",
       "blocking_gar": [
         "GAR-001",
-        "GAR-008",
-        "GAR-009",
-        "GAR-015",
-        "GAR-016"
+        "GAR-015"
       ],
       "dependencies": [
         "IMP-001"
       ],
-      "approval_status": "not_approved",
-      "implementation_eligible": false
+      "approval_status": "approved",
+      "implementation_eligible": true,
+      "implementation_authorized": true,
+      "authorization_record": "docs/authorization/IAG-DECISION-IMP-002.md",
+      "production_code_generation": "permitted_within_imp_002_scope_only",
+      "readiness_status": "authorized",
+      "dispositioned_gar": [
+        "GAR-008",
+        "GAR-009",
+        "GAR-016"
+      ]
     },
     {
       "id": "IMP-003",

@@ -38,9 +38,9 @@
       "evidence": "docs/readiness/fast-track/IMP_002_GAR_DISPOSITION.md"
     },
     {
-      "gate": "Unauthorized scope check",
+      "gate": "Authorization boundary check",
       "status": "PASS",
-      "evidence": "CARD-IMP-002 authorization section"
+      "evidence": "CARD-IMP-002 and IAG decision scope boundary"
     },
     {
       "gate": "Dependency validation",
