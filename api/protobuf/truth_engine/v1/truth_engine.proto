@@ -1,0 +1,179 @@
+syntax = "proto3";
+
+package truth_engine.v1;
+
+option go_package = "github.com/agbofa/nexus-api/gen/go/truth_engine/v1;truthenginev1";
+
+service SourceVerificationService {
+  rpc VerifySource(VerifySourceRequest) returns (VerifySourceResponse);
+  rpc EvaluateSourceReliability(EvaluateSourceReliabilityRequest) returns (EvaluateSourceReliabilityResponse);
+  rpc GetSourceVerification(GetSourceVerificationRequest) returns (GetSourceVerificationResponse);
+}
+
+service TruthEngineService {
+  rpc VerifyStory(VerifyStoryRequest) returns (VerifyStoryResponse);
+  rpc VerifyClaim(VerifyClaimRequest) returns (VerifyClaimResponse);
+  rpc ScoreConfidence(ScoreConfidenceRequest) returns (ScoreConfidenceResponse);
+  rpc DetectMisinformation(DetectMisinformationRequest) returns (DetectMisinformationResponse);
+  rpc ValidateEditorialDecision(ValidateEditorialDecisionRequest) returns (ValidateEditorialDecisionResponse);
+  rpc AuditProvenance(AuditProvenanceRequest) returns (AuditProvenanceResponse);
+  rpc ExecuteTruthWorkflow(ExecuteTruthWorkflowRequest) returns (ExecuteTruthWorkflowResponse);
+  rpc InitializeTruthStoryGraphNode(InitializeTruthStoryGraphNodeRequest) returns (InitializeTruthStoryGraphNodeResponse);
+}
+
+message VerifySourceRequest {
+  string tenant_id = 1;
+  string source_id = 2;
+  string source_name = 3;
+  string source_type = 4;
+}
+
+message VerifySourceResponse {
+  string verification_id = 1;
+  double reliability_score = 2;
+  string trust_level = 3; // HIGH, MEDIUM, LOW, UNVERIFIED
+  int64 verified_at_unix = 4;
+}
+
+message EvaluateSourceReliabilityRequest {
+  string tenant_id = 1;
+  string source_id = 2;
+  int32 historical_accuracy_percent = 3;
+  bool cryptographic_signature_valid = 4;
+}
+
+message EvaluateSourceReliabilityResponse {
+  string source_id = 1;
+  double reliability_score = 2;
+  string provenance_hash = 3;
+}
+
+message GetSourceVerificationRequest {
+  string tenant_id = 1;
+  string source_id = 2;
+}
+
+message GetSourceVerificationResponse {
+  string source_id = 1;
+  double reliability_score = 2;
+  string trust_level = 3;
+}
+
+message VerifyStoryRequest {
+  string tenant_id = 1;
+  string story_id = 2;
+  string title = 3;
+  string summary = 4;
+  string source_id = 5;
+  repeated string claims = 6;
+}
+
+message VerifyStoryResponse {
+  string story_id = 1;
+  string truth_state = 2; // SUBMITTED, IN_REVIEW, VERIFIED, DISPUTED, REJECTED
+  double confidence_score = 3;
+  string ledger_record_id = 4;
+  string provenance_hash = 5;
+}
+
+message VerifyClaimRequest {
+  string tenant_id = 1;
+  string claim_id = 2;
+  string story_id = 3;
+  string claim_text = 4;
+  repeated string evidence_urls = 5;
+}
+
+message VerifyClaimResponse {
+  string claim_id = 1;
+  string verification_status = 2; // SUPPORTED, REFUTED, UNVERIFIABLE
+  double evidence_score = 3;
+  string explanation = 4;
+}
+
+message ScoreConfidenceRequest {
+  string tenant_id = 1;
+  string story_id = 2;
+  double source_reliability = 3;
+  double claim_support_ratio = 4;
+  bool misinfo_flagged = 5;
+}
+
+message ScoreConfidenceResponse {
+  string story_id = 1;
+  double confidence_score = 2;
+  string confidence_tier = 3; // VERIFIED_TRUTH, PROVISIONAL, DOUBTFUL, MISINFORMATION
+}
+
+message DetectMisinformationRequest {
+  string tenant_id = 1;
+  string story_id = 2;
+  string title = 3;
+  string content = 4;
+}
+
+message DetectMisinformationResponse {
+  string story_id = 1;
+  bool is_misinformation = 2;
+  double risk_score = 3;
+  repeated string flagged_patterns = 4;
+}
+
+message ValidateEditorialDecisionRequest {
+  string tenant_id = 1;
+  string story_id = 2;
+  double confidence_score = 3;
+  bool require_human_override = 4;
+}
+
+message ValidateEditorialDecisionResponse {
+  string story_id = 1;
+  bool approved_for_publication = 2;
+  string editorial_reason = 3;
+}
+
+message AuditProvenanceRequest {
+  string tenant_id = 1;
+  string story_id = 2;
+}
+
+message ProvenanceRecord {
+  string record_id = 1;
+  string tenant_id = 2;
+  string story_id = 3;
+  string claim_id = 4;
+  string source_id = 5;
+  string action = 6;
+  string actor = 7;
+  string cryptographic_hash = 8;
+  int64 timestamp_unix = 9;
+}
+
+message AuditProvenanceResponse {
+  string story_id = 1;
+  repeated ProvenanceRecord records = 2;
+  string ledger_merkle_root = 3;
+}
+
+message ExecuteTruthWorkflowRequest {
+  string tenant_id = 1;
+  string workflow_id = 2;
+  map<string, string> parameters = 3;
+}
+
+message ExecuteTruthWorkflowResponse {
+  string workflow_execution_id = 1;
+  string status = 2;
+}
+
+message InitializeTruthStoryGraphNodeRequest {
+  string tenant_id = 1;
+  string story_id = 2;
+  string truth_state = 3;
+  double confidence_score = 4;
+}
+
+message InitializeTruthStoryGraphNodeResponse {
+  string graph_node_id = 1;
+  bool initialized = 2;
+}

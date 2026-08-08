@@ -1,0 +1,197 @@
+openapi: 3.0.3
+info:
+  title: Agbofa Nexus AI — Truth Engine API
+  version: 1.0.0
+  description: REST OpenAPI contract for Truth Engine claim verification, source intelligence, confidence scoring, misinformation detection, editorial validation, and truth ledger provenance (API-018, API-030).
+paths:
+  /v1/truthengine/sources/verify:
+    post:
+      summary: Verify source reliability and establish trust tier
+      operationId: verifySource
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifySourceRequest'
+      responses:
+        '200':
+          description: Source reliability evaluated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifySourceResponse'
+        '403':
+          description: Tenant unauthorized
+  /v1/truthengine/claims/verify:
+    post:
+      summary: Verify individual claim against evidence sources
+      operationId: verifyClaim
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyClaimRequest'
+      responses:
+        '200':
+          description: Claim verification completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyClaimResponse'
+  /v1/truthengine/verify:
+    post:
+      summary: Execute complete Truth Engine verification for a submitted story
+      operationId: verifyStory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyStoryRequest'
+      responses:
+        '200':
+          description: Story verification completed and ledger record created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyStoryResponse'
+  /v1/truthengine/stories/{id}/provenance:
+    get:
+      summary: Get immutable truth ledger provenance audit trail for a story
+      operationId: auditProvenance
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tenant_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Provenance audit trail retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditProvenanceResponse'
+components:
+  schemas:
+    VerifySourceRequest:
+      type: object
+      required: [tenant_id, source_id, source_name]
+      properties:
+        tenant_id:
+          type: string
+        source_id:
+          type: string
+        source_name:
+          type: string
+        source_type:
+          type: string
+    VerifySourceResponse:
+      type: object
+      properties:
+        verification_id:
+          type: string
+        reliability_score:
+          type: number
+        trust_level:
+          type: string
+          enum: [HIGH, MEDIUM, LOW, UNVERIFIED]
+    VerifyClaimRequest:
+      type: object
+      required: [tenant_id, claim_id, story_id, claim_text]
+      properties:
+        tenant_id:
+          type: string
+        claim_id:
+          type: string
+        story_id:
+          type: string
+        claim_text:
+          type: string
+        evidence_urls:
+          type: array
+          items:
+            type: string
+    VerifyClaimResponse:
+      type: object
+      properties:
+        claim_id:
+          type: string
+        verification_status:
+          type: string
+          enum: [SUPPORTED, REFUTED, UNVERIFIABLE]
+        evidence_score:
+          type: number
+        explanation:
+          type: string
+    VerifyStoryRequest:
+      type: object
+      required: [tenant_id, story_id, title, summary, source_id]
+      properties:
+        tenant_id:
+          type: string
+        story_id:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+        source_id:
+          type: string
+        claims:
+          type: array
+          items:
+            type: string
+    VerifyStoryResponse:
+      type: object
+      properties:
+        story_id:
+          type: string
+        truth_state:
+          type: string
+          enum: [SUBMITTED, IN_REVIEW, VERIFIED, DISPUTED, REJECTED]
+        confidence_score:
+          type: number
+        ledger_record_id:
+          type: string
+        provenance_hash:
+          type: string
+    AuditProvenanceResponse:
+      type: object
+      properties:
+        story_id:
+          type: string
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProvenanceRecord'
+        ledger_merkle_root:
+          type: string
+    ProvenanceRecord:
+      type: object
+      properties:
+        record_id:
+          type: string
+        tenant_id:
+          type: string
+        story_id:
+          type: string
+        claim_id:
+          type: string
+        source_id:
+          type: string
+        action:
+          type: string
+        actor:
+          type: string
+        cryptographic_hash:
+          type: string
+        timestamp_unix:
+          type: integer
