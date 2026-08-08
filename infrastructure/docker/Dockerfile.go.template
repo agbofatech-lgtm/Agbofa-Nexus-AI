@@ -1,0 +1,21 @@
+# Standard Go Service Dockerfile Template — IMP-002
+# Scope: infrastructure foundation template only; not a service implementation.
+FROM golang:1.22-alpine AS builder
+RUN apk add --no-cache ca-certificates git
+WORKDIR /build
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+ARG VERSION=dev
+ARG COMMIT=unknown
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-w -s -X main.version=${VERSION} -X main.commit=${COMMIT}" \
+    -o /app/service \
+    ./cmd/server
+
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=builder /app/service /app/service
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+USER nonroot:nonroot
+EXPOSE 9090 9091 9092
+ENTRYPOINT ["/app/service"]

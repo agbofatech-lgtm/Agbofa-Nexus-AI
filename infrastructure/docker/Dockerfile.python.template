@@ -1,0 +1,19 @@
+# Standard Python AI Service Dockerfile Template — IMP-002
+# Scope: infrastructure foundation template only; not a service implementation.
+FROM python:3.12-slim AS builder
+WORKDIR /build
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+COPY pyproject.toml poetry.lock* requirements*.txt* ./
+RUN python -m pip install --upgrade pip && \
+    if [ -f requirements.txt ]; then pip wheel --wheel-dir /wheels -r requirements.txt; fi
+
+FROM python:3.12-slim AS runtime
+WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+RUN useradd --system --uid 10001 --create-home appuser
+COPY --from=builder /wheels /wheels
+RUN if [ -d /wheels ]; then pip install --no-cache-dir /wheels/*; fi
+COPY . .
+USER appuser
+EXPOSE 9090 9091 9092
+CMD ["python", "-m", "app.main"]

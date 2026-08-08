@@ -1,0 +1,6 @@
+apiVersion: v2
+name: agbofa-service
+description: Standard Agbofa service deployment chart template
+version: 0.1.0
+appVersion: "0.1.0"
+type: application
