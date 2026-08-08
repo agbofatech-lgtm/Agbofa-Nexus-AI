@@ -1,0 +1,18 @@
+# Fast-Track Readiness Gate Matrix — IMP-003
+
+| Gate | Status | Evidence |
+|---|---|---|
+| Baseline evidence certificate | PASS | READINESS-BASELINE-001 |
+| CARD-IMP-003.md exists | PASS | implementation-cards/drafts/CARD-IMP-003.md |
+| Dependency docs/implementation/imp-001/CLOSURE_RECORD.md | PASS | docs/implementation/imp-001/CLOSURE_RECORD.md |
+| Dependency docs/implementation/imp-002/CLOSURE_RECORD.md | PASS | docs/implementation/imp-002/CLOSURE_RECORD.md |
+| Registry dependencies | PASS | all referenced registry IDs resolve |
+| GAR-007 disposition | PASS | docs/readiness/fast-track/IMP_003_GAR_DISPOSITION.md |
+| GAR-016 disposition | PASS | docs/readiness/fast-track/IMP_003_GAR_DISPOSITION.md |
+| Authorization boundary check | PASS | CARD-IMP-003.md authorization section |
+| Dependency validation | PASS | implementation-dependency-validation-report.md |
+| Governance validation | PASS | governance-validation-report.md |
+
+**READINESS:** PASS
+
+This matrix does not authorize implementation.
