@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.agbofa.local/distribution/v1/distribution-event.schema.json",
+  "title": "DistributionEngineEvent",
+  "description": "Schema for EVT-024 compliance consumer and EVT-027 through EVT-033, EVT-043 producers in Distribution Engine.",
+  "type": "object",
+  "required": ["event_id", "event_type", "tenant_id", "package_id", "occurred_at"],
+  "properties": {
+    "event_id": { "type": "string" },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "content_factory.package.approved",
+        "distribution.state.changed",
+        "distribution.publishing.submitted",
+        "distribution.publishing.validated",
+        "distribution.publishing.success",
+        "distribution.publishing.failed",
+        "distribution.retraction.started",
+        "distribution.retraction.completed",
+        "distribution.correction.issued",
+        "distribution.breaking_news.delivered",
+        "distribution.events"
+      ]
+    },
+    "tenant_id": { "type": "string" },
+    "package_id": { "type": "string" },
+    "story_id": { "type": "string" },
+    "publication_job_id": { "type": "string" },
+    "channel_id": { "type": "string" },
+    "delivery_status": {
+      "type": "string",
+      "enum": ["SCHEDULED", "DELIVERING", "DELIVERED", "FAILED", "RETRYING"]
+    },
+    "retry_count": { "type": "integer" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    }
+  },
+  "additionalProperties": false
+}

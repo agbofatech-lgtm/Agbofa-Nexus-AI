@@ -8,3 +8,4 @@ use ./services/truth-engine
 use ./services/story-graph
 use ./services/content-factory
 use ./services/compliance
+use ./services/distribution
