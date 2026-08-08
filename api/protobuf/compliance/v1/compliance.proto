@@ -1,0 +1,148 @@
+syntax = "proto3";
+
+package compliance.v1;
+
+option go_package = "github.com/agbofa/nexus-api/gen/go/compliance/v1;compliancev1";
+
+service ComplianceGatekeeperService {
+  rpc VerifyCompliance(VerifyComplianceRequest) returns (VerifyComplianceResponse);
+  rpc GetComplianceReport(GetComplianceReportRequest) returns (GetComplianceReportResponse);
+  rpc ListComplianceReports(ListComplianceReportsRequest) returns (ListComplianceReportsResponse);
+  rpc ReviewCompliancePolicy(ReviewCompliancePolicyRequest) returns (ReviewCompliancePolicyResponse);
+  rpc AuditComplianceLedger(AuditComplianceLedgerRequest) returns (AuditComplianceLedgerResponse);
+  rpc ExecuteComplianceWorkflow(ExecuteComplianceWorkflowRequest) returns (ExecuteComplianceWorkflowResponse);
+}
+
+message VerifyComplianceRequest {
+  string tenant_id = 1;
+  string package_id = 2;
+  string story_id = 3;
+  string title = 4;
+  string content = 5;
+  repeated string target_channels = 6;
+}
+
+message VerifyComplianceResponse {
+  string report_id = 1;
+  string status = 2; // COMPLIANT, REVIEW_REQUIRED, REJECTED
+  double overall_score = 3;
+  int64 verified_at_unix = 4;
+}
+
+message GetComplianceReportRequest {
+  string tenant_id = 1;
+  string report_id = 2;
+}
+
+message ComplianceReport {
+  string report_id = 1;
+  string tenant_id = 2;
+  string package_id = 3;
+  string story_id = 4;
+  string status = 5; // COMPLIANT, REVIEW_REQUIRED, REJECTED
+  double overall_score = 6;
+  RightsManagementResult rights = 7;
+  PlagiarismResult originality = 8;
+  LegalReviewResult legal = 9;
+  PrivacyResult privacy = 10;
+  AISafetyResult safety = 11;
+  PlatformPolicyResult policy = 12;
+  repeated string violations = 13;
+  int64 created_at_unix = 14;
+}
+
+message RightsManagementResult {
+  bool passed = 1;
+  double score = 2;
+  repeated string attribution_notes = 3;
+}
+
+message PlagiarismResult {
+  bool passed = 1;
+  double originality_score = 2;
+  double max_similarity_percent = 3;
+}
+
+message LegalReviewResult {
+  bool passed = 1;
+  double score = 2;
+  repeated string legal_risks = 3;
+}
+
+message PrivacyResult {
+  bool passed = 1;
+  double score = 2;
+  bool pii_detected = 3;
+}
+
+message AISafetyResult {
+  bool passed = 1;
+  double safety_score = 2;
+  bool misinfo_flag_inherited = 3;
+}
+
+message PlatformPolicyResult {
+  bool passed = 1;
+  double score = 2;
+  repeated string channel_violations = 3;
+}
+
+message GetComplianceReportResponse {
+  ComplianceReport report = 1;
+}
+
+message ListComplianceReportsRequest {
+  string tenant_id = 1;
+  string status_filter = 2;
+}
+
+message ListComplianceReportsResponse {
+  repeated ComplianceReport reports = 1;
+}
+
+message ReviewCompliancePolicyRequest {
+  string tenant_id = 1;
+  string report_id = 2;
+  bool approved = 3;
+  string reviewer_id = 4;
+  string comments = 5;
+}
+
+message ReviewCompliancePolicyResponse {
+  string report_id = 1;
+  string status = 2;
+  int64 reviewed_at_unix = 3;
+}
+
+message AuditComplianceLedgerRequest {
+  string tenant_id = 1;
+  string package_id = 2;
+}
+
+message ComplianceAuditRecord {
+  string record_id = 1;
+  string tenant_id = 2;
+  string package_id = 3;
+  string check_type = 4;
+  string result_status = 5;
+  string actor = 6;
+  string cryptographic_hash = 7;
+  int64 timestamp_unix = 8;
+}
+
+message AuditComplianceLedgerResponse {
+  string package_id = 1;
+  repeated ComplianceAuditRecord records = 2;
+  string audit_merkle_root = 3;
+}
+
+message ExecuteComplianceWorkflowRequest {
+  string tenant_id = 1;
+  string workflow_id = 2;
+  map<string, string> parameters = 3;
+}
+
+message ExecuteComplianceWorkflowResponse {
+  string workflow_execution_id = 1;
+  string status = 2;
+}
