@@ -1,0 +1,8 @@
+{
+  "name": "@agbofa/analytics-center",
+  "version": "1.0.0",
+  "description": "Agbofa Nexus AI — Analytics & Intelligence Centre Frontend (IMP-015, SVC-177, API-038)",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "private": true
+}

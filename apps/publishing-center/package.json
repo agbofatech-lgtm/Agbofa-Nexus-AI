@@ -1,0 +1,8 @@
+{
+  "name": "@agbofa/publishing-center",
+  "version": "1.0.0",
+  "description": "Agbofa Nexus AI — Distribution & Publishing Centre Frontend (IMP-015, SVC-176)",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "private": true
+}

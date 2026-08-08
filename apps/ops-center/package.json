@@ -1,0 +1,8 @@
+{
+  "name": "@agbofa/ops-center",
+  "version": "1.0.0",
+  "description": "Agbofa Nexus AI — Platform Operations Centre Frontend (IMP-015, SVC-180)",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "private": true
+}
