@@ -1,0 +1,10 @@
+DROP POLICY IF EXISTS operations_audit_ledger_tenant_isolation_policy ON operations_audit_ledger;
+DROP POLICY IF EXISTS operations_dr_backups_tenant_isolation_policy ON operations_dr_backups;
+DROP POLICY IF EXISTS operations_rollbacks_tenant_isolation_policy ON operations_rollbacks;
+DROP POLICY IF EXISTS operations_deployments_tenant_isolation_policy ON operations_deployments;
+DROP POLICY IF EXISTS operations_release_candidates_tenant_isolation_policy ON operations_release_candidates;
+DROP TABLE IF EXISTS operations_audit_ledger;
+DROP TABLE IF EXISTS operations_dr_backups;
+DROP TABLE IF EXISTS operations_rollbacks;
+DROP TABLE IF EXISTS operations_deployments;
+DROP TABLE IF EXISTS operations_release_candidates;
