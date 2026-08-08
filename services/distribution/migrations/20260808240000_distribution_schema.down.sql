@@ -1,0 +1,10 @@
+DROP POLICY IF EXISTS distribution_audit_ledger_tenant_isolation_policy ON distribution_audit_ledger;
+DROP POLICY IF EXISTS distribution_retractions_tenant_isolation_policy ON distribution_retractions;
+DROP POLICY IF EXISTS distribution_corrections_tenant_isolation_policy ON distribution_corrections;
+DROP POLICY IF EXISTS distribution_breaking_news_tenant_isolation_policy ON distribution_breaking_news;
+DROP POLICY IF EXISTS distribution_publication_jobs_tenant_isolation_policy ON distribution_publication_jobs;
+DROP TABLE IF EXISTS distribution_audit_ledger;
+DROP TABLE IF EXISTS distribution_retractions;
+DROP TABLE IF EXISTS distribution_corrections;
+DROP TABLE IF EXISTS distribution_breaking_news;
+DROP TABLE IF EXISTS distribution_publication_jobs;
