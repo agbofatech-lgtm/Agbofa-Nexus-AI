@@ -17,3 +17,4 @@
 | IMP-013 | `docs/authorization/IAG-DECISION-IMP-013.md` | Approved | Granted | Permitted within approved IMP-013 scope only | Does not authorize IMP-014 through IMP-016 |
 | IMP-014 | `docs/authorization/IAG-DECISION-IMP-014.md` | Approved | Granted | Permitted within approved IMP-014 scope only | Does not authorize IMP-015 through IMP-016 |
 | IMP-015 | `docs/authorization/IAG-DECISION-IMP-015.md` | Approved | Granted | Permitted within approved IMP-015 scope only | Does not authorize IMP-016 |
+| IMP-016 | `docs/authorization/IAG-DECISION-IMP-016.md` | Approved | Granted | Permitted within approved IMP-016 scope only | Does not authorize Phase 2 implementation |

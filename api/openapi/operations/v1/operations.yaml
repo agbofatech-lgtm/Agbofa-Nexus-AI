@@ -1,0 +1,170 @@
+openapi: 3.0.3
+info:
+  title: Agbofa Nexus AI — Enterprise Operations, Release & Certification API
+  version: 1.0.0
+  description: REST OpenAPI contract for Enterprise Operations release gate evaluation, deployment artifact tracking, rollback execution, DR backup verification, and audit trail (API-024, API-025, API-026, API-039).
+paths:
+  /v1/operations/release-gates/evaluate:
+    post:
+      summary: Evaluate mandatory release quality gates for a release candidate
+      operationId: evaluateReleaseGate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EvaluateReleaseGateRequest'
+      responses:
+        '200':
+          description: Release gate evaluation completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvaluateReleaseGateResponse'
+        '403':
+          description: Unauthorized promotion attempt
+  /v1/operations/deployments:
+    post:
+      summary: Record validated deployment artifact
+      operationId: recordDeploymentArtifact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordDeploymentArtifactRequest'
+      responses:
+        '200':
+          description: Deployment artifact recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordDeploymentArtifactResponse'
+  /v1/operations/rollbacks:
+    post:
+      summary: Execute authorized rollback to a verified target version
+      operationId: executeRollback
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecuteRollbackRequest'
+      responses:
+        '200':
+          description: Rollback executed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecuteRollbackResponse'
+  /v1/operations/dr/verify:
+    post:
+      summary: Verify disaster recovery backup restorability
+      operationId: verifyBackup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyDisasterRecoveryBackupRequest'
+      responses:
+        '200':
+          description: Backup verification completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyDisasterRecoveryBackupResponse'
+components:
+  schemas:
+    EvaluateReleaseGateRequest:
+      type: object
+      required: [tenant_id, release_candidate_id, target_environment]
+      properties:
+        tenant_id:
+          type: string
+        release_candidate_id:
+          type: string
+        target_environment:
+          type: string
+          enum: [DEVELOPMENT, TEST_VALIDATION, STAGING, PRODUCTION]
+    EvaluateReleaseGateResponse:
+      type: object
+      properties:
+        release_candidate_id:
+          type: string
+        approved_for_promotion:
+          type: boolean
+        evaluations:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReleaseGateEvaluation'
+    ReleaseGateEvaluation:
+      type: object
+      properties:
+        gate_name:
+          type: string
+        passed:
+          type: boolean
+        evidence_ref:
+          type: string
+    RecordDeploymentArtifactRequest:
+      type: object
+      required: [tenant_id, release_candidate_id, commit_sha, version, environment]
+      properties:
+        tenant_id:
+          type: string
+        release_candidate_id:
+          type: string
+        commit_sha:
+          type: string
+        version:
+          type: string
+        environment:
+          type: string
+    RecordDeploymentArtifactResponse:
+      type: object
+      properties:
+        deployment_id:
+          type: string
+        status:
+          type: string
+        deployed_at_unix:
+          type: integer
+    ExecuteRollbackRequest:
+      type: object
+      required: [tenant_id, current_deployment_id, target_deployment_id, rollback_reason]
+      properties:
+        tenant_id:
+          type: string
+        current_deployment_id:
+          type: string
+        target_deployment_id:
+          type: string
+        rollback_reason:
+          type: string
+    ExecuteRollbackResponse:
+      type: object
+      properties:
+        rollback_id:
+          type: string
+        rollback_executed:
+          type: boolean
+        target_version:
+          type: string
+    VerifyDisasterRecoveryBackupRequest:
+      type: object
+      required: [tenant_id, backup_id]
+      properties:
+        tenant_id:
+          type: string
+        backup_id:
+          type: string
+    VerifyDisasterRecoveryBackupResponse:
+      type: object
+      properties:
+        backup_id:
+          type: string
+        restorable:
+          type: boolean
+        verified_at_unix:
+          type: integer
