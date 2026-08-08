@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package foundation.authorization.v1;
+
+option go_package = "github.com/agbofa/nexus-api/gen/go/foundation/authorization/v1;authorizationv1";
+
+service AuthorizationService {
+  rpc CheckPermission(CheckPermissionRequest) returns (CheckPermissionResponse);
+  rpc ListRolePermissions(ListRolePermissionsRequest) returns (ListRolePermissionsResponse);
+}
+
+message CheckPermissionRequest {
+  string tenant_id = 1;
+  string subject_id = 2;
+  repeated string roles = 3;
+  string resource = 4;
+  string action = 5;
+  map<string, string> context = 6;
+}
+
+message CheckPermissionResponse {
+  bool allowed = 1;
+  string reason = 2;
+  string policy_id = 3;
+}
+
+message ListRolePermissionsRequest {
+  string tenant_id = 1;
+  string role = 2;
+}
+
+message ListRolePermissionsResponse {
+  repeated Permission permissions = 1;
+}
+
+message Permission {
+  string resource = 1;
+  string action = 2;
+}

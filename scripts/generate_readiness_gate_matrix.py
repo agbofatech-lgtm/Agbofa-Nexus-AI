@@ -8,6 +8,9 @@ REG = {'SVC':('services.json',r'\bSVC-\d{3,}\b'),'API':('apis.json',r'\bAPI-\d{3
 CONFIG={
  'IMP-002': {'card':'CARD-IMP-002.md','deps':['docs/implementation/imp-001/CLOSURE_RECORD.md'],'gars':['GAR-008','GAR-009','GAR-016'],'disp':'docs/readiness/fast-track/IMP_002_GAR_DISPOSITION.md'},
  'IMP-003': {'card':'CARD-IMP-003.md','deps':['docs/implementation/imp-001/CLOSURE_RECORD.md','docs/implementation/imp-002/CLOSURE_RECORD.md'],'gars':['GAR-007','GAR-016'],'disp':'docs/readiness/fast-track/IMP_003_GAR_DISPOSITION.md'},
+ 'IMP-004': {'card':'CARD-IMP-004.md','deps':['docs/implementation/imp-001/CLOSURE_RECORD.md','docs/implementation/imp-002/CLOSURE_RECORD.md','docs/implementation/imp-003/CLOSURE_RECORD.md'],'gars':['GAR-001','GAR-008','GAR-009','GAR-016'],'disp':'docs/readiness/fast-track/IMP_004_GAR_DISPOSITION.md'},
+ 'IMP-005': {'card':'CARD-IMP-005.md','deps':['docs/implementation/imp-001/CLOSURE_RECORD.md','docs/implementation/imp-002/CLOSURE_RECORD.md','docs/implementation/imp-003/CLOSURE_RECORD.md','docs/implementation/imp-004/CLOSURE_RECORD.md'],'gars':['GAR-007','GAR-016'],'disp':'docs/readiness/fast-track/IMP_005_GAR_DISPOSITION.md'},
+ 'IMP-006': {'card':'CARD-IMP-006.md','deps':['docs/implementation/imp-001/CLOSURE_RECORD.md','docs/implementation/imp-002/CLOSURE_RECORD.md','docs/implementation/imp-003/CLOSURE_RECORD.md','docs/implementation/imp-004/CLOSURE_RECORD.md','docs/implementation/imp-005/CLOSURE_RECORD.md'],'gars':['GAR-001','GAR-006','GAR-011','GAR-013','GAR-014','GAR-016'],'disp':'docs/readiness/fast-track/IMP_006_GAR_DISPOSITION.md'},
 }
 def ids(file):
     return {i['id'] for i in json.loads((ROOT/'docs/indexes/json'/file).read_text()).get('items',[]) if 'id' in i}

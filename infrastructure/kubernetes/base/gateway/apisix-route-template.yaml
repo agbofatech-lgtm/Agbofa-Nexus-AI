@@ -1,0 +1,15 @@
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: gateway-route-template
+  namespace: agbofa-system
+spec:
+  http:
+    - name: health
+      match:
+        paths:
+          - /healthz
+          - /readyz
+      backends:
+        - serviceName: gateway-placeholder
+          servicePort: 9090

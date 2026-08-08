@@ -1,0 +1,17 @@
+openapi: 3.0.3
+info:
+  title: Agbofa Nexus API Gateway Foundation
+  version: 0.1.0
+paths:
+  /healthz:
+    get:
+      summary: Gateway liveness endpoint
+      responses:
+        '200':
+          description: Gateway process is alive
+  /readyz:
+    get:
+      summary: Gateway readiness endpoint
+      responses:
+        '200':
+          description: Gateway dependencies are ready

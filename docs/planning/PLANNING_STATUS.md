@@ -42,3 +42,9 @@
 | IMP-003 IAG evaluation | Recommendation Approve; Deferred | Human authorization not recorded; implementation remains prohibited |
 | IMP-003 implementation | Implemented within authorized scope | Validation and closure pending |
 | IMP-003 validation blocker | Open | Go toolchain unavailable; implementation closure blocked |
+| IMP-003 closure | Closed | Implemented and validated within authorized scope; IMP-004 readiness may begin |
+| IMP-004 IAG evaluation | Recommendation Approve; Deferred | Human authorization not recorded; implementation remains prohibited |
+| IMP-004 implementation | Implemented within authorized scope | Validation and closure pending |
+| IMP-005 IAG evaluation | Recommendation Approve; Deferred | Human authorization not recorded; implementation remains prohibited |
+| IMP-005 implementation | Implemented within authorized scope | Validation and closure pending |
+| IMP-006 IAG evaluation | Recommendation Approve; Deferred | Human authorization not recorded; implementation remains prohibited |

@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package common.v1;
+
+option go_package = "github.com/agbofa/nexus-api/gen/go/common/v1;commonv1";
+
+message EventEnvelope {
+  string event_id = 1;
+  string event_type = 2;
+  string source = 3;
+  string tenant_id = 4;
+  string correlation_id = 5;
+  string causation_id = 6;
+  string occurred_at = 7;
+  bytes payload = 8;
+  map<string, string> metadata = 9;
+}

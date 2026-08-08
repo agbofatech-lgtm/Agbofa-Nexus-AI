@@ -1,0 +1,13 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: event-topic-template
+  namespace: agbofa-system
+  labels:
+    strimzi.io/cluster: agbofa-event-platform
+spec:
+  partitions: 3
+  replicas: 3
+  config:
+    retention.ms: 604800000
+    cleanup.policy: delete
