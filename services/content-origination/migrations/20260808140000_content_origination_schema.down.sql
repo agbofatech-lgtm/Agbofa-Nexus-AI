@@ -1,0 +1,10 @@
+DROP POLICY IF EXISTS origination_graph_nodes_tenant_isolation_policy ON origination_graph_nodes;
+DROP POLICY IF EXISTS origination_stories_tenant_isolation_policy ON origination_stories;
+DROP POLICY IF EXISTS origination_story_candidates_tenant_isolation_policy ON origination_story_candidates;
+DROP POLICY IF EXISTS origination_ingest_jobs_tenant_isolation_policy ON origination_ingest_jobs;
+DROP POLICY IF EXISTS origination_sources_tenant_isolation_policy ON origination_sources;
+DROP TABLE IF EXISTS origination_graph_nodes;
+DROP TABLE IF EXISTS origination_stories;
+DROP TABLE IF EXISTS origination_story_candidates;
+DROP TABLE IF EXISTS origination_ingest_jobs;
+DROP TABLE IF EXISTS origination_sources;

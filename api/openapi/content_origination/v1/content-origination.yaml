@@ -1,0 +1,186 @@
+openapi: 3.0.3
+info:
+  title: Agbofa Nexus AI — Content Origination API
+  version: 1.0.0
+  description: REST OpenAPI contract for Content Origination, Newsroom Ingestion, Source Management, and Story Detection (API-015, API-029).
+paths:
+  /v1/origination/ingest:
+    post:
+      summary: Ingest raw content source document
+      operationId: ingestSource
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IngestSourceRequest'
+      responses:
+        '200':
+          description: Ingestion job created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngestSourceResponse'
+        '403':
+          description: Tenant unauthorized for ingestion
+  /v1/origination/detect:
+    post:
+      summary: Detect story candidates from normalized ingestion content
+      operationId: detectStories
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DetectStoriesRequest'
+      responses:
+        '200':
+          description: Story candidates detected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetectStoriesResponse'
+  /v1/origination/stories:
+    post:
+      summary: Create an origination story item
+      operationId: createOriginationStory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOriginationStoryRequest'
+      responses:
+        '200':
+          description: Origination story created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateOriginationStoryResponse'
+  /v1/origination/stories/{id}/state:
+    put:
+      summary: Update story lifecycle state
+      operationId: updateStoryState
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateStoryStateRequest'
+      responses:
+        '200':
+          description: Story state updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateStoryStateResponse'
+components:
+  schemas:
+    IngestSourceRequest:
+      type: object
+      required: [tenant_id, source_id, source_type, raw_content]
+      properties:
+        tenant_id:
+          type: string
+        source_id:
+          type: string
+        source_type:
+          type: string
+          enum: [RSS, API, SCRAPE, MANUAL]
+        raw_content:
+          type: string
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+    IngestSourceResponse:
+      type: object
+      properties:
+        ingest_job_id:
+          type: string
+        status:
+          type: string
+        ingested_at_unix:
+          type: integer
+    DetectStoriesRequest:
+      type: object
+      required: [tenant_id, ingest_job_id, normalized_text]
+      properties:
+        tenant_id:
+          type: string
+        ingest_job_id:
+          type: string
+        normalized_text:
+          type: string
+        confidence_threshold:
+          type: number
+          default: 0.75
+    DetectStoriesResponse:
+      type: object
+      properties:
+        candidates:
+          type: array
+          items:
+            $ref: '#/components/schemas/DetectedStoryCandidate'
+    DetectedStoryCandidate:
+      type: object
+      properties:
+        candidate_id:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+        confidence_score:
+          type: number
+        keywords:
+          type: array
+          items:
+            type: string
+    CreateOriginationStoryRequest:
+      type: object
+      required: [tenant_id, candidate_id, title, summary, source_id]
+      properties:
+        tenant_id:
+          type: string
+        candidate_id:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+        source_id:
+          type: string
+    CreateOriginationStoryResponse:
+      type: object
+      properties:
+        story_id:
+          type: string
+        status:
+          type: string
+    UpdateStoryStateRequest:
+      type: object
+      required: [tenant_id, new_state]
+      properties:
+        tenant_id:
+          type: string
+        new_state:
+          type: string
+          enum: [INGESTED, DETECTED, IDEA_GENERATED, PITCHED, SUBMITTED_FOR_VERIFICATION]
+        reason:
+          type: string
+    UpdateStoryStateResponse:
+      type: object
+      properties:
+        story_id:
+          type: string
+        current_state:
+          type: string
+        updated_at_unix:
+          type: integer
