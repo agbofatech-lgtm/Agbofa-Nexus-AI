@@ -4,3 +4,4 @@
 |---|---|---|---|---|---|
 | IMP-001 | `docs/authorization/IAG-DECISION-IMP-001.md` | Approved | Granted | Permitted within approved IMP-001 scope only | Does not authorize IMP-002 through IMP-016 |
 | IMP-002 | `docs/authorization/IAG-DECISION-IMP-002.md` | Approved | Granted | Permitted within approved IMP-002 scope only | Does not authorize IMP-003 through IMP-016 |
+| IMP-003 | `docs/authorization/IAG-DECISION-IMP-003.md` | Approve | Not Granted | Prohibited | Fast-track readiness passed; human authorization not recorded |
