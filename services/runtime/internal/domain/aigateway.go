@@ -40,3 +40,29 @@ type PromptRepo interface {
 	GetPrompt(id string, version string) (*PromptTemplateEntity, error)
 	SavePrompt(prompt PromptTemplateEntity) error
 }
+
+// Additive domain types for IMP-020 Multimodal Gateway Extension
+
+type MultimodalCapability string
+
+const (
+	CapabilityTextOnly   MultimodalCapability = "TEXT_ONLY"
+	CapabilityImage      MultimodalCapability = "IMAGE"
+	CapabilityAudio      MultimodalCapability = "AUDIO"
+	CapabilityVideo      MultimodalCapability = "VIDEO"
+	CapabilityMultimodal MultimodalCapability = "MULTIMODAL"
+)
+
+type ModelCapability struct {
+	Model        string
+	Capabilities []MultimodalCapability
+}
+
+func (m ModelCapability) SupportsModality(cap MultimodalCapability) bool {
+	for _, c := range m.Capabilities {
+		if c == cap || c == CapabilityMultimodal {
+			return true
+		}
+	}
+	return false
+}

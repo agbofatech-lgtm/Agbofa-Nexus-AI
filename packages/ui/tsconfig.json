@@ -1,4 +1,4 @@
-﻿{
+{
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",
@@ -12,6 +12,7 @@
     "sourceMap": true,
     "outDir": "dist",
     "rootDir": "src",
+    "jsx": "react-jsx",
     "paths": {
       "@agbofa/api-client": ["../../packages/api-client/src/index"],
       "@agbofa/api-client/*": ["../../packages/api-client/src/*"],

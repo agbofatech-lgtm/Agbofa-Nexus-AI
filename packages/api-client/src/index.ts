@@ -77,3 +77,23 @@ export class MockNexusApiClient implements ApiClientInterface {
     };
   }
 }
+
+export * from "./live-client";
+
+import { LiveNexusApiClient } from "./live-client";
+
+export function createApiClient(
+  tenantId: string,
+  live?: boolean
+): ApiClientInterface {
+  const shouldUseLive =
+    live !== undefined
+      ? live
+      : typeof process !== "undefined" &&
+        process.env &&
+        process.env.NODE_ENV === "production";
+  if (shouldUseLive) {
+    return new LiveNexusApiClient(tenantId);
+  }
+  return new MockNexusApiClient(tenantId);
+}

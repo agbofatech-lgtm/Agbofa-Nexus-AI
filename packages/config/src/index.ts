@@ -24,3 +24,26 @@ export const defaultNexusConfig: NexusAppConfig = {
   enablePWA: true,
   enableOfflineCache: true,
 };
+
+export const AuthoritativeBrandIdentity = {
+  companyName: "Agbofa Technologies",
+  productName: "Agbofa Nexus AI",
+  tagline: "Autonomous AI Media Company Platform",
+  title: "Agbofa Nexus AI — Autonomous AI Media Company Platform",
+  description: "Enterprise autonomous AI media company platform that discovers, verifies, creates, packages, and distributes multi-channel content.",
+  themeColor: "#0066CC",
+  darkThemeColor: "#3399FF",
+  aiAccentColor: "#6C5CE7",
+  assets: {
+    primaryLogo: "/brand/logo.svg",
+    lightLogo: "/brand/logo-light.svg",
+    darkLogo: "/brand/logo-dark.svg",
+    mark: "/brand/mark.svg",
+    favicon: "/favicon.svg",
+    icon192: "/icons/icon-192.svg",
+    icon512: "/icons/icon-512.svg",
+    appleTouchIcon: "/icons/apple-touch-icon.svg",
+    ogImage: "/og/default.svg",
+    manifest: "/manifest.json",
+  },
+};

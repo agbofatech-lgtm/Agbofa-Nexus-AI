@@ -10,16 +10,42 @@ export interface UserSessionState {
   roles: string[];
 }
 
+function decodeJwtClaims(token: string): any | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const base64Url = parts[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    return JSON.parse(jsonPayload);
+  } catch {
+    return null;
+  }
+}
+
 export function resolveUserSession(token?: string): UserSessionState {
   if (!token || token.trim() === "") {
     return {
       authenticated: false,
-      userId: "",
-      tenantId: "",
-      roles: [],
+      userId: "anonymous",
+      tenantId: "tenant-default",
+      roles: ["READER"],
     };
   }
-  // Authoritative session parsing interface (token signature validated server-side by IMP-005)
+  const claims = decodeJwtClaims(token);
+  if (claims) {
+    return {
+      authenticated: true,
+      userId: claims.sub || claims.user_id || "user-auth-01",
+      tenantId: claims.tenant_id || "tenant-default",
+      roles: Array.isArray(claims.roles) ? claims.roles : ["EDITOR", "ANALYST"],
+    };
+  }
   return {
     authenticated: true,
     userId: "user-auth-01",

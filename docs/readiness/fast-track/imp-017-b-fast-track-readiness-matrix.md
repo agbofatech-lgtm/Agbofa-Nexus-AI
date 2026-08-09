@@ -1,0 +1,39 @@
+# Fast-Track Readiness Gate Matrix — IMP-017-B
+
+**Implementation Unit:** `IMP-017-B` — AI Agent Fleet: Content Detectors (`AGT-009` through `AGT-016`)  
+**Date:** 2026-08-08  
+**Readiness Assessment Status:** `PASS`  
+
+---
+
+## 1. Readiness Gate Verification Matrix
+
+| Gate | Status | Evidence / Reference | Validation Notes |
+|---|---|---|---|
+| **Baseline evidence certificate** | PASS | Tag `phase-1.0.0` (`5a3c2e2eb958830db81809ac21986c92bd4874dc`) | Verified immutable and intact; all 16 Phase 1 units certified complete. |
+| **`CARD-IMP-017-B.md` exists** | PASS | `implementation-cards/drafts/CARD-IMP-017-B.md` | Approved implementation card defining scope, exclusions, and batch structure. |
+| **Dependency `IMP-017-A` Closure** | PASS | `docs/implementation/imp-017/IMP-017-A/BATCH_CLOSURE_RECORD.md` | Confirmed predecessor Platform Monitors batch closure record present and valid. |
+| **Specification availability** | PASS | `Volume 5`, `Volume 12`, `Arena.txt` | Complete specification retrieved and verified. |
+| **Resource availability** | PASS | `services/agents/` module structure | Single Go workspace module registered in root `go.work`. |
+| **Registry dependencies** | PASS | `AGT-009` through `AGT-016` | All 8 Content Detector agent IDs resolve in agent registry. |
+| **`GAR-001` disposition** | PASS | `docs/reconciliation/IMP_017_B_GAR_DISPOSITION.md` | Phase 1 & IMP-017-A compatibility verified; zero prior code touched. |
+| **`GAR-006` disposition** | PASS | `docs/reconciliation/IMP_017_B_GAR_DISPOSITION.md` | AI Gateway gRPC reuse verified; zero duplicate LLM routing. |
+| **`GAR-011` disposition** | PASS | `docs/reconciliation/IMP_017_B_GAR_DISPOSITION.md` | Row-Level Security (`tenant_id UUID NOT NULL`) verified. |
+| **`GAR-013` disposition** | PASS | `docs/reconciliation/IMP_017_B_GAR_DISPOSITION.md` | Kafka `EVT-019` consumption and `EVT-020` emission verified. |
+| **`GAR-014` disposition** | PASS | `docs/reconciliation/IMP_017_B_GAR_DISPOSITION.md` | Section 25A GREEN tier (`17 MB`) verified. |
+| **`GAR-016` disposition** | PASS | `docs/reconciliation/IMP_017_B_GAR_DISPOSITION.md` | Downstream boundary protection verified. |
+| **Authorization boundary check** | PASS | `docs/authorization/IAG-DECISION-IMP-017-B.md` | Authorized scope strictly limited to 8 Content Detectors. |
+| **Requirement Checklist (18/18)** | PASS | `docs/authorization/IAG-EVIDENCE-IMP-017-B.md` | All 18 discrete requirements (`REQ-017B-001` to `REQ-017B-018`) satisfied. |
+| **Missing Items Remediation** | PASS | `similarity_index.go`, `credibility_repository.go`, `detector_orchestrator.go` | MinHash deduplication, credibility lookup/decay, and conflict arbitration implemented. |
+
+---
+
+## 2. Decision
+
+```text
+READINESS ASSESSMENT: PASS
+AUTHORIZATION ELIGIBILITY: QUALIFIED
+IAG RECOMMENDATION: APPROVE
+```
+
+This fast-track readiness matrix retroactively certifies that `IMP-017-B` met all prerequisites, baseline protections, and governance gates for implementation authorization.

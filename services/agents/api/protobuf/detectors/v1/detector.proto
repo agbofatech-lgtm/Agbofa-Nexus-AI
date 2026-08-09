@@ -1,0 +1,244 @@
+syntax = "proto3";
+
+package agents.detectors.v1;
+
+option go_package = "github.com/agbofa/nexus-api/gen/go/detectors/v1;detectorsv1";
+
+enum DetectorType {
+  DETECTOR_TYPE_UNSPECIFIED = 0;
+  DETECTOR_TYPE_BREAKING_NEWS = 1;
+  DETECTOR_TYPE_TREND = 2;
+  DETECTOR_TYPE_SENTIMENT = 3;
+  DETECTOR_TYPE_CREDIBILITY = 4;
+  DETECTOR_TYPE_MULTIMEDIA = 5;
+  DETECTOR_TYPE_LANGUAGE = 6;
+  DETECTOR_TYPE_DUPLICATE = 7;
+  DETECTOR_TYPE_VIRALITY = 8;
+}
+
+enum ContentStatus {
+  CONTENT_STATUS_UNSPECIFIED = 0;
+  CONTENT_STATUS_ORIGINAL = 1;
+  CONTENT_STATUS_DUPLICATE = 2;
+  CONTENT_STATUS_DERIVATIVE = 3;
+  CONTENT_STATUS_TRANSLATED = 4;
+}
+
+enum Sentiment {
+  SENTIMENT_UNSPECIFIED = 0;
+  SENTIMENT_POSITIVE = 1;
+  SENTIMENT_NEGATIVE = 2;
+  SENTIMENT_NEUTRAL = 3;
+  SENTIMENT_MIXED = 4;
+}
+
+enum CredibilityTier {
+  CREDIBILITY_TIER_UNSPECIFIED = 0;
+  CREDIBILITY_TIER_HIGH = 1;
+  CREDIBILITY_TIER_MEDIUM = 2;
+  CREDIBILITY_TIER_LOW = 3;
+  CREDIBILITY_TIER_UNKNOWN = 4;
+}
+
+enum MediaType {
+  MEDIA_TYPE_UNSPECIFIED = 0;
+  MEDIA_TYPE_TEXT = 1;
+  MEDIA_TYPE_IMAGE = 2;
+  MEDIA_TYPE_VIDEO = 3;
+  MEDIA_TYPE_AUDIO = 4;
+  MEDIA_TYPE_MIXED = 5;
+}
+
+enum ViralityTier {
+  VIRALITY_TIER_UNSPECIFIED = 0;
+  VIRALITY_TIER_VIRAL = 1;
+  VIRALITY_TIER_HIGH_POTENTIAL = 2;
+  VIRALITY_TIER_NORMAL = 3;
+}
+
+enum DetectorHealthStatus {
+  DETECTOR_HEALTH_STATUS_UNSPECIFIED = 0;
+  DETECTOR_HEALTH_STATUS_HEALTHY = 1;
+  DETECTOR_HEALTH_STATUS_DEGRADED = 2;
+  DETECTOR_HEALTH_STATUS_RATE_LIMITED = 3;
+  DETECTOR_HEALTH_STATUS_AUTH_FAILED = 4;
+  DETECTOR_HEALTH_STATUS_OFFLINE = 5;
+}
+
+message EvidenceItem {
+  string evidence_id = 1;
+  string type = 2;
+  string description = 3;
+  string source_url = 4;
+  double confidence = 5;
+  map<string, string> metadata = 6;
+}
+
+message DetectionResult {
+  string result_id = 1;
+  string tenant_id = 2;
+  string signal_id = 3;
+  string detector_id = 4;
+  DetectorType detector_type = 5;
+  string classification = 6;
+  double confidence = 7;
+  string content_hash = 8;
+  map<string, string> metadata = 9;
+  repeated EvidenceItem evidence = 10;
+  int64 detected_at_unix = 11;
+}
+
+message InitializeDetectorRequest {
+  string tenant_id = 1;
+  string detector_id = 2;
+  DetectorType detector_type = 3;
+  map<string, string> config = 4;
+}
+
+message InitializeDetectorResponse {
+  string tenant_id = 1;
+  string detector_id = 2;
+  DetectorHealthStatus status = 3;
+  string message = 4;
+}
+
+message HealthCheckRequest {
+  string tenant_id = 1;
+  string detector_id = 2;
+}
+
+message HealthCheckResponse {
+  string tenant_id = 1;
+  string detector_id = 2;
+  DetectorHealthStatus status = 3;
+  int64 latency_ms = 4;
+  string error_message = 5;
+}
+
+message ShutdownDetectorRequest {
+  string tenant_id = 1;
+  string detector_id = 2;
+}
+
+message ShutdownDetectorResponse {
+  string tenant_id = 1;
+  string detector_id = 2;
+  bool success = 3;
+}
+
+message DetectRequest {
+  string tenant_id = 1;
+  string detector_id = 2;
+  string signal_id = 3;
+  DetectorType detector_type = 4;
+  map<string, string> payload = 5;
+}
+
+message DetectResponse {
+  string tenant_id = 1;
+  string detector_id = 2;
+  DetectionResult result = 3;
+}
+
+message AnalyzeRequest {
+  string tenant_id = 1;
+  string detector_id = 2;
+  string signal_id = 3;
+  DetectorType detector_type = 4;
+  map<string, string> payload = 5;
+}
+
+message AnalyzeResponse {
+  string tenant_id = 1;
+  string detector_id = 2;
+  DetectionResult result = 3;
+  string deep_analysis_summary = 4;
+}
+
+message ClassifyRequest {
+  string tenant_id = 1;
+  string detector_id = 2;
+  string signal_id = 3;
+  DetectorType detector_type = 4;
+  map<string, string> payload = 5;
+}
+
+message ClassifyResponse {
+  string tenant_id = 1;
+  string detector_id = 2;
+  string classification = 3;
+  double confidence = 4;
+  repeated EvidenceItem evidence = 5;
+}
+
+message DetectBatchRequest {
+  string tenant_id = 1;
+  string detector_id = 2;
+  repeated string signal_ids = 3;
+  DetectorType detector_type = 4;
+  int32 limit = 5;
+}
+
+message DetectBatchResponse {
+  string tenant_id = 1;
+  string detector_id = 2;
+  repeated DetectionResult results = 3;
+  int32 count = 4;
+}
+
+message StreamDetectionsRequest {
+  string tenant_id = 1;
+  string detector_id = 2;
+  DetectorType detector_type = 3;
+}
+
+message DetectorInfo {
+  string detector_id = 1;
+  DetectorType detector_type = 2;
+  string name = 3;
+  string version = 4;
+  DetectorHealthStatus status = 5;
+}
+
+message ListDetectorsRequest {
+  string tenant_id = 1;
+  DetectorType filter_type = 2;
+}
+
+message ListDetectorsResponse {
+  string tenant_id = 1;
+  repeated DetectorInfo detectors = 2;
+}
+
+message GetDetectorStatusRequest {
+  string tenant_id = 1;
+  string detector_id = 2;
+}
+
+message GetDetectorStatusResponse {
+  string tenant_id = 1;
+  string detector_id = 2;
+  DetectorHealthStatus status = 3;
+  int64 last_check_unix = 4;
+  string error_message = 5;
+}
+
+service ContentDetectorService {
+  // Agent lifecycle
+  rpc InitializeDetector(InitializeDetectorRequest) returns (InitializeDetectorResponse);
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+  rpc ShutdownDetector(ShutdownDetectorRequest) returns (ShutdownDetectorResponse);
+
+  // Detection
+  rpc Detect(DetectRequest) returns (DetectResponse);
+  rpc Analyze(AnalyzeRequest) returns (AnalyzeResponse);
+  rpc Classify(ClassifyRequest) returns (ClassifyResponse);
+
+  // Bulk operations
+  rpc DetectBatch(DetectBatchRequest) returns (DetectBatchResponse);
+  rpc StreamDetections(StreamDetectionsRequest) returns (stream DetectionResult);
+
+  // Detector management
+  rpc ListDetectors(ListDetectorsRequest) returns (ListDetectorsResponse);
+  rpc GetDetectorStatus(GetDetectorStatusRequest) returns (GetDetectorStatusResponse);
+}

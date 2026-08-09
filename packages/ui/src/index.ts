@@ -5,15 +5,17 @@
 
 export const DesignTokens = {
   colors: {
-    primary: "#1E40AF",
-    primaryHover: "#1E3A8A",
+    primary: "#0066CC", // Arena.txt official light primary
+    primaryHover: "#004499", // Official brand-secondary
+    primaryDark: "#3399FF", // Official dark mode primary
+    aiAccent: "#6C5CE7", // Official AI action accent
     secondary: "#475569",
-    background: "#F8FAFC",
-    surface: "#FFFFFF",
-    error: "#DC2626",
-    success: "#16A34A",
-    textPrimary: "#0F172A",
-    textSecondary: "#64748B",
+    background: "#0A0A0B", // Official dark background
+    surface: "#12121A", // Official dark surface
+    error: "#CF2020",
+    success: "#0D9040",
+    textPrimary: "#FAFAFA",
+    textSecondary: "#A0A4A8",
   },
   spacing: {
     xs: "0.25rem",
@@ -101,3 +103,13 @@ export function renderAccessibleAlert(props: AlertProps): { role: string; "aria-
     text: `[${props.type.toUpperCase()}] ${props.message}`,
   };
 }
+
+export * from "./components/Button";
+export * from "./components/Input";
+export * from "./components/Card";
+export * from "./components/Alert";
+export * from "./components/Modal";
+export * from "./components/Table";
+export * from "./components/Skeleton";
+export * from "./components/EmptyState";
+export * from "./components/ErrorState";

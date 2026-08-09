@@ -1,0 +1,258 @@
+syntax = "proto3";
+
+package agents.verification.v1;
+
+option go_package = "github.com/agbofa/nexus-api/gen/go/verification/v1;verificationv1";
+
+enum Verdict {
+  VERDICT_UNSPECIFIED = 0;
+  VERDICT_TRUE = 1;
+  VERDICT_FALSE = 2;
+  VERDICT_MISLEADING = 3;
+  VERDICT_UNVERIFIED = 4;
+  VERDICT_HALF_TRUE = 5;
+}
+
+enum BiasClassification {
+  BIAS_CLASSIFICATION_UNSPECIFIED = 0;
+  BIAS_CLASSIFICATION_NONE = 1;
+  BIAS_CLASSIFICATION_POLITICAL = 2;
+  BIAS_CLASSIFICATION_COMMERCIAL = 3;
+  BIAS_CLASSIFICATION_CULTURAL = 4;
+  BIAS_CLASSIFICATION_SELECTION = 5;
+}
+
+enum MisinformationClass {
+  MISINFORMATION_CLASS_UNSPECIFIED = 0;
+  MISINFORMATION_CLASS_CLEAN = 1;
+  MISINFORMATION_CLASS_SATIRE = 2;
+  MISINFORMATION_CLASS_MISINFORMATION = 3;
+  MISINFORMATION_CLASS_DISINFORMATION = 4;
+  MISINFORMATION_CLASS_MALINFORMATION = 5;
+}
+
+enum ConfidenceTier {
+  CONFIDENCE_TIER_UNSPECIFIED = 0;
+  CONFIDENCE_TIER_VERIFIED_TRUTH = 1;
+  CONFIDENCE_TIER_PROVISIONAL = 2;
+  CONFIDENCE_TIER_DOUBTFUL = 3;
+}
+
+enum EvidenceStrength {
+  EVIDENCE_STRENGTH_UNSPECIFIED = 0;
+  EVIDENCE_STRENGTH_STRONG = 1;
+  EVIDENCE_STRENGTH_MODERATE = 2;
+  EVIDENCE_STRENGTH_WEAK = 3;
+  EVIDENCE_STRENGTH_NONE = 4;
+}
+
+enum SourceClassification {
+  SOURCE_CLASSIFICATION_UNSPECIFIED = 0;
+  SOURCE_CLASSIFICATION_AUTHENTICATED = 1;
+  SOURCE_CLASSIFICATION_SUSPICIOUS = 2;
+  SOURCE_CLASSIFICATION_IMPERSONATING = 3;
+  SOURCE_CLASSIFICATION_UNVERIFIED = 4;
+  SOURCE_CLASSIFICATION_BOT = 5;
+}
+
+enum ClaimType {
+  CLAIM_TYPE_UNSPECIFIED = 0;
+  CLAIM_TYPE_FACTUAL = 1;
+  CLAIM_TYPE_OPINION = 2;
+  CLAIM_TYPE_PREDICTION = 3;
+  CLAIM_TYPE_STATISTICAL = 4;
+  CLAIM_TYPE_QUOTATION = 5;
+}
+
+message ClaimMessage {
+  string claim_id = 1;
+  string tenant_id = 2;
+  string signal_id = 3;
+  string content_text = 4;
+  string claim_text = 5;
+  ClaimType claim_type = 6;
+  string author = 7;
+  string source_url = 8;
+  bool is_verifiable = 9;
+  int64 extracted_at_unix = 10;
+  map<string, string> metadata = 11;
+}
+
+message SourceMessage {
+  string source_id = 1;
+  string tenant_id = 2;
+  string name = 3;
+  string domain = 4;
+  string parent_company = 5;
+  string url = 6;
+  double authority_score = 7;
+  SourceClassification credibility_tier = 8;
+  bool is_independent = 9;
+  int32 publication_history = 10;
+  string author_credentials = 11;
+  map<string, string> metadata = 12;
+}
+
+message EvidenceItemMessage {
+  string evidence_id = 1;
+  string type = 2;
+  string description = 3;
+  string source_url = 4;
+  double confidence = 5;
+  map<string, string> metadata = 6;
+}
+
+message VerificationResultProto {
+  string verification_id = 1;
+  string tenant_id = 2;
+  string signal_id = 3;
+  string agent_id = 4;
+  string agent_name = 5;
+  string claim_id = 6;
+  Verdict verdict = 7;
+  string classification = 8;
+  double confidence_score = 9;
+  double uncertainty_metric = 10;
+  repeated SourceMessage sources = 11;
+  repeated EvidenceItemMessage evidence = 12;
+  int64 verified_at_unix = 13;
+  map<string, string> metadata = 14;
+}
+
+message CorroborationResultProto {
+  string result_id = 1;
+  string tenant_id = 2;
+  string claim_id = 3;
+  bool corroborated = 4;
+  int32 independent_source_count = 5;
+  int32 total_source_count = 6;
+  double confidence_score = 7;
+  repeated SourceMessage corroborating_sources = 8;
+  map<string, string> source_matrix = 9;
+  int64 corroborated_at_unix = 10;
+  map<string, string> metadata = 11;
+}
+
+message AssessmentResultProto {
+  string assessment_id = 1;
+  string tenant_id = 2;
+  string claim_id = 3;
+  string assessment_type = 4;
+  string classification = 5;
+  double confidence_score = 6;
+  double risk_score = 7;
+  repeated EvidenceItemMessage evidence = 8;
+  string explanation = 9;
+  map<string, double> scoring_breakdown = 10;
+  int64 assessed_at_unix = 11;
+  map<string, string> metadata = 12;
+}
+
+message VerificationAgentInfo {
+  string agent_id = 1;
+  string name = 2;
+  string version = 3;
+  string status = 4;
+}
+
+message VerifyClaimRequest {
+  string tenant_id = 1;
+  string agent_id = 2;
+  ClaimMessage claim = 3;
+  map<string, string> config = 4;
+}
+
+message VerifyClaimResponse {
+  string tenant_id = 1;
+  string agent_id = 2;
+  VerificationResultProto result = 3;
+}
+
+message CorroborateClaimRequest {
+  string tenant_id = 1;
+  string agent_id = 2;
+  ClaimMessage claim = 3;
+  repeated SourceMessage sources = 4;
+}
+
+message CorroborateClaimResponse {
+  string tenant_id = 1;
+  string agent_id = 2;
+  CorroborationResultProto result = 3;
+}
+
+message AssessClaimRequest {
+  string tenant_id = 1;
+  string agent_id = 2;
+  ClaimMessage claim = 3;
+}
+
+message AssessClaimResponse {
+  string tenant_id = 1;
+  string agent_id = 2;
+  AssessmentResultProto result = 3;
+}
+
+message ExtractClaimsRequest {
+  string tenant_id = 1;
+  string agent_id = 2;
+  string content_text = 3;
+  string signal_id = 4;
+}
+
+message ExtractClaimsResponse {
+  string tenant_id = 1;
+  string agent_id = 2;
+  repeated ClaimMessage extracted_claims = 3;
+  int32 count = 4;
+}
+
+message ScoreConfidenceRequest {
+  string tenant_id = 1;
+  string claim_id = 2;
+  ClaimMessage claim = 3;
+  map<string, double> override_scores = 4;
+}
+
+message ScoreConfidenceResponse {
+  string tenant_id = 1;
+  string claim_id = 2;
+  ConfidenceTier confidence_tier = 3;
+  double confidence_score = 4;
+  double uncertainty_metric = 5;
+  map<string, double> scoring_breakdown = 6;
+}
+
+message FlagMisinformationRequest {
+  string tenant_id = 1;
+  string claim_id = 2;
+  ClaimMessage claim = 3;
+}
+
+message FlagMisinformationResponse {
+  string tenant_id = 1;
+  string claim_id = 2;
+  MisinformationClass classification = 3;
+  double risk_score = 4;
+  string severity = 5;
+  map<string, string> metadata = 6;
+}
+
+message ListVerificationAgentsRequest {
+  string tenant_id = 1;
+}
+
+message ListVerificationAgentsResponse {
+  string tenant_id = 1;
+  repeated VerificationAgentInfo agents = 2;
+}
+
+service VerificationService {
+  rpc VerifyClaim(VerifyClaimRequest) returns (VerifyClaimResponse);
+  rpc CorroborateClaim(CorroborateClaimRequest) returns (CorroborateClaimResponse);
+  rpc AssessClaim(AssessClaimRequest) returns (AssessClaimResponse);
+  rpc ExtractClaims(ExtractClaimsRequest) returns (ExtractClaimsResponse);
+  rpc ScoreConfidence(ScoreConfidenceRequest) returns (ScoreConfidenceResponse);
+  rpc FlagMisinformation(FlagMisinformationRequest) returns (FlagMisinformationResponse);
+  rpc ListVerificationAgents(ListVerificationAgentsRequest) returns (ListVerificationAgentsResponse);
+}

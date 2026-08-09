@@ -156,3 +156,178 @@ func TestAIGatewayService_UnauthorizedModel(t *testing.T) {
 		t.Fatalf("expected ErrModelUnauthorized, got %v", err)
 	}
 }
+
+type mockMultimodalProvider struct {
+	id          string
+	name        string
+	failModel   string
+	content     string
+	lastModel   string
+	lastMessage string
+}
+
+func (m *mockMultimodalProvider) ID() string   { return m.id }
+func (m *mockMultimodalProvider) Name() string { return m.name }
+func (m *mockMultimodalProvider) Generate(ctx context.Context, req llm.CompletionRequest) (llm.CompletionResponse, error) {
+	m.lastModel = req.Model
+	if len(req.Messages) > 0 {
+		m.lastMessage = req.Messages[len(req.Messages)-1].Content
+	}
+	if req.Model == m.failModel {
+		return llm.CompletionResponse{}, errors.New("simulated multimodal model error")
+	}
+	return llm.CompletionResponse{
+		ProviderID:       m.id,
+		Model:            req.Model,
+		Content:          m.content,
+		PromptTokens:     10,
+		CompletionTokens: 5,
+		TotalTokens:      15,
+		Latency:          10 * time.Millisecond,
+	}, nil
+}
+
+func TestAIGatewayService_MultimodalRoutingImage(t *testing.T) {
+	provider := &mockMultimodalProvider{id: "openai", name: "OpenAI", content: "Extracted news headline OCR"}
+	models := newInMemModelRepo()
+	prompts := newInMemPromptRepo()
+	svc := application.NewAIGatewayService([]llm.Provider{provider}, models, prompts, nil, nil)
+
+	req := llm.CompletionRequest{
+		TenantID: "tenant-1",
+		Attachments: []llm.MediaAttachment{
+			{
+				Type:        "image",
+				Format:      "image/jpeg",
+				Data:        []byte("fake-image-bytes-not-persisted"),
+				Description: "Headline graphic",
+			},
+		},
+	}
+
+	resp, err := svc.InvokeModel(
+		context.Background(),
+		req,
+		domain.AIGatewayPolicy{AllowedModels: []string{"*"}},
+		llm.ModelRoutePolicy{PrimaryProvider: "openai"},
+	)
+	if err != nil {
+		t.Fatalf("unexpected error on multimodal image invoke: %v", err)
+	}
+	if provider.lastModel != "gpt-4-vision" {
+		t.Fatalf("expected routing to gpt-4-vision, got %s", provider.lastModel)
+	}
+	if resp.OCRText != "Extracted news headline OCR" {
+		t.Fatalf("expected OCRText populated, got %s", resp.OCRText)
+	}
+	if len(resp.Detections) == 0 || resp.Detections[0].Label != "primary_subject" {
+		t.Fatalf("expected Detections populated on image completion")
+	}
+	if tokens := svc.GetMultimodalTokenUsage("tenant-1"); tokens != 85 {
+		t.Fatalf("expected 85 multimodal tokens tracked separately, got %d", tokens)
+	}
+}
+
+func TestAIGatewayService_MultimodalRoutingAudio(t *testing.T) {
+	provider := &mockMultimodalProvider{id: "openai", name: "OpenAI", content: "Full audio speech transcript"}
+	models := newInMemModelRepo()
+	prompts := newInMemPromptRepo()
+	svc := application.NewAIGatewayService([]llm.Provider{provider}, models, prompts, nil, nil)
+
+	req := llm.CompletionRequest{
+		TenantID: "tenant-1",
+		Attachments: []llm.MediaAttachment{
+			{
+				Type:   "audio",
+				Format: "audio/mp3",
+				URL:    "https://media.agbofa.ai/audio.mp3",
+			},
+		},
+	}
+
+	resp, err := svc.InvokeModel(
+		context.Background(),
+		req,
+		domain.AIGatewayPolicy{AllowedModels: []string{"*"}},
+		llm.ModelRoutePolicy{PrimaryProvider: "openai"},
+	)
+	if err != nil {
+		t.Fatalf("unexpected error on multimodal audio invoke: %v", err)
+	}
+	if provider.lastModel != "whisper-1" {
+		t.Fatalf("expected routing to whisper-1, got %s", provider.lastModel)
+	}
+	if resp.Transcription != "Full audio speech transcript" {
+		t.Fatalf("expected Transcription populated, got %s", resp.Transcription)
+	}
+	if len(resp.Segments) == 0 || resp.Segments[0].SpeakerID != "spk_0" {
+		t.Fatalf("expected Segments populated on audio completion")
+	}
+	if tokens := svc.GetMultimodalTokenUsage("tenant-1"); tokens != 30 {
+		t.Fatalf("expected 30 multimodal tokens tracked, got %d", tokens)
+	}
+}
+
+func TestAIGatewayService_MultimodalFallback(t *testing.T) {
+	// Primary multimodal model gpt-4-vision fails; should fallback to text model gpt-4 with image description
+	provider := &mockMultimodalProvider{id: "openai", name: "OpenAI", failModel: "gpt-4-vision", content: "Fallback text analysis"}
+	models := newInMemModelRepo()
+	prompts := newInMemPromptRepo()
+	svc := application.NewAIGatewayService([]llm.Provider{provider}, models, prompts, nil, nil)
+
+	req := llm.CompletionRequest{
+		TenantID: "tenant-1",
+		Attachments: []llm.MediaAttachment{
+			{
+				Type:        "image",
+				Format:      "image/jpeg",
+				Description: "Chart showing inflation drop",
+			},
+		},
+	}
+
+	_, err := svc.InvokeModel(
+		context.Background(),
+		req,
+		domain.AIGatewayPolicy{AllowedModels: []string{"*"}},
+		llm.ModelRoutePolicy{PrimaryProvider: "openai"},
+	)
+	if err != nil {
+		t.Fatalf("unexpected error on image fallback: %v", err)
+	}
+	if provider.lastModel != "gpt-4" {
+		t.Fatalf("expected fallback to text model gpt-4, got %s", provider.lastModel)
+	}
+	if !strings.Contains(provider.lastMessage, "Image description fallback: Chart showing inflation drop") {
+		t.Fatalf("expected description appended to fallback text message, got %s", provider.lastMessage)
+	}
+}
+
+func TestAIGatewayService_TextOnlyBackwardCompatibility(t *testing.T) {
+	provider := &mockMultimodalProvider{id: "openai", name: "OpenAI", content: "Text only result"}
+	models := newInMemModelRepo()
+	prompts := newInMemPromptRepo()
+	svc := application.NewAIGatewayService([]llm.Provider{provider}, models, prompts, nil, nil)
+
+	req := llm.CompletionRequest{
+		TenantID: "tenant-1",
+		Model:    "gpt-4",
+		Messages: []llm.Message{{Role: "user", Content: "Hello text world"}},
+	}
+
+	resp, err := svc.InvokeModel(
+		context.Background(),
+		req,
+		domain.AIGatewayPolicy{AllowedModels: []string{"*"}},
+		llm.ModelRoutePolicy{PrimaryProvider: "openai"},
+	)
+	if err != nil {
+		t.Fatalf("unexpected error on text-only completion: %v", err)
+	}
+	if resp.Content != "Text only result" {
+		t.Fatalf("unexpected text result: %s", resp.Content)
+	}
+	if tokens := svc.GetMultimodalTokenUsage("tenant-1"); tokens != 0 {
+		t.Fatalf("expected 0 multimodal tokens consumed for text-only request, got %d", tokens)
+	}
+}

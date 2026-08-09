@@ -24,12 +24,42 @@ type ModelParameters struct {
 	TopP        float64
 }
 
+type BoundingBox struct {
+	X      float64
+	Y      float64
+	Width  float64
+	Height float64
+}
+
+type ObjectDetection struct {
+	Label       string
+	Confidence  float64
+	BoundingBox BoundingBox
+}
+
+type TranscriptionSegment struct {
+	SpeakerID  string
+	StartMs    int64
+	EndMs      int64
+	Text       string
+	Confidence float64
+}
+
+type MediaAttachment struct {
+	Type        string // "image", "video_frame", "audio"
+	Format      string // MIME type: "image/jpeg", "image/png", "audio/mp3", "audio/wav"
+	Data        []byte // Binary content (kept in memory, never written to disk)
+	URL         string // Alternative: URL reference instead of inline data
+	Description string // Optional: pre-generated description/alt-text
+}
+
 type CompletionRequest struct {
-	TenantID  string
-	Model     string
-	Messages  []Message
-	Params    ModelParameters
-	Context   map[string]string
+	TenantID    string
+	Model       string
+	Messages    []Message
+	Params      ModelParameters
+	Context     map[string]string
+	Attachments []MediaAttachment // Optional multimodal attachments
 }
 
 type CompletionResponse struct {
@@ -40,6 +70,10 @@ type CompletionResponse struct {
 	CompletionTokens int
 	TotalTokens      int
 	Latency          time.Duration
+	Transcription    string                 // For audio: transcribed text
+	Segments         []TranscriptionSegment // For audio: speaker segments
+	Detections       []ObjectDetection      // For image/video: detected objects
+	OCRText          string                 // For image: extracted text
 }
 
 type Provider interface {
