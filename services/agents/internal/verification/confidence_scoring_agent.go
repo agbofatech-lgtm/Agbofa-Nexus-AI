@@ -29,6 +29,9 @@ type ConfidenceScoringAgent struct {
 	initialized   bool
 	aiGateway     application.AIGatewayClient
 	domainWeights map[string]float64
+	lastResult    *domain.VerificationResult
+	verifStatus   domain.VerificationStatus
+	CurrentStatus domain.AgentStatus
 	agt17         *FactCheckAgent
 	agt18         *CrossReferenceAgent
 	agt19         *SourceVerificationAgent
@@ -39,8 +42,10 @@ type ConfidenceScoringAgent struct {
 // NewConfidenceScoringAgent initializes a new ConfidenceScoringAgent (AGT-024) for a tenant.
 func NewConfidenceScoringAgent(tenantID string, aiGateway application.AIGatewayClient) *ConfidenceScoringAgent {
 	return &ConfidenceScoringAgent{
-		tenantID:  tenantID,
-		aiGateway: aiGateway,
+		tenantID:      tenantID,
+		aiGateway:     aiGateway,
+		CurrentStatus: domain.AgentStatusActive,
+		verifStatus:   domain.VerificationStatusPending,
 		domainWeights: map[string]float64{
 			"AGT-017": 1.25, // Fact-Checking Agent
 			"AGT-018": 1.15, // Cross-Reference Verification
@@ -62,6 +67,8 @@ func NewConfidenceScoringAgent(tenantID string, aiGateway application.AIGatewayC
 func NewConfidenceScorer(aiGateway application.AIGatewayClient) *ConfidenceScoringAgent {
 	return NewConfidenceScoringAgent("", aiGateway)
 }
+
+var _ ContentVerifier = (*ConfidenceScoringAgent)(nil)
 
 func (c *ConfidenceScoringAgent) ID() string       { return "AGT-024" }
 func (c *ConfidenceScoringAgent) Name() string     { return "Confidence Scoring Agent" }
@@ -215,6 +222,13 @@ func (c *ConfidenceScoringAgent) Verify(ctx context.Context, claim *domain.Claim
 			"agent_id":                       c.ID(),
 		},
 	}
+
+	c.mu.Lock()
+	c.lastResult = res
+	c.verifStatus = res.Status
+	c.CurrentStatus = domain.AgentStatusActive
+	c.mu.Unlock()
+
 	return res, nil
 }
 
@@ -342,4 +356,51 @@ func (c *ConfidenceScoringAgent) Assess(ctx context.Context, claim *domain.Claim
 		},
 	}
 	return assessment, nil
+}
+
+func (c *ConfidenceScoringAgent) Status() domain.AgentStatus {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if c.CurrentStatus == "" {
+		return domain.AgentStatusActive
+	}
+	return c.CurrentStatus
+}
+
+func (c *ConfidenceScoringAgent) Execute(ctx context.Context, executionContext map[string]string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.CurrentStatus == domain.AgentStatusSuspended {
+		return domain.ErrAgentNotAuthorized
+	}
+	c.CurrentStatus = domain.AgentStatusActive
+	_ = executionContext["trigger"]
+	return nil
+}
+
+func (c *ConfidenceScoringAgent) Confidence() float64 {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if c.lastResult != nil {
+		return c.lastResult.ConfidenceScore
+	}
+	return 0.0
+}
+
+func (c *ConfidenceScoringAgent) Evidence() []domain.EvidenceItem {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if c.lastResult != nil {
+		return c.lastResult.Evidence
+	}
+	return nil
+}
+
+func (c *ConfidenceScoringAgent) VerificationStatus() domain.VerificationStatus {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if c.verifStatus == "" {
+		return domain.VerificationStatusPending
+	}
+	return c.verifStatus
 }

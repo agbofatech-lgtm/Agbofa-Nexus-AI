@@ -289,6 +289,24 @@ func NewMisinformationFlaggingAgent(tenantID string, aiGateway application.AIGat
 	return NewContentVerificationAgent("AGT-023", "Misinformation Flagging", tenantID, "MISINFORMATION_FLAGGING", aiGateway, cache)
 }
 
+// VerificationAgentAdapter adapts AGT-024 (*ConfidenceScoringAgent) to domain.VerificationAgent.
+type VerificationAgentAdapter struct {
+	*ConfidenceScoringAgent
+}
+
+func (a *VerificationAgentAdapter) Verify(ctx context.Context, detection domain.DetectionResult) (*domain.VerificationResult, error) {
+	claim := &domain.Claim{
+		ClaimID:     detection.ResultID,
+		TenantID:    detection.TenantID,
+		SignalID:    detection.SignalID,
+		ClaimText:   detection.Classification,
+		ContentText: detection.Content,
+	}
+	return a.ConfidenceScoringAgent.Verify(ctx, claim)
+}
+
+var _ domain.VerificationAgent = (*VerificationAgentAdapter)(nil)
+
 func CreateAllVerifiers(tenantID string, aiGateway application.AIGatewayClient) map[string]domain.VerificationAgent {
 	cache := NewDebunkedClaimCache("")
 	m := make(map[string]domain.VerificationAgent, 8)
@@ -299,6 +317,6 @@ func CreateAllVerifiers(tenantID string, aiGateway application.AIGatewayClient) 
 	m["AGT-021"] = NewEvidenceCollectionAgent(tenantID, aiGateway)
 	m["AGT-022"] = NewBiasDetectionAgent(tenantID, aiGateway)
 	m["AGT-023"] = NewMisinformationFlaggingAgent(tenantID, aiGateway, cache)
-	m["AGT-024"] = NewConfidenceScoringAgent(tenantID, aiGateway)
+	m["AGT-024"] = &VerificationAgentAdapter{ConfidenceScoringAgent: NewConfidenceScoringAgent(tenantID, aiGateway)}
 	return m
 }
