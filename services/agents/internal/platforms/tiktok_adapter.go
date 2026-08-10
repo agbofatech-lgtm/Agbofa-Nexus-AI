@@ -276,7 +276,6 @@ func (t *TikTokAdapter) Fetch(ctx context.Context, opts domain.FetchOptions) (*d
 			URL:         "https://tiktok.com/@agbofa/video/30050",
 			Author:      "Agbofa Nexus AI TikTok",
 			Content:     "Breaking: Agbofa Nexus AI TikTokAdapter monitors video trend feeds under Row-Level Security.",
-			Language:    "en-US",
 			PublishedAt: time.Now(),
 			Metadata: map[string]string{
 				"platform": "TIKTOK",
@@ -293,7 +292,6 @@ func (t *TikTokAdapter) Fetch(ctx context.Context, opts domain.FetchOptions) (*d
 				URL:      doc.URL,
 				Author:   doc.Author,
 				Content:  doc.Content,
-				Language: doc.Language,
 			}
 			summary, _, errAI := t.aiGateway.SummarizeSignal(ctx, opts.TenantID, "AGB-NGE-MON-001", sig)
 			if errAI == nil && summary != "" {
@@ -323,8 +321,6 @@ func (t *TikTokAdapter) Fetch(ctx context.Context, opts domain.FetchOptions) (*d
 				URL:       docs[0].URL,
 				Author:    docs[0].Author,
 				Content:   docs[0].Content,
-				Language:  docs[0].Language,
-				CreatedAt: time.Now(),
 			},
 			OccurredAt: time.Now(),
 		}

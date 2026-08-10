@@ -280,7 +280,6 @@ func (i *InstagramAdapter) Fetch(ctx context.Context, opts domain.FetchOptions) 
 			URL:         "https://instagram.com/p/30050",
 			Author:      "Agbofa Nexus AI Instagram",
 			Content:     "Breaking: Agbofa Nexus AI InstagramAdapter monitors visual media feeds under Row-Level Security.",
-			Language:    "en-US",
 			PublishedAt: time.Now(),
 			Metadata: map[string]string{
 				"platform": "INSTAGRAM",
@@ -297,7 +296,6 @@ func (i *InstagramAdapter) Fetch(ctx context.Context, opts domain.FetchOptions) 
 				URL:      doc.URL,
 				Author:   doc.Author,
 				Content:  doc.Content,
-				Language: doc.Language,
 			}
 			summary, _, errAI := i.aiGateway.SummarizeSignal(ctx, opts.TenantID, "AGB-NGE-MON-001", sig)
 			if errAI == nil && summary != "" {
@@ -327,8 +325,6 @@ func (i *InstagramAdapter) Fetch(ctx context.Context, opts domain.FetchOptions) 
 				URL:       docs[0].URL,
 				Author:    docs[0].Author,
 				Content:   docs[0].Content,
-				Language:  docs[0].Language,
-				CreatedAt: time.Now(),
 			},
 			OccurredAt: time.Now(),
 		}

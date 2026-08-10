@@ -212,7 +212,6 @@ func (r *RSSAdapter) Fetch(ctx context.Context, opts domain.FetchOptions) (*doma
 			URL:         "https://news.ycombinator.com/item?id=300050",
 			Author:      "RSS Feed Generator",
 			Content:     "Breaking: Agbofa Nexus AI RSSAdapter monitors live RSS 2.0 and Atom 1.0 XML feeds under Row-Level Security.",
-			Language:    "en-US",
 			PublishedAt: time.Now(),
 			Metadata: map[string]string{
 				"platform": "RSS",
@@ -229,7 +228,6 @@ func (r *RSSAdapter) Fetch(ctx context.Context, opts domain.FetchOptions) (*doma
 				URL:      doc.URL,
 				Author:   doc.Author,
 				Content:  doc.Content,
-				Language: doc.Language,
 			}
 			summary, _, errAI := r.aiGateway.SummarizeSignal(ctx, opts.TenantID, "AGB-NGE-MON-001", sig)
 			if errAI == nil && summary != "" {
@@ -259,8 +257,6 @@ func (r *RSSAdapter) Fetch(ctx context.Context, opts domain.FetchOptions) (*doma
 				URL:       docs[0].URL,
 				Author:    docs[0].Author,
 				Content:   docs[0].Content,
-				Language:  docs[0].Language,
-				CreatedAt: time.Now(),
 			},
 			OccurredAt: time.Now(),
 		}

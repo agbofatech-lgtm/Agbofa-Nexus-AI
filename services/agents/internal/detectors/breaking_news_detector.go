@@ -1,6 +1,7 @@
 package detectors
 
 import (
+	"fmt"
 	"context"
 	"errors"
 	"strconv"

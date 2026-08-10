@@ -125,3 +125,7 @@ type PipelineReport struct {
 	Recommendations []string               `json:"recommendations"`
 	GeneratedAt     time.Time              `json:"generated_at"`
 }
+
+const PipelineStageVerification = "VERIFICATION"
+const PipelineStageOrigination = "ORIGINATION"
+const PipelineStageProcessing = "PROCESSING"

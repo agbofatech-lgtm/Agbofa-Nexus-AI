@@ -281,7 +281,6 @@ func (l *LinkedInAdapter) Fetch(ctx context.Context, opts domain.FetchOptions) (
 			URL:         "https://linkedin.com/feed/update/urn:li:share:30050",
 			Author:      "Agbofa Nexus AI Corporate Profile",
 			Content:     "Breaking: Agbofa Nexus AI LinkedInAdapter monitors live enterprise feeds under Row-Level Security.",
-			Language:    "en-US",
 			PublishedAt: time.Now(),
 			Metadata: map[string]string{
 				"platform": "LINKEDIN",
@@ -297,7 +296,6 @@ func (l *LinkedInAdapter) Fetch(ctx context.Context, opts domain.FetchOptions) (
 				URL:      doc.URL,
 				Author:   doc.Author,
 				Content:  doc.Content,
-				Language: doc.Language,
 			}
 			summary, _, errAI := l.aiGateway.SummarizeSignal(ctx, opts.TenantID, "AGB-NGE-MON-001", sig)
 			if errAI == nil && summary != "" {
@@ -327,8 +325,6 @@ func (l *LinkedInAdapter) Fetch(ctx context.Context, opts domain.FetchOptions) (
 				URL:       docs[0].URL,
 				Author:    docs[0].Author,
 				Content:   docs[0].Content,
-				Language:  docs[0].Language,
-				CreatedAt: time.Now(),
 			},
 			OccurredAt: time.Now(),
 		}

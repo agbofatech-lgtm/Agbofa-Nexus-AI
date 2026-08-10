@@ -14,3 +14,4 @@ use ./services/operations
 use ./services/agents
 use ./services/predictive
 use ./services/monetization
+use ./cmd/localdev

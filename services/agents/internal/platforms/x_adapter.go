@@ -266,7 +266,6 @@ func (x *XAdapter) Fetch(ctx context.Context, opts domain.FetchOptions) (*domain
 			URL:         "https://x.com/agbofa/status/10050",
 			Author:      "@agbofa_news",
 			Content:     "Breaking: Agbofa Nexus AI XAdapter monitors live X API v2 streams under Row-Level Security.",
-			Language:    "en-US",
 			PublishedAt: time.Now(),
 			Metadata: map[string]string{
 				"platform": "X",
@@ -283,7 +282,6 @@ func (x *XAdapter) Fetch(ctx context.Context, opts domain.FetchOptions) (*domain
 				URL:      doc.URL,
 				Author:   doc.Author,
 				Content:  doc.Content,
-				Language: doc.Language,
 			}
 			summary, _, errAI := x.aiGateway.SummarizeSignal(ctx, opts.TenantID, "AGB-NGE-MON-001", sig)
 			if errAI == nil && summary != "" {
@@ -314,8 +312,6 @@ func (x *XAdapter) Fetch(ctx context.Context, opts domain.FetchOptions) (*domain
 				URL:       docs[0].URL,
 				Author:    docs[0].Author,
 				Content:   docs[0].Content,
-				Language:  docs[0].Language,
-				CreatedAt: time.Now(),
 			},
 			OccurredAt: time.Now(),
 		}

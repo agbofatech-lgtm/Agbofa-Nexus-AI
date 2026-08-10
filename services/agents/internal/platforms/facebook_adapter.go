@@ -282,7 +282,6 @@ func (f *FacebookAdapter) Fetch(ctx context.Context, opts domain.FetchOptions) (
 			URL:         "https://facebook.com/agbofa/posts/20050",
 			Author:      "Agbofa Nexus AI Page",
 			Content:     "Breaking: Agbofa Nexus AI FacebookAdapter monitors live Graph API streams under Row-Level Security.",
-			Language:    "en-US",
 			PublishedAt: time.Now(),
 			Metadata: map[string]string{
 				"platform": "FACEBOOK",
@@ -298,7 +297,6 @@ func (f *FacebookAdapter) Fetch(ctx context.Context, opts domain.FetchOptions) (
 				URL:      doc.URL,
 				Author:   doc.Author,
 				Content:  doc.Content,
-				Language: doc.Language,
 			}
 			summary, _, errAI := f.aiGateway.SummarizeSignal(ctx, opts.TenantID, "AGB-NGE-MON-001", sig)
 			if errAI == nil && summary != "" {
@@ -328,8 +326,6 @@ func (f *FacebookAdapter) Fetch(ctx context.Context, opts domain.FetchOptions) (
 				URL:       docs[0].URL,
 				Author:    docs[0].Author,
 				Content:   docs[0].Content,
-				Language:  docs[0].Language,
-				CreatedAt: time.Now(),
 			},
 			OccurredAt: time.Now(),
 		}
