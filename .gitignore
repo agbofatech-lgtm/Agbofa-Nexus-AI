@@ -11,6 +11,11 @@ dist/
 build/
 coverage/
 
+# Next.js build artifacts
+.next/
+*.tsbuildinfo
+next-env.d.ts
+
 # Sensitive credentials
 .env
 .env.*
