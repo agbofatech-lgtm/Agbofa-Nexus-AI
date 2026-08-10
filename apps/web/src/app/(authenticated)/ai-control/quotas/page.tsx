@@ -11,6 +11,7 @@ import {
   DailyUsageTrendItem,
   SquadUsageItem,
   AgentSquad,
+  QuotaLimitStatus,
 } from "../types";
 
 const INITIAL_AGENT_QUOTAS: AgentQuotaItem[] = [
@@ -24,8 +25,7 @@ const INITIAL_AGENT_QUOTAS: AgentQuotaItem[] = [
     estimatedCostUsd: 1.25,
   },
   {
-    id_alias: "AGT-002",
-    agentId: "AGT-002",
+        agentId: "AGT-002",
     agentName: "Facebook Community Signal Monitor",
     squad: "Monitors",
     tokensUsedToday: 18000,
@@ -143,7 +143,7 @@ export default function QuotaMonitorPage(): React.JSX.Element {
     setAgents(
       agents.map((a) => {
         if (a.agentId !== agent.agentId) return a;
-        const newStatus =
+        const newStatus: QuotaLimitStatus =
           a.tokensUsedToday > newLimitInput
             ? "EXCEEDED"
             : a.tokensUsedToday > newLimitInput * 0.8
@@ -152,7 +152,7 @@ export default function QuotaMonitorPage(): React.JSX.Element {
         return {
           ...a,
           dailyTokenLimit: newLimitInput,
-          rateLimitStatus: newStatus as const,
+          rateLimitStatus: newStatus,
         };
       }),
     );

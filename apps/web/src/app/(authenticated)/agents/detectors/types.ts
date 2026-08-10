@@ -22,7 +22,7 @@ export interface DetectorAgentItem {
   avgLatencyMs: number; // e.g. 115
   primaryMetricLabel: string;
   primaryMetricValue: string | number;
-  lastCheckedAt: string; // ISO 8601
+  lastHealthCheck: string; // ISO 8601
 }
 
 export interface DetectionResultItem {

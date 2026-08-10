@@ -47,6 +47,7 @@ const INITIAL_REVIEW_ITEMS: ReviewItem[] = [
       storyId: "story-101",
       packageType: "MULTI_CHANNEL",
       status: "PENDING_REVIEW",
+      assetStatus: "PRESENT",
       factualConsistencyVerified: true,
       compliancePreCheckPassed: true,
       sourceAttributionComplete: true,

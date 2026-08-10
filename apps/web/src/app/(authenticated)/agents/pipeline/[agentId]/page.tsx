@@ -4,11 +4,11 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { AuthoritativeBrandIdentity } from "@agbofa/config";
 import { callRpc } from "../../../../../lib/bff/client";
-import { ThroughputChart } from "../../components/throughput-chart";
-import { BottleneckAlert } from "../../components/bottleneck-alert";
-import { IngestionMetrics } from "../../components/ingestion-metrics";
-import { ComplianceSummary } from "../../components/compliance-summary";
-import { FeedbackImpact } from "../../components/feedback-impact";
+import { ThroughputChart } from "../components/throughput-chart";
+import { BottleneckAlert } from "../components/bottleneck-alert";
+import { IngestionMetrics } from "../components/ingestion-metrics";
+import { ComplianceSummary } from "../components/compliance-summary";
+import { FeedbackImpact } from "../components/feedback-impact";
 import {
   PipelineAgentItem,
   PipelineStageFlowItem,
@@ -22,7 +22,7 @@ import {
   AnalyticsCollectorData,
   OpsMetaAgentData,
   PipelineAgentHealthStatus,
-} from "../../types";
+} from "../types";
 
 export interface PipelineDetailPageProps {
   params: {
@@ -82,7 +82,7 @@ function resolvePipelineMetadata(idSlug: string): PipelineAgentItem {
       avgLatencyMs: 45,
       primaryMetricLabel: "Items Routed",
       primaryMetricValue: "114,850 routed (3 tiers)",
-      lastCheckedAt: new Date().toISOString(),
+      lastHealthCheck: new Date().toISOString(),
     },
     {
       agentId: "AGT-026",
@@ -96,7 +96,7 @@ function resolvePipelineMetadata(idSlug: string): PipelineAgentItem {
       avgLatencyMs: 65,
       primaryMetricLabel: "Node Ops (24h)",
       primaryMetricValue: "42,800 nodes (340 merges)",
-      lastCheckedAt: new Date().toISOString(),
+      lastHealthCheck: new Date().toISOString(),
     },
     {
       agentId: "AGT-027",
@@ -110,7 +110,7 @@ function resolvePipelineMetadata(idSlug: string): PipelineAgentItem {
       avgLatencyMs: 120,
       primaryMetricLabel: "Packages Routed",
       primaryMetricValue: "42,100 pkgs (6 types)",
-      lastCheckedAt: new Date().toISOString(),
+      lastHealthCheck: new Date().toISOString(),
     },
     {
       agentId: "AGT-028",
@@ -124,7 +124,7 @@ function resolvePipelineMetadata(idSlug: string): PipelineAgentItem {
       avgLatencyMs: 18,
       primaryMetricLabel: "Compliance Checks",
       primaryMetricValue: "96.2% CLEARED · 0 blocked",
-      lastCheckedAt: new Date().toISOString(),
+      lastHealthCheck: new Date().toISOString(),
     },
     {
       agentId: "AGT-029",
@@ -138,7 +138,7 @@ function resolvePipelineMetadata(idSlug: string): PipelineAgentItem {
       avgLatencyMs: 51,
       primaryMetricLabel: "Scheduled Drops",
       primaryMetricValue: "42,100 scheduled (8 plts)",
-      lastCheckedAt: new Date().toISOString(),
+      lastHealthCheck: new Date().toISOString(),
     },
     {
       agentId: "AGT-030",
@@ -152,7 +152,7 @@ function resolvePipelineMetadata(idSlug: string): PipelineAgentItem {
       avgLatencyMs: 42,
       primaryMetricLabel: "Metrics Ingested",
       primaryMetricValue: "248k events (0 anomalies)",
-      lastCheckedAt: new Date().toISOString(),
+      lastHealthCheck: new Date().toISOString(),
     },
     {
       agentId: "AGT-031",
@@ -166,7 +166,7 @@ function resolvePipelineMetadata(idSlug: string): PipelineAgentItem {
       avgLatencyMs: 210,
       primaryMetricLabel: "Models Updated",
       primaryMetricValue: "24 models updated ▲ +15%",
-      lastCheckedAt: new Date().toISOString(),
+      lastHealthCheck: new Date().toISOString(),
     },
     {
       agentId: "AGT-032",
@@ -180,7 +180,7 @@ function resolvePipelineMetadata(idSlug: string): PipelineAgentItem {
       avgLatencyMs: 15,
       primaryMetricLabel: "Fleet Matrix Health",
       primaryMetricValue: "32/32 agents nominal",
-      lastCheckedAt: new Date().toISOString(),
+      lastHealthCheck: new Date().toISOString(),
     },
   ];
 
@@ -953,7 +953,7 @@ export default function PipelineAgentDetailPage({
                 Per-Platform Syndication Breakdown &amp; Connector Availability
               </h4>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {distributionData.platformBreakdown.map((pb) => (
+                {distributionData.platformBreakdown.map((pb: any) => (
                   <div
                     key={pb.platform}
                     className="rounded border border-[#2E2E32] bg-[#0A0A0B] p-3 text-xs"
@@ -1020,7 +1020,7 @@ export default function PipelineAgentDetailPage({
                 Per-Platform Engagement Comparison
               </h4>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
-                {analyticsData.platformComparison.map((pc) => (
+                {analyticsData.platformComparison.map((pc: any) => (
                   <div
                     key={pc.platform}
                     className="rounded border border-[#2E2E32] bg-[#0A0A0B] p-3 text-xs"
@@ -1122,8 +1122,8 @@ export default function PipelineAgentDetailPage({
 }
 
 interface SimulationDetailToolbarProps {
-  currentMode: "normal" | "loading" | "error";
-  onSelectMode: (mode: "normal" | "loading" | "error") => void;
+  currentMode: "normal" | "loading" | "empty" | "error";
+  onSelectMode: (mode: "normal" | "loading" | "empty" | "error") => void;
 }
 
 function SimulationDetailToolbar({
@@ -1133,7 +1133,7 @@ function SimulationDetailToolbar({
   return (
     <div className="flex items-center space-x-1 rounded-md border border-[#2E2E32] bg-[#0A0A0B] p-1 text-[11px]">
       <span className="px-1 text-[#A0A4A8]">State:</span>
-      {(["normal", "loading", "error"] as const).map((mode) => (
+      {(["normal", "loading", "empty", "error"] as const).map((mode) => (
         <button
           key={mode}
           type="button"

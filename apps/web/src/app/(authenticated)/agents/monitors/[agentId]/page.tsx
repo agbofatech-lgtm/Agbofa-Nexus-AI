@@ -732,8 +732,8 @@ export default function MonitorAgentDetailPage({
 }
 
 interface SimulationDetailToolbarProps {
-  currentMode: "normal" | "loading" | "error";
-  onSelectMode: (mode: "normal" | "loading" | "error") => void;
+  currentMode: "normal" | "loading" | "empty" | "error";
+  onSelectMode: (mode: "normal" | "loading" | "empty" | "error") => void;
 }
 
 function SimulationDetailToolbar({
@@ -743,7 +743,7 @@ function SimulationDetailToolbar({
   return (
     <div className="flex items-center space-x-1 rounded-md border border-[#2E2E32] bg-[#0A0A0B] p-1 text-[11px]">
       <span className="px-1 text-[#A0A4A8]">State:</span>
-      {(["normal", "loading", "error"] as const).map((mode) => (
+      {(["normal", "loading", "empty", "error"] as const).map((mode) => (
         <button
           key={mode}
           type="button"

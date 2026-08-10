@@ -4,11 +4,11 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { AuthoritativeBrandIdentity } from "@agbofa/config";
 import { callRpc } from "../../../../../lib/bff/client";
-import { VerificationCard } from "../../components/verification-card";
-import { EvidenceList } from "../../components/evidence-list";
-import { ConfidenceGauge } from "../../components/confidence-gauge";
-import { BiasChart } from "../../components/bias-chart";
-import { MisinformationBadge } from "../../components/misinformation-badge";
+import { VerificationCard } from "../components/verification-card";
+import { EvidenceList } from "../components/evidence-list";
+import { ConfidenceGauge } from "../components/confidence-gauge";
+import { BiasChart } from "../components/bias-chart";
+import { MisinformationBadge } from "../components/misinformation-badge";
 import {
   VerificationAgentItem,
   FactCheckVerdictItem,
@@ -19,7 +19,7 @@ import {
   MisinformationFlagItem,
   ConfidenceScoreItemData,
   VerificationHealthStatus,
-} from "../../types";
+} from "../types";
 
 export interface VerifierDetailPageProps {
   params: {
@@ -80,7 +80,7 @@ function resolveVerifierMetadata(idSlug: string): VerificationAgentItem {
       avgLatencyMs: 140,
       primaryMetricLabel: "Verdicts Today",
       primaryMetricValue: "340 checked (99% accuracy)",
-      lastCheckedAt: new Date().toISOString(),
+      lastHealthCheck: new Date().toISOString(),
     },
     {
       agentId: "AGT-018",
@@ -95,7 +95,7 @@ function resolveVerifierMetadata(idSlug: string): VerificationAgentItem {
       avgLatencyMs: 165,
       primaryMetricLabel: "Corroboration Rate",
       primaryMetricValue: "94% (4.2 src/claim avg)",
-      lastCheckedAt: new Date().toISOString(),
+      lastHealthCheck: new Date().toISOString(),
     },
     {
       agentId: "AGT-019",
@@ -110,7 +110,7 @@ function resolveVerifierMetadata(idSlug: string): VerificationAgentItem {
       avgLatencyMs: 85,
       primaryMetricLabel: "Sources Checked",
       primaryMetricValue: "890 verified (0 fake)",
-      lastCheckedAt: new Date().toISOString(),
+      lastHealthCheck: new Date().toISOString(),
     },
     {
       agentId: "AGT-020",
@@ -125,7 +125,7 @@ function resolveVerifierMetadata(idSlug: string): VerificationAgentItem {
       avgLatencyMs: 95,
       primaryMetricLabel: "Claims Extracted",
       primaryMetricValue: "1,240 claims (82% verifiable)",
-      lastCheckedAt: new Date().toISOString(),
+      lastHealthCheck: new Date().toISOString(),
     },
     {
       agentId: "AGT-021",
@@ -140,7 +140,7 @@ function resolveVerifierMetadata(idSlug: string): VerificationAgentItem {
       avgLatencyMs: 180,
       primaryMetricLabel: "Evidence Items",
       primaryMetricValue: "3,100 items (0.98 rel avg)",
-      lastCheckedAt: new Date().toISOString(),
+      lastHealthCheck: new Date().toISOString(),
     },
     {
       agentId: "AGT-022",
@@ -155,7 +155,7 @@ function resolveVerifierMetadata(idSlug: string): VerificationAgentItem {
       avgLatencyMs: 110,
       primaryMetricLabel: "Analyses Today",
       primaryMetricValue: "840 checked (12 flags)",
-      lastCheckedAt: new Date().toISOString(),
+      lastHealthCheck: new Date().toISOString(),
     },
     {
       agentId: "AGT-023",
@@ -170,7 +170,7 @@ function resolveVerifierMetadata(idSlug: string): VerificationAgentItem {
       avgLatencyMs: 125,
       primaryMetricLabel: "Risk Flags",
       primaryMetricValue: "840 checked (0 critical)",
-      lastCheckedAt: new Date().toISOString(),
+      lastHealthCheck: new Date().toISOString(),
     },
     {
       agentId: "AGT-024",
@@ -185,7 +185,7 @@ function resolveVerifierMetadata(idSlug: string): VerificationAgentItem {
       avgLatencyMs: 90,
       primaryMetricLabel: "Weighted Scores",
       primaryMetricValue: "96.4% avg (88% VERIFIED_TRUTH)",
-      lastCheckedAt: new Date().toISOString(),
+      lastHealthCheck: new Date().toISOString(),
     },
   ];
 
@@ -269,7 +269,7 @@ const SAMPLE_CROSS_REF: CrossReferenceResultData = {
       claimId: "cl-101",
       claimText: "32 specialized agents deployed across news gathering and verification",
       totalSources: 6,
-      independent: 4,
+      independentSources: 4,
       corroborated: true,
       confidence: 0.98,
       sourceRelationships: ["Reuters Wire", "AP News", "AFP Wire", "Bloomberg"],
@@ -278,7 +278,7 @@ const SAMPLE_CROSS_REF: CrossReferenceResultData = {
       claimId: "cl-102",
       claimText: "Autonomous newsroom operates continuously without intervention",
       totalSources: 3,
-      independent: 2,
+      independentSources: 2,
       corroborated: true,
       confidence: 0.92,
       sourceRelationships: ["Agbofa Telemetry", "System Health Ledger"],
@@ -856,7 +856,7 @@ export default function VerificationAgentDetailPage({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#2E2E32]">
-                  {crossRef.sourceMatrix.map((row) => (
+                  {crossRef.sourceMatrix.map((row: any) => (
                     <tr key={row.claimId} className="hover:bg-[#0066CC]/10">
                       <td className="px-3 py-2 font-mono font-bold text-[#3399FF]">
                         {row.claimId}
@@ -1239,8 +1239,8 @@ export default function VerificationAgentDetailPage({
 }
 
 interface SimulationDetailToolbarProps {
-  currentMode: "normal" | "loading" | "error";
-  onSelectMode: (mode: "normal" | "loading" | "error") => void;
+  currentMode: "normal" | "loading" | "empty" | "error";
+  onSelectMode: (mode: "normal" | "loading" | "empty" | "error") => void;
 }
 
 function SimulationDetailToolbar({
@@ -1250,7 +1250,7 @@ function SimulationDetailToolbar({
   return (
     <div className="flex items-center space-x-1 rounded-md border border-[#2E2E32] bg-[#0A0A0B] p-1 text-[11px]">
       <span className="px-1 text-[#A0A4A8]">State:</span>
-      {(["normal", "loading", "error"] as const).map((mode) => (
+      {(["normal", "loading", "empty", "error"] as const).map((mode) => (
         <button
           key={mode}
           type="button"

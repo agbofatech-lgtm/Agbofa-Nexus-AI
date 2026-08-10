@@ -4,11 +4,11 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { AuthoritativeBrandIdentity } from "@agbofa/config";
 import { callRpc } from "../../../../../lib/bff/client";
-import { DetectionFeed } from "../../components/detection-feed";
-import { TrendGraph } from "../../components/trend-graph";
-import { SentimentChart } from "../../components/sentiment-chart";
-import { CredibilityGauge } from "../../components/credibility-gauge";
-import { ViralityMeter } from "../../components/virality-meter";
+import { DetectionFeed } from "../components/detection-feed";
+import { TrendGraph } from "../components/trend-graph";
+import { SentimentChart } from "../components/sentiment-chart";
+import { CredibilityGauge } from "../components/credibility-gauge";
+import { ViralityMeter } from "../components/virality-meter";
 import {
   DetectorAgentItem,
   DetectionResultItem,
@@ -23,7 +23,7 @@ import {
   LanguageDistributionItem,
   DuplicateRatioData,
   DetectorHealthStatus,
-} from "../../types";
+} from "../types";
 
 export interface DetectorDetailPageProps {
   params: {
@@ -80,7 +80,7 @@ function resolveDetectorMetadata(idSlug: string): DetectorAgentItem {
       avgLatencyMs: 110,
       primaryMetricLabel: "C1 Priority Detections",
       primaryMetricValue: "52 breaking alerts",
-      lastCheckedAt: new Date().toISOString(),
+      lastHealthCheck: new Date().toISOString(),
     },
     {
       agentId: "AGT-010",
@@ -94,7 +94,7 @@ function resolveDetectorMetadata(idSlug: string): DetectorAgentItem {
       avgLatencyMs: 135,
       primaryMetricLabel: "Active Trends",
       primaryMetricValue: "64 trends tracking",
-      lastCheckedAt: new Date().toISOString(),
+      lastHealthCheck: new Date().toISOString(),
     },
     {
       agentId: "AGT-011",
@@ -108,7 +108,7 @@ function resolveDetectorMetadata(idSlug: string): DetectorAgentItem {
       avgLatencyMs: 85,
       primaryMetricLabel: "Polarity Breakdown",
       primaryMetricValue: "58% POS · 22% NEG",
-      lastCheckedAt: new Date().toISOString(),
+      lastHealthCheck: new Date().toISOString(),
     },
     {
       agentId: "AGT-012",
@@ -122,7 +122,7 @@ function resolveDetectorMetadata(idSlug: string): DetectorAgentItem {
       avgLatencyMs: 92,
       primaryMetricLabel: "Avg Credibility Score",
       primaryMetricValue: "98% (HIGH tier avg)",
-      lastCheckedAt: new Date().toISOString(),
+      lastHealthCheck: new Date().toISOString(),
     },
     {
       agentId: "AGT-013",
@@ -136,7 +136,7 @@ function resolveDetectorMetadata(idSlug: string): DetectorAgentItem {
       avgLatencyMs: 240,
       primaryMetricLabel: "Media Formats Analyzed",
       primaryMetricValue: "320 img · 110 vid",
-      lastCheckedAt: new Date().toISOString(),
+      lastHealthCheck: new Date().toISOString(),
     },
     {
       agentId: "AGT-014",
@@ -150,7 +150,7 @@ function resolveDetectorMetadata(idSlug: string): DetectorAgentItem {
       avgLatencyMs: 45,
       primaryMetricLabel: "Languages Detected",
       primaryMetricValue: "14 locales active",
-      lastCheckedAt: new Date().toISOString(),
+      lastHealthCheck: new Date().toISOString(),
     },
     {
       agentId: "AGT-015",
@@ -164,7 +164,7 @@ function resolveDetectorMetadata(idSlug: string): DetectorAgentItem {
       avgLatencyMs: 78,
       primaryMetricLabel: "Duplicates Found",
       primaryMetricValue: "340 dupes skipped",
-      lastCheckedAt: new Date().toISOString(),
+      lastHealthCheck: new Date().toISOString(),
     },
     {
       agentId: "AGT-016",
@@ -178,7 +178,7 @@ function resolveDetectorMetadata(idSlug: string): DetectorAgentItem {
       avgLatencyMs: 165,
       primaryMetricLabel: "Viral Predictions",
       primaryMetricValue: "142 VIRAL (>0.80)",
-      lastCheckedAt: new Date().toISOString(),
+      lastHealthCheck: new Date().toISOString(),
     },
   ];
 
@@ -890,8 +890,8 @@ export default function DetectorAgentDetailPage({
 }
 
 interface SimulationDetailToolbarProps {
-  currentMode: "normal" | "loading" | "error";
-  onSelectMode: (mode: "normal" | "loading" | "error") => void;
+  currentMode: "normal" | "loading" | "empty" | "error";
+  onSelectMode: (mode: "normal" | "loading" | "empty" | "error") => void;
 }
 
 function SimulationDetailToolbar({
@@ -901,7 +901,7 @@ function SimulationDetailToolbar({
   return (
     <div className="flex items-center space-x-1 rounded-md border border-[#2E2E32] bg-[#0A0A0B] p-1 text-[11px]">
       <span className="px-1 text-[#A0A4A8]">State:</span>
-      {(["normal", "loading", "error"] as const).map((mode) => (
+      {(["normal", "loading", "empty", "error"] as const).map((mode) => (
         <button
           key={mode}
           type="button"

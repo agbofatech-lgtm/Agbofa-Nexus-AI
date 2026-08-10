@@ -239,7 +239,7 @@ export default function TruthVerificationPage(): React.JSX.Element {
               {
                 evidenceId: `ev-${Date.now()}`,
                 claimId,
-                type: "SUPPORTING",
+                type: "SUPPORTING" as const,
                 description:
                   "Supplementary fact-check evidence retrieved by AGT-019 Source Credibility Assessor.",
                 source: "Cross-Media Registry (AGT-013-CROSS)",

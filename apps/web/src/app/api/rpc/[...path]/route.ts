@@ -1,12 +1,6 @@
 /**
  * Agbofa Nexus AI — Next.js Server-Side BFF API Route Handlers (P0 Batch 2)
  * Proxies HTTP JSON requests from browser to Go gRPC microservices on port 9090.
- *
- * MANDATORY CONTROLS ENFORCED:
- * 1. Allowlist-first: Rejects unauthorized RPCs with HTTP 404 before acquiring gRPC connection.
- * 2. Authentication: Validates access token and passes claims/headers to Go backend.
- * 3. Error Normalization: Maps gRPC/backend failures to 401, 403, 404, 400/422, 429, 5xx.
- * 4. RLS Tenant Gap Documented: SET LOCAL app.current_tenant remains a backend blocker.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -15,77 +9,11 @@ import {
   ACCESS_TOKEN_COOKIE_NAME,
   RLS_TENANT_ISOLATION_GAP_WARNING,
 } from "../../../../lib/auth/session";
-
-// Authoritative P0 RPC Allowlist Matrix (Gate H)
-export const P0_RPC_ALLOWLIST = new Set<string>([
-  // TenantIdentityService
-  "foundation.v1.TenantIdentityService/AuthenticateUser",
-  "TenantIdentityService/AuthenticateUser",
-  "foundation.v1.TenantIdentityService/ValidateToken",
-  "TenantIdentityService/ValidateToken",
-  "foundation.v1.TenantIdentityService/GetTenant",
-  "TenantIdentityService/GetTenant",
-  "foundation.v1.TenantIdentityService/RefreshToken",
-  "TenantIdentityService/RefreshToken",
-  // AuthorizationService
-  "foundation.v1.AuthorizationService/CheckPermission",
-  "AuthorizationService/CheckPermission",
-  // AIGatewayService
-  "runtime.v1.AIGatewayService/InvokeModel",
-  "AIGatewayService/InvokeModel",
-  // ContentOriginationService
-  "content_origination.v1.ContentOriginationService/CreateOriginationStory",
-  "ContentOriginationService/CreateOriginationStory",
-  "content_origination.v1.ContentOriginationService/UpdateStoryState",
-  "ContentOriginationService/UpdateStoryState",
-  "content_origination.v1.ContentOriginationService/ListSources",
-  "ContentOriginationService/ListSources",
-  // IngestionService
-  "content_origination.v1.IngestionService/IngestSource",
-  "IngestionService/IngestSource",
-  "content_origination.v1.IngestionService/GetIngestJob",
-  "IngestionService/GetIngestJob",
-  "content_origination.v1.IngestionService/ListSources",
-  "IngestionService/ListSources",
-  // ContentFactoryService
-  "content_factory.v1.ContentFactoryService/CreatePackage",
-  "ContentFactoryService/CreatePackage",
-  "content_factory.v1.ContentFactoryService/GetPackage",
-  "ContentFactoryService/GetPackage",
-  "content_factory.v1.ContentFactoryService/ListPackages",
-  "ContentFactoryService/ListPackages",
-  "content_factory.v1.ContentFactoryService/SubmitForReview",
-  "ContentFactoryService/SubmitForReview",
-  "content_factory.v1.ContentFactoryService/ReviewPackage",
-  "ContentFactoryService/ReviewPackage",
-]);
-
-export function isRpcAllowed(serviceName: string, methodName: string): boolean {
-  const full = `${serviceName}/${methodName}`;
-  return P0_RPC_ALLOWLIST.has(full) || P0_RPC_ALLOWLIST.has(`${serviceName.split(".").pop()}/${methodName}`);
-}
-
-export function buildNormalizedError(
-  status: number,
-  code: string,
-  message: string,
-  correlationId: string,
-): NextResponse {
-  return NextResponse.json(
-    {
-      status: "ERROR",
-      error: {
-        code,
-        status,
-        message,
-        correlationId,
-      },
-      timestamp: new Date().toISOString(),
-      _rlsNote: RLS_TENANT_ISOLATION_GAP_WARNING,
-    },
-    { status },
-  );
-}
+import {
+  P0_RPC_ALLOWLIST,
+  isRpcAllowed,
+  buildNormalizedError,
+} from "../../../../lib/rpc-config";
 
 export async function POST(
   request: NextRequest,
