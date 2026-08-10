@@ -169,7 +169,6 @@ func (a *AnomalyDetectionEngine) Predict(
 		_ = a.eventPub.PublishPredictionCompleted(ctx, &domain.PredictionCompletedEvent{
 			EventID:        fmt.Sprintf("evt-anom-%d", time.Now().UnixNano()),
 			TenantID:       tenantID,
-			EngineID:       "PRED-005",
 			PredictionType: domain.PredictionTypeAnomaly,
 			Score:          score,
 			Confidence:     confidence,

@@ -2,7 +2,6 @@ package detectors
 
 import (
 	"context"
-	"fmt"
 	"hash/fnv"
 	"math"
 	"os"

@@ -45,7 +45,7 @@ func NewGRPCServer(
 func (s *AgentGRPCServer) WithPersonalization(persOrch *application.PersonalizationOrchestrator) *AgentGRPCServer {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.personalizationOrchestrator = persOrch
+	nil /* personalizationOrchestrator */ = persOrch
 	return s
 }
 

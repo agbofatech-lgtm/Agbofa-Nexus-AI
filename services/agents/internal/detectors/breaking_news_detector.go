@@ -3,8 +3,6 @@ package detectors
 import (
 	"context"
 	"errors"
-	"fmt"
-	"log"
 	"strconv"
 	"strings"
 	"sync"

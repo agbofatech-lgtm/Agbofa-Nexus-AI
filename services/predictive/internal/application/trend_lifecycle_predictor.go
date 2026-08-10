@@ -1,6 +1,7 @@
 package application
 
 import (
+	"strconv"
 	"context"
 	"fmt"
 	"sync"
@@ -152,7 +153,6 @@ func (t *TrendLifecyclePredictionEngine) Predict(
 		_ = t.eventPub.PublishPredictionCompleted(ctx, &domain.PredictionCompletedEvent{
 			EventID:        fmt.Sprintf("evt-trend-%d", time.Now().UnixNano()),
 			TenantID:       tenantID,
-			EngineID:       "PRED-004",
 			PredictionType: domain.PredictionTypeTrendLifecycle,
 			Score:          lifecycleConf,
 			Confidence:     patternMatchConf,

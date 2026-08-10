@@ -150,7 +150,6 @@ func (m *SocialMediaMonitor) Fetch(ctx context.Context, opts domain.FetchOptions
 			URL:         "https://twitter.com/agbofa/status/1001",
 			Author:      "@agbofa_news",
 			Content:     "Breaking: Agbofa Nexus AI deploys 32 autonomous newsroom agents across global social media feeds.",
-			Language:    "en-US",
 			PublishedAt: time.Now(),
 			Metadata: map[string]string{
 				"platform": "TWITTER",
@@ -167,7 +166,6 @@ func (m *SocialMediaMonitor) Fetch(ctx context.Context, opts domain.FetchOptions
 				URL:      doc.URL,
 				Author:   doc.Author,
 				Content:  doc.Content,
-				Language: doc.Language,
 			}
 			summary, _, errAI := m.aiGateway.SummarizeSignal(ctx, opts.TenantID, m.ID(), sig)
 			if errAI == nil && summary != "" {
@@ -198,8 +196,6 @@ func (m *SocialMediaMonitor) Fetch(ctx context.Context, opts domain.FetchOptions
 				URL:       docs[0].URL,
 				Author:    docs[0].Author,
 				Content:   docs[0].Content,
-				Language:  docs[0].Language,
-				CreatedAt: time.Now(),
 			},
 			OccurredAt: time.Now(),
 		}

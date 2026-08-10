@@ -1,6 +1,7 @@
 package application
 
 import (
+	"strings"
 	"context"
 	"fmt"
 	"sort"
@@ -180,7 +181,6 @@ func (p *PublishingTimePredictionEngine) Predict(
 		_ = p.eventPub.PublishPredictionCompleted(ctx, &domain.PredictionCompletedEvent{
 			EventID:        fmt.Sprintf("evt-pubtime-%d", time.Now().UnixNano()),
 			TenantID:       tenantID,
-			EngineID:       "PRED-006",
 			PredictionType: domain.PredictionTypePublishingTime,
 			Score:          expectedEng,
 			Confidence:     0.89,

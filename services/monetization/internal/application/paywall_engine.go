@@ -1,6 +1,7 @@
 package application
 
 import (
+	"errors"
 	"context"
 	"fmt"
 	"strings"

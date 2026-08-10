@@ -127,7 +127,6 @@ func (o *ContentPerformanceOptimizer) Predict(
 		_ = o.eventPub.PublishPredictionCompleted(ctx, &domain.PredictionCompletedEvent{
 			EventID:        fmt.Sprintf("evt-opt-%d", time.Now().UnixNano()),
 			TenantID:       tenantID,
-			EngineID:       "PRED-003",
 			PredictionType: domain.PredictionTypeContentOptimization,
 			Score:          expectedLift,
 			Confidence:     0.88,

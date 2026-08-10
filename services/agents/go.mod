@@ -13,3 +13,7 @@ require (
 	google.golang.org/grpc v1.62.0
 	google.golang.org/protobuf v1.33.0
 )
+
+replace github.com/agbofa/nexus/libs/go => ../../libs/go
+replace github.com/agbofa/nexus/services/foundation => ../foundation
+replace github.com/agbofa/nexus/services/runtime => ../runtime

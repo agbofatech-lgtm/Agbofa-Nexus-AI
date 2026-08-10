@@ -192,7 +192,7 @@ func (d *DuplicateChecker) Detect(ctx context.Context, signal *domain.MonitorSig
 				similarity = sim
 				matchedID = id
 				originalSource = storedSig.Author
-				if signal.Language != "" && storedSig.Language != "" && signal.Language != storedSig.Language {
+				if "" != "" && "" != "" && "" != "" {
 					status = "TRANSLATED"
 				} else {
 					status = "DERIVATIVE"

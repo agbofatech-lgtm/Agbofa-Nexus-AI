@@ -147,7 +147,6 @@ func (f *AudienceEngagementForecaster) Predict(
 		_ = f.eventPub.PublishPredictionCompleted(ctx, &domain.PredictionCompletedEvent{
 			EventID:        fmt.Sprintf("evt-eng-%d", time.Now().UnixNano()),
 			TenantID:       tenantID,
-			EngineID:       "PRED-002",
 			PredictionType: domain.PredictionTypeEngagement,
 			Score:          rate,
 			Confidence:     confidence,

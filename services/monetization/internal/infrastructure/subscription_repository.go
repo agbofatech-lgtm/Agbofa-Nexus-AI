@@ -9,7 +9,6 @@ import (
 	"log"
 	"os"
 	"sync"
-	"time"
 
 	"github.com/agbofa/nexus/services/monetization/internal/application"
 	"github.com/agbofa/nexus/services/monetization/internal/domain"

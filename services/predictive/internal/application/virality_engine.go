@@ -159,7 +159,6 @@ func (e *ViralityPredictionEngine) Predict(
 		_ = e.eventPub.PublishPredictionCompleted(ctx, &domain.PredictionCompletedEvent{
 			EventID:        fmt.Sprintf("evt-vir-%d", time.Now().UnixNano()),
 			TenantID:       tenantID,
-			EngineID:       "PRED-001",
 			PredictionType: domain.PredictionTypeVirality,
 			Score:          score,
 			Confidence:     confidence,

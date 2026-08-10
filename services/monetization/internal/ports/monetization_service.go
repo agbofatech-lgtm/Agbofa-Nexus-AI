@@ -94,12 +94,12 @@ type RecordImpressionResponse struct {
 	Impression *domain.AdImpression `json:"impression"`
 }
 
-type RecordClickRequest {
+type RecordClickRequest struct {
 	TenantID     string `json:"tenant_id"`
 	ImpressionID string `json:"impression_id"`
 }
 
-type RecordClickResponse {
+type RecordClickResponse struct {
 	Impression *domain.AdImpression `json:"impression"`
 }
 
