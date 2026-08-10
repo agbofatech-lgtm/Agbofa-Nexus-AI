@@ -177,6 +177,12 @@ export default function AgentFleetOverviewPage(): React.JSX.Element {
     } else if (agent.squad === "DETECTORS") {
       const idLower = agent.agentId.toLowerCase();
       router.push(`/agents/detectors/${idLower}`);
+    } else if (agent.squad === "VERIFICATION") {
+      const idLower = agent.agentId.toLowerCase();
+      router.push(`/agents/verification/${idLower}`);
+    } else if (agent.squad === "PIPELINE") {
+      const idLower = agent.agentId.toLowerCase();
+      router.push(`/agents/pipeline/${idLower}`);
     } else {
       alert(
         `Agent ${agent.agentId} (${agent.name}): Squad ${agent.squad} detail view is scheduled for downstream authorization.`,
@@ -409,7 +415,7 @@ export default function AgentFleetOverviewPage(): React.JSX.Element {
         </div>
 
         <div
-          onClick={() => alert("Verification squad detail view scheduled for downstream authorization.")}
+          onClick={() => router.push("/agents/verification")}
           className="group cursor-pointer rounded-lg border border-[#0D9040]/30 bg-[#0D9040]/10 p-4 transition-all hover:border-[#0D9040] hover:shadow"
         >
           <div className="flex items-center justify-between">
@@ -424,13 +430,13 @@ export default function AgentFleetOverviewPage(): React.JSX.Element {
           <div className="mt-3 flex items-baseline justify-between text-xs">
             <span className="font-bold text-[#0D9040]">8 / 8 Healthy</span>
             <span className="text-[11px] font-semibold text-[#0D9040]">
-              Downstream
+              Inspect Squad →
             </span>
           </div>
         </div>
 
         <div
-          onClick={() => alert("Pipeline squad detail view scheduled for downstream authorization.")}
+          onClick={() => router.push("/agents/pipeline")}
           className="group cursor-pointer rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 transition-all hover:border-amber-400 hover:shadow"
         >
           <div className="flex items-center justify-between">
@@ -445,7 +451,7 @@ export default function AgentFleetOverviewPage(): React.JSX.Element {
           <div className="mt-3 flex items-baseline justify-between text-xs">
             <span className="font-bold text-[#0D9040]">8 / 8 Healthy</span>
             <span className="text-[11px] font-semibold text-amber-400">
-              Downstream
+              Inspect Squad →
             </span>
           </div>
         </div>
