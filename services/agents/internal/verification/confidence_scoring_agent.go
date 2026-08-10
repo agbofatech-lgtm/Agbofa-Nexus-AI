@@ -23,28 +23,44 @@ import (
 //   redistribution, produces a transparent scoring breakdown, acts as the final authoritative arbiter,
 //   and classifies claims into VERIFIED_TRUTH (>=0.85), PROVISIONAL (0.60-0.84), or DOUBTFUL (<0.60).
 type ConfidenceScoringAgent struct {
-	mu          sync.RWMutex
-	tenantID    string
-	config      map[string]string
-	initialized bool
-	aiGateway   application.AIGatewayClient
-	agt17       *FactCheckAgent
-	agt18       *CrossReferenceAgent
-	agt19       *SourceVerificationAgent
-	agt21       *EvidenceCollectionAgent
-	agt22       *BiasDetectionAgent
+	mu            sync.RWMutex
+	tenantID      string
+	config        map[string]string
+	initialized   bool
+	aiGateway     application.AIGatewayClient
+	domainWeights map[string]float64
+	agt17         *FactCheckAgent
+	agt18         *CrossReferenceAgent
+	agt19         *SourceVerificationAgent
+	agt21         *EvidenceCollectionAgent
+	agt22         *BiasDetectionAgent
+}
+
+// NewConfidenceScoringAgent initializes a new ConfidenceScoringAgent (AGT-024) for a tenant.
+func NewConfidenceScoringAgent(tenantID string, aiGateway application.AIGatewayClient) *ConfidenceScoringAgent {
+	return &ConfidenceScoringAgent{
+		tenantID:  tenantID,
+		aiGateway: aiGateway,
+		domainWeights: map[string]float64{
+			"AGT-017": 1.25, // Fact-Checking Agent
+			"AGT-018": 1.15, // Cross-Reference Verification
+			"AGT-019": 1.10, // Source Verification
+			"AGT-020": 1.05, // Claim Extraction
+			"AGT-021": 1.20, // Evidence Collection
+			"AGT-022": 1.10, // Bias Detection
+			"AGT-023": 1.30, // Misinformation Flagging
+		},
+		agt17: NewFactCheckAgent(aiGateway),
+		agt18: NewCrossRefAgent(),
+		agt19: NewSourceVerifier(aiGateway),
+		agt21: NewEvidenceCollector(aiGateway),
+		agt22: NewBiasDetector(aiGateway),
+	}
 }
 
 // NewConfidenceScorer initializes a new ConfidenceScoringAgent (AGT-024).
 func NewConfidenceScorer(aiGateway application.AIGatewayClient) *ConfidenceScoringAgent {
-	return &ConfidenceScoringAgent{
-		aiGateway: aiGateway,
-		agt17:     NewFactCheckAgent(aiGateway),
-		agt18:     NewCrossRefAgent(),
-		agt19:     NewSourceVerifier(aiGateway),
-		agt21:     NewEvidenceCollector(aiGateway),
-		agt22:     NewBiasDetector(aiGateway),
-	}
+	return NewConfidenceScoringAgent("", aiGateway)
 }
 
 func (c *ConfidenceScoringAgent) ID() string       { return "AGT-024" }

@@ -205,13 +205,22 @@ func (s *DistributionScheduler) Operate(ctx context.Context, payload *domain.Pip
 
 	if s.eventBus != nil {
 		_ = s.eventBus.PublishPipelineExecution(ctx, &domain.PipelineExecutionEvent{
-			EventID:      fmt.Sprintf("evt-dist-%s", payload.PayloadID),
-			TenantID:     payload.TenantID,
-			ExecutionID:  res.ResultID,
-			AgentID:      s.ID(),
-			PipelineName: targetPipeline,
-			Status:       "DistributionScheduledEvent",
-			Metadata:     res.Metadata,
+			EventID:     fmt.Sprintf("evt-dist-%s", payload.PayloadID),
+			TenantID:    payload.TenantID,
+			ExecutionID: res.ResultID,
+			AgentID:     s.ID(),
+			Stage:       domain.PipelineStageDistribution,
+			Result: domain.PipelineResult{
+				ExecutionID:    res.ResultID,
+				TenantID:       payload.TenantID,
+				AgentID:        s.ID(),
+				Stage:          domain.PipelineStageDistribution,
+				Status:         domain.PipelineStatusSuccess,
+				TargetPipeline: targetPipeline,
+				Metadata:       res.Metadata,
+				ExecutedAt:     time.Now(),
+			},
+			OccurredAt: time.Now(),
 		})
 	}
 

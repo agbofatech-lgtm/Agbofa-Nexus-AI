@@ -71,7 +71,7 @@ func TestContentVerificationAgentVerifySuccess(t *testing.T) {
 	if res.ConfidenceScore != 0.96 || res.Status != domain.VerificationStatusVerified {
 		t.Fatalf("unexpected verification result: %v", res)
 	}
-	if verifier.Confidence() != 0.96 || verifier.Status() != domain.VerificationStatusVerified {
+	if verifier.Confidence() != 0.96 || verifier.VerificationStatus() != domain.VerificationStatusVerified {
 		t.Fatalf("confidence or status getter mismatch")
 	}
 	// Verify SHA-256 evidence chain hash
@@ -138,8 +138,8 @@ func TestContentVerificationAgentAIGatewayError(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected error from verify when ai gateway fails")
 	}
-	if verifier.Status() != domain.VerificationStatusError {
-		t.Fatalf("expected ERROR verification status after failure, got %s", verifier.Status())
+	if verifier.VerificationStatus() != domain.VerificationStatusError {
+		t.Fatalf("expected ERROR verification status after failure, got %s", verifier.VerificationStatus())
 	}
 }
 

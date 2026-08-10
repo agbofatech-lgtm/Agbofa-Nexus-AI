@@ -200,10 +200,6 @@ func (d *ContentDetectorAgent) Execute(ctx context.Context, executionContext map
 }
 
 // Concrete constructors for AGT-009 through AGT-016
-func NewBreakingNewsDetector(tenantID string, aiGateway application.AIGatewayClient) *ContentDetectorAgent {
-	return NewContentDetectorAgent("AGT-009", "Breaking News Detector", tenantID, "BREAKING_NEWS", aiGateway, nil, nil)
-}
-
 func NewTrendIdentificationDetector(tenantID string, aiGateway application.AIGatewayClient) *ContentDetectorAgent {
 	return NewContentDetectorAgent("AGT-010", "Trend Identification", tenantID, "VIRAL_TREND", aiGateway, nil, nil)
 }
@@ -236,7 +232,7 @@ func CreateAllDetectors(tenantID string, aiGateway application.AIGatewayClient) 
 	simIndex := NewSimilarityIndex()
 	m := make(map[string]*ContentDetectorAgent, 8)
 	detectors := []*ContentDetectorAgent{
-		NewBreakingNewsDetector(tenantID, aiGateway),
+		NewContentDetectorAgent("AGT-009", "Breaking News Detector", tenantID, "BREAKING_NEWS", aiGateway, nil, nil),
 		NewTrendIdentificationDetector(tenantID, aiGateway),
 		NewSentimentAnalysisDetector(tenantID, aiGateway),
 		NewSourceCredibilityDetector(tenantID, aiGateway, nil),

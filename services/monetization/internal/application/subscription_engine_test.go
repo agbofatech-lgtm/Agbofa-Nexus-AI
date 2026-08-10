@@ -200,6 +200,7 @@ func setupSubscriptionEngine() (*SubscriptionEngine, *mockSubscriptionRepository
 		validReaders: map[string]bool{
 			"tenant-A:reader-1": true,
 			"tenant-A:reader-2": true,
+			"tenant-A:reader-3": true,
 			"tenant-B:reader-1": true,
 		},
 	}

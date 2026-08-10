@@ -54,8 +54,14 @@ func TestAnomalyDetectorPredictTypesAndSuppression(t *testing.T) {
 		"baseline_value": 0.0,
 		"current_value":  50.0,
 	}
-	_ = detector.Predict(ctx, "tenant-XYZ", domain.PredictionTypeAnomaly, featuresEmerg)
-	resEmerg, _ := detector.Predict(ctx, "tenant-XYZ", domain.PredictionTypeAnomaly, featuresEmerg)
+	_, err = detector.Predict(ctx, "tenant-XYZ", domain.PredictionTypeAnomaly, featuresEmerg)
+	if err != nil {
+		t.Fatalf("unexpected error on predict emerg 1: %v", err)
+	}
+	resEmerg, err := detector.Predict(ctx, "tenant-XYZ", domain.PredictionTypeAnomaly, featuresEmerg)
+	if err != nil {
+		t.Fatalf("unexpected error on predict emerg 2: %v", err)
+	}
 	if resEmerg.Outputs["anomaly_type"] != string(domain.AnomalyTypeEmergence) || resEmerg.Outputs["is_anomaly"] != true {
 		t.Fatalf("expected EMERGENCE and is_anomaly=true on second emergence observation")
 	}

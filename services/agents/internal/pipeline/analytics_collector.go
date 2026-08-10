@@ -222,29 +222,47 @@ func (a *AnalyticsCollector) Operate(ctx context.Context, payload *domain.Pipeli
 
 	if a.eventBus != nil {
 		_ = a.eventBus.PublishPipelineExecution(ctx, &domain.PipelineExecutionEvent{
-			EventID:      fmt.Sprintf("evt-ana-%s", payload.PayloadID),
-			TenantID:     payload.TenantID,
-			ExecutionID:  res.ResultID,
-			AgentID:      a.ID(),
-			PipelineName: targetPipeline,
-			Status:       "AnalyticsCollectedEvent",
-			Metadata:     res.Metadata,
+			EventID:     fmt.Sprintf("evt-ana-%s", payload.PayloadID),
+			TenantID:    payload.TenantID,
+			ExecutionID: res.ResultID,
+			AgentID:     a.ID(),
+			Stage:       domain.PipelineStageAnalytics,
+			Result: domain.PipelineResult{
+				ExecutionID:    res.ResultID,
+				TenantID:       payload.TenantID,
+				AgentID:        a.ID(),
+				Stage:          domain.PipelineStageAnalytics,
+				Status:         domain.PipelineStatusSuccess,
+				TargetPipeline: targetPipeline,
+				Metadata:       res.Metadata,
+				ExecutedAt:     time.Now(),
+			},
+			OccurredAt: time.Now(),
 		})
 		if anomaly {
 			_ = a.eventBus.PublishPipelineExecution(ctx, &domain.PipelineExecutionEvent{
-				EventID:      fmt.Sprintf("evt-anom-%s", payload.PayloadID),
-				TenantID:     payload.TenantID,
-				ExecutionID:  res.ResultID,
-				AgentID:      a.ID(),
-				PipelineName: targetPipeline,
-				Status:       "EngagementAnomalyEvent",
-				Metadata: map[string]string{
-					"content_id":     payload.PayloadID,
-					"metric":         "engagement_rate",
-					"expected_value": "0.0500",
-					"actual_value":   fmt.Sprintf("%.4f", engagementRate),
-					"deviation":      "+300%",
+				EventID:     fmt.Sprintf("evt-anom-%s", payload.PayloadID),
+				TenantID:    payload.TenantID,
+				ExecutionID: res.ResultID,
+				AgentID:     a.ID(),
+				Stage:       domain.PipelineStageAnalytics,
+				Result: domain.PipelineResult{
+					ExecutionID:    res.ResultID,
+					TenantID:       payload.TenantID,
+					AgentID:        a.ID(),
+					Stage:          domain.PipelineStageAnalytics,
+					Status:         domain.PipelineStatusSuccess,
+					TargetPipeline: targetPipeline,
+					Metadata: map[string]string{
+						"content_id":     payload.PayloadID,
+						"metric":         "engagement_rate",
+						"expected_value": "0.0500",
+						"actual_value":   fmt.Sprintf("%.4f", engagementRate),
+						"deviation":      "+300%",
+					},
+					ExecutedAt: time.Now(),
 				},
+				OccurredAt: time.Now(),
 			})
 		}
 	}

@@ -211,29 +211,47 @@ func (o *OperationsMonitor) Operate(ctx context.Context, payload *domain.Pipelin
 	if o.eventBus != nil {
 		if alertSeverity != "NONE" {
 			_ = o.eventBus.PublishPipelineExecution(ctx, &domain.PipelineExecutionEvent{
-				EventID:      fmt.Sprintf("evt-ops-alert-%s", payload.PayloadID),
-				TenantID:     payload.TenantID,
-				ExecutionID:  res.ResultID,
-				AgentID:      o.ID(),
-				PipelineName: targetPipeline,
-				Status:       "OperationsAlertEvent",
-				Metadata:     res.Metadata,
+				EventID:     fmt.Sprintf("evt-ops-alert-%s", payload.PayloadID),
+				TenantID:    payload.TenantID,
+				ExecutionID: res.ResultID,
+				AgentID:     o.ID(),
+				Stage:       domain.PipelineStageOperations,
+				Result: domain.PipelineResult{
+					ExecutionID:    res.ResultID,
+					TenantID:       payload.TenantID,
+					AgentID:        o.ID(),
+					Stage:          domain.PipelineStageOperations,
+					Status:         domain.PipelineStatusSuccess,
+					TargetPipeline: targetPipeline,
+					Metadata:       res.Metadata,
+					ExecutedAt:     time.Now(),
+				},
+				OccurredAt: time.Now(),
 			})
 		}
 		if bottleneck != "NONE" {
 			_ = o.eventBus.PublishPipelineExecution(ctx, &domain.PipelineExecutionEvent{
-				EventID:      fmt.Sprintf("evt-ops-neck-%s", payload.PayloadID),
-				TenantID:     payload.TenantID,
-				ExecutionID:  res.ResultID,
-				AgentID:      o.ID(),
-				PipelineName: targetPipeline,
-				Status:       "BottleneckDetectedEvent",
-				Metadata: map[string]string{
-					"pipeline_stage":   bottleneck,
-					"queue_depth":      "450 items",
-					"processing_rate":  "15 items/sec",
-					"recommendation":   "Scale horizontal worker pool for stage " + bottleneck,
+				EventID:     fmt.Sprintf("evt-ops-neck-%s", payload.PayloadID),
+				TenantID:    payload.TenantID,
+				ExecutionID: res.ResultID,
+				AgentID:     o.ID(),
+				Stage:       domain.PipelineStageOperations,
+				Result: domain.PipelineResult{
+					ExecutionID:    res.ResultID,
+					TenantID:       payload.TenantID,
+					AgentID:        o.ID(),
+					Stage:          domain.PipelineStageOperations,
+					Status:         domain.PipelineStatusSuccess,
+					TargetPipeline: targetPipeline,
+					Metadata: map[string]string{
+						"pipeline_stage":  bottleneck,
+						"queue_depth":     "450 items",
+						"processing_rate": "15 items/sec",
+						"recommendation":  "Scale horizontal worker pool for stage " + bottleneck,
+					},
+					ExecutedAt: time.Now(),
 				},
+				OccurredAt: time.Now(),
 			})
 		}
 	}

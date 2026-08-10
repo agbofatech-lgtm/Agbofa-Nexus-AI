@@ -46,7 +46,10 @@ func TestPublishingTimePredictorPredictAndOverrides(t *testing.T) {
 		"platform": "TWITTER",
 		"priority": "BREAKING",
 	}
-	resBreaking, _ := predictor.Predict(ctx, "tenant-XYZ", domain.PredictionTypePublishingTime, featuresBreaking)
+	resBreaking, err := predictor.Predict(ctx, "tenant-XYZ", domain.PredictionTypePublishingTime, featuresBreaking)
+	if err != nil {
+		t.Fatalf("unexpected error on predict breaking: %v", err)
+	}
 	if resBreaking.Outputs["breaking_news_override"] != true {
 		t.Fatalf("expected breaking_news_override = true for breaking priority")
 	}
@@ -57,7 +60,10 @@ func TestPublishingTimePredictorPredictAndOverrides(t *testing.T) {
 		"platform":     "TWITTER",
 		"embargo_time": embargoTime.Format(time.RFC3339),
 	}
-	resEmbargo, _ := predictor.Predict(ctx, "tenant-XYZ", domain.PredictionTypePublishingTime, featuresEmbargo)
+	resEmbargo, err := predictor.Predict(ctx, "tenant-XYZ", domain.PredictionTypePublishingTime, featuresEmbargo)
+	if err != nil {
+		t.Fatalf("unexpected error on predict embargo: %v", err)
+	}
 	if optStr, ok := resEmbargo.Outputs["optimal_time_utc"].(string); ok {
 		if optTime, err := time.Parse(time.RFC3339, optStr); err == nil {
 			if optTime.Before(embargoTime) {

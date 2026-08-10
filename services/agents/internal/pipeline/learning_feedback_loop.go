@@ -237,33 +237,60 @@ func (l *LearningFeedbackLoop) Operate(ctx context.Context, payload *domain.Pipe
 		switch targetPipeline {
 		case "CREDIBILITY_UPDATE":
 			_ = l.eventBus.PublishPipelineExecution(ctx, &domain.PipelineExecutionEvent{
-				EventID:      fmt.Sprintf("evt-cred-%s", sourceID),
-				TenantID:     payload.TenantID,
-				ExecutionID:  res.ResultID,
-				AgentID:      l.ID(),
-				PipelineName: targetPipeline,
-				Status:       "CredibilityUpdatedEvent",
-				Metadata:     res.Metadata,
+				EventID:     fmt.Sprintf("evt-cred-%s", sourceID),
+				TenantID:    payload.TenantID,
+				ExecutionID: res.ResultID,
+				AgentID:     l.ID(),
+				Stage:       domain.PipelineStageFeedback,
+				Result: domain.PipelineResult{
+					ExecutionID:    res.ResultID,
+					TenantID:       payload.TenantID,
+					AgentID:        l.ID(),
+					Stage:          domain.PipelineStageFeedback,
+					Status:         domain.PipelineStatusSuccess,
+					TargetPipeline: targetPipeline,
+					Metadata:       res.Metadata,
+					ExecutedAt:     time.Now(),
+				},
+				OccurredAt: time.Now(),
 			})
 		case "MODEL_UPDATE":
 			_ = l.eventBus.PublishPipelineExecution(ctx, &domain.PipelineExecutionEvent{
-				EventID:      fmt.Sprintf("evt-drift-%s", payload.PayloadID),
-				TenantID:     payload.TenantID,
-				ExecutionID:  res.ResultID,
-				AgentID:      l.ID(),
-				PipelineName: targetPipeline,
-				Status:       "ModelDriftDetectedEvent",
-				Metadata:     res.Metadata,
+				EventID:     fmt.Sprintf("evt-drift-%s", payload.PayloadID),
+				TenantID:    payload.TenantID,
+				ExecutionID: res.ResultID,
+				AgentID:     l.ID(),
+				Stage:       domain.PipelineStageFeedback,
+				Result: domain.PipelineResult{
+					ExecutionID:    res.ResultID,
+					TenantID:       payload.TenantID,
+					AgentID:        l.ID(),
+					Stage:          domain.PipelineStageFeedback,
+					Status:         domain.PipelineStatusSuccess,
+					TargetPipeline: targetPipeline,
+					Metadata:       res.Metadata,
+					ExecutedAt:     time.Now(),
+				},
+				OccurredAt: time.Now(),
 			})
 		default:
 			_ = l.eventBus.PublishPipelineExecution(ctx, &domain.PipelineExecutionEvent{
-				EventID:      fmt.Sprintf("evt-learn-%s", payload.PayloadID),
-				TenantID:     payload.TenantID,
-				ExecutionID:  res.ResultID,
-				AgentID:      l.ID(),
-				PipelineName: targetPipeline,
-				Status:       "LearningFeedbackGeneratedEvent",
-				Metadata:     res.Metadata,
+				EventID:     fmt.Sprintf("evt-learn-%s", payload.PayloadID),
+				TenantID:    payload.TenantID,
+				ExecutionID: res.ResultID,
+				AgentID:     l.ID(),
+				Stage:       domain.PipelineStageFeedback,
+				Result: domain.PipelineResult{
+					ExecutionID:    res.ResultID,
+					TenantID:       payload.TenantID,
+					AgentID:        l.ID(),
+					Stage:          domain.PipelineStageFeedback,
+					Status:         domain.PipelineStatusSuccess,
+					TargetPipeline: targetPipeline,
+					Metadata:       res.Metadata,
+					ExecutedAt:     time.Now(),
+				},
+				OccurredAt: time.Now(),
 			})
 		}
 	}

@@ -24,7 +24,6 @@ func TestPostgresSubscriptionRepository_CRUDAndTenantIsolation(t *testing.T) {
 		Price:           29.99,
 		Currency:        "USD",
 		BillingInterval: domain.BillingIntervalMonthly,
-		IsActive:        true,
 	}
 	if err := repo.SavePlan(ctx, tenantA, plan); err != nil {
 		t.Fatalf("unexpected SavePlan error: %v", err)

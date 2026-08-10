@@ -121,5 +121,5 @@ type VerificationAgent interface {
 	Verify(ctx context.Context, detection DetectionResult) (*VerificationResult, error)
 	Confidence() float64
 	Evidence() []EvidenceItem
-	Status() VerificationStatus
+	VerificationStatus() VerificationStatus
 }

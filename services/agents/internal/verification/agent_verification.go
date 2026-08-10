@@ -155,7 +155,7 @@ func (v *ContentVerificationAgent) Evidence() []domain.EvidenceItem {
 	return nil
 }
 
-func (v *ContentVerificationAgent) Status() domain.VerificationStatus {
+func (v *ContentVerificationAgent) VerificationStatus() domain.VerificationStatus {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
 	return v.verifStatus
@@ -170,30 +170,8 @@ func (v *ContentVerificationAgent) Execute(ctx context.Context, executionContext
 	return nil
 }
 
-// AGT-024 Confidence Scoring Agent with Bayesian weighted aggregation & quorum rules
-type ConfidenceScoringAgent struct {
-	*ContentVerificationAgent
-	domainWeights map[string]float64
-}
-
-func NewConfidenceScoringAgent(tenantID string, aiGateway application.AIGatewayClient) *ConfidenceScoringAgent {
-	base := NewContentVerificationAgent("AGT-024", "Confidence Scoring", tenantID, "CONFIDENCE_SCORING", aiGateway, nil)
-	return &ConfidenceScoringAgent{
-		ContentVerificationAgent: base,
-		domainWeights: map[string]float64{
-			"AGT-017": 1.25, // Fact-Checking Agent
-			"AGT-018": 1.15, // Cross-Reference Verification
-			"AGT-019": 1.10, // Source Verification
-			"AGT-020": 1.05, // Claim Extraction
-			"AGT-021": 1.20, // Evidence Collection
-			"AGT-022": 1.10, // Bias Detection
-			"AGT-023": 1.30, // Misinformation Flagging
-		},
-	}
-}
-
 func (c *ConfidenceScoringAgent) AggregateConfidence(ctx context.Context, tenantID string, results []domain.VerificationResult) (*domain.VerificationResult, error) {
-	if tenantID != c.TenantUUID {
+	if c.tenantID != "" && tenantID != c.tenantID {
 		return nil, domain.ErrCrossTenantViolation
 	}
 	if len(results) == 0 {
@@ -253,8 +231,8 @@ func (c *ConfidenceScoringAgent) AggregateConfidence(ctx context.Context, tenant
 		TenantID:          tenantID,
 		SignalID:          results[0].SignalID,
 		DetectionID:       results[0].DetectionID,
-		AgentID:           c.AgentID,
-		AgentName:         c.AgentName,
+		AgentID:           c.ID(),
+		AgentName:         c.Name(),
 		Status:            status,
 		ConfidenceScore:   weightedConf,
 		UncertaintyMetric: uncertainty,

@@ -311,7 +311,7 @@ func (e *EngagementOptimizer) ExecutePrediction(ctx context.Context, payload map
 			res.Metadata = make(map[string]string)
 		}
 		for _, p := range res.TargetPlatforms {
-			rem, err := e.rateLimiter.Remaining(ctx, tenantID, p)
+			rem, err := e.rateLimiter.Remaining(ctx, p, tenantID)
 			if err == nil && rem >= 10 {
 				validPlatforms = append(validPlatforms, p)
 				res.Metadata[fmt.Sprintf("rate_limit_remaining_%s", p)] = fmt.Sprintf("%d", rem)

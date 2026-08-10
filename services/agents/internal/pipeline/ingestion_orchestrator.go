@@ -199,40 +199,54 @@ func (c *ContentIngestionOrchestrator) Operate(ctx context.Context, payload *dom
 	if c.eventBus != nil {
 		if status == domain.PipelineStatusSuccess {
 			_ = c.eventBus.PublishPipelineExecution(ctx, &domain.PipelineExecutionEvent{
-				EventID:      fmt.Sprintf("evt-ingest-routed-%s", payload.PayloadID),
-				TenantID:     payload.TenantID,
-				ExecutionID:  res.ResultID,
-				AgentID:      c.ID(),
-				PipelineName: targetPipeline,
-				Status:       string(status),
-				StartedAt:    start,
-				CompletedAt:  time.Now(),
-				DurationMs:   int64(elapsedMs),
-				Metadata: map[string]string{
-					"event_type":      "IngestionRoutedEvent",
-					"payload_id":      payload.PayloadID,
-					"target_pipeline": targetPipeline,
-					"priority":        priority,
-					"confidence_tier": payload.ConfidenceTier,
+				EventID:     fmt.Sprintf("evt-ingest-routed-%s", payload.PayloadID),
+				TenantID:    payload.TenantID,
+				ExecutionID: res.ResultID,
+				AgentID:     c.ID(),
+				Stage:       domain.PipelineStageIngestion,
+				Result: domain.PipelineResult{
+					ExecutionID:    res.ResultID,
+					TenantID:       payload.TenantID,
+					AgentID:        c.ID(),
+					Stage:          domain.PipelineStageIngestion,
+					Status:         status,
+					TargetPipeline: targetPipeline,
+					Metadata: map[string]string{
+						"event_type":      "IngestionRoutedEvent",
+						"payload_id":      payload.PayloadID,
+						"target_pipeline": targetPipeline,
+						"priority":        priority,
+						"confidence_tier": payload.ConfidenceTier,
+						"duration_ms":     fmt.Sprintf("%d", int64(elapsedMs)),
+					},
+					ExecutedAt: time.Now(),
 				},
+				OccurredAt: time.Now(),
 			})
 		} else {
 			_ = c.eventBus.PublishPipelineExecution(ctx, &domain.PipelineExecutionEvent{
-				EventID:      fmt.Sprintf("evt-ingest-failed-%s", payload.PayloadID),
-				TenantID:     payload.TenantID,
-				ExecutionID:  res.ResultID,
-				AgentID:      c.ID(),
-				PipelineName: targetPipeline,
-				Status:       string(status),
-				StartedAt:    start,
-				CompletedAt:  time.Now(),
-				DurationMs:   int64(elapsedMs),
-				Metadata: map[string]string{
-					"event_type":  "IngestionFailedEvent",
-					"payload_id":  payload.PayloadID,
-					"reason":      fmt.Sprintf("%v", routingErr),
-					"retry_count": "3",
+				EventID:     fmt.Sprintf("evt-ingest-failed-%s", payload.PayloadID),
+				TenantID:    payload.TenantID,
+				ExecutionID: res.ResultID,
+				AgentID:     c.ID(),
+				Stage:       domain.PipelineStageIngestion,
+				Result: domain.PipelineResult{
+					ExecutionID:    res.ResultID,
+					TenantID:       payload.TenantID,
+					AgentID:        c.ID(),
+					Stage:          domain.PipelineStageIngestion,
+					Status:         status,
+					TargetPipeline: targetPipeline,
+					Metadata: map[string]string{
+						"event_type":  "IngestionFailedEvent",
+						"payload_id":  payload.PayloadID,
+						"reason":      fmt.Sprintf("%v", routingErr),
+						"retry_count": "3",
+						"duration_ms": fmt.Sprintf("%d", int64(elapsedMs)),
+					},
+					ExecutedAt: time.Now(),
 				},
+				OccurredAt: time.Now(),
 			})
 		}
 	}

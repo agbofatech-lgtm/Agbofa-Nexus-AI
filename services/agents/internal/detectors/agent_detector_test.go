@@ -47,7 +47,7 @@ func TestContentDetectorAgentDetectSuccess(t *testing.T) {
 	tenantID := "tenant-test"
 	aiGateway := &mockAIGateway{confidence: 0.94, classification: "BREAKING_NEWS"}
 
-	detector := NewBreakingNewsDetector(tenantID, aiGateway)
+	detector := NewContentDetectorAgent("AGT-009", "Breaking News Detector", tenantID, "BREAKING_NEWS", aiGateway, nil, nil)
 	signal := domain.MonitorSignal{
 		SignalID: "sig-1",
 		TenantID: tenantID,

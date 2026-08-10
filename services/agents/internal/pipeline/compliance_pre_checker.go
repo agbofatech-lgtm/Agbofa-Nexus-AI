@@ -184,33 +184,51 @@ func (c *CompliancePreChecker) Operate(ctx context.Context, payload *domain.Pipe
 	if c.eventBus != nil {
 		if status == "BLOCKED" {
 			_ = c.eventBus.PublishPipelineExecution(ctx, &domain.PipelineExecutionEvent{
-				EventID:      fmt.Sprintf("evt-comp-blocked-%s", payload.PayloadID),
-				TenantID:     payload.TenantID,
-				ExecutionID:  res.ResultID,
-				AgentID:      c.ID(),
-				PipelineName: targetPipeline,
-				Status:       "ComplianceBlockedEvent",
-				Metadata: map[string]string{
-					"payload_id":          payload.PayloadID,
-					"blocking_reasons":    strings.Join(criticalFlags, "; "),
-					"recommended_actions": remediationSteps,
+				EventID:     fmt.Sprintf("evt-comp-blocked-%s", payload.PayloadID),
+				TenantID:    payload.TenantID,
+				ExecutionID: res.ResultID,
+				AgentID:     c.ID(),
+				Stage:       domain.PipelineStageVerification,
+				Result: domain.PipelineResult{
+					ExecutionID:    res.ResultID,
+					TenantID:       payload.TenantID,
+					AgentID:        c.ID(),
+					Stage:          domain.PipelineStageVerification,
+					Status:         domain.PipelineStatusFailed,
+					TargetPipeline: targetPipeline,
+					Metadata: map[string]string{
+						"payload_id":          payload.PayloadID,
+						"blocking_reasons":    strings.Join(criticalFlags, "; "),
+						"recommended_actions": remediationSteps,
+					},
+					ExecutedAt: time.Now(),
 				},
+				OccurredAt: time.Now(),
 			})
 		} else {
 			_ = c.eventBus.PublishPipelineExecution(ctx, &domain.PipelineExecutionEvent{
-				EventID:      fmt.Sprintf("evt-comp-check-%s", payload.PayloadID),
-				TenantID:     payload.TenantID,
-				ExecutionID:  res.ResultID,
-				AgentID:      c.ID(),
-				PipelineName: targetPipeline,
-				Status:       "CompliancePreCheckCompletedEvent",
-				Metadata: map[string]string{
-					"payload_id":     payload.PayloadID,
-					"status":         status,
-					"flag_count":     fmt.Sprintf("%d", len(flags)),
-					"fair_use_score": fmt.Sprintf("%.2f", fairUseScore),
-					"critical_flags": strings.Join(criticalFlags, ","),
+				EventID:     fmt.Sprintf("evt-comp-check-%s", payload.PayloadID),
+				TenantID:    payload.TenantID,
+				ExecutionID: res.ResultID,
+				AgentID:     c.ID(),
+				Stage:       domain.PipelineStageVerification,
+				Result: domain.PipelineResult{
+					ExecutionID:    res.ResultID,
+					TenantID:       payload.TenantID,
+					AgentID:        c.ID(),
+					Stage:          domain.PipelineStageVerification,
+					Status:         domain.PipelineStatusSuccess,
+					TargetPipeline: targetPipeline,
+					Metadata: map[string]string{
+						"payload_id":     payload.PayloadID,
+						"status":         status,
+						"flag_count":     fmt.Sprintf("%d", len(flags)),
+						"fair_use_score": fmt.Sprintf("%.2f", fairUseScore),
+						"critical_flags": strings.Join(criticalFlags, ","),
+					},
+					ExecutedAt: time.Now(),
 				},
+				OccurredAt: time.Now(),
 			})
 		}
 	}

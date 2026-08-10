@@ -278,15 +278,22 @@ func (u *StoryGraphUpdater) Operate(ctx context.Context, payload *domain.Pipelin
 	// Event emission via EventPublisher
 	if u.eventBus != nil {
 		_ = u.eventBus.PublishPipelineExecution(ctx, &domain.PipelineExecutionEvent{
-			EventID:      fmt.Sprintf("evt-graph-%s", storyID),
-			TenantID:     payload.TenantID,
-			ExecutionID:  res.ResultID,
-			AgentID:      u.ID(),
-			PipelineName: targetStage,
-			Status:       action,
-			StartedAt:    time.Now(),
-			CompletedAt:  time.Now(),
-			Metadata:     res.Metadata,
+			EventID:     fmt.Sprintf("evt-graph-%s", storyID),
+			TenantID:    payload.TenantID,
+			ExecutionID: res.ResultID,
+			AgentID:     u.ID(),
+			Stage:       domain.PipelineStageProcessing,
+			Result: domain.PipelineResult{
+				ExecutionID:    res.ResultID,
+				TenantID:       payload.TenantID,
+				AgentID:        u.ID(),
+				Stage:          domain.PipelineStageProcessing,
+				Status:         domain.PipelineStatusSuccess,
+				TargetPipeline: targetStage,
+				Metadata:       res.Metadata,
+				ExecutedAt:     time.Now(),
+			},
+			OccurredAt: time.Now(),
 		})
 	}
 	return res, nil

@@ -199,41 +199,68 @@ func (r *FactoryIntakeRouter) Operate(ctx context.Context, payload *domain.Pipel
 		switch targetPipeline {
 		case "CONTENT_FACTORY":
 			_ = r.eventBus.PublishPipelineExecution(ctx, &domain.PipelineExecutionEvent{
-				EventID:      fmt.Sprintf("evt-intake-%s", packageID),
-				TenantID:     payload.TenantID,
-				ExecutionID:  res.ResultID,
-				AgentID:      r.ID(),
-				PipelineName: targetPipeline,
-				Status:       "FactoryIntakeRoutedEvent",
-				Metadata:     res.Metadata,
+				EventID:     fmt.Sprintf("evt-intake-%s", packageID),
+				TenantID:    payload.TenantID,
+				ExecutionID: res.ResultID,
+				AgentID:     r.ID(),
+				Stage:       domain.PipelineStageOrigination,
+				Result: domain.PipelineResult{
+					ExecutionID:    res.ResultID,
+					TenantID:       payload.TenantID,
+					AgentID:        r.ID(),
+					Stage:          domain.PipelineStageOrigination,
+					Status:         domain.PipelineStatusSuccess,
+					TargetPipeline: targetPipeline,
+					Metadata:       res.Metadata,
+					ExecutedAt:     time.Now(),
+				},
+				OccurredAt: time.Now(),
 			})
 		case "ASSET_REQUEST":
 			_ = r.eventBus.PublishPipelineExecution(ctx, &domain.PipelineExecutionEvent{
-				EventID:      fmt.Sprintf("evt-asset-%s", packageID),
-				TenantID:     payload.TenantID,
-				ExecutionID:  res.ResultID,
-				AgentID:      r.ID(),
-				PipelineName: targetPipeline,
-				Status:       "AssetRequestEvent",
-				Metadata: map[string]string{
-					"package_id":     packageID,
-					"missing_assets": strings.Join(missingAssets, ","),
-					"request_type":   "ASSET_REQUEST",
+				EventID:     fmt.Sprintf("evt-asset-%s", packageID),
+				TenantID:    payload.TenantID,
+				ExecutionID: res.ResultID,
+				AgentID:     r.ID(),
+				Stage:       domain.PipelineStageOrigination,
+				Result: domain.PipelineResult{
+					ExecutionID:    res.ResultID,
+					TenantID:       payload.TenantID,
+					AgentID:        r.ID(),
+					Stage:          domain.PipelineStageOrigination,
+					Status:         domain.PipelineStatusSuccess,
+					TargetPipeline: targetPipeline,
+					Metadata: map[string]string{
+						"package_id":     packageID,
+						"missing_assets": strings.Join(missingAssets, ","),
+						"request_type":   "ASSET_REQUEST",
+					},
+					ExecutedAt: time.Now(),
 				},
+				OccurredAt: time.Now(),
 			})
 		case "EDITORIAL_REVIEW":
 			_ = r.eventBus.PublishPipelineExecution(ctx, &domain.PipelineExecutionEvent{
-				EventID:      fmt.Sprintf("evt-tone-%s", packageID),
-				TenantID:     payload.TenantID,
-				ExecutionID:  res.ResultID,
-				AgentID:      r.ID(),
-				PipelineName: targetPipeline,
-				Status:       "BrandVoiceMismatchEvent",
-				Metadata: map[string]string{
-					"package_id":     packageID,
-					"mismatch_score": fmt.Sprintf("%.2f", brandVoiceScore),
-					"tone_conflict":  "Formal vs Casual mismatch",
+				EventID:     fmt.Sprintf("evt-tone-%s", packageID),
+				TenantID:    payload.TenantID,
+				ExecutionID: res.ResultID,
+				AgentID:     r.ID(),
+				Stage:       domain.PipelineStageOrigination,
+				Result: domain.PipelineResult{
+					ExecutionID:    res.ResultID,
+					TenantID:       payload.TenantID,
+					AgentID:        r.ID(),
+					Stage:          domain.PipelineStageOrigination,
+					Status:         domain.PipelineStatusSuccess,
+					TargetPipeline: targetPipeline,
+					Metadata: map[string]string{
+						"package_id":     packageID,
+						"mismatch_score": fmt.Sprintf("%.2f", brandVoiceScore),
+						"tone_conflict":  "Formal vs Casual mismatch",
+					},
+					ExecutedAt: time.Now(),
 				},
+				OccurredAt: time.Now(),
 			})
 		}
 	}

@@ -171,8 +171,14 @@ func TestPaywallEngine_EntitlementReasons(t *testing.T) {
 	}
 
 	// 4. EXPIRED: reader with EXPIRED subscription attempting to access content
-	subExp, _ := subEngine.CreateSubscription(ctx, "tenant-A", "reader-3", "plan-free", "")
-	_, _ = subEngine.TransitionStatus(ctx, "tenant-A", subExp.SubscriptionID, domain.SubscriptionStatusExpired)
+	subExp, err := subEngine.CreateSubscription(ctx, "tenant-A", "reader-3", "plan-free", "")
+	if err != nil {
+		t.Fatalf("unexpected CreateSubscription error for reader-3: %v", err)
+	}
+	_, err = subEngine.TransitionStatus(ctx, "tenant-A", subExp.SubscriptionID, domain.SubscriptionStatusExpired)
+	if err != nil {
+		t.Fatalf("unexpected TransitionStatus error for reader-3: %v", err)
+	}
 
 	resExp, err := engine.CheckEntitlement(ctx, "tenant-A", "reader-3", "content-104", false)
 	if err != nil {
