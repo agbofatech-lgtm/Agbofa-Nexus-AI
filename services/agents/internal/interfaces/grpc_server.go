@@ -12,15 +12,16 @@ import (
 )
 
 type AgentGRPCServer struct {
-	mu                       sync.Mutex
-	monitorOrchestrator      *application.MonitorOrchestrator
-	detectorOrchestrator     *application.DetectorOrchestrator
-	verificationOrchestrator *application.VerificationOrchestrator
-	pipelineOrchestrator     *application.PipelineOrchestrator
-	predictionOrchestrator   *application.PredictionOrchestrator
-	port                     string
-	running                  bool
-	health                   *HealthChecker
+	mu                          sync.Mutex
+	monitorOrchestrator         *application.MonitorOrchestrator
+	detectorOrchestrator        *application.DetectorOrchestrator
+	verificationOrchestrator    *application.VerificationOrchestrator
+	pipelineOrchestrator        *application.PipelineOrchestrator
+	predictionOrchestrator      *application.PredictionOrchestrator
+	personalizationOrchestrator *application.PersonalizationOrchestrator
+	port                        string
+	running                     bool
+	health                      *HealthChecker
 }
 
 func NewGRPCServer(
@@ -45,7 +46,7 @@ func NewGRPCServer(
 func (s *AgentGRPCServer) WithPersonalization(persOrch *application.PersonalizationOrchestrator) *AgentGRPCServer {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	nil /* personalizationOrchestrator */ = persOrch
+	s.personalizationOrchestrator = persOrch
 	return s
 }
 
