@@ -1,19 +1,77 @@
 /**
- * Agbofa Nexus AI — Next.js Server-Side BFF API Route Handlers (P0 Batch 2)
- * Proxies HTTP JSON requests from browser to Go gRPC microservices on port 9090.
+ * Agbofa Nexus AI - Next.js BFF RPC route
+ * Identity methods are proxied to Foundation TenantIdentityService.
+ * Non-identity allowlisted methods remain offline stubs and never echo credentials.
+ * Tokens are stored only in HttpOnly cookies and are never returned in JSON.
+ *
+ * IMP-BFF-AUTH-001
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import {
-  verifyJwtFastFail,
   ACCESS_TOKEN_COOKIE_NAME,
-  RLS_TENANT_ISOLATION_GAP_WARNING,
+  REFRESH_TOKEN_COOKIE_NAME,
+  setAccessTokenCookie,
+  setRefreshTokenCookie,
+  clearAuthCookies,
+  type CookieWriter,
 } from "../../../../lib/auth/session";
+import { isRpcAllowed, buildNormalizedError } from "../../../../lib/rpc-config";
 import {
-  P0_RPC_ALLOWLIST,
-  isRpcAllowed,
-  buildNormalizedError,
-} from "../../../../lib/rpc-config";
+  foundationAuthenticateUser,
+  foundationGetTenant,
+  foundationRefreshToken,
+  foundationValidateToken,
+  mapFoundationError,
+  type FoundationClaims,
+} from "../../../../lib/bff/foundation-identity";
+
+const IDENTITY_METHODS = new Set(["AuthenticateUser", "ValidateToken", "RefreshToken", "GetTenant"]);
+
+function claimsPayload(claims: FoundationClaims): Record<string, unknown> {
+  return {
+    subject: claims.subject,
+    tenant_id: claims.tenant_id,
+    roles: Array.isArray(claims.roles) ? claims.roles : [],
+    issuer: claims.issuer,
+    audience: claims.audience || [],
+    token_id: claims.token_id,
+  };
+}
+
+function success(data: unknown, correlationId: string, cookies?: (res: NextResponse) => void): NextResponse {
+  const res = NextResponse.json(
+    {
+      status: "SUCCESS",
+      data,
+      correlationId,
+      timestamp: new Date().toISOString(),
+    },
+    { status: 200, headers: { "x-correlation-id": correlationId } },
+  );
+  if (cookies) {
+    cookies(res);
+  }
+  return res;
+}
+
+function asCookieWriter(cookies: NextResponse["cookies"]): CookieWriter {
+  return {
+    set(name, value, options) {
+      cookies.set(name, value, options as never);
+    },
+    delete(name, options) {
+      if (options) {
+        cookies.delete({ name, ...(options as object) } as never);
+      } else {
+        cookies.delete(name);
+      }
+    },
+    get(name) {
+      return cookies.get(name);
+    },
+  };
+}
 
 export async function POST(
   request: NextRequest,
@@ -35,7 +93,6 @@ export async function POST(
   const serviceName = decodeURIComponent(pathParts[0]);
   const methodName = decodeURIComponent(pathParts[1]);
 
-  // Mandatory Constraint #1: Allowlist-first enforcement before acquiring gRPC connection
   if (!isRpcAllowed(serviceName, methodName)) {
     return buildNormalizedError(
       404,
@@ -45,200 +102,174 @@ export async function POST(
     );
   }
 
-  const isPublicRpc =
-    methodName === "AuthenticateUser" ||
-    methodName === "RefreshToken" ||
-    methodName === "GetTenant";
-
-  let accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE_NAME)?.value;
-  if (!accessToken) {
-    const authHeader = request.headers.get("authorization");
-    if (authHeader && authHeader.toLowerCase().startsWith("bearer ")) {
-      accessToken = authHeader.substring(7);
-    }
-  }
-
-  // Mandatory Constraint #3 & #4: Fast-fail JWT verification while Go backend remains authoritative
-  if (!isPublicRpc) {
-    const jwtResult = verifyJwtFastFail(accessToken);
-    if (!jwtResult.valid) {
-      return buildNormalizedError(
-        401,
-        "UNAUTHENTICATED",
-        `Authentication failed: ${jwtResult.error || "valid access token required"}`,
-        correlationId,
-      );
-    }
-  }
-
-  // Parse body
-  let payload: Record<string, unknown>;
+  let payload: Record<string, unknown> = {};
   try {
     payload = (await request.json()) as Record<string, unknown>;
   } catch {
     payload = {};
   }
 
-  // Mandatory Constraint #6: Respect resolved gRPC endpoint architecture (localhost:9090, 9010, K8s DNS:9090)
-  const grpcEndpoint = process.env.GRPC_BACKEND_ENDPOINT || "localhost:9090";
+  if (IDENTITY_METHODS.has(methodName)) {
+    return handleIdentity(request, methodName, payload, correlationId);
+  }
 
-  let dataResult: unknown = {
-    proxiedTo: grpcEndpoint,
-    service: serviceName,
-    method: methodName,
-    payloadReceived: payload,
-  };
+  const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE_NAME)?.value || bearerToken(request);
+  if (!accessToken) {
+    return buildNormalizedError(401, "UNAUTHENTICATED", "valid access token required", correlationId);
+  }
+  try {
+    await foundationValidateToken(accessToken);
+  } catch (err) {
+    const mapped = mapFoundationError(err);
+    return buildNormalizedError(mapped.status, mapped.code, mapped.message, correlationId);
+  }
 
+  return stubNonIdentity(methodName, correlationId);
+}
+
+async function handleIdentity(
+  request: NextRequest,
+  methodName: string,
+  payload: Record<string, unknown>,
+  correlationId: string,
+): Promise<NextResponse> {
+  try {
+    if (methodName === "AuthenticateUser") {
+      const tenantName = String(payload.tenant_name || "");
+      const principalName = String(payload.principal_name || "");
+      const credential = String(payload.credential || "");
+      if (!tenantName || !principalName || !credential) {
+        return buildNormalizedError(400, "INVALID_REQUEST", "tenant_name, principal_name, and credential are required", correlationId);
+      }
+      const tokens = await foundationAuthenticateUser({
+        tenant_name: tenantName,
+        principal_name: principalName,
+        credential,
+      });
+      const claims = await foundationValidateToken(tokens.accessToken);
+      return success(claimsPayload(claims), correlationId, (res) => {
+        const jar = asCookieWriter(res.cookies);
+        setAccessTokenCookie(jar, tokens.accessToken, tokens.expiresIn || 3600);
+        setRefreshTokenCookie(jar, tokens.refreshToken, 604800);
+      });
+    }
+
+    if (methodName === "ValidateToken") {
+      if (payload && payload.logout === true) {
+        return success({ logged_out: true }, correlationId, (res) => {
+          clearAuthCookies(asCookieWriter(res.cookies));
+        });
+      }
+      const accessToken =
+        request.cookies.get(ACCESS_TOKEN_COOKIE_NAME)?.value ||
+        bearerToken(request) ||
+        String(payload.access_token || "");
+      if (!accessToken) {
+        return buildNormalizedError(401, "UNAUTHENTICATED", "valid access token required", correlationId);
+      }
+      const claims = await foundationValidateToken(accessToken);
+      return success(claimsPayload(claims), correlationId);
+    }
+
+    if (methodName === "RefreshToken") {
+      const refreshToken = request.cookies.get(REFRESH_TOKEN_COOKIE_NAME)?.value;
+      if (!refreshToken) {
+        return buildNormalizedError(401, "UNAUTHENTICATED", "refresh credential required", correlationId);
+      }
+      const tokens = await foundationRefreshToken(refreshToken);
+      const claims = await foundationValidateToken(tokens.accessToken);
+      return success(claimsPayload(claims), correlationId, (res) => {
+        const jar = asCookieWriter(res.cookies);
+        setAccessTokenCookie(jar, tokens.accessToken, tokens.expiresIn || 3600);
+        setRefreshTokenCookie(jar, tokens.refreshToken, 604800);
+      });
+    }
+
+    if (methodName === "GetTenant") {
+      const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE_NAME)?.value || bearerToken(request);
+      if (!accessToken) {
+        return buildNormalizedError(401, "UNAUTHENTICATED", "valid access token required", correlationId);
+      }
+      const claims = await foundationValidateToken(accessToken);
+      const requested = String(payload.id || claims.tenant_id);
+      if (!requested || requested !== claims.tenant_id) {
+        return buildNormalizedError(403, "FORBIDDEN", "tenant access denied", correlationId);
+      }
+      const tenant = await foundationGetTenant(requested, accessToken);
+      return success(tenant, correlationId);
+    }
+
+    return buildNormalizedError(404, "NOT_FOUND_OR_UNAUTHORIZED_RPC", "unknown identity method", correlationId);
+  } catch (err) {
+    const mapped = mapFoundationError(err);
+    return buildNormalizedError(mapped.status, mapped.code, mapped.message, correlationId);
+  }
+}
+
+function bearerToken(request: NextRequest): string {
+  const authHeader = request.headers.get("authorization");
+  if (authHeader && authHeader.toLowerCase().startsWith("bearer ")) {
+    return authHeader.substring(7);
+  }
+  return "";
+}
+
+function stubNonIdentity(methodName: string, correlationId: string): NextResponse {
   if (methodName === "ListPackages") {
-    dataResult = {
-      packages: [
-        {
+    return success(
+      {
+        packages: [
+          {
+            package_id: "pkg-101",
+            tenant_id: "tenant-default",
+            story_id: "story-101",
+            title: "Autonomous AI Newsroom Workforce Expands",
+            status: "APPROVED",
+            articles: [
+              {
+                asset_id: "art-101",
+                headline: "Autonomous AI Newsroom Workforce Expands",
+                summary: "Agbofa Nexus AI deploys 32 specialized agents.",
+                language: "en-US",
+              },
+            ],
+            qa_report: { qa_id: "qa-101", overall_quality_score: 0.96, passed: true },
+          },
+        ],
+      },
+      correlationId,
+    );
+  }
+  if (methodName === "ListSources") {
+    return success(
+      {
+        sources: [
+          { source_id: "src-reuters", name: "Reuters Wire Feed", source_type: "WIRE", reliability_score: 0.98, active: true },
+        ],
+      },
+      correlationId,
+    );
+  }
+  if (methodName === "GetPackage") {
+    return success(
+      {
+        content_package: {
           package_id: "pkg-101",
           tenant_id: "tenant-default",
           story_id: "story-101",
           title: "Autonomous AI Newsroom Workforce Expands",
           status: "APPROVED",
-          articles: [
-            {
-              asset_id: "art-101",
-              headline: "Autonomous AI Newsroom Workforce Expands",
-              summary:
-                "Agbofa Nexus AI deploys 32 specialized agents for real-time news gathering, fact verification, and multi-channel publication.",
-              body_text:
-                "Agbofa Nexus AI has officially deployed its complete 32-agent workforce across News Gathering, Content Detection, Verification, and Pipeline Orchestration.",
-              seo_title: "Autonomous AI Newsroom Workforce Expands",
-              seo_description:
-                "Agbofa Nexus AI deploys 32 specialized agents for real-time news gathering.",
-              language: "en-US",
-            },
-          ],
-          qa_report: {
-            qa_id: "qa-101",
-            overall_quality_score: 0.96,
-            passed: true,
-          },
-        },
-        {
-          package_id: "pkg-102",
-          tenant_id: "tenant-default",
-          story_id: "story-102",
-          title: "Predictive Intelligence Engines Scale Calibration",
-          status: "APPROVED",
-          articles: [
-            {
-              asset_id: "art-102",
-              headline: "Predictive Intelligence Engines Scale Calibration",
-              summary:
-                "Five predictive models evaluate story virality, engagement optimization, and trend lifecycle state transitions.",
-              body_text:
-                "The predictive intelligence division has calibrated its MAPE accuracy ledger, delivering virality forecasts and anomaly detection across social platforms.",
-              seo_title: "Predictive Intelligence Engines Scale Calibration",
-              seo_description:
-                "Five predictive models evaluate story virality and engagement optimization.",
-              language: "en-US",
-            },
-          ],
-          qa_report: {
-            qa_id: "qa-102",
-            overall_quality_score: 0.91,
-            passed: true,
-          },
-        },
-        {
-          package_id: "pkg-103",
-          tenant_id: "tenant-default",
-          story_id: "story-103",
-          title: "Row-Level Security Enforces Strict Tenant Boundaries",
-          status: "APPROVED",
-          articles: [
-            {
-              asset_id: "art-103",
-              headline: "Row-Level Security Enforces Strict Tenant Boundaries",
-              summary:
-                "PostgreSQL RLS policies isolate tenant profiles and behavioral signals across all platform editions.",
-              body_text:
-                "Enterprise security architecture mandates tenant_id UUID NOT NULL across all tables, protecting reader profiles and multi-strategy recommendation feeds.",
-              seo_title: "Row-Level Security Enforces Strict Tenant Boundaries",
-              seo_description:
-                "PostgreSQL RLS policies isolate tenant profiles across all platform editions.",
-              language: "en-US",
-            },
-          ],
-          qa_report: {
-            qa_id: "qa-103",
-            overall_quality_score: 0.99,
-            passed: true,
-          },
-        },
-      ],
-    };
-  } else if (methodName === "ListSources") {
-    dataResult = {
-      sources: [
-        {
-          source_id: "src-reuters",
-          name: "Reuters Wire Feed",
-          source_type: "WIRE",
-          reliability_score: 0.98,
-          active: true,
-        },
-        {
-          source_id: "src-ap",
-          name: "Associated Press",
-          source_type: "WIRE",
-          reliability_score: 0.97,
-          active: true,
-        },
-      ],
-    };
-  } else if (methodName === "GetPackage") {
-    dataResult = {
-      content_package: {
-        package_id: "pkg-101",
-        tenant_id: "tenant-default",
-        story_id: "story-101",
-        title: "Autonomous AI Newsroom Workforce Expands",
-        status: "APPROVED",
-        articles: [
-          {
-            asset_id: "art-101",
-            headline: "Autonomous AI Newsroom Workforce Expands",
-            summary:
-              "Agbofa Nexus AI deploys 32 specialized agents for real-time news gathering, fact verification, and multi-channel publication.",
-            body_text:
-              "Agbofa Nexus AI has officially deployed its complete 32-agent workforce across News Gathering, Content Detection, Verification, and Pipeline Orchestration.",
-            seo_title: "Autonomous AI Newsroom Workforce Expands",
-            seo_description:
-              "Agbofa Nexus AI deploys 32 specialized agents for real-time news gathering.",
-            language: "en-US",
-          },
-        ],
-        qa_report: {
-          qa_id: "qa-101",
-          overall_quality_score: 0.96,
-          passed: true,
         },
       },
-    };
-  }
-
-  // Execute proxy request to Go backend
-  // NOTE: In production runtime, @grpc/grpc-js client invokes target gRPC method on grpcEndpoint.
-  // In offline verification sandbox, return normalized BFF success envelope.
-  return NextResponse.json(
-    {
-      status: "SUCCESS",
-      data: dataResult,
       correlationId,
-      timestamp: new Date().toISOString(),
-    },
+    );
+  }
+  return success(
     {
-      status: 200,
-      headers: {
-        "x-correlation-id": correlationId,
-        "x-grpc-backend": grpcEndpoint,
-      },
+      service: "stub",
+      method: methodName,
     },
+    correlationId,
   );
 }
 
