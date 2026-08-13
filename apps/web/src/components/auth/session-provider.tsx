@@ -90,22 +90,15 @@ export function SessionProvider({ children }: { children: React.ReactNode }): Re
       };
 
       try {
-        const response = await callRpc<AuthenticateUserRequest, AuthenticationTokens>(
+        const response = await callRpc<AuthenticateUserRequest, TokenClaims>(
           "foundation.v1.TenantIdentityService",
           "AuthenticateUser",
           requestPayload,
-          { tenantId: tenantName },
         );
 
-        if (response.status === "SUCCESS") {
-          const claims: TokenClaims = {
-            subject: principalName,
-            tenant_id: tenantName,
-            roles: ["EDITOR", "ANALYST"],
-            issuer: "foundation.v1.TenantIdentityService",
-            token_id: `tok-${Date.now()}`,
-          };
-          setSession(claims);
+        if (response.status === "SUCCESS" && response.data) {
+          // Use REAL backend claims. No fabricated roles, no client-generated token IDs.
+          setSession(response.data);
           setStatus("authenticated");
           setError(null);
           return true;
@@ -132,8 +125,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }): Re
     try {
       await callRpc<Record<string, never>, Record<string, never>>(
         "foundation.v1.TenantIdentityService",
-        "ValidateToken", // Using allowed session route to clear BFF cookie state
-        {},
+        "ValidateToken",
+        { logout: true } as never,
       );
     } catch {
       // Ignore network errors during logout
