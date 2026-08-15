@@ -22,7 +22,7 @@ import (
 "github.com/agbofa/nexus/libs/go/pkg/llm"
 )
 
-const (
+var (
 ProviderID = "openai"
 baseURL    = "https://api.openai.com/v1"
 )

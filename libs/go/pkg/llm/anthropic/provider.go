@@ -22,7 +22,7 @@ import (
 "github.com/agbofa/nexus/libs/go/pkg/llm"
 )
 
-const (
+var (
 ProviderID = "anthropic"
 baseURL    = "https://api.anthropic.com/v1"
 version    = "2023-06-01"
