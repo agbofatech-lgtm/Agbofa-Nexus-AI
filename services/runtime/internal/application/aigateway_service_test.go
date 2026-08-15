@@ -1,6 +1,7 @@
 package application_test
 
 import (
+	"strings"
 	"context"
 	"errors"
 	"testing"
