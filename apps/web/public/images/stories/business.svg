@@ -1,0 +1,24 @@
+<svg width="1200" height="720" viewBox="0 0 1200 720" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">BUSINESS abstract editorial illustration</title>
+  <desc id="desc">A cinematic dark data field with business signals in the Agbofa Nexus visual language.</desc>
+  <defs>
+    <linearGradient id="bg" x1="80" y1="40" x2="1120" y2="680" gradientUnits="userSpaceOnUse"><stop stop-color="#171713"/><stop offset=".55" stop-color="#0A0A0A"/><stop offset="1" stop-color="#121820"/></linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientTransform="translate(860 210) rotate(90) scale(420)"><stop stop-color="#E8C84A" stop-opacity=".24"/><stop offset="1" stop-color="#E8C84A" stop-opacity="0"/></radialGradient>
+    <pattern id="grid" width="54" height="54" patternUnits="userSpaceOnUse"><path d="M54 0H0V54" stroke="white" stroke-opacity=".035"/></pattern>
+    <filter id="blur"><feGaussianBlur stdDeviation="28"/></filter>
+  </defs>
+  <rect width="1200" height="720" rx="36" fill="url(#bg)"/>
+  <rect width="1200" height="720" rx="36" fill="url(#grid)"/>
+  <rect width="1200" height="720" rx="36" fill="url(#glow)"/>
+  <circle cx="870" cy="254" r="222" stroke="#E8C84A" stroke-opacity=".2" stroke-width="2"/>
+  <circle cx="870" cy="254" r="146" stroke="#3399FF" stroke-opacity=".14" stroke-width="2"/>
+  <circle cx="870" cy="254" r="80" fill="#E8C84A" fill-opacity=".08" stroke="#E8C84A" stroke-opacity=".3"/>
+  <path d="M680 350L800 190L980 320L1065 130M710 105L870 254L1080 280" stroke="#E8C84A" stroke-opacity=".22" stroke-width="2"/>
+  <circle cx="680" cy="350" r="10" fill="#E8C84A"/><circle cx="800" cy="190" r="8" fill="#3399FF"/><circle cx="980" cy="320" r="9" fill="#E8C84A"/><circle cx="1065" cy="130" r="7" fill="#A0A4A8"/>
+  <circle cx="870" cy="254" r="52" fill="#E8C84A" fill-opacity=".18" filter="url(#blur)"/>
+  <rect x="72" y="72" width="8" height="88" rx="4" fill="#E8C84A"/>
+  <text x="106" y="107" fill="#A0A4A8" font-family="JetBrains Mono, monospace" font-size="16" letter-spacing="4">MARKET SIGNAL / 03</text>
+  <text x="72" y="542" fill="#F7F7F4" font-family="Space Grotesk, Arial, sans-serif" font-size="72" font-weight="700" letter-spacing="-2">BUSINESS</text>
+  <text x="76" y="595" fill="#E8C84A" font-family="JetBrains Mono, monospace" font-size="17" letter-spacing="6">AGBOFA NEXUS READER</text>
+  <rect x="72" y="632" width="330" height="2" fill="#E8C84A" fill-opacity=".45"/>
+</svg>
