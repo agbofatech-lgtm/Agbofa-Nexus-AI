@@ -1,5 +1,6 @@
 import { Clock3, ShieldCheck } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 
 import { Badge } from "@/components/ui";
 import { confidenceBand, formatRelativeTime } from "@/lib/utils/reader";
@@ -11,7 +12,11 @@ interface StoryCardProps {
 
 export function StoryCard({ story }: StoryCardProps) {
   return (
-    <article className="reader-story-card glass-card" tabIndex={0}>
+    <Link
+      aria-label={`Read story: ${story.headline}`}
+      className="reader-story-card glass-card"
+      href={`/reader/${story.id}`}
+    >
       <div className="reader-story-card__image">
         {story.image ? (
           <Image
@@ -46,6 +51,6 @@ export function StoryCard({ story }: StoryCardProps) {
           </span>
         </div>
       </div>
-    </article>
+    </Link>
   );
 }

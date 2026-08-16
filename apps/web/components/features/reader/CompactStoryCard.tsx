@@ -1,4 +1,5 @@
 import { Clock3 } from "lucide-react";
+import Link from "next/link";
 
 import { Badge } from "@/components/ui";
 import { formatRelativeTime } from "@/lib/utils/reader";
@@ -11,7 +12,11 @@ interface CompactStoryCardProps {
 
 export function CompactStoryCard({ story, rank }: CompactStoryCardProps) {
   return (
-    <article className="compact-story-card" tabIndex={0}>
+    <Link
+      aria-label={`Read quick story: ${story.headline}`}
+      className="compact-story-card"
+      href={`/reader/${story.id}`}
+    >
       {rank ? (
         <span className="compact-story-card__rank">
           {String(rank).padStart(2, "0")}
@@ -33,6 +38,6 @@ export function CompactStoryCard({ story, rank }: CompactStoryCardProps) {
         </div>
       </div>
       <Badge verification={story.verification} variant="verification" />
-    </article>
+    </Link>
   );
 }

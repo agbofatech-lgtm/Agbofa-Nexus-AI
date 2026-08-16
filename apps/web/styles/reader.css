@@ -135,10 +135,9 @@
 
 .feed-filters {
   display: grid;
-  grid-template-columns: auto minmax(150px, 0.42fr) minmax(
-      180px,
-      0.52fr
-    ) minmax(240px, 1fr) auto;
+  grid-template-columns:
+    auto minmax(150px, 0.42fr) minmax(180px, 0.52fr)
+    minmax(240px, 1fr) auto;
   align-items: center;
   gap: 9px;
   padding: 11px;
@@ -406,7 +405,9 @@
 }
 
 .reader-story-card {
+  display: block;
   min-width: 0;
+  height: 100%;
   overflow: hidden;
   color: inherit;
 }

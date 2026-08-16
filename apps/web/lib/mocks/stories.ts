@@ -1,9 +1,9 @@
 import type {
-  Story,
   StoryCategory,
   StoryEntities,
   StoryVerification,
 } from "@/types/reader";
+import type { StoryDetail, VerificationSource } from "@/types/story";
 
 interface StorySeed {
   headline: string;
@@ -706,21 +706,118 @@ function verificationFor(confidence: number, index: number): StoryVerification {
   return index % 2 === 0 ? "in-review" : "pending";
 }
 
-export const mockStories: Story[] = storySeeds.map((seed, index) => ({
-  id: `story-${String(index + 1).padStart(3, "0")}`,
-  headline: seed.headline,
-  summary: seed.summary,
-  category: seed.category,
-  source: seed.source,
-  author: categoryAuthors[seed.category],
-  publishedAt: new Date(referenceTime - seed.hoursAgo * 60 * 60 * 1000),
-  readingTime: 3 + (index % 6),
-  image: categoryImages[seed.category],
-  verification: verificationFor(seed.confidence, index),
-  confidence: seed.confidence,
-  trendScore: seed.trendScore,
-  entities: categoryEntities[seed.category],
-}));
+const categoryPerspective: Record<StoryCategory, string> = {
+  AI: "The central question is not simply what the model can do, but whether its decisions remain inspectable, bounded, and useful in the real world.",
+  Technology:
+    "The technical milestone matters because infrastructure becomes transformative only when it is reliable, affordable, and available beyond a small group of early adopters.",
+  Business:
+    "The market signal is strongest where sustainable revenue, local operating knowledge, and regional distribution reinforce one another.",
+  Innovation:
+    "The breakthrough combines scientific possibility with practical design constraints, turning a promising prototype into something communities can operate and maintain.",
+  Science:
+    "The evidence adds a meaningful piece to a larger scientific picture, while leaving clear questions for replication and longer-term study.",
+  Ghana:
+    "For Ghana, the opportunity lies in connecting policy ambition with delivery capacity, public trust, and measurable outcomes across communities.",
+  Africa:
+    "The continental context matters: shared infrastructure can create scale, but each market still requires local language, regulation, and distribution knowledge.",
+  Global:
+    "The global shift will be shaped as much by governance and access as by the pace of technical development itself.",
+};
+
+function createArticleContent(seed: StorySeed, index: number): string {
+  const author = categoryAuthors[seed.category];
+  const perspective = categoryPerspective[seed.category];
+  const confidenceNote =
+    seed.confidence >= 90
+      ? "Multiple independent signals align, giving this briefing a high-confidence evidence profile."
+      : "The core direction is supported, though several details remain under active review.";
+
+  return [
+    seed.summary,
+    `Reporting by ${author} places the development within a wider ${seed.category.toLowerCase()} shift. The immediate announcement is important, but the more durable story is how institutions, builders, and communities respond over the next several months.`,
+    "## Why this matters",
+    perspective,
+    `The Nexus review found that the strongest implications are likely to appear in implementation rather than headlines alone. Cost, access, governance, and the ability to learn from early deployments will determine whether the development produces broad value or remains concentrated.`,
+    "## What the evidence shows",
+    `${seed.source} provides the primary reporting signal. The verification layer compared the central claims with independent reporting patterns, institutional context, and the entities connected to the story. ${confidenceNote}`,
+    `> “A credible signal should make uncertainty visible, preserve the source trail, and explain what evidence could change the conclusion.”`,
+    "## What happens next",
+    `The next stage is to watch for concrete milestones rather than promises. For story ${String(index + 1).padStart(3, "0")}, the Nexus desk will continue tracking primary documentation, independent confirmation, and meaningful changes in the confidence score.`,
+    "- Watch for published implementation timelines and accountable owners.\n- Compare independent evidence with official statements.\n- Track who gains access, who carries risk, and how outcomes are measured.",
+    `This article is part of the Agbofa Nexus Reader mock intelligence dataset. It demonstrates evidence-aware editorial presentation and does not represent a live news report.`,
+  ].join("\n\n");
+}
+
+function createAISummary(seed: StorySeed): string {
+  return `${seed.summary} Nexus analysis identifies implementation quality, independent verification, and measurable public value as the key signals to watch next.`;
+}
+
+function createVerificationSources(
+  seed: StorySeed,
+  index: number,
+): VerificationSource[] {
+  const thirdStatus =
+    seed.confidence >= 90
+      ? "supporting"
+      : seed.confidence >= 86
+        ? "unverified"
+        : "conflicting";
+
+  return [
+    {
+      name: seed.source,
+      status: "supporting",
+      details: "Primary reporting and publication record",
+      credibility: Math.min(98, seed.confidence + 2),
+    },
+    {
+      name: "Nexus cross-source desk",
+      status: "supporting",
+      details: "Independent context and claim comparison",
+      credibility: 91 - (index % 4),
+    },
+    {
+      name: `${seed.category} evidence registry`,
+      status: thirdStatus,
+      details:
+        thirdStatus === "supporting"
+          ? "Corroborating domain evidence"
+          : thirdStatus === "unverified"
+            ? "Additional primary documentation requested"
+            : "One material detail remains disputed",
+      credibility: Math.max(62, seed.confidence - 8),
+    },
+  ];
+}
+
+export const mockStories: StoryDetail[] = storySeeds.map((seed, index) => {
+  const supporting = Math.max(7, Math.round(seed.confidence / 7));
+  const conflicting = Math.max(1, Math.round((100 - seed.confidence) / 6));
+
+  return {
+    id: `story-${String(index + 1).padStart(3, "0")}`,
+    headline: seed.headline,
+    summary: seed.summary,
+    category: seed.category,
+    source: seed.source,
+    author: categoryAuthors[seed.category],
+    publishedAt: new Date(referenceTime - seed.hoursAgo * 60 * 60 * 1000),
+    readingTime: 5 + (index % 6),
+    image: categoryImages[seed.category],
+    verification: verificationFor(seed.confidence, index),
+    confidence: seed.confidence,
+    trendScore: seed.trendScore,
+    entities: categoryEntities[seed.category],
+    content: createArticleContent(seed, index),
+    aiSummary: createAISummary(seed),
+    sources: createVerificationSources(seed, index),
+    evidence: {
+      supporting,
+      conflicting,
+      reviewedClaims: supporting + conflicting,
+    },
+  };
+});
 
 export const readerSources = Array.from(
   new Set(mockStories.map((story) => story.source)),

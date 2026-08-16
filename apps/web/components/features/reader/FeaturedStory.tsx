@@ -1,5 +1,6 @@
 import { ArrowUpRight, Clock3, ShieldCheck } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 
 import { Badge } from "@/components/ui";
 import { confidenceBand, formatRelativeTime } from "@/lib/utils/reader";
@@ -13,10 +14,10 @@ export function FeaturedStory({ story }: FeaturedStoryProps) {
   const band = confidenceBand(story.confidence);
 
   return (
-    <article
-      aria-label={`Featured story: ${story.headline}`}
+    <Link
+      aria-label={`Read featured story: ${story.headline}`}
       className="featured-story"
-      tabIndex={0}
+      href={`/reader/${story.id}`}
     >
       <div className="featured-story__image">
         {story.image ? (
@@ -73,6 +74,6 @@ export function FeaturedStory({ story }: FeaturedStoryProps) {
           <ArrowUpRight size={18} />
         </span>
       </div>
-    </article>
+    </Link>
   );
 }
