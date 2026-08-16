@@ -1,0 +1,17 @@
+{
+  "name": "agbofa-nexus-ai",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.22.0",
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "scripts": {
+    "dev": "corepack pnpm --filter @agbofa/web dev",
+    "build": "corepack pnpm --filter @agbofa/web build",
+    "start": "corepack pnpm --filter @agbofa/web start",
+    "lint": "corepack pnpm --filter @agbofa/web lint",
+    "typecheck": "corepack pnpm --filter @agbofa/web typecheck",
+    "tsc": "corepack pnpm --filter @agbofa/web exec tsc"
+  }
+}
