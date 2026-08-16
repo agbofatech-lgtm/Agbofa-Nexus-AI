@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { AuthGuard } from "@/components/auth/AuthGuard";
 import { AppLayout } from "@/components/shared/layout/Layout";
 
 interface AuthenticatedLayoutProps {
@@ -9,5 +10,9 @@ interface AuthenticatedLayoutProps {
 export default function AuthenticatedLayout({
   children,
 }: AuthenticatedLayoutProps) {
-  return <AppLayout>{children}</AppLayout>;
+  return (
+    <AuthGuard>
+      <AppLayout>{children}</AppLayout>
+    </AuthGuard>
+  );
 }

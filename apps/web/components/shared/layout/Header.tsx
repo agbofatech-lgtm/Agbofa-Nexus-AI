@@ -21,6 +21,7 @@ import {
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { useAuth } from "@/hooks/useAuth";
 
 interface HeaderLink {
   label: string;
@@ -51,6 +52,14 @@ interface HeaderProps {
 
 export function Header({ onOpenNavigation }: HeaderProps) {
   const router = useRouter();
+  const { session, signOut } = useAuth();
+  const displayName = session?.user.name ?? "Nexus User";
+  const initials = displayName
+    .split(" ")
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
   const [query, setQuery] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(2);
@@ -277,20 +286,24 @@ export function Header({ onOpenNavigation }: HeaderProps) {
             }}
             type="button"
           >
-            <span className="user-avatar">KA</span>
+            <span className="user-avatar">{initials}</span>
             <span className="user-trigger__copy">
-              <strong>Kofi A.</strong>
-              <small>Editor</small>
+              <strong>{displayName}</strong>
+              <small>{session?.user.role ?? "User"}</small>
             </span>
             <ChevronDown size={14} />
           </button>
           {userMenuOpen ? (
             <div className="header-popover user-menu glass-dark">
               <div className="user-menu__identity">
-                <span className="user-avatar user-avatar--large">KA</span>
+                <span className="user-avatar user-avatar--large">
+                  {initials}
+                </span>
                 <div>
-                  <strong>Kofi Agbofa</strong>
-                  <span>editor@agbofa.media</span>
+                  <strong>{displayName}</strong>
+                  <span>
+                    {session?.user.email ?? "Authenticated workspace"}
+                  </span>
                 </div>
               </div>
               <Link href="/profile">
@@ -299,7 +312,14 @@ export function Header({ onOpenNavigation }: HeaderProps) {
               <Link href="/settings">
                 <Settings size={16} /> Settings
               </Link>
-              <button type="button">
+              <button
+                onClick={() => {
+                  signOut();
+                  setUserMenuOpen(false);
+                  router.replace("/");
+                }}
+                type="button"
+              >
                 <LogOut size={16} /> Sign out
               </button>
             </div>

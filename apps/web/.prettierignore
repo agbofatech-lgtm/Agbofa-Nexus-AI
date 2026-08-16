@@ -1,0 +1,6 @@
+.next/
+node_modules/
+public/favicon.ico
+public/icons/
+public/*.jpg
+*.tsbuildinfo
