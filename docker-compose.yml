@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  foundation:
+    image: agbofa/foundation:dev
+    environment:
+      - SERVICE_NAME=agbofa-foundation
+      - ENVIRONMENT=development
+    ports:
+      - "9000:9090"
+
+  runtime:
+    image: agbofa/runtime:dev
+    environment:
+      - SERVICE_NAME=agbofa-runtime
+      - ENVIRONMENT=development
+    ports:
+      - "9001:9090"
+    depends_on:
+      - foundation
+
+  agents:
+    build:
+      context: .
+      dockerfile: services/agents/Dockerfile
+    image: agbofa/agents:dev
+    environment:
+      - SERVICE_NAME=agbofa-agents
+      - SERVICE_VERSION=1.0.0
+      - ENVIRONMENT=development
+      - GRPC_PORT=9090
+      - HTTP_PORT=9091
+      - METRICS_PORT=9092
+      - RUNTIME_GRPC_ENDPOINT=runtime:9090
+    ports:
+      - "9010:9090"
+      - "9011:9091"
+      - "9012:9092"
+    depends_on:
+      - runtime

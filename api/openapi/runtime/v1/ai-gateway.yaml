@@ -1,0 +1,112 @@
+openapi: 3.0.3
+info:
+  title: Agbofa Nexus AI — AI Gateway & Prompt Registry API
+  version: 1.0.0
+  description: Foundation OpenAPI contract for AI Gateway model invocation and Prompt Template versioning (API-005, API-009).
+paths:
+  /v1/aigateway/invoke:
+    post:
+      summary: Invoke LLM Model via AI Gateway
+      operationId: invokeModel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvokeModelRequest'
+      responses:
+        '200':
+          description: Successful model completion response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvokeModelResponse'
+        '400':
+          description: Invalid request or safety violation
+        '429':
+          description: Rate limit or token quota exceeded
+  /v1/prompts/{id}/{version}:
+    get:
+      summary: Get Prompt Template by ID and Version
+      operationId: getPromptTemplate
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Found prompt template
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromptTemplate'
+        '404':
+          description: Prompt template not found
+components:
+  schemas:
+    InvokeModelRequest:
+      type: object
+      required: [tenant_id, model, messages]
+      properties:
+        tenant_id:
+          type: string
+        model:
+          type: string
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Message'
+        temperature:
+          type: number
+          default: 0.7
+        max_tokens:
+          type: integer
+          default: 1024
+    Message:
+      type: object
+      required: [role, content]
+      properties:
+        role:
+          type: string
+        content:
+          type: string
+    InvokeModelResponse:
+      type: object
+      properties:
+        provider_id:
+          type: string
+        model:
+          type: string
+        content:
+          type: string
+        prompt_tokens:
+          type: integer
+        completion_tokens:
+          type: integer
+        total_tokens:
+          type: integer
+        latency_ms:
+          type: integer
+    PromptTemplate:
+      type: object
+      required: [prompt_id, version, template_string]
+      properties:
+        prompt_id:
+          type: string
+        name:
+          type: string
+        version:
+          type: string
+        template_string:
+          type: string
+        required_variables:
+          type: array
+          items:
+            type: string

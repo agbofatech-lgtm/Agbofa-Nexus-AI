@@ -2,3 +2,5 @@ packages:
   - apps/*
   - packages/*
   - libs/node/packages/*
+allowBuilds:
+  protobufjs: set this to true or false

@@ -1,0 +1,197 @@
+openapi: 3.0.3
+info:
+  title: Agbofa Nexus AI — Compliance Gatekeeper API
+  version: 1.0.0
+  description: REST OpenAPI contract for Compliance Gatekeeper verification, rights management, originality checking, privacy/legal review, AI safety review, platform policy compliance, and audit ledger (API-020).
+paths:
+  /v1/compliance/verify:
+    post:
+      summary: Execute comprehensive compliance gatekeeper evaluation for a content package
+      operationId: verifyCompliance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyComplianceRequest'
+      responses:
+        '200':
+          description: Compliance verification completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyComplianceResponse'
+        '403':
+          description: Tenant unauthorized
+  /v1/compliance/reports/{id}:
+    get:
+      summary: Get Compliance Report by Report ID
+      operationId: getComplianceReport
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tenant_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Compliance report retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplianceReport'
+  /v1/compliance/reports/{id}/review:
+    post:
+      summary: Submit human compliance officer review decision
+      operationId: reviewCompliancePolicy
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewCompliancePolicyRequest'
+      responses:
+        '200':
+          description: Compliance review decision recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewCompliancePolicyResponse'
+  /v1/compliance/packages/{id}/audit:
+    get:
+      summary: Get immutable compliance audit ledger records for a content package
+      operationId: auditComplianceLedger
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tenant_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Compliance audit ledger trail retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditComplianceLedgerResponse'
+components:
+  schemas:
+    VerifyComplianceRequest:
+      type: object
+      required: [tenant_id, package_id, story_id, title, content]
+      properties:
+        tenant_id:
+          type: string
+        package_id:
+          type: string
+        story_id:
+          type: string
+        title:
+          type: string
+        content:
+          type: string
+        target_channels:
+          type: array
+          items:
+            type: string
+    VerifyComplianceResponse:
+      type: object
+      properties:
+        report_id:
+          type: string
+        status:
+          type: string
+          enum: [COMPLIANT, REVIEW_REQUIRED, REJECTED]
+        overall_score:
+          type: number
+        verified_at_unix:
+          type: integer
+    ComplianceReport:
+      type: object
+      properties:
+        report_id:
+          type: string
+        tenant_id:
+          type: string
+        package_id:
+          type: string
+        story_id:
+          type: string
+        status:
+          type: string
+          enum: [COMPLIANT, REVIEW_REQUIRED, REJECTED]
+        overall_score:
+          type: number
+        violations:
+          type: array
+          items:
+            type: string
+    ReviewCompliancePolicyRequest:
+      type: object
+      required: [tenant_id, report_id, approved, reviewer_id]
+      properties:
+        tenant_id:
+          type: string
+        report_id:
+          type: string
+        approved:
+          type: boolean
+        reviewer_id:
+          type: string
+        comments:
+          type: string
+    ReviewCompliancePolicyResponse:
+      type: object
+      properties:
+        report_id:
+          type: string
+        status:
+          type: string
+        reviewed_at_unix:
+          type: integer
+    AuditComplianceLedgerResponse:
+      type: object
+      properties:
+        package_id:
+          type: string
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/ComplianceAuditRecord'
+        audit_merkle_root:
+          type: string
+    ComplianceAuditRecord:
+      type: object
+      properties:
+        record_id:
+          type: string
+        tenant_id:
+          type: string
+        package_id:
+          type: string
+        check_type:
+          type: string
+        result_status:
+          type: string
+        actor:
+          type: string
+        cryptographic_hash:
+          type: string
+        timestamp_unix:
+          type: integer

@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.agbofa.local/operations/v1/operations-event.schema.json",
+  "title": "EnterpriseOperationsEvent",
+  "description": "Schema for release, deployment, rollback, and DR events in Enterprise Operations & Certification.",
+  "type": "object",
+  "required": ["event_id", "event_type", "tenant_id", "resource_id", "occurred_at"],
+  "properties": {
+    "event_id": { "type": "string" },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "operations.release.candidate_created",
+        "operations.release.gate_evaluated",
+        "operations.deployment.completed",
+        "operations.rollback.executed",
+        "operations.dr.backup_verified"
+      ]
+    },
+    "tenant_id": { "type": "string" },
+    "resource_id": { "type": "string" },
+    "environment": {
+      "type": "string",
+      "enum": ["DEVELOPMENT", "TEST_VALIDATION", "STAGING", "PRODUCTION"]
+    },
+    "status": { "type": "string" },
+    "provenance_hash": { "type": "string" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    }
+  },
+  "additionalProperties": false
+}

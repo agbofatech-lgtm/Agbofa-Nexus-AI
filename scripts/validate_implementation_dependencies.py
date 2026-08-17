@@ -99,7 +99,8 @@ def main() -> int:
     if findings:
         lines += ["| Severity | Path | Message |", "|---|---|---|"]
         for f in findings:
-            lines.append(f"| {f['severity']} | {f['path']} | {f['message'].replace('|', '\\|')} |")
+            msg = f['message'].replace('|', '\\|')
+            lines.append(f"| {f['severity']} | {f['path']} | {msg} |")
     else:
         lines.append("Implementation dependency validation passed.")
     lines.append("")

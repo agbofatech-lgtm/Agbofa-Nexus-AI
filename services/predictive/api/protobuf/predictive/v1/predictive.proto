@@ -1,0 +1,140 @@
+syntax = "proto3";
+
+package predictive.v1;
+
+option go_package = "github.com/agbofa/nexus-api/gen/go/predictive/v1;predictivev1";
+
+enum PredictionType {
+  PREDICTION_TYPE_UNSPECIFIED = 0;
+  PREDICTION_TYPE_VIRALITY = 1;
+  PREDICTION_TYPE_ENGAGEMENT = 2;
+  PREDICTION_TYPE_CONTENT_OPTIMIZATION = 3;
+  PREDICTION_TYPE_TREND_LIFECYCLE = 4;
+  PREDICTION_TYPE_ANOMALY = 5;
+  PREDICTION_TYPE_PUBLISHING_TIME = 6;
+}
+
+message PredictionRequestProto {
+  string request_id = 1;
+  string tenant_id = 2;
+  PredictionType prediction_type = 3;
+  map<string, string> features = 4;
+  int64 requested_at_unix = 5;
+  map<string, string> metadata = 6;
+}
+
+message PredictionResultProto {
+  string result_id = 1;
+  string request_id = 2;
+  string tenant_id = 3;
+  PredictionType prediction_type = 4;
+  double score = 5;
+  double confidence = 6;
+  map<string, string> outputs = 7;
+  string model_version = 8;
+  int64 predicted_at_unix = 9;
+  map<string, string> metadata = 10;
+}
+
+message ModelMetadataProto {
+  string model_id = 1;
+  string tenant_id = 2;
+  PredictionType prediction_type = 3;
+  string version = 4;
+  double accuracy_metric = 5;
+  int64 trained_at_unix = 6;
+  string status = 7;
+}
+
+message PredictRequest {
+  string tenant_id = 1;
+  PredictionType prediction_type = 2;
+  map<string, string> features = 3;
+}
+
+message PredictResponse {
+  string tenant_id = 1;
+  PredictionResultProto result = 2;
+}
+
+message BatchPredictRequest {
+  string tenant_id = 1;
+  repeated PredictionRequestProto requests = 2;
+}
+
+message BatchPredictResponse {
+  string tenant_id = 1;
+  repeated PredictionResultProto results = 2;
+}
+
+message TrainModelRequest {
+  string tenant_id = 1;
+  PredictionType prediction_type = 2;
+}
+
+message TrainModelResponse {
+  string tenant_id = 1;
+  ModelMetadataProto metadata = 2;
+}
+
+message EvaluateModelRequest {
+  string tenant_id = 1;
+  PredictionType prediction_type = 2;
+  string model_version = 3;
+}
+
+message EvaluateModelResponse {
+  string tenant_id = 1;
+  ModelMetadataProto metadata = 2;
+}
+
+message PromoteModelRequest {
+  string tenant_id = 1;
+  PredictionType prediction_type = 2;
+  string model_version = 3;
+}
+
+message PromoteModelResponse {
+  string tenant_id = 1;
+  bool success = 2;
+}
+
+message GetModelMetadataRequest {
+  string tenant_id = 1;
+  PredictionType prediction_type = 2;
+}
+
+message GetModelMetadataResponse {
+  string tenant_id = 1;
+  ModelMetadataProto metadata = 2;
+}
+
+message ListModelsRequest {
+  string tenant_id = 1;
+  PredictionType prediction_type = 2;
+}
+
+message ListModelsResponse {
+  string tenant_id = 1;
+  repeated ModelMetadataProto models = 2;
+}
+
+message GetPredictionCacheRequest {
+  string tenant_id = 1;
+}
+
+message GetPredictionCacheResponse {
+  string tenant_id = 1;
+  map<string, string> cache_stats = 2;
+}
+
+service PredictionService {
+  rpc Predict(PredictRequest) returns (PredictResponse);
+  rpc BatchPredict(BatchPredictRequest) returns (BatchPredictResponse);
+  rpc TrainModel(TrainModelRequest) returns (TrainModelResponse);
+  rpc EvaluateModel(EvaluateModelRequest) returns (EvaluateModelResponse);
+  rpc PromoteModel(PromoteModelRequest) returns (PromoteModelResponse);
+  rpc GetModelMetadata(GetModelMetadataRequest) returns (GetModelMetadataResponse);
+  rpc ListModels(ListModelsRequest) returns (ListModelsResponse);
+  rpc GetPredictionCache(GetPredictionCacheRequest) returns (GetPredictionCacheResponse);
+}

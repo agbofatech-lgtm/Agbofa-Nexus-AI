@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.agbofa.local/truth_engine/v1/truth-engine-event.schema.json",
+  "title": "TruthEngineEvent",
+  "description": "Schema for EVT-019 consumer and EVT-021 through EVT-026, EVT-040 producers in Truth Engine.",
+  "type": "object",
+  "required": ["event_id", "event_type", "tenant_id", "story_id", "occurred_at"],
+  "properties": {
+    "event_id": { "type": "string" },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "truth_engine.story.submitted",
+        "truth_engine.source.evaluated",
+        "truth_engine.claim.verified",
+        "truth_engine.confidence.calculated",
+        "truth_engine.story.verified",
+        "truth_engine.misinfo.detected",
+        "truth_engine.story.versioned",
+        "truth_engine.events"
+      ]
+    },
+    "tenant_id": { "type": "string" },
+    "story_id": { "type": "string" },
+    "claim_id": { "type": "string" },
+    "source_id": { "type": "string" },
+    "truth_state": {
+      "type": "string",
+      "enum": ["SUBMITTED", "IN_REVIEW", "VERIFIED", "DISPUTED", "REJECTED"]
+    },
+    "confidence_score": { "type": "number" },
+    "reliability_score": { "type": "number" },
+    "misinfo_flagged": { "type": "boolean" },
+    "ledger_record_id": { "type": "string" },
+    "provenance_hash": { "type": "string" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    }
+  },
+  "additionalProperties": false
+}

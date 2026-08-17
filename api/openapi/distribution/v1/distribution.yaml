@@ -1,0 +1,218 @@
+openapi: 3.0.3
+info:
+  title: Agbofa Nexus AI — Distribution Engine API
+  version: 1.0.0
+  description: REST OpenAPI contract for Distribution Engine publication scheduling, breaking news delivery, multi-channel synchronization, corrections/retractions, and delivery proof monitoring (API-021, API-033).
+paths:
+  /v1/distribution/schedule:
+    post:
+      summary: Schedule content package publication across target channels
+      operationId: schedulePublication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SchedulePublicationRequest'
+      responses:
+        '200':
+          description: Publication job scheduled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchedulePublicationResponse'
+        '403':
+          description: Tenant unauthorized or package compliance unapproved
+  /v1/distribution/jobs/{id}:
+    get:
+      summary: Get Publication Job by ID
+      operationId: getPublicationJob
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tenant_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Publication job retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicationJob'
+  /v1/distribution/breaking:
+    post:
+      summary: Deliver immediate breaking news alert across priority channels
+      operationId: deliverBreakingNews
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeliverBreakingNewsRequest'
+      responses:
+        '200':
+          description: Breaking news delivered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeliverBreakingNewsResponse'
+  /v1/distribution/jobs/{id}/correction:
+    post:
+      summary: Issue correction for published content job
+      operationId: issueCorrection
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueCorrectionRequest'
+      responses:
+        '200':
+          description: Correction issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueCorrectionResponse'
+  /v1/distribution/jobs/{id}/retraction:
+    post:
+      summary: Issue full retraction for published content job
+      operationId: issueRetraction
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueRetractionRequest'
+      responses:
+        '200':
+          description: Retraction issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueRetractionResponse'
+components:
+  schemas:
+    SchedulePublicationRequest:
+      type: object
+      required: [tenant_id, package_id, story_id, title]
+      properties:
+        tenant_id:
+          type: string
+        package_id:
+          type: string
+        story_id:
+          type: string
+        title:
+          type: string
+        target_channels:
+          type: array
+          items:
+            type: string
+        scheduled_time_unix:
+          type: integer
+    SchedulePublicationResponse:
+      type: object
+      properties:
+        publication_job_id:
+          type: string
+        status:
+          type: string
+        created_at_unix:
+          type: integer
+    PublicationJob:
+      type: object
+      properties:
+        publication_job_id:
+          type: string
+        tenant_id:
+          type: string
+        package_id:
+          type: string
+        story_id:
+          type: string
+        title:
+          type: string
+        status:
+          type: string
+          enum: [SCHEDULED, DELIVERING, DELIVERED, FAILED, RETRYING]
+        retry_count:
+          type: integer
+    DeliverBreakingNewsRequest:
+      type: object
+      required: [tenant_id, package_id, story_id, alert_text]
+      properties:
+        tenant_id:
+          type: string
+        package_id:
+          type: string
+        story_id:
+          type: string
+        alert_text:
+          type: string
+        priority_channels:
+          type: array
+          items:
+            type: string
+    DeliverBreakingNewsResponse:
+      type: object
+      properties:
+        alert_id:
+          type: string
+        status:
+          type: string
+        delivered_at_unix:
+          type: integer
+    IssueCorrectionRequest:
+      type: object
+      required: [tenant_id, publication_job_id, corrected_content, correction_note]
+      properties:
+        tenant_id:
+          type: string
+        publication_job_id:
+          type: string
+        corrected_content:
+          type: string
+        correction_note:
+          type: string
+    IssueCorrectionResponse:
+      type: object
+      properties:
+        correction_id:
+          type: string
+        status:
+          type: string
+    IssueRetractionRequest:
+      type: object
+      required: [tenant_id, publication_job_id, retraction_reason]
+      properties:
+        tenant_id:
+          type: string
+        publication_job_id:
+          type: string
+        retraction_reason:
+          type: string
+    IssueRetractionResponse:
+      type: object
+      properties:
+        retraction_id:
+          type: string
+        status:
+          type: string

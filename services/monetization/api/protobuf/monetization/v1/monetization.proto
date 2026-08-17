@@ -1,0 +1,284 @@
+syntax = "proto3";
+
+package monetization.v1;
+
+option go_package = "github.com/agbofa/nexus/services/monetization/api/protobuf/monetization/v1;monetizationv1";
+
+// MonetizationService provides the authoritative gRPC interface for Agbofa Nexus AI monetization,
+// including subscriptions, paywall content gating, ad placement, and revenue analytics.
+service MonetizationService {
+  // Subscriptions
+  rpc CreateSubscription(CreateSubscriptionRequest) returns (CreateSubscriptionResponse);
+  rpc GetSubscription(GetSubscriptionRequest) returns (GetSubscriptionResponse);
+  rpc CancelSubscription(CancelSubscriptionRequest) returns (CancelSubscriptionResponse);
+  rpc ListPlans(ListPlansRequest) returns (ListPlansResponse);
+
+  // Paywall
+  rpc CheckEntitlement(CheckEntitlementRequest) returns (CheckEntitlementResponse);
+  rpc GetMeteredAccess(GetMeteredAccessRequest) returns (GetMeteredAccessResponse);
+
+  // Advertising
+  rpc CreateCampaign(CreateCampaignRequest) returns (CreateCampaignResponse);
+  rpc RecordImpression(RecordImpressionRequest) returns (RecordImpressionResponse);
+  rpc RecordClick(RecordClickRequest) returns (RecordClickResponse);
+
+  // Revenue
+  rpc GetRevenueAggregate(GetRevenueAggregateRequest) returns (GetRevenueAggregateResponse);
+  rpc GetMRRData(GetMRRDataRequest) returns (GetMRRDataResponse);
+}
+
+// Enums
+enum PlanTier {
+  PLAN_TIER_UNSPECIFIED = 0;
+  PLAN_TIER_FREE = 1;
+  PLAN_TIER_PREMIUM = 2;
+  PLAN_TIER_ENTERPRISE = 3;
+}
+
+enum BillingInterval {
+  BILLING_INTERVAL_UNSPECIFIED = 0;
+  BILLING_INTERVAL_MONTHLY = 1;
+  BILLING_INTERVAL_ANNUAL = 2;
+}
+
+enum SubscriptionStatus {
+  SUBSCRIPTION_STATUS_UNSPECIFIED = 0;
+  SUBSCRIPTION_STATUS_ACTIVE = 1;
+  SUBSCRIPTION_STATUS_CANCELED = 2;
+  SUBSCRIPTION_STATUS_PAST_DUE = 3;
+  SUBSCRIPTION_STATUS_TRIALING = 4;
+  SUBSCRIPTION_STATUS_EXPIRED = 5;
+  SUBSCRIPTION_STATUS_PENDING = 6;
+}
+
+enum PaywallReason {
+  PAYWALL_REASON_UNSPECIFIED = 0;
+  PAYWALL_REASON_SUBSCRIBED = 1;
+  PAYWALL_REASON_METERED_FREE = 2;
+  PAYWALL_REASON_PREMIUM_ONLY = 3;
+  PAYWALL_REASON_EXPIRED = 4;
+}
+
+enum CampaignStatus {
+  CAMPAIGN_STATUS_UNSPECIFIED = 0;
+  CAMPAIGN_STATUS_DRAFT = 1;
+  CAMPAIGN_STATUS_ACTIVE = 2;
+  CAMPAIGN_STATUS_PAUSED = 3;
+  CAMPAIGN_STATUS_COMPLETED = 4;
+}
+
+enum RevenuePeriod {
+  REVENUE_PERIOD_UNSPECIFIED = 0;
+  REVENUE_PERIOD_MONTHLY = 1;
+  REVENUE_PERIOD_ANNUAL = 2;
+}
+
+// Subscriptions Messages
+message CreateSubscriptionRequest {
+  string tenant_id = 1;
+  string reader_id = 2;
+  string plan_id = 3;
+  string payment_method_id = 4;
+}
+
+message CreateSubscriptionResponse {
+  ReaderSubscription subscription = 1;
+}
+
+message GetSubscriptionRequest {
+  string tenant_id = 1;
+  string subscription_id = 2;
+}
+
+message GetSubscriptionResponse {
+  ReaderSubscription subscription = 1;
+}
+
+message CancelSubscriptionRequest {
+  string tenant_id = 1;
+  string subscription_id = 2;
+  bool immediate = 3;
+  string reason = 4;
+}
+
+message CancelSubscriptionResponse {
+  ReaderSubscription subscription = 1;
+}
+
+message ListPlansRequest {
+  string tenant_id = 1;
+}
+
+message ListPlansResponse {
+  repeated SubscriptionPlan plans = 1;
+}
+
+message SubscriptionPlan {
+  string plan_id = 1;
+  string tenant_id = 2;
+  string name = 3;
+  PlanTier tier = 4;
+  double price = 5;
+  string currency = 6;
+  BillingInterval billing_interval = 7;
+  repeated string features = 8;
+  int32 max_readers = 9;
+}
+
+message ReaderSubscription {
+  string subscription_id = 1;
+  string tenant_id = 2;
+  string reader_id = 3;
+  string plan_id = 4;
+  SubscriptionStatus status = 5;
+  int64 current_period_start_unix = 6;
+  int64 current_period_end_unix = 7;
+  bool cancel_at_period_end = 8;
+  string payment_method_id = 9;
+}
+
+// Paywall Messages
+message CheckEntitlementRequest {
+  string tenant_id = 1;
+  string reader_id = 2;
+  string content_id = 3;
+  bool is_premium = 4;
+}
+
+message CheckEntitlementResponse {
+  EntitlementCheck entitlement = 1;
+}
+
+message GetMeteredAccessRequest {
+  string tenant_id = 1;
+  string reader_id = 2;
+}
+
+message GetMeteredAccessResponse {
+  MeteredAccess metered_access = 1;
+}
+
+message EntitlementCheck {
+  string tenant_id = 1;
+  string reader_id = 2;
+  string content_id = 3;
+  bool is_premium = 4;
+  bool has_access = 5;
+  PaywallReason reason = 6;
+  int64 checked_at_unix = 7;
+}
+
+message MeteredAccess {
+  string tenant_id = 1;
+  string reader_id = 2;
+  int32 metered_count = 3;
+  int32 metered_limit = 4;
+  int64 window_start_unix = 5;
+  int64 window_end_unix = 6;
+}
+
+// Advertising Messages
+message CreateCampaignRequest {
+  string tenant_id = 1;
+  string advertiser_id = 2;
+  string name = 3;
+  double budget = 4;
+  string currency = 5;
+  int64 start_date_unix = 6;
+  int64 end_date_unix = 7;
+  repeated string target_platforms = 8;
+  repeated string target_topics = 9;
+  repeated string excluded_topics = 10;
+}
+
+message CreateCampaignResponse {
+  AdCampaign campaign = 1;
+}
+
+message AdCampaign {
+  string campaign_id = 1;
+  string tenant_id = 2;
+  string advertiser_id = 3;
+  string name = 4;
+  double budget = 5;
+  string currency = 6;
+  int64 start_date_unix = 7;
+  int64 end_date_unix = 8;
+  repeated string target_platforms = 9;
+  repeated string target_topics = 10;
+  CampaignStatus status = 11;
+}
+
+message RecordImpressionRequest {
+  string tenant_id = 1;
+  string placement_id = 2;
+  string reader_id = 3;
+}
+
+message RecordImpressionResponse {
+  AdImpression impression = 1;
+}
+
+message RecordClickRequest {
+  string tenant_id = 1;
+  string impression_id = 2;
+}
+
+message RecordClickResponse {
+  AdImpression impression = 1;
+}
+
+message AdImpression {
+  string impression_id = 1;
+  string tenant_id = 2;
+  string placement_id = 3;
+  string reader_id = 4;
+  int64 served_at_unix = 5;
+  bool clicked = 6;
+  int64 clicked_at_unix = 7;
+  double revenue = 8;
+  string currency = 9;
+}
+
+// Revenue Messages
+message GetRevenueAggregateRequest {
+  string tenant_id = 1;
+  RevenuePeriod period = 2;
+}
+
+message GetRevenueAggregateResponse {
+  RevenueAggregate aggregate = 1;
+}
+
+message RevenueAggregate {
+  string tenant_id = 1;
+  RevenuePeriod period = 2;
+  double mrr = 3;
+  double arr = 4;
+  double total_revenue = 5;
+  double subscription_revenue = 6;
+  double ad_revenue = 7;
+  int32 active_subscribers = 8;
+  double churn_rate = 9;
+  double ltv = 10;
+  double cac = 11;
+  int64 calculated_at_unix = 12;
+}
+
+message GetMRRDataRequest {
+  string tenant_id = 1;
+  int32 months = 2;
+}
+
+message GetMRRDataResponse {
+  MRRData mrr_data = 1;
+}
+
+message MRRData {
+  string tenant_id = 1;
+  double total_mrr = 2;
+  double new_mrr = 3;
+  double expansion_mrr = 4;
+  double churned_mrr = 5;
+  int64 calculated_at_unix = 6;
+}

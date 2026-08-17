@@ -1,0 +1,14 @@
+DROP POLICY IF EXISTS truth_graph_nodes_tenant_isolation_policy ON truth_graph_nodes;
+DROP POLICY IF EXISTS truth_provenance_ledger_tenant_isolation_policy ON truth_provenance_ledger;
+DROP POLICY IF EXISTS truth_editorial_decisions_tenant_isolation_policy ON truth_editorial_decisions;
+DROP POLICY IF EXISTS truth_misinfo_reports_tenant_isolation_policy ON truth_misinfo_reports;
+DROP POLICY IF EXISTS truth_stories_tenant_isolation_policy ON truth_stories;
+DROP POLICY IF EXISTS truth_story_claims_tenant_isolation_policy ON truth_story_claims;
+DROP POLICY IF EXISTS truth_source_reliabilities_tenant_isolation_policy ON truth_source_reliabilities;
+DROP TABLE IF EXISTS truth_graph_nodes;
+DROP TABLE IF EXISTS truth_provenance_ledger;
+DROP TABLE IF EXISTS truth_editorial_decisions;
+DROP TABLE IF EXISTS truth_misinfo_reports;
+DROP TABLE IF EXISTS truth_stories;
+DROP TABLE IF EXISTS truth_story_claims;
+DROP TABLE IF EXISTS truth_source_reliabilities;

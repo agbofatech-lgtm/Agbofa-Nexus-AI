@@ -17,3 +17,11 @@ plugins:
     out: api/gen/python
   - remote: buf.build/grpc/python
     out: api/gen/python
+  - remote: buf.build/community/stephenh-ts-proto:v1.181.1
+    out: packages/api-client/src/gen
+    opt:
+      - outputServices=grpc-js
+      - env=node
+      - esModuleInterop=true
+      - useOptionals=messages
+      - exportCommonSymbols=false

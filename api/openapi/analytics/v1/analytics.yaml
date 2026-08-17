@@ -1,0 +1,190 @@
+openapi: 3.0.3
+info:
+  title: Agbofa Nexus AI — Analytics, Audience Intelligence & Continuous Learning API
+  version: 1.0.0
+  description: REST OpenAPI contract for analytics event collection, audience intelligence, feature store queries, and continuous learning feedback loops (API-023, API-034).
+paths:
+  /v1/analytics/events:
+    post:
+      summary: Collect observed analytics event within tenant boundary
+      operationId: collectEvent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CollectEventRequest'
+      responses:
+        '200':
+          description: Event collected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectEventResponse'
+        '403':
+          description: Tenant unauthorized
+  /v1/analytics/engagement/{id}:
+    get:
+      summary: Get engagement metrics for a story
+      operationId: getEngagementMetrics
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tenant_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: time_window
+          in: query
+          required: false
+          schema:
+            type: string
+            default: 24H
+      responses:
+        '200':
+          description: Engagement metrics retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetEngagementMetricsResponse'
+  /v1/analytics/audience/{id}:
+    get:
+      summary: Get audience segment intelligence by ID
+      operationId: getAudienceSegment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tenant_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Audience segment retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AudienceSegment'
+  /v1/analytics/learning/feedback:
+    post:
+      summary: Submit AI feedback for continuous learning evaluation
+      operationId: submitAIFeedback
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitAIFeedbackRequest'
+      responses:
+        '200':
+          description: Feedback submitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmitAIFeedbackResponse'
+components:
+  schemas:
+    CollectEventRequest:
+      type: object
+      required: [event]
+      properties:
+        event:
+          $ref: '#/components/schemas/AnalyticsEvent'
+    AnalyticsEvent:
+      type: object
+      required: [tenant_id, event_type, story_id, signal_category]
+      properties:
+        tenant_id:
+          type: string
+        event_type:
+          type: string
+          enum: [PAGE_VIEW, STORY_ENGAGEMENT, SHARE, RECOMMENDATION_CLICK]
+        story_id:
+          type: string
+        channel_id:
+          type: string
+        audience_cohort_id:
+          type: string
+        signal_category:
+          type: string
+          enum: [OBSERVED_DATA, DERIVED_METRICS, INFERRED_SIGNALS, AI_GENERATED_INSIGHTS]
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+    CollectEventResponse:
+      type: object
+      properties:
+        event_id:
+          type: string
+        status:
+          type: string
+        collected_at_unix:
+          type: integer
+    GetEngagementMetricsResponse:
+      type: object
+      properties:
+        metrics:
+          type: array
+          items:
+            $ref: '#/components/schemas/EngagementMetric'
+    EngagementMetric:
+      type: object
+      properties:
+        story_id:
+          type: string
+        tenant_id:
+          type: string
+        metric_name:
+          type: string
+        value:
+          type: number
+        calculation_source:
+          type: string
+        provenance_hash:
+          type: string
+    AudienceSegment:
+      type: object
+      properties:
+        segment_id:
+          type: string
+        tenant_id:
+          type: string
+        name:
+          type: string
+        engagement_score:
+          type: number
+        top_content_categories:
+          type: array
+          items:
+            type: string
+    SubmitAIFeedbackRequest:
+      type: object
+      required: [tenant_id, story_id, model_id, feedback_type]
+      properties:
+        tenant_id:
+          type: string
+        story_id:
+          type: string
+        model_id:
+          type: string
+        feedback_type:
+          type: string
+          enum: [POSITIVE_ENGAGEMENT, NEGATIVE_ENGAGEMENT, MANUAL_REVIEW_CORRECTION]
+        score_delta:
+          type: number
+    SubmitAIFeedbackResponse:
+      type: object
+      properties:
+        feedback_id:
+          type: string
+        status:
+          type: string

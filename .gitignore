@@ -11,6 +11,11 @@ dist/
 build/
 coverage/
 
+# Next.js build artifacts
+.next/
+*.tsbuildinfo
+next-env.d.ts
+
 # Sensitive credentials
 .env
 .env.*
@@ -22,3 +27,10 @@ coverage/
 incoming/*.zip
 incoming/*.tar
 incoming/*.tar.gz
+# Go binaries
+*.exe
+*.test
+
+# Secrets
+refresh_token.txt
+.env

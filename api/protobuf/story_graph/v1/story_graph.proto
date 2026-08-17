@@ -1,0 +1,140 @@
+syntax = "proto3";
+
+package story_graph.v1;
+
+option go_package = "github.com/agbofa/nexus-api/gen/go/story_graph/v1;storygraphv1";
+
+service TruthStoryGraphService {
+  rpc SyncStoryGraphNode(SyncStoryGraphNodeRequest) returns (SyncStoryGraphNodeResponse);
+  rpc GetStoryGraphNode(GetStoryGraphNodeRequest) returns (GetStoryGraphNodeResponse);
+  rpc QueryGraphContext(QueryGraphContextRequest) returns (QueryGraphContextResponse);
+}
+
+service StoryGraphCodeService {
+  rpc ManageEntityNode(ManageEntityNodeRequest) returns (ManageEntityNodeResponse);
+  rpc CalculateEntitySimilarity(CalculateEntitySimilarityRequest) returns (CalculateEntitySimilarityResponse);
+  rpc VersionStoryGraph(VersionStoryGraphRequest) returns (VersionStoryGraphResponse);
+  rpc SearchStoryGraph(SearchStoryGraphRequest) returns (SearchStoryGraphResponse);
+  rpc ArchiveStoryMemory(ArchiveStoryMemoryRequest) returns (ArchiveStoryMemoryResponse);
+}
+
+message SyncStoryGraphNodeRequest {
+  string tenant_id = 1;
+  string story_id = 2;
+  string title = 3;
+  string truth_state = 4;
+  double confidence_score = 5;
+  string source_id = 6;
+  string provenance_hash = 7;
+}
+
+message SyncStoryGraphNodeResponse {
+  string node_id = 1;
+  string tenant_id = 2;
+  string story_id = 3;
+  bool synchronized = 4;
+  int64 updated_at_unix = 5;
+}
+
+message GetStoryGraphNodeRequest {
+  string tenant_id = 1;
+  string story_id = 2;
+}
+
+message StoryGraphNode {
+  string node_id = 1;
+  string tenant_id = 2;
+  string story_id = 3;
+  string title = 4;
+  string truth_state = 5;
+  double confidence_score = 6;
+  string provenance_hash = 7;
+  int32 version = 8;
+}
+
+message GetStoryGraphNodeResponse {
+  StoryGraphNode node = 1;
+}
+
+message QueryGraphContextRequest {
+  string tenant_id = 1;
+  string story_id = 2;
+  int32 depth = 3;
+}
+
+message QueryGraphContextResponse {
+  repeated StoryGraphNode related_nodes = 1;
+  repeated GraphRelationship relationships = 2;
+}
+
+message GraphRelationship {
+  string rel_id = 1;
+  string tenant_id = 2;
+  string source_node_id = 3;
+  string target_node_id = 4;
+  string rel_type = 5; // MENTIONS, CORROBORATES, CONTRADICTS, SIMILAR_TO, VERSION_OF
+  double weight = 6;
+}
+
+message ManageEntityNodeRequest {
+  string tenant_id = 1;
+  string canonical_id = 2;
+  string name = 3;
+  string entity_type = 4; // PERSON, ORGANIZATION, LOCATION, CONCEPT
+  map<string, string> properties = 5;
+}
+
+message ManageEntityNodeResponse {
+  string entity_id = 1;
+  string tenant_id = 2;
+  string canonical_id = 3;
+  bool created = 4;
+}
+
+message CalculateEntitySimilarityRequest {
+  string tenant_id = 1;
+  string source_story_id = 2;
+  string target_story_id = 3;
+}
+
+message CalculateEntitySimilarityResponse {
+  string tenant_id = 1;
+  string source_story_id = 2;
+  string target_story_id = 3;
+  double similarity_score = 4;
+  string cluster_id = 5;
+}
+
+message VersionStoryGraphRequest {
+  string tenant_id = 1;
+  string story_id = 2;
+  int32 new_version = 3;
+  string reason = 4;
+}
+
+message VersionStoryGraphResponse {
+  string story_id = 1;
+  int32 version = 2;
+  bool versioned = 3;
+}
+
+message SearchStoryGraphRequest {
+  string tenant_id = 1;
+  string query_text = 2;
+  repeated string entity_types = 3;
+  double min_confidence = 4;
+}
+
+message SearchStoryGraphResponse {
+  repeated StoryGraphNode nodes = 1;
+}
+
+message ArchiveStoryMemoryRequest {
+  string tenant_id = 1;
+  int32 archive_threshold_days = 2;
+}
+
+message ArchiveStoryMemoryResponse {
+  int32 archived_nodes_count = 1;
+  int32 archived_rels_count = 2;
+}

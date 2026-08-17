@@ -1,0 +1,145 @@
+syntax = "proto3";
+
+package content_factory.v1;
+
+option go_package = "github.com/agbofa/nexus-api/gen/go/content_factory/v1;contentfactoryv1";
+
+service ContentFactoryService {
+  rpc CreatePackage(CreatePackageRequest) returns (CreatePackageResponse);
+  rpc GetPackage(GetPackageRequest) returns (GetPackageResponse);
+  rpc ListPackages(ListPackagesRequest) returns (ListPackagesResponse);
+  rpc SubmitForReview(SubmitForReviewRequest) returns (SubmitForReviewResponse);
+  rpc ReviewPackage(ReviewPackageRequest) returns (ReviewPackageResponse);
+  rpc AdaptPackage(AdaptPackageRequest) returns (AdaptPackageResponse);
+  rpc LocalizePackage(LocalizePackageRequest) returns (LocalizePackageResponse);
+  rpc AuditQA(AuditQARequest) returns (AuditQAResponse);
+}
+
+message CreatePackageRequest {
+  string tenant_id = 1;
+  string story_id = 2;
+  string title = 3;
+  string summary = 4;
+  string brand_voice_id = 5;
+  repeated string target_channels = 6;
+}
+
+message CreatePackageResponse {
+  string package_id = 1;
+  string status = 2;
+  int64 created_at_unix = 3;
+}
+
+message GetPackageRequest {
+  string tenant_id = 1;
+  string package_id = 2;
+}
+
+message ContentPackage {
+  string package_id = 1;
+  string tenant_id = 2;
+  string story_id = 3;
+  string title = 4;
+  string status = 5; // DRAFT, QA_PASSED, REVIEW_REQUIRED, APPROVED, REJECTED
+  repeated ArticleAsset articles = 6;
+  repeated MultimediaAsset media = 7;
+  repeated SocialAsset social = 8;
+  QAReport qa_report = 9;
+  string brand_voice_id = 10;
+}
+
+message ArticleAsset {
+  string asset_id = 1;
+  string headline = 2;
+  string body_text = 3;
+  string seo_title = 4;
+  string seo_description = 5;
+  string language = 6;
+}
+
+message MultimediaAsset {
+  string asset_id = 1;
+  string asset_type = 2; // AUDIO_SCRIPT, VIDEO_SCRIPT, INFOGRAPHIC_SPEC
+  string content_spec = 3;
+}
+
+message SocialAsset {
+  string asset_id = 1;
+  string platform = 2; // TWITTER, LINKEDIN, INSTAGRAM
+  string post_text = 3;
+}
+
+message QAReport {
+  string qa_id = 1;
+  double overall_quality_score = 2;
+  bool passed = 3;
+  repeated string flagged_issues = 4;
+}
+
+message GetPackageResponse {
+  ContentPackage content_package = 1;
+}
+
+message ListPackagesRequest {
+  string tenant_id = 1;
+  string status_filter = 2;
+}
+
+message ListPackagesResponse {
+  repeated ContentPackage packages = 1;
+}
+
+message SubmitForReviewRequest {
+  string tenant_id = 1;
+  string package_id = 2;
+}
+
+message SubmitForReviewResponse {
+  string package_id = 1;
+  string status = 2;
+}
+
+message ReviewPackageRequest {
+  string tenant_id = 1;
+  string package_id = 2;
+  bool approved = 3;
+  string reviewer_id = 4;
+  string comments = 5;
+}
+
+message ReviewPackageResponse {
+  string package_id = 1;
+  string status = 2;
+  int64 reviewed_at_unix = 3;
+}
+
+message AdaptPackageRequest {
+  string tenant_id = 1;
+  string package_id = 2;
+  string target_channel = 3;
+}
+
+message AdaptPackageResponse {
+  string package_id = 1;
+  bool adapted = 2;
+}
+
+message LocalizePackageRequest {
+  string tenant_id = 1;
+  string package_id = 2;
+  string target_language = 3;
+}
+
+message LocalizePackageResponse {
+  string package_id = 1;
+  bool localized = 2;
+}
+
+message AuditQARequest {
+  string tenant_id = 1;
+  string package_id = 2;
+}
+
+message AuditQAResponse {
+  QAReport qa_report = 1;
+}

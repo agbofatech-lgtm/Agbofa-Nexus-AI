@@ -1,0 +1,114 @@
+syntax = "proto3";
+
+package operations.v1;
+
+option go_package = "github.com/agbofa/nexus-api/gen/go/operations/v1;operationsv1";
+
+service EnterpriseOperationsService {
+  rpc VerifyEnvironmentReadiness(VerifyEnvironmentReadinessRequest) returns (VerifyEnvironmentReadinessResponse);
+  rpc EvaluateReleaseGate(EvaluateReleaseGateRequest) returns (EvaluateReleaseGateResponse);
+  rpc RecordDeploymentArtifact(RecordDeploymentArtifactRequest) returns (RecordDeploymentArtifactResponse);
+  rpc ExecuteRollback(ExecuteRollbackRequest) returns (ExecuteRollbackResponse);
+  rpc VerifyDisasterRecoveryBackup(VerifyDisasterRecoveryBackupRequest) returns (VerifyDisasterRecoveryBackupResponse);
+}
+
+service ObservabilityHealthService {
+  rpc GetSystemStatus(GetSystemStatusRequest) returns (GetSystemStatusResponse);
+  rpc AuditOperationalLedger(AuditOperationalLedgerRequest) returns (AuditOperationalLedgerResponse);
+}
+
+message VerifyEnvironmentReadinessRequest {
+  string tenant_id = 1;
+  string environment = 2; // DEVELOPMENT, TEST_VALIDATION, STAGING, PRODUCTION
+}
+
+message VerifyEnvironmentReadinessResponse {
+  string environment = 1;
+  bool ready = 2;
+  repeated string readiness_checks = 3;
+}
+
+message EvaluateReleaseGateRequest {
+  string tenant_id = 1;
+  string release_candidate_id = 2;
+  string target_environment = 3;
+}
+
+message ReleaseGateEvaluation {
+  string gate_name = 1; // CODE_QUALITY, TESTS, BUILD, DEPENDENCY_VALIDATION, SECURITY, MIGRATIONS, PERFORMANCE, ACCESSIBILITY, GOVERNANCE
+  bool passed = 2;
+  string evidence_ref = 3;
+}
+
+message EvaluateReleaseGateResponse {
+  string release_candidate_id = 1;
+  bool approved_for_promotion = 2;
+  repeated ReleaseGateEvaluation evaluations = 3;
+}
+
+message RecordDeploymentArtifactRequest {
+  string tenant_id = 1;
+  string release_candidate_id = 2;
+  string commit_sha = 3;
+  string version = 4;
+  string environment = 5;
+}
+
+message RecordDeploymentArtifactResponse {
+  string deployment_id = 1;
+  string status = 2;
+  int64 deployed_at_unix = 3;
+}
+
+message ExecuteRollbackRequest {
+  string tenant_id = 1;
+  string current_deployment_id = 2;
+  string target_deployment_id = 3;
+  string rollback_reason = 4;
+}
+
+message ExecuteRollbackResponse {
+  string rollback_id = 1;
+  bool rollback_executed = 2;
+  string target_version = 3;
+}
+
+message VerifyDisasterRecoveryBackupRequest {
+  string tenant_id = 1;
+  string backup_id = 2;
+}
+
+message VerifyDisasterRecoveryBackupResponse {
+  string backup_id = 1;
+  bool restorable = 2;
+  int64 verified_at_unix = 3;
+}
+
+message GetSystemStatusRequest {
+  string tenant_id = 1;
+}
+
+message GetSystemStatusResponse {
+  string status = 1; // HEALTHY, DEGRADED, DOWN
+  int64 checked_at_unix = 2;
+}
+
+message AuditOperationalLedgerRequest {
+  string tenant_id = 1;
+  string release_candidate_id = 2;
+}
+
+message OperationalAuditRecord {
+  string record_id = 1;
+  string tenant_id = 2;
+  string resource_id = 3;
+  string action = 4;
+  string actor = 5;
+  string cryptographic_hash = 6;
+  int64 timestamp_unix = 7;
+}
+
+message AuditOperationalLedgerResponse {
+  repeated OperationalAuditRecord records = 1;
+  string audit_merkle_root = 2;
+}

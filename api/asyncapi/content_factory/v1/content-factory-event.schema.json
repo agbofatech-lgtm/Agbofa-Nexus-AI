@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.agbofa.local/content_factory/v1/content-factory-event.schema.json",
+  "title": "ContentFactoryEvent",
+  "description": "Schema for EVT-024 consumer and EVT-041 producer in Content Factory.",
+  "type": "object",
+  "required": ["event_id", "event_type", "tenant_id", "story_id", "occurred_at"],
+  "properties": {
+    "event_id": { "type": "string" },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "truth_engine.story.verified",
+        "content_factory.package.generated",
+        "content_factory.story.adapted",
+        "content_factory.review.required",
+        "content_factory.qa.completed",
+        "content_factory.package.approved",
+        "content_factory.events"
+      ]
+    },
+    "tenant_id": { "type": "string" },
+    "story_id": { "type": "string" },
+    "package_id": { "type": "string" },
+    "status": {
+      "type": "string",
+      "enum": ["DRAFT", "QA_PASSED", "REVIEW_REQUIRED", "APPROVED", "REJECTED"]
+    },
+    "qa_score": { "type": "number" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    }
+  },
+  "additionalProperties": false
+}

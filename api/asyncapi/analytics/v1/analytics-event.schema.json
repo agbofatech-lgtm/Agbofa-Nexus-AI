@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.agbofa.local/analytics/v1/analytics-event.schema.json",
+  "title": "AnalyticsEngineEvent",
+  "description": "Schema for EVT-034 through EVT-037 and EVT-044 producers in Analytics & Continuous Learning.",
+  "type": "object",
+  "required": ["event_id", "event_type", "tenant_id", "story_id", "signal_category", "occurred_at"],
+  "properties": {
+    "event_id": { "type": "string" },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "analytics.events",
+        "analytics.normalized",
+        "analytics.optimization",
+        "analytics.ai_feedback",
+        "analytics.collection"
+      ]
+    },
+    "tenant_id": { "type": "string" },
+    "story_id": { "type": "string" },
+    "segment_id": { "type": "string" },
+    "signal_category": {
+      "type": "string",
+      "enum": ["OBSERVED_DATA", "DERIVED_METRICS", "INFERRED_SIGNALS", "AI_GENERATED_INSIGHTS"]
+    },
+    "metric_name": { "type": "string" },
+    "metric_value": { "type": "number" },
+    "model_id": { "type": "string" },
+    "feedback_type": { "type": "string" },
+    "provenance_hash": { "type": "string" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    }
+  },
+  "additionalProperties": false
+}

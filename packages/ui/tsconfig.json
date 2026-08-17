@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "dist",
+    "rootDir": "src",
+    "jsx": "react-jsx",
+    "paths": {
+      "@agbofa/api-client": ["../../packages/api-client/src/index"],
+      "@agbofa/api-client/*": ["../../packages/api-client/src/*"],
+      "@agbofa/config": ["../../packages/config/src/index"],
+      "@agbofa/config/*": ["../../packages/config/src/*"],
+      "@agbofa/ui": ["../../packages/ui/src/index"],
+      "@agbofa/ui/*": ["../../packages/ui/src/*"],
+      "@agbofa/utils": ["../../packages/utils/src/index"],
+      "@agbofa/utils/*": ["../../packages/utils/src/*"],
+      "@agbofa/enterprise-centers": ["../../packages/enterprise-centers/src/index"],
+      "@agbofa/enterprise-centers/*": ["../../packages/enterprise-centers/src/*"]
+    }
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}

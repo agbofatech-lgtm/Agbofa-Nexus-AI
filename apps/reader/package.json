@@ -1,0 +1,11 @@
+{
+  "name": "@agbofa/reader-shell",
+  "version": "1.0.0",
+  "description": "Agbofa Nexus AI Reader / AI Workspace Shell Foundation (IMP-014, SVC-174)",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "private": true,
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}

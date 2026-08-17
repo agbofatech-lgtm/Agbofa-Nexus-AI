@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.agbofa.local/story_graph/v1/story-graph-event.schema.json",
+  "title": "StoryGraphEvent",
+  "description": "Schema for EVT-026 consumer and EVT-042 producer in Story Graph.",
+  "type": "object",
+  "required": ["event_id", "event_type", "tenant_id", "story_id", "occurred_at"],
+  "properties": {
+    "event_id": { "type": "string" },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "truth_engine.story.versioned",
+        "story_graph.node.synchronized",
+        "story_graph.entity.created",
+        "story_graph.similarity.linked",
+        "story_graph.story.versioned",
+        "story_graph.memory.archived",
+        "story_graph.events"
+      ]
+    },
+    "tenant_id": { "type": "string" },
+    "story_id": { "type": "string" },
+    "entity_id": { "type": "string" },
+    "node_id": { "type": "string" },
+    "version": { "type": "integer" },
+    "similarity_score": { "type": "number" },
+    "cluster_id": { "type": "string" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    }
+  },
+  "additionalProperties": false
+}

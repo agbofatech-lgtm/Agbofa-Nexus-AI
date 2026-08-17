@@ -1,0 +1,205 @@
+syntax = "proto3";
+
+package agents.monitors.v1;
+
+option go_package = "github.com/agbofa/nexus-api/gen/go/monitors/v1;monitorsv1";
+
+enum Platform {
+  PLATFORM_UNSPECIFIED = 0;
+  PLATFORM_TWITTER = 1;
+  PLATFORM_FACEBOOK = 2;
+  PLATFORM_INSTAGRAM = 3;
+  PLATFORM_TIKTOK = 4;
+  PLATFORM_LINKEDIN = 5;
+  PLATFORM_YOUTUBE = 6;
+  PLATFORM_REDDIT = 7;
+  PLATFORM_RSS = 8;
+}
+
+enum SignalType {
+  SIGNAL_TYPE_UNSPECIFIED = 0;
+  SIGNAL_TYPE_BREAKING_NEWS = 1;
+  SIGNAL_TYPE_TREND = 2;
+  SIGNAL_TYPE_SENTIMENT = 3;
+  SIGNAL_TYPE_ENGAGEMENT = 4;
+  SIGNAL_TYPE_ANOMALY = 5;
+}
+
+enum AgentHealthStatus {
+  AGENT_HEALTH_STATUS_UNSPECIFIED = 0;
+  AGENT_HEALTH_STATUS_HEALTHY = 1;
+  AGENT_HEALTH_STATUS_DEGRADED = 2;
+  AGENT_HEALTH_STATUS_RATE_LIMITED = 3;
+  AGENT_HEALTH_STATUS_AUTH_FAILED = 4;
+  AGENT_HEALTH_STATUS_OFFLINE = 5;
+}
+
+message RateLimitMetadata {
+  int32 max_requests = 1;
+  int32 remaining_requests = 2;
+  int64 reset_time_unix = 3;
+  string window_duration = 4;
+}
+
+message MonitorSignal {
+  string signal_id = 1;
+  string tenant_id = 2;
+  string agent_id = 3;
+  Platform platform = 4;
+  SignalType signal_type = 5;
+  string external_id = 6;
+  string title = 7;
+  string content = 8;
+  string ai_summary = 9;
+  double confidence = 10;
+  string url = 11;
+  string author = 12;
+  int64 detected_at_unix = 13;
+  map<string, string> metadata = 14;
+}
+
+message InitializeAgentRequest {
+  string tenant_id = 1;
+  string agent_id = 2;
+  Platform platform = 3;
+  map<string, string> config = 4;
+}
+
+message InitializeAgentResponse {
+  string tenant_id = 1;
+  string agent_id = 2;
+  AgentHealthStatus status = 3;
+  string message = 4;
+}
+
+message HealthCheckRequest {
+  string tenant_id = 1;
+  string agent_id = 2;
+}
+
+message HealthCheckResponse {
+  string tenant_id = 1;
+  string agent_id = 2;
+  AgentHealthStatus status = 3;
+  int64 latency_ms = 4;
+  string error_message = 5;
+  RateLimitMetadata rate_limit = 6;
+}
+
+message ShutdownAgentRequest {
+  string tenant_id = 1;
+  string agent_id = 2;
+}
+
+message ShutdownAgentResponse {
+  string tenant_id = 1;
+  string agent_id = 2;
+  bool success = 3;
+}
+
+message StartMonitoringRequest {
+  string tenant_id = 1;
+  string agent_id = 2;
+  Platform platform = 3;
+  int32 poll_interval_seconds = 4;
+}
+
+message StartMonitoringResponse {
+  string tenant_id = 1;
+  string agent_id = 2;
+  bool started = 3;
+  RateLimitMetadata rate_limit = 4;
+}
+
+message StopMonitoringRequest {
+  string tenant_id = 1;
+  string agent_id = 2;
+}
+
+message StopMonitoringResponse {
+  string tenant_id = 1;
+  string agent_id = 2;
+  bool stopped = 3;
+}
+
+message FetchSignalsRequest {
+  string tenant_id = 1;
+  string agent_id = 2;
+  Platform platform = 3;
+  repeated string keywords = 4;
+  int32 limit = 5;
+}
+
+message FetchSignalsResponse {
+  string tenant_id = 1;
+  string agent_id = 2;
+  repeated MonitorSignal signals = 3;
+  int32 count = 4;
+  RateLimitMetadata rate_limit = 5;
+}
+
+message StreamSignalsRequest {
+  string tenant_id = 1;
+  string agent_id = 2;
+  Platform platform = 3;
+}
+
+message ListPlatformsRequest {
+  string tenant_id = 1;
+}
+
+message PlatformInfo {
+  Platform platform = 1;
+  string name = 2;
+  string version = 3;
+  repeated string supported_content_types = 4;
+}
+
+message ListPlatformsResponse {
+  string tenant_id = 1;
+  repeated PlatformInfo platforms = 2;
+}
+
+message GetPlatformStatusRequest {
+  string tenant_id = 1;
+  Platform platform = 2;
+}
+
+message GetPlatformStatusResponse {
+  string tenant_id = 1;
+  Platform platform = 2;
+  AgentHealthStatus status = 3;
+  RateLimitMetadata rate_limit = 4;
+}
+
+message GetAgentStatusRequest {
+  string tenant_id = 1;
+  string agent_id = 2;
+}
+
+message GetAgentStatusResponse {
+  string tenant_id = 1;
+  string agent_id = 2;
+  AgentHealthStatus status = 3;
+  int64 last_check_unix = 4;
+  string error_message = 5;
+  RateLimitMetadata rate_limit = 6;
+}
+
+service PlatformMonitorService {
+  // Agent lifecycle
+  rpc InitializeAgent(InitializeAgentRequest) returns (InitializeAgentResponse);
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+  rpc ShutdownAgent(ShutdownAgentRequest) returns (ShutdownAgentResponse);
+
+  // Monitoring
+  rpc StartMonitoring(StartMonitoringRequest) returns (StartMonitoringResponse);
+  rpc StopMonitoring(StopMonitoringRequest) returns (StopMonitoringResponse);
+  rpc FetchSignals(FetchSignalsRequest) returns (FetchSignalsResponse);
+  rpc StreamSignals(StreamSignalsRequest) returns (stream MonitorSignal);
+
+  // Platform management
+  rpc ListPlatforms(ListPlatformsRequest) returns (ListPlatformsResponse);
+  rpc GetPlatformStatus(GetPlatformStatusRequest) returns (GetPlatformStatusResponse);
+  rpc GetAgentStatus(GetAgentStatusRequest) returns (GetAgentStatusResponse);
+}

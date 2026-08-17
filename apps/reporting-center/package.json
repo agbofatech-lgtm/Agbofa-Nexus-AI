@@ -1,0 +1,11 @@
+{
+  "name": "@agbofa/reporting-center",
+  "version": "1.0.0",
+  "description": "Agbofa Nexus AI — Enterprise Reporting Frontend (IMP-015, SVC-181)",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "private": true,
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}

@@ -1,0 +1,230 @@
+syntax = "proto3";
+
+package agents.pipeline.v1;
+
+option go_package = "github.com/agbofa/nexus-api/gen/go/pipeline/v1;pipelinev1";
+
+enum PipelineStatus {
+  PIPELINE_STATUS_UNSPECIFIED = 0;
+  PIPELINE_STATUS_RECEIVED = 1;
+  PIPELINE_STATUS_ROUTED = 2;
+  PIPELINE_STATUS_PROCESSING = 3;
+  PIPELINE_STATUS_DELIVERED = 4;
+  PIPELINE_STATUS_FAILED = 5;
+}
+
+enum IngestionPriority {
+  INGESTION_PRIORITY_UNSPECIFIED = 0;
+  INGESTION_PRIORITY_BREAKING = 1;
+  INGESTION_PRIORITY_HIGH = 2;
+  INGESTION_PRIORITY_STANDARD = 3;
+  INGESTION_PRIORITY_LOW = 4;
+}
+
+enum PackageType {
+  PACKAGE_TYPE_UNSPECIFIED = 0;
+  PACKAGE_TYPE_ARTICLE = 1;
+  PACKAGE_TYPE_SOCIAL_POST = 2;
+  PACKAGE_TYPE_VIDEO_SCRIPT = 3;
+  PACKAGE_TYPE_AUDIO_TRANSCRIPT = 4;
+  PACKAGE_TYPE_INFOGRAPHIC_SPEC = 5;
+  PACKAGE_TYPE_MULTI_CHANNEL = 6;
+}
+
+enum ComplianceStatus {
+  COMPLIANCE_STATUS_UNSPECIFIED = 0;
+  COMPLIANCE_STATUS_CLEARED = 1;
+  COMPLIANCE_STATUS_REVIEW_REQUIRED = 2;
+  COMPLIANCE_STATUS_FLAGGED = 3;
+  COMPLIANCE_STATUS_BLOCKED = 4;
+}
+
+enum DistributionSlot {
+  DISTRIBUTION_SLOT_UNSPECIFIED = 0;
+  DISTRIBUTION_SLOT_IMMEDIATE = 1;
+  DISTRIBUTION_SLOT_SCHEDULED = 2;
+  DISTRIBUTION_SLOT_EMBARGOED = 3;
+}
+
+enum AgentHealthStatus {
+  AGENT_HEALTH_STATUS_UNSPECIFIED = 0;
+  AGENT_HEALTH_STATUS_HEALTHY = 1;
+  AGENT_HEALTH_STATUS_DEGRADED = 2;
+  AGENT_HEALTH_STATUS_RATE_LIMITED = 3;
+  AGENT_HEALTH_STATUS_AUTH_FAILED = 4;
+  AGENT_HEALTH_STATUS_OFFLINE = 5;
+}
+
+message PipelinePayloadProto {
+  string payload_id = 1;
+  string tenant_id = 2;
+  string signal_id = 3;
+  string claim_id = 4;
+  string content = 5;
+  double confidence_score = 6;
+  string confidence_tier = 7;
+  string verdict = 8;
+  map<string, string> metadata = 9;
+}
+
+message PipelineResultProto {
+  string result_id = 1;
+  string tenant_id = 2;
+  string payload_id = 3;
+  string agent_id = 4;
+  string stage = 5;
+  PipelineStatus status = 6;
+  string target_pipeline = 7;
+  string priority = 8;
+  int64 routed_at_unix = 9;
+  map<string, string> metadata = 10;
+}
+
+message PipelineReportProto {
+  string report_id = 1;
+  string tenant_id = 2;
+  string payload_id = 3;
+  string agent_id = 4;
+  repeated string anomalies = 5;
+  repeated string recommendations = 6;
+  int64 generated_at_unix = 7;
+  map<string, string> metadata = 8;
+}
+
+message PipelineAgentInfoProto {
+  string agent_id = 1;
+  string name = 2;
+  string version = 3;
+  AgentHealthStatus status = 4;
+}
+
+message IngestContentRequest {
+  string tenant_id = 1;
+  string agent_id = 2;
+  PipelinePayloadProto payload = 3;
+}
+
+message IngestContentResponse {
+  string tenant_id = 1;
+  string agent_id = 2;
+  PipelineResultProto result = 3;
+}
+
+message UpdateStoryGraphRequest {
+  string tenant_id = 1;
+  string agent_id = 2;
+  PipelinePayloadProto payload = 3;
+}
+
+message UpdateStoryGraphResponse {
+  string tenant_id = 1;
+  string agent_id = 2;
+  PipelineResultProto result = 3;
+}
+
+message RouteToFactoryRequest {
+  string tenant_id = 1;
+  string agent_id = 2;
+  PipelinePayloadProto payload = 3;
+}
+
+message RouteToFactoryResponse {
+  string tenant_id = 1;
+  string agent_id = 2;
+  PipelineResultProto result = 3;
+}
+
+message PreCheckComplianceRequest {
+  string tenant_id = 1;
+  string agent_id = 2;
+  PipelinePayloadProto payload = 3;
+}
+
+message PreCheckComplianceResponse {
+  string tenant_id = 1;
+  string agent_id = 2;
+  PipelineResultProto result = 3;
+}
+
+message ScheduleDistributionRequest {
+  string tenant_id = 1;
+  string agent_id = 2;
+  PipelinePayloadProto payload = 3;
+}
+
+message ScheduleDistributionResponse {
+  string tenant_id = 1;
+  string agent_id = 2;
+  PipelineResultProto result = 3;
+}
+
+message CollectAnalyticsRequest {
+  string tenant_id = 1;
+  string agent_id = 2;
+  PipelinePayloadProto payload = 3;
+}
+
+message CollectAnalyticsResponse {
+  string tenant_id = 1;
+  string agent_id = 2;
+  PipelineResultProto result = 3;
+}
+
+message GenerateFeedbackRequest {
+  string tenant_id = 1;
+  string agent_id = 2;
+  PipelinePayloadProto payload = 3;
+}
+
+message GenerateFeedbackResponse {
+  string tenant_id = 1;
+  string agent_id = 2;
+  PipelineResultProto result = 3;
+}
+
+message MonitorOperationsRequest {
+  string tenant_id = 1;
+  string agent_id = 2;
+  PipelinePayloadProto payload = 3;
+}
+
+message MonitorOperationsResponse {
+  string tenant_id = 1;
+  string agent_id = 2;
+  PipelineResultProto result = 3;
+}
+
+message GetPipelineStatusRequest {
+  string tenant_id = 1;
+  string payload_id = 2;
+}
+
+message GetPipelineStatusResponse {
+  string tenant_id = 1;
+  string payload_id = 2;
+  PipelineStatus status = 3;
+  string current_stage = 4;
+  map<string, string> metadata = 5;
+}
+
+message ListPipelineAgentsRequest {
+  string tenant_id = 1;
+}
+
+message ListPipelineAgentsResponse {
+  string tenant_id = 1;
+  repeated PipelineAgentInfoProto agents = 2;
+}
+
+service PipelineService {
+  rpc IngestContent(IngestContentRequest) returns (IngestContentResponse);
+  rpc UpdateStoryGraph(UpdateStoryGraphRequest) returns (UpdateStoryGraphResponse);
+  rpc RouteToFactory(RouteToFactoryRequest) returns (RouteToFactoryResponse);
+  rpc PreCheckCompliance(PreCheckComplianceRequest) returns (PreCheckComplianceResponse);
+  rpc ScheduleDistribution(ScheduleDistributionRequest) returns (ScheduleDistributionResponse);
+  rpc CollectAnalytics(CollectAnalyticsRequest) returns (CollectAnalyticsResponse);
+  rpc GenerateFeedback(GenerateFeedbackRequest) returns (GenerateFeedbackResponse);
+  rpc MonitorOperations(MonitorOperationsRequest) returns (MonitorOperationsResponse);
+  rpc GetPipelineStatus(GetPipelineStatusRequest) returns (GetPipelineStatusResponse);
+  rpc ListPipelineAgents(ListPipelineAgentsRequest) returns (ListPipelineAgentsResponse);
+}

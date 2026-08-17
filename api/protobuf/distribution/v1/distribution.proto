@@ -1,0 +1,142 @@
+syntax = "proto3";
+
+package distribution.v1;
+
+option go_package = "github.com/agbofa/nexus-api/gen/go/distribution/v1;distributionv1";
+
+service DistributionEngineService {
+  rpc SchedulePublication(SchedulePublicationRequest) returns (SchedulePublicationResponse);
+  rpc GetPublicationJob(GetPublicationJobRequest) returns (GetPublicationJobResponse);
+  rpc ListPublicationJobs(ListPublicationJobsRequest) returns (ListPublicationJobsResponse);
+  rpc DeliverBreakingNews(DeliverBreakingNewsRequest) returns (DeliverBreakingNewsResponse);
+  rpc SynchronizeChannels(SynchronizeChannelsRequest) returns (SynchronizeChannelsResponse);
+  rpc IssueCorrection(IssueCorrectionRequest) returns (IssueCorrectionResponse);
+  rpc IssueRetraction(IssueRetractionRequest) returns (IssueRetractionResponse);
+  rpc AuditDelivery(AuditDeliveryRequest) returns (AuditDeliveryResponse);
+}
+
+message SchedulePublicationRequest {
+  string tenant_id = 1;
+  string package_id = 2;
+  string story_id = 3;
+  string title = 4;
+  repeated string target_channels = 5;
+  int64 scheduled_time_unix = 6;
+}
+
+message SchedulePublicationResponse {
+  string publication_job_id = 1;
+  string status = 2; // SCHEDULED, DELIVERING, DELIVERED, FAILED, RETRYING
+  int64 created_at_unix = 3;
+}
+
+message GetPublicationJobRequest {
+  string tenant_id = 1;
+  string publication_job_id = 2;
+}
+
+message PublicationJob {
+  string publication_job_id = 1;
+  string tenant_id = 2;
+  string package_id = 3;
+  string story_id = 4;
+  string title = 5;
+  string status = 6; // SCHEDULED, DELIVERING, DELIVERED, FAILED, RETRYING
+  repeated ChannelDeliveryStatus channel_statuses = 7;
+  int32 retry_count = 8;
+  int64 scheduled_time_unix = 9;
+  int64 published_at_unix = 10;
+}
+
+message ChannelDeliveryStatus {
+  string channel_id = 1;
+  string platform = 2;
+  string delivery_status = 3;
+  string platform_post_id = 4;
+  string error_message = 5;
+  int64 delivered_at_unix = 6;
+}
+
+message GetPublicationJobResponse {
+  PublicationJob publication_job = 1;
+}
+
+message ListPublicationJobsRequest {
+  string tenant_id = 1;
+  string status_filter = 2;
+}
+
+message ListPublicationJobsResponse {
+  repeated PublicationJob jobs = 1;
+}
+
+message DeliverBreakingNewsRequest {
+  string tenant_id = 1;
+  string package_id = 2;
+  string story_id = 3;
+  string alert_text = 4;
+  repeated string priority_channels = 5;
+}
+
+message DeliverBreakingNewsResponse {
+  string alert_id = 1;
+  string status = 2;
+  int64 delivered_at_unix = 3;
+}
+
+message SynchronizeChannelsRequest {
+  string tenant_id = 1;
+  string publication_job_id = 2;
+}
+
+message SynchronizeChannelsResponse {
+  string publication_job_id = 1;
+  bool synchronized = 2;
+}
+
+message IssueCorrectionRequest {
+  string tenant_id = 1;
+  string publication_job_id = 2;
+  string corrected_content = 3;
+  string correction_note = 4;
+}
+
+message IssueCorrectionResponse {
+  string correction_id = 1;
+  string status = 2;
+  int64 corrected_at_unix = 3;
+}
+
+message IssueRetractionRequest {
+  string tenant_id = 1;
+  string publication_job_id = 2;
+  string retraction_reason = 3;
+}
+
+message IssueRetractionResponse {
+  string retraction_id = 1;
+  string status = 2;
+  int64 retracted_at_unix = 3;
+}
+
+message AuditDeliveryRequest {
+  string tenant_id = 1;
+  string publication_job_id = 2;
+}
+
+message DeliveryAuditRecord {
+  string record_id = 1;
+  string tenant_id = 2;
+  string publication_job_id = 3;
+  string channel = 4;
+  string event_type = 5;
+  string actor = 6;
+  string cryptographic_hash = 7;
+  int64 timestamp_unix = 8;
+}
+
+message AuditDeliveryResponse {
+  string publication_job_id = 1;
+  repeated DeliveryAuditRecord records = 2;
+  string audit_merkle_root = 3;
+}

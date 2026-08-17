@@ -1,0 +1,188 @@
+syntax = "proto3";
+
+package analytics.v1;
+
+option go_package = "github.com/agbofa/nexus-api/gen/go/analytics/v1;analyticsv1";
+
+service AnalyticsEventService {
+  rpc CollectEvent(CollectEventRequest) returns (CollectEventResponse);
+  rpc CollectBatch(CollectBatchRequest) returns (CollectBatchResponse);
+  rpc GetEvent(GetEventRequest) returns (GetEventResponse);
+  rpc ListEvents(ListEventsRequest) returns (ListEventsResponse);
+}
+
+service AudienceIntelligenceService {
+  rpc GetAudienceSegment(GetAudienceSegmentRequest) returns (GetAudienceSegmentResponse);
+  rpc UpdateAudienceSignal(UpdateAudienceSignalRequest) returns (UpdateAudienceSignalResponse);
+  rpc GetEngagementMetrics(GetEngagementMetricsRequest) returns (GetEngagementMetricsResponse);
+}
+
+service AnalyticsDashboardService {
+  rpc GetDashboardMetrics(GetDashboardMetricsRequest) returns (GetDashboardMetricsResponse);
+  rpc QueryFeatureStore(QueryFeatureStoreRequest) returns (QueryFeatureStoreResponse);
+  rpc SubmitAIFeedback(SubmitAIFeedbackRequest) returns (SubmitAIFeedbackResponse);
+  rpc EvaluateContinuousLearning(EvaluateContinuousLearningRequest) returns (EvaluateContinuousLearningResponse);
+}
+
+message CollectEventRequest {
+  AnalyticsEvent event = 1;
+}
+
+message CollectEventResponse {
+  string event_id = 1;
+  string status = 2;
+  int64 collected_at_unix = 3;
+}
+
+message CollectBatchRequest {
+  repeated AnalyticsEvent events = 1;
+}
+
+message CollectBatchResponse {
+  int32 collected_count = 1;
+  int32 error_count = 2;
+}
+
+message GetEventRequest {
+  string tenant_id = 1;
+  string event_id = 2;
+}
+
+message GetEventResponse {
+  AnalyticsEvent event = 1;
+}
+
+message ListEventsRequest {
+  string tenant_id = 1;
+  string event_type_filter = 2;
+  int64 from_unix = 3;
+  int64 to_unix = 4;
+}
+
+message ListEventsResponse {
+  repeated AnalyticsEvent events = 1;
+}
+
+message AnalyticsEvent {
+  string event_id = 1;
+  string tenant_id = 2;
+  string event_type = 3; // PAGE_VIEW, STORY_ENGAGEMENT, SHARE, RECOMMENDATION_CLICK
+  string story_id = 4;
+  string channel_id = 5;
+  string audience_cohort_id = 6;
+  string signal_category = 7; // OBSERVED_DATA, DERIVED_METRICS, INFERRED_SIGNALS, AI_GENERATED_INSIGHTS
+  map<string, string> properties = 8;
+  string provenance_hash = 9;
+  int64 occurred_at_unix = 10;
+}
+
+message GetAudienceSegmentRequest {
+  string tenant_id = 1;
+  string segment_id = 2;
+}
+
+message AudienceSegment {
+  string segment_id = 1;
+  string tenant_id = 2;
+  string name = 3;
+  double engagement_score = 4;
+  repeated string top_content_categories = 5;
+  string provenance_hash = 6;
+}
+
+message GetAudienceSegmentResponse {
+  AudienceSegment segment = 1;
+}
+
+message UpdateAudienceSignalRequest {
+  string tenant_id = 1;
+  string segment_id = 2;
+  string story_id = 3;
+  string interaction_type = 4;
+  double weight = 5;
+}
+
+message UpdateAudienceSignalResponse {
+  string segment_id = 1;
+  bool updated = 2;
+  double new_engagement_score = 3;
+}
+
+message GetEngagementMetricsRequest {
+  string tenant_id = 1;
+  string story_id = 2;
+  string time_window = 3; // 1H, 24H, 7D, 30D
+}
+
+message EngagementMetric {
+  string story_id = 1;
+  string tenant_id = 2;
+  string metric_name = 3; // TOTAL_VIEWS, ENGAGEMENT_RATE, SHARES, COMPLETION_RATE
+  double value = 4;
+  string calculation_source = 5;
+  string provenance_hash = 6;
+}
+
+message GetEngagementMetricsResponse {
+  repeated EngagementMetric metrics = 1;
+}
+
+message GetDashboardMetricsRequest {
+  string tenant_id = 1;
+  string dashboard_type = 2; // EDITORIAL, REVENUE, AUDIENCE
+}
+
+message GetDashboardMetricsResponse {
+  repeated EngagementMetric metrics = 1;
+}
+
+message QueryFeatureStoreRequest {
+  string tenant_id = 1;
+  string entity_id = 2;
+  repeated string feature_names = 3;
+}
+
+message FeatureRecord {
+  string feature_id = 1;
+  string tenant_id = 2;
+  string entity_id = 3;
+  string feature_name = 4;
+  string feature_value = 5;
+  string value_type = 6;
+  string provenance_hash = 7;
+}
+
+message QueryFeatureStoreResponse {
+  repeated FeatureRecord features = 1;
+}
+
+message SubmitAIFeedbackRequest {
+  string tenant_id = 1;
+  string story_id = 2;
+  string model_id = 3;
+  string feedback_type = 4; // POSITIVE_ENGAGEMENT, NEGATIVE_ENGAGEMENT, MANUAL_REVIEW_CORRECTION
+  double score_delta = 5;
+}
+
+message SubmitAIFeedbackResponse {
+  string feedback_id = 1;
+  string status = 2;
+}
+
+message EvaluateContinuousLearningRequest {
+  string tenant_id = 1;
+  string model_id = 2;
+}
+
+message ContinuousLearningSignal {
+  string signal_id = 1;
+  string tenant_id = 2;
+  string model_id = 3;
+  string status = 4; // SIGNAL_COLLECTED, EVALUATED, GOVERNANCE_APPROVAL_REQUIRED
+  double adaptation_score = 5;
+  string governance_note = 6;
+}
+
+message EvaluateContinuousLearningResponse {
+  ContinuousLearningSignal signal = 1;
+}

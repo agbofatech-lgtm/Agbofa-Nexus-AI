@@ -1,0 +1,12 @@
+DROP POLICY IF EXISTS content_factory_reviews_tenant_isolation_policy ON content_factory_reviews;
+DROP POLICY IF EXISTS content_factory_brand_voices_tenant_isolation_policy ON content_factory_brand_voices;
+DROP POLICY IF EXISTS content_factory_social_tenant_isolation_policy ON content_factory_social;
+DROP POLICY IF EXISTS content_factory_media_tenant_isolation_policy ON content_factory_media;
+DROP POLICY IF EXISTS content_factory_articles_tenant_isolation_policy ON content_factory_articles;
+DROP POLICY IF EXISTS content_factory_packages_tenant_isolation_policy ON content_factory_packages;
+DROP TABLE IF EXISTS content_factory_reviews;
+DROP TABLE IF EXISTS content_factory_brand_voices;
+DROP TABLE IF EXISTS content_factory_social;
+DROP TABLE IF EXISTS content_factory_media;
+DROP TABLE IF EXISTS content_factory_articles;
+DROP TABLE IF EXISTS content_factory_packages;

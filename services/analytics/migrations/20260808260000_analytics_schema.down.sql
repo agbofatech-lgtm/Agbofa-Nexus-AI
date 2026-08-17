@@ -1,0 +1,12 @@
+DROP POLICY IF EXISTS analytics_learning_signals_tenant_isolation_policy ON analytics_learning_signals;
+DROP POLICY IF EXISTS analytics_ai_feedback_tenant_isolation_policy ON analytics_ai_feedback;
+DROP POLICY IF EXISTS analytics_feature_store_tenant_isolation_policy ON analytics_feature_store;
+DROP POLICY IF EXISTS analytics_audience_segments_tenant_isolation_policy ON analytics_audience_segments;
+DROP POLICY IF EXISTS analytics_engagement_metrics_tenant_isolation_policy ON analytics_engagement_metrics;
+DROP POLICY IF EXISTS analytics_events_tenant_isolation_policy ON analytics_events;
+DROP TABLE IF EXISTS analytics_learning_signals;
+DROP TABLE IF EXISTS analytics_ai_feedback;
+DROP TABLE IF EXISTS analytics_feature_store;
+DROP TABLE IF EXISTS analytics_audience_segments;
+DROP TABLE IF EXISTS analytics_engagement_metrics;
+DROP TABLE IF EXISTS analytics_events;
