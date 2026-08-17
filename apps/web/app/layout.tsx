@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/providers/ThemeProvider";
 
 import "./globals.css";
 import "../styles/public.css";
+import "../styles/watermark.css";
 
 const themeInitializationScript = `
 (function () {

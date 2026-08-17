@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import "@/styles/reader.css";
+import "@/styles/personalization.css";
 
 export const metadata: Metadata = {
   title: "Reader",

@@ -1,7 +1,7 @@
 import { ArrowUpRight, Clock3, ShieldCheck } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 
+import { WatermarkedImage } from "@/components/shared/media/WatermarkedImage";
 import { Badge } from "@/components/ui";
 import { confidenceBand, formatRelativeTime } from "@/lib/utils/reader";
 import type { Story } from "@/types/reader";
@@ -20,15 +20,14 @@ export function FeaturedStory({ story }: FeaturedStoryProps) {
       href={`/reader/${story.id}`}
     >
       <div className="featured-story__image">
-        {story.image ? (
-          <Image
-            alt={`${story.category} editorial illustration for ${story.headline}`}
-            fill
-            priority
-            sizes="(max-width: 768px) 100vw, 1200px"
-            src={story.image}
-          />
-        ) : null}
+        <WatermarkedImage
+          alt={`${story.category} editorial illustration for ${story.headline}`}
+          fill
+          priority
+          sizes="(max-width: 768px) 100vw, 1200px"
+          src={story.image}
+          watermarkVariant="small"
+        />
         <div className="featured-story__scrim" />
         <span className="featured-story__signal">
           <span /> Featured intelligence

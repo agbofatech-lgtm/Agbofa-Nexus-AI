@@ -1,8 +1,8 @@
 "use client";
 
 import { ArrowUpRight, Clock3, Network } from "lucide-react";
-import Image from "next/image";
 
+import { WatermarkedImage } from "@/components/shared/media/WatermarkedImage";
 import { Badge, Skeleton } from "@/components/ui";
 import { formatRelativeTime } from "@/lib/utils/reader";
 import type { StoryDetail } from "@/types/story";
@@ -58,14 +58,13 @@ export function RelatedStories({
               type="button"
             >
               <span className="related-story-card__image">
-                {story.image ? (
-                  <Image
-                    alt=""
-                    fill
-                    sizes="(max-width: 720px) 100vw, 33vw"
-                    src={story.image}
-                  />
-                ) : null}
+                <WatermarkedImage
+                  alt={`${story.category} editorial illustration for ${story.headline}`}
+                  fill
+                  sizes="(max-width: 720px) 100vw, 33vw"
+                  src={story.image}
+                  watermarkVariant="mini"
+                />
                 <Badge category={story.category} variant="category" />
               </span>
               <span className="related-story-card__copy">
