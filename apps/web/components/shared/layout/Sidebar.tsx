@@ -8,13 +8,15 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { NavGroup } from "@/components/shared/navigation/NavGroup";
 import { NavItem } from "@/components/shared/navigation/NavItem";
 import {
-  getNavigationGroup,
-  primaryNavigation,
+  getNavigationContext,
+  getNavigationContextDetails,
+  navigationGroups,
 } from "@/components/shared/navigation/navigation";
 import { cn } from "@/lib/utils/cn";
 
@@ -32,8 +34,9 @@ export function Sidebar({
   onMobileClose,
 }: SidebarProps) {
   const pathname = usePathname();
-  const activeGroup = getNavigationGroup(pathname);
-  const ContextIcon = activeGroup.items[0]?.icon ?? Sparkles;
+  const activeContext = getNavigationContext(pathname);
+  const context = getNavigationContextDetails(pathname);
+  const ContextIcon = context.icon;
 
   return (
     <>
@@ -44,17 +47,23 @@ export function Sidebar({
         type="button"
       />
       <aside
-        aria-label={`${activeGroup.label} contextual navigation`}
+        aria-label="Workspace navigation"
         className={cn(
           "sidebar",
           collapsed && "sidebar--collapsed",
           mobileOpen && "sidebar--mobile-open",
         )}
+        id="workspace-navigation"
       >
         <div className="sidebar__brand">
-          <div aria-hidden="true" className="brand-mark">
+          <Link
+            aria-label="Agbofa Nexus AI command overview"
+            className="brand-mark"
+            href="/dashboard"
+            onClick={onMobileClose}
+          >
             <Sparkles size={19} strokeWidth={2.2} />
-          </div>
+          </Link>
           <div className="sidebar__brand-copy">
             <strong>AGBOFA</strong>
             <span>NEXUS AI</span>
@@ -69,52 +78,45 @@ export function Sidebar({
           </button>
         </div>
 
-        <div className="sidebar__context" title={collapsed ? activeGroup.label : undefined}>
+        <div
+          className="sidebar__context"
+          title={collapsed ? context.label : undefined}
+        >
           <span aria-hidden="true">
             <ContextIcon size={18} />
           </span>
           <div>
             <small>Active workspace</small>
-            <strong>{activeGroup.label}</strong>
-            <p>{activeGroup.description}</p>
+            <strong>{context.label}</strong>
+            <p>{context.description}</p>
           </div>
         </div>
 
-        <nav className="sidebar__navigation">
-          <NavGroup collapsed={collapsed} label={activeGroup.label}>
-            {activeGroup.items.map((item) => {
-              const Icon = item.icon;
-              return (
-                <NavItem
-                  key={item.href}
-                  badge={item.badge}
-                  collapsed={collapsed}
-                  href={item.href}
-                  icon={<Icon size={18} strokeWidth={1.8} />}
-                  label={item.label}
-                  onNavigate={onMobileClose}
-                />
-              );
-            })}
-          </NavGroup>
-
-          <div className="sidebar__workspace-switcher">
-            <NavGroup collapsed={collapsed} label="Switch workspace">
-              {primaryNavigation.map((item) => {
+        <nav aria-label="Feature navigation" className="sidebar__navigation">
+          {navigationGroups.map((group) => (
+            <NavGroup
+              key={group.context}
+              active={activeContext === group.context}
+              collapsed={collapsed}
+              label={group.label}
+            >
+              {group.items.map((item) => {
                 const Icon = item.icon;
                 return (
                   <NavItem
                     key={item.href}
+                    badge={item.badge}
                     collapsed={collapsed}
+                    exact={item.exact}
                     href={item.href}
-                    icon={<Icon size={17} strokeWidth={1.8} />}
+                    icon={<Icon size={18} strokeWidth={1.8} />}
                     label={item.label}
                     onNavigate={onMobileClose}
                   />
                 );
               })}
             </NavGroup>
-          </div>
+          ))}
         </nav>
 
         <div className="sidebar__footer">

@@ -440,6 +440,36 @@
 
 .phase-one .nav-group__label {
   font-size: 0.5625rem;
+  transition: color var(--motion-fast) ease;
+}
+
+.phase-one .nav-group--active-context .nav-group__label {
+  color: var(--nexus-gold);
+}
+
+.phase-one .nav-group--active-context:not(.nav-group--collapsed) .nav-group__label::after {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  margin-left: 7px;
+  background: currentColor;
+  content: "";
+  vertical-align: middle;
+}
+
+.phase-one .brand-mark:is(a) {
+  cursor: pointer;
+  transition:
+    border-color var(--motion-fast) ease,
+    box-shadow var(--motion-fast) ease,
+    transform var(--motion-fast) ease;
+}
+
+.phase-one .brand-mark:is(a):hover {
+  border-color: rgba(212, 175, 55, 0.46);
+  box-shadow: 0 10px 28px rgba(212, 175, 55, 0.22);
+  transform: translateY(-1px);
 }
 
 .phase-one .nav-item {
@@ -1711,7 +1741,7 @@
   }
 }
 
-@media (max-width: 1380px) {
+@media (max-width: 1500px) {
   .phase-one .top-navigation__item {
     padding-right: 9px;
     padding-left: 9px;

@@ -1,59 +1,42 @@
 "use client";
 
-import {
-  BookOpen,
-  BrainCircuit,
-  LayoutDashboard,
-  Menu,
-  Newspaper,
-} from "lucide-react";
+import { Menu } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import {
-  getNavigationContext,
-  isNavigationItemActive,
+  isPrimaryNavigationActive,
+  mobileNavigation,
 } from "@/components/shared/navigation/navigation";
 import { cn } from "@/lib/utils/cn";
 
 interface MobileBottomNavigationProps {
+  moreOpen: boolean;
   onOpenMore: () => void;
 }
 
-const destinations = [
-  { label: "Home", href: "/dashboard", icon: LayoutDashboard, context: "command" },
-  { label: "Reader", href: "/reader", icon: BookOpen, context: "reader" },
-  {
-    label: "Intelligence",
-    href: "/ai-control",
-    icon: BrainCircuit,
-    context: "intelligence",
-  },
-  { label: "Newsroom", href: "/newsroom", icon: Newspaper, context: "newsroom" },
-] as const;
-
 export function MobileBottomNavigation({
+  moreOpen,
   onOpenMore,
 }: MobileBottomNavigationProps) {
   const pathname = usePathname();
-  const activeContext = getNavigationContext(pathname);
-  const moreActive = ["distribution", "analytics", "settings"].includes(
-    activeContext,
+  const anyPrimaryActive = mobileNavigation.some((item) =>
+    isPrimaryNavigationActive(pathname, item),
   );
 
   return (
     <nav aria-label="Mobile workspaces" className="mobile-bottom-navigation">
-      {destinations.map((item) => {
+      {mobileNavigation.map((item) => {
         const Icon = item.icon;
-        const active =
-          item.context === "command"
-            ? isNavigationItemActive(pathname, item.href)
-            : activeContext === item.context;
+        const active = isPrimaryNavigationActive(pathname, item);
         return (
           <Link
             key={item.href}
             aria-current={active ? "page" : undefined}
-            className={cn("mobile-bottom-navigation__item", active && "mobile-bottom-navigation__item--active")}
+            className={cn(
+              "mobile-bottom-navigation__item",
+              active && "mobile-bottom-navigation__item--active",
+            )}
             href={item.href}
           >
             <Icon aria-hidden="true" size={19} />
@@ -62,10 +45,12 @@ export function MobileBottomNavigation({
         );
       })}
       <button
+        aria-controls="workspace-navigation"
+        aria-expanded={moreOpen}
         aria-label="Open all workspaces"
         className={cn(
           "mobile-bottom-navigation__item",
-          moreActive && "mobile-bottom-navigation__item--active",
+          !anyPrimaryActive && "mobile-bottom-navigation__item--active",
         )}
         onClick={onOpenMore}
         type="button"

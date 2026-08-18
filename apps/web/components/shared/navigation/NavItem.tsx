@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { isNavigationItemActive } from "@/components/shared/navigation/navigation";
 import { cn } from "@/lib/utils/cn";
 
 export interface NavItemProps {
@@ -11,6 +12,7 @@ export interface NavItemProps {
   label: string;
   icon: ReactNode;
   collapsed?: boolean;
+  exact?: boolean;
   onNavigate?: () => void;
   badge?: string;
 }
@@ -20,13 +22,12 @@ export function NavItem({
   label,
   icon,
   collapsed = false,
+  exact = false,
   onNavigate,
   badge,
 }: NavItemProps) {
   const pathname = usePathname();
-  const active =
-    pathname === href ||
-    (href !== "/dashboard" && pathname.startsWith(`${href}/`));
+  const active = isNavigationItemActive(pathname, href, exact);
 
   return (
     <Link

@@ -44,10 +44,14 @@ const searchableDestinations = [
 ] as const;
 
 interface HeaderProps {
+  navigationOpen: boolean;
   onOpenNavigation: () => void;
 }
 
-export function Header({ onOpenNavigation }: HeaderProps) {
+export function Header({
+  navigationOpen,
+  onOpenNavigation,
+}: HeaderProps) {
   const router = useRouter();
   const { session, signOut } = useAuth();
   const displayName = session?.user.name ?? "Nexus User";
@@ -117,6 +121,8 @@ export function Header({ onOpenNavigation }: HeaderProps) {
     <header ref={headerRef} className="app-header">
       <div className="app-header__left">
         <button
+          aria-controls="workspace-navigation"
+          aria-expanded={navigationOpen}
           aria-label="Open navigation"
           className="app-header__menu icon-button"
           onClick={onOpenNavigation}

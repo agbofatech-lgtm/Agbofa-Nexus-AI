@@ -5,16 +5,24 @@ import { cn } from "@/lib/utils/cn";
 export interface NavGroupProps {
   label: string;
   children: ReactNode;
+  active?: boolean;
   collapsed?: boolean;
 }
 
 export function NavGroup({
   label,
   children,
+  active = false,
   collapsed = false,
 }: NavGroupProps) {
   return (
-    <section className={cn("nav-group", collapsed && "nav-group--collapsed")}>
+    <section
+      className={cn(
+        "nav-group",
+        active && "nav-group--active-context",
+        collapsed && "nav-group--collapsed",
+      )}
+    >
       <h2 className="nav-group__label">
         {collapsed ? <span aria-hidden="true" /> : label}
       </h2>

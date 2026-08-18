@@ -45,12 +45,18 @@ export function AppLayout({ children }: AppLayoutProps) {
         onMobileClose={closeNavigation}
       />
       <div className="app-shell__workspace">
-        <Header onOpenNavigation={openNavigation} />
+        <Header
+          navigationOpen={mobileNavigationOpen}
+          onOpenNavigation={openNavigation}
+        />
         <WorkspaceContextBar />
         <main className="app-main" id="main-content" tabIndex={-1}>
           {children}
         </main>
-        <MobileBottomNavigation onOpenMore={openNavigation} />
+        <MobileBottomNavigation
+          moreOpen={mobileNavigationOpen}
+          onOpenMore={openNavigation}
+        />
       </div>
     </div>
   );
