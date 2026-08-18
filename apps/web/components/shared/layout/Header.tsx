@@ -31,19 +31,40 @@ interface HeaderLink {
 
 const headerLinks: readonly HeaderLink[] = [
   { label: "Reader", href: "/reader", icon: BookOpen },
-  { label: "Intelligence", href: "/intelligence", icon: BrainCircuit },
+  { label: "AI Control", href: "/ai-control", icon: BrainCircuit },
   { label: "Agents", href: "/agents", icon: Bot },
 ];
 
 const searchableDestinations = [
   { label: "Command overview", href: "/dashboard", group: "Command" },
   { label: "Reader", href: "/reader", group: "Command" },
-  { label: "AI Intelligence", href: "/intelligence", group: "Intelligence" },
+  { label: "AI Control Center", href: "/ai-control", group: "Intelligence" },
   { label: "Agent workforce", href: "/agents", group: "Intelligence" },
+  {
+    label: "Predictive Intelligence",
+    href: "/predictive",
+    group: "Intelligence",
+  },
+  {
+    label: "Personalization Intelligence",
+    href: "/personalization",
+    group: "Intelligence",
+  },
+  {
+    label: "Multimodal Intelligence",
+    href: "/multimodal",
+    group: "Intelligence",
+  },
   { label: "Newsroom", href: "/newsroom", group: "Content" },
-  { label: "Truth review", href: "/review", group: "Content" },
+  { label: "Truth Engine", href: "/truth", group: "Content" },
+  { label: "Distribution", href: "/distribution", group: "Business" },
+  { label: "Growth Intelligence", href: "/growth", group: "Business" },
   { label: "Analytics", href: "/analytics", group: "Business" },
-  { label: "Operations", href: "/operations", group: "System" },
+  { label: "Monetization", href: "/monetization", group: "Business" },
+  { label: "AI Cost Intelligence", href: "/ai-cost", group: "System" },
+  { label: "Administration", href: "/admin", group: "System" },
+  { label: "Tenant Management", href: "/admin/tenants", group: "System" },
+  { label: "User Management", href: "/admin/users", group: "System" },
 ] as const;
 
 interface HeaderProps {

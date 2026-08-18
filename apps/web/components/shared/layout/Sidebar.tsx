@@ -9,17 +9,19 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardCheck,
+  Coins,
   Factory,
-  Gauge,
   LayoutDashboard,
   Newspaper,
   Orbit,
   Radar,
   Scale,
+  Send,
   Settings2,
   Sparkles,
   TrendingUp,
   Users,
+  WalletCards,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -51,9 +53,11 @@ const navigation: readonly NavigationGroup[] = [
   {
     label: "Intelligence",
     items: [
-      { label: "AI Intelligence", href: "/intelligence", icon: BrainCircuit },
-      { label: "Agents", href: "/agents", icon: Bot, badge: "12" },
-      { label: "Predictions", href: "/predictions", icon: Orbit },
+      { label: "AI Control", href: "/ai-control", icon: BrainCircuit },
+      { label: "Agents", href: "/agents", icon: Bot, badge: "28" },
+      { label: "Predictive", href: "/predictive", icon: Orbit },
+      { label: "Personalization", href: "/personalization", icon: Users },
+      { label: "Multimodal", href: "/multimodal", icon: Sparkles },
     ],
   },
   {
@@ -74,14 +78,16 @@ const navigation: readonly NavigationGroup[] = [
   {
     label: "Business",
     items: [
-      { label: "Revenue", href: "/revenue", icon: TrendingUp },
+      { label: "Distribution", href: "/distribution", icon: Send },
+      { label: "Growth", href: "/growth", icon: TrendingUp },
       { label: "Analytics", href: "/analytics", icon: BarChart3 },
+      { label: "Monetization", href: "/monetization", icon: WalletCards },
     ],
   },
   {
     label: "System",
     items: [
-      { label: "Operations", href: "/operations", icon: Gauge },
+      { label: "AI Cost", href: "/ai-cost", icon: Coins },
       { label: "Administration", href: "/admin", icon: Users },
     ],
   },
