@@ -178,9 +178,9 @@ export const mockNewsroomActivity: NewsroomActivity[] = [
   },
   {
     id: "activity-002",
-    action: "Source connected",
+    action: "Source readiness modeled",
     subject: "Reuters Technology",
-    detail: "Health checks and ingestion permissions passed.",
+    detail: "Development adapter completed a local source-health check.",
     timestamp: new Date(referenceTime - 15 * 60_000),
     type: "source",
   },
@@ -194,9 +194,10 @@ export const mockNewsroomActivity: NewsroomActivity[] = [
   },
   {
     id: "activity-004",
-    action: "Story published",
+    action: "Story moved to published state",
     subject: mockStories[35]?.headline ?? "Ghana public services roadmap",
-    detail: "Published to web and mobile Reader channels.",
+    detail:
+      "Development workflow state only; no external publication occurred.",
     timestamp: new Date(referenceTime - 64 * 60_000),
     type: "published",
   },
@@ -236,9 +237,48 @@ export const mockDashboard: NewsroomDashboardData = {
     },
   ],
   activity: mockNewsroomActivity,
+  workflow: [
+    {
+      id: "originate",
+      label: "Originate",
+      status: "running",
+      count: 12,
+      owner: "Source desk",
+    },
+    {
+      id: "fact-check",
+      label: "Fact check",
+      status: "running",
+      count: 7,
+      owner: "Truth agents",
+    },
+    {
+      id: "write",
+      label: "Write",
+      status: "queued",
+      count: 9,
+      owner: "Story agents",
+    },
+    {
+      id: "editor-review",
+      label: "Editor review",
+      status: "review",
+      count: 4,
+      owner: "Editors",
+    },
+    {
+      id: "publish",
+      label: "Publish",
+      status: "unavailable",
+      owner: "Integration required",
+    },
+  ],
   queueHealth: 94.6,
   activeSources: mockSources.filter((source) => source.status === "active")
     .length,
+  pendingReviews: mockReviewItems.filter((item) => item.status === "review")
+    .length,
+  medianReviewMinutes: 18,
 };
 
 export const mockGeneratedPackages: StoryPackage[] = [];

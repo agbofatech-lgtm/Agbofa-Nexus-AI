@@ -7,6 +7,7 @@ import { ModelSelector } from "@/components/features/ai-control/ModelSelector";
 import { ProviderStatus } from "@/components/features/ai-control/ProviderStatus";
 import { UsageMetrics } from "@/components/features/ai-control/UsageMetrics";
 import { IntelligenceState } from "@/components/features/intelligence/IntelligenceState";
+import { WorkflowRail } from "@/components/shared/operations/WorkflowRail";
 import { useAIControl } from "@/hooks/useIntelligence";
 
 export function AIControl() {
@@ -45,6 +46,11 @@ export function AIControl() {
   return (
     <div className="intelligence-page">
       <AIControlHeader />
+      <WorkflowRail
+        description="Provider credentials, routing, and authoritative usage are not connected."
+        stages={control.data.workflow}
+        title="AI control path"
+      />
       <UsageMetrics agents={control.agentSummary} data={control.data} />
       <section className="provider-grid" aria-label="Demo AI providers">
         {control.data.providers.map((provider) => (

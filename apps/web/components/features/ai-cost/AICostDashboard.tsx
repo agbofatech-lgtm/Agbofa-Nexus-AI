@@ -12,6 +12,7 @@ import { ProviderCostCard } from "@/components/features/ai-cost/ProviderCostCard
 import { UsageForecast } from "@/components/features/ai-cost/UsageForecast";
 import { BusinessMetric } from "@/components/features/business/BusinessMetric";
 import { DataStateBanner } from "@/components/features/business/DataStateBanner";
+import { WorkflowRail } from "@/components/shared/operations/WorkflowRail";
 import { useAgents } from "@/hooks/useAgents";
 import { useBusinessModule } from "@/hooks/useBusinessModule";
 export function AICostDashboard() {
@@ -44,6 +45,11 @@ export function AICostDashboard() {
     <div className="business-page">
       <AICostHeader />
       <DataStateBanner value={value} />
+      <WorkflowRail
+        description="Provider billing and token authority are unavailable."
+        stages={d.workflow}
+        title="AI output economics"
+      />
       <section className="business-metric-grid">
         {d.metrics.map((m, i) => (
           <BusinessMetric

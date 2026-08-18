@@ -9,7 +9,6 @@ import {
   Radio,
   ShieldCheck,
   Sparkles,
-  TrendingUp,
   Users,
   Zap,
   type LucideIcon,
@@ -19,6 +18,9 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { DataAuthorityBadge } from "@/components/features/business/DataAuthorityBadge";
+import { ActivityTimeline } from "@/components/shared/operations/ActivityTimeline";
+import { OperationsSummary } from "@/components/shared/operations/OperationsSummary";
+import { WorkflowRail } from "@/components/shared/operations/WorkflowRail";
 import {
   Badge,
   Button,
@@ -39,19 +41,14 @@ import {
   slideUpTransition,
   staggerContainer,
 } from "@/lib/animations/presets";
-import type { CommandActivityId, CommandMetricId } from "@/types/command";
+import type { CommandMetricId } from "@/types/command";
+import type { ActivityEvent } from "@/types/operations";
 
 const metricIcons: Record<CommandMetricId, LucideIcon> = {
   agents: Bot,
   stories: Newspaper,
   confidence: ShieldCheck,
   reach: Users,
-};
-
-const activityIcons: Record<CommandActivityId, LucideIcon> = {
-  verified: ShieldCheck,
-  agent: Bot,
-  audience: TrendingUp,
 };
 
 export default function DashboardPage() {
@@ -69,30 +66,30 @@ export default function DashboardPage() {
     return [
       {
         value: "activity",
-        label: "Demo activity",
+        label: "Activity",
         content: (
-          <div className="activity-list">
-            {data.activity.map((item) => {
-              const Icon = activityIcons[item.id];
-              return (
-                <div key={item.title} className="activity-item">
-                  <span className={`activity-item__icon activity-item__icon--${item.tone}`}>
-                    <Icon size={17} />
-                  </span>
-                  <div className="activity-item__copy">
-                    <strong>{item.title}</strong>
-                    <p>{item.detail}</p>
-                  </div>
-                  <time>{item.timeLabel}</time>
-                </div>
-              );
-            })}
-          </div>
+          <ActivityTimeline
+            compact
+            events={data.activity.map<ActivityEvent>((item) => ({
+              id: item.id,
+              time: item.timeLabel,
+              title: item.title,
+              detail: item.detail,
+              status:
+                item.id === "verified"
+                  ? "completed"
+                  : item.id === "agent"
+                    ? "running"
+                    : "review",
+              actor: "Nexus operations",
+            }))}
+            title="Intelligence operations activity"
+          />
         ),
       },
       {
         value: "signals",
-        label: "Priority fixtures",
+        label: "Priority signals",
         content: (
           <div className="signal-grid">
             {data.signals.map((signal) => (
@@ -160,7 +157,10 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="dashboard-hero__actions">
-          <Link className="dashboard-action-link dashboard-action-link--quiet" href="/reader">
+          <Link
+            className="dashboard-action-link dashboard-action-link--quiet"
+            href="/reader"
+          >
             Open reader
           </Link>
           <Link className="dashboard-action-link" href="/newsroom/origination">
@@ -175,15 +175,36 @@ export default function DashboardPage() {
         transition={reduceMotion ? { duration: 0 } : fadeInTransition}
         variants={fadeIn}
       >
-        <DataAuthorityBadge state={overview.error ? "error" : overview.loading ? "loading" : "demo"} />
+        <DataAuthorityBadge
+          state={
+            overview.error ? "error" : overview.loading ? "loading" : "demo"
+          }
+        />
         <span>
           {overview.value?.source ?? "Local Phase 1 command overview fixture"}
         </span>
         <strong>Not live · not production authority</strong>
       </motion.aside>
 
+      {data && overview.value ? (
+        <>
+          <OperationsSummary
+            eyebrow="AI operations"
+            metrics={data.operations}
+            provenance={overview.value.provenance}
+            title="System activity at a glance"
+          />
+          <WorkflowRail
+            description="How content becomes intelligence, action, and measurable feedback."
+            loop
+            stages={data.workflow}
+            title="Media intelligence operating loop"
+          />
+        </>
+      ) : null}
+
       <motion.section
-        aria-label="Illustrative command metrics"
+        aria-label="Development command metrics"
         className="metrics-grid"
         transition={reduceMotion ? { duration: 0 } : fadeInTransition}
         variants={fadeIn}
@@ -200,12 +221,14 @@ export default function DashboardPage() {
               const Icon = metricIcons[metric.id];
               return (
                 <Card key={metric.id} className="metric-card" variant="default">
-                  <div className={`metric-card__icon metric-card__icon--${metric.tone}`}>
+                  <div
+                    className={`metric-card__icon metric-card__icon--${metric.tone}`}
+                  >
                     <Icon size={19} />
                   </div>
                   <div className="metric-card__value-row">
                     <strong>{metric.value}</strong>
-                    <Badge variant="category" category="AI">Demo</Badge>
+                    <span>Development</span>
                   </div>
                   <span>{metric.label}</span>
                   <small>{metric.context}</small>
@@ -221,7 +244,9 @@ export default function DashboardPage() {
             <strong>Local command fixture unavailable</strong>
             <p>{overview.error}</p>
           </div>
-          <Button onClick={overview.retry} size="sm" variant="secondary">Retry</Button>
+          <Button onClick={overview.retry} size="sm" variant="secondary">
+            Retry
+          </Button>
         </Card>
       ) : null}
 
@@ -271,7 +296,10 @@ export default function DashboardPage() {
                 Prepare local objective <ArrowUpRight size={16} />
               </Button>
             </div>
-            <span aria-live="polite" className="command-card__integration-state">
+            <span
+              aria-live="polite"
+              className="command-card__integration-state"
+            >
               {preparedBrief ?? "AI generation: integration required"}
             </span>
           </GlassCard>
@@ -285,24 +313,39 @@ export default function DashboardPage() {
             <div className="section-heading">
               <div>
                 <span className="section-kicker">
-                  <Radio size={13} /> Demonstration topology
+                  <Radio size={13} /> Agent topology
                 </span>
                 <h2>Agent constellation</h2>
               </div>
-              <Badge variant="confidence" confidence={data?.network.exampleConfidence ?? 0} />
+              <Badge
+                variant="confidence"
+                confidence={data?.network.exampleConfidence ?? 0}
+              />
             </div>
-            <div className="constellation" aria-label="Illustrative agent network graphic">
+            <div
+              className="constellation"
+              aria-label="Illustrative agent network graphic"
+            >
               <div className="constellation__orbit constellation__orbit--outer" />
               <div className="constellation__orbit constellation__orbit--inner" />
               <span className="constellation__node constellation__node--one" />
               <span className="constellation__node constellation__node--two" />
               <span className="constellation__node constellation__node--three" />
               <span className="constellation__node constellation__node--four" />
-              <div className="constellation__core"><Sparkles size={23} /></div>
+              <div className="constellation__core">
+                <Sparkles size={23} />
+              </div>
             </div>
             <div className="network-card__footer">
-              <span><Activity size={14} /> {data?.network.exampleEventsPerMinute ?? "—"} example events/min</span>
-              <span><span className="demo-signal" /> {data?.network.simulatedConnectedAgents ?? "—"}/{data?.network.registeredAgents ?? "—"} simulated</span>
+              <span>
+                <Activity size={14} />{" "}
+                {data?.network.exampleEventsPerMinute ?? "—"} modeled events/min
+              </span>
+              <span>
+                <span className="demo-signal" />{" "}
+                {data?.network.simulatedConnectedAgents ?? "—"}/
+                {data?.network.registeredAgents ?? "—"} simulated
+              </span>
             </div>
           </Card>
         </motion.section>
@@ -331,8 +374,8 @@ export default function DashboardPage() {
         variants={fadeIn}
       >
         <div>
-          <span className="section-kicker">Phase 1 foundation</span>
-          <strong>Cinematic · editorial · technical · evidence-aware</strong>
+          <span className="section-kicker">Nexus operating system</span>
+          <strong>Content → intelligence → action → measurable feedback</strong>
         </div>
         <div className="foundation-strip__boundary">
           <DatabaseZap size={15} /> Backend integrations not connected

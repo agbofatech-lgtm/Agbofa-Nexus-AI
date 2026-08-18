@@ -1,21 +1,25 @@
-import { Bot, CheckCircle2, DatabaseZap, FileCheck2, Send } from "lucide-react";
-
+import { ActivityTimeline } from "@/components/shared/operations/ActivityTimeline";
 import { formatRelativeTime } from "@/lib/utils/reader";
 import type { NewsroomActivity } from "@/types/newsroom";
-
-const activityIcons = {
-  verified: CheckCircle2,
-  source: DatabaseZap,
-  published: Send,
-  generated: Bot,
-  review: FileCheck2,
-} as const;
-
-interface RecentActivityProps {
-  activity: NewsroomActivity[];
-}
-
-export function RecentActivity({ activity }: RecentActivityProps) {
+import type { ActivityEvent } from "@/types/operations";
+export function RecentActivity({ activity }: { activity: NewsroomActivity[] }) {
+  const events = activity.map<ActivityEvent>((i) => ({
+    id: i.id,
+    time: formatRelativeTime(i.timestamp),
+    title: i.action,
+    detail: `${i.subject} — ${i.detail}`,
+    status:
+      i.type === "verified"
+        ? "completed"
+        : i.type === "review"
+          ? "review"
+          : i.type === "source"
+            ? "running"
+            : i.type === "published"
+              ? "waiting"
+              : "queued",
+    actor: "Newsroom workflow",
+  }));
   return (
     <section
       className="recent-activity glass"
@@ -23,34 +27,12 @@ export function RecentActivity({ activity }: RecentActivityProps) {
     >
       <div className="recent-activity__heading">
         <div>
-          <span className="section-kicker">Demo operations</span>
-          <h2 id="recent-activity-title">Recent activity</h2>
+          <span className="section-kicker">Editorial activity</span>
+          <h2 id="recent-activity-title">Recent workflow events</h2>
         </div>
-        <span>{activity.length} events</span>
+        <span>{activity.length} development events</span>
       </div>
-      <div className="recent-activity__list">
-        {activity.map((item) => {
-          const Icon = activityIcons[item.type];
-          return (
-            <article key={item.id} className="activity-event">
-              <span
-                className={`activity-event__icon activity-event__icon--${item.type}`}
-              >
-                <Icon size={15} />
-              </span>
-              <div>
-                <strong>
-                  {item.action}: <b>{item.subject}</b>
-                </strong>
-                <p>{item.detail}</p>
-              </div>
-              <time dateTime={item.timestamp.toISOString()}>
-                {formatRelativeTime(item.timestamp)}
-              </time>
-            </article>
-          );
-        })}
-      </div>
+      <ActivityTimeline compact events={events} title="Newsroom activity" />
     </section>
   );
 }

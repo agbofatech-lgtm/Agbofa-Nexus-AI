@@ -8,6 +8,7 @@ import "./globals.css";
 import "../styles/public.css";
 import "../styles/watermark.css";
 import "../styles/phase-one.css";
+import "../styles/phase-one-five.css";
 
 const themeInitializationScript = `
 (function () {
@@ -103,8 +104,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   colorScheme: "dark light",
   themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#0A0A0A" },
-    { media: "(prefers-color-scheme: light)", color: "#F4F1E8" },
+    { media: "(prefers-color-scheme: dark)", color: "#0D1321" },
+    { media: "(prefers-color-scheme: light)", color: "#F6F8FC" },
   ],
   width: "device-width",
   initialScale: 1,

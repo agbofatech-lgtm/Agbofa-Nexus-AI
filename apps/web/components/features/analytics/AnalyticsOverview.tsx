@@ -12,7 +12,7 @@ export function AnalyticsOverview({
       {items.map((m, i) => (
         <BusinessMetric
           key={m.id}
-          detail={`${m.change >= 0 ? "+" : ""}${m.change}% demo change`}
+          detail={`${m.change >= 0 ? "+" : ""}${m.change}% modeled change`}
           icon={icons[i] ?? Activity}
           label={m.label}
           tone={

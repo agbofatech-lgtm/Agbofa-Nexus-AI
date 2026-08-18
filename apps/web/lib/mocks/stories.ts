@@ -810,6 +810,17 @@ export const mockStories: StoryDetail[] = storySeeds.map((seed, index) => {
     entities: categoryEntities[seed.category],
     content: createArticleContent(seed, index),
     aiSummary: createAISummary(seed),
+    whyItMatters: categoryPerspective[seed.category],
+    keySignals: [
+      `${seed.category} implications depend on implementation quality`,
+      "Independent confirmation remains the strongest signal to monitor",
+      "Access, governance, and measurable outcomes shape long-term value",
+    ],
+    outlook: [
+      "Published implementation milestones may clarify near-term direction",
+      "Independent evidence could change the confidence assessment",
+      "Regulatory, market, and community responses remain material variables",
+    ],
     sources: createVerificationSources(seed, index),
     evidence: {
       supporting,

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+import { ControlPlaneDirectory } from "@/components/features/settings/ControlPlaneDirectory";
 import { DataAuthorityBadge } from "@/components/features/business/DataAuthorityBadge";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { useAuth } from "@/hooks/useAuth";
@@ -60,10 +61,13 @@ export function SettingsWorkspace() {
         </div>
       </aside>
 
+      <ControlPlaneDirectory />
       <div className="settings-layout">
         <section className="settings-panel settings-panel--primary">
           <div className="settings-panel__heading">
-            <span><Palette size={18} /></span>
+            <span>
+              <Palette size={18} />
+            </span>
             <div>
               <h2>Appearance</h2>
               <p>Choose the presentation theme for this browser.</p>
@@ -79,14 +83,18 @@ export function SettingsWorkspace() {
           <div className="settings-row">
             <div>
               <strong>Reduced motion</strong>
-              <span>Automatically follows your operating-system preference.</span>
+              <span>
+                Automatically follows your operating-system preference.
+              </span>
             </div>
             <span className="settings-state">System controlled</span>
           </div>
           <div className="settings-row">
             <div>
               <strong>Interface density</strong>
-              <span>Comfortable spacing is fixed for the Phase 1 review.</span>
+              <span>
+                Comfortable spacing supports editorial and operational work.
+              </span>
             </div>
             <span className="settings-state">Comfortable</span>
           </div>
@@ -94,16 +102,27 @@ export function SettingsWorkspace() {
 
         <section className="settings-panel">
           <div className="settings-panel__heading">
-            <span><Globe2 size={18} /></span>
+            <span>
+              <Globe2 size={18} />
+            </span>
             <div>
               <h2>Region &amp; language</h2>
               <p>Current frontend presentation defaults.</p>
             </div>
           </div>
           <dl className="settings-definition-list">
-            <div><dt>Language</dt><dd>English</dd></div>
-            <div><dt>Region</dt><dd>Ghana</dd></div>
-            <div><dt>Time zone</dt><dd>Africa/Accra · GMT</dd></div>
+            <div>
+              <dt>Language</dt>
+              <dd>English</dd>
+            </div>
+            <div>
+              <dt>Region</dt>
+              <dd>Ghana</dd>
+            </div>
+            <div>
+              <dt>Time zone</dt>
+              <dd>Africa/Accra · GMT</dd>
+            </div>
           </dl>
           <span className="settings-integration-note">
             Locale switching: integration required
@@ -112,10 +131,14 @@ export function SettingsWorkspace() {
 
         <section className="settings-panel settings-panel--wide">
           <div className="settings-panel__heading">
-            <span><Bell size={18} /></span>
+            <span>
+              <Bell size={18} />
+            </span>
             <div>
               <h2>Notifications</h2>
-              <p>Delivery controls remain visibly unavailable until connected.</p>
+              <p>
+                Delivery controls remain visibly unavailable until connected.
+              </p>
             </div>
           </div>
           <div className="settings-integration-list">
@@ -125,7 +148,9 @@ export function SettingsWorkspace() {
                   <strong>{row.label}</strong>
                   <span>{row.description}</span>
                 </div>
-                <button disabled type="button">Not connected</button>
+                <button disabled type="button">
+                  Not connected
+                </button>
               </div>
             ))}
           </div>
@@ -133,33 +158,62 @@ export function SettingsWorkspace() {
 
         <section className="settings-panel">
           <div className="settings-panel__heading">
-            <span><UserRound size={18} /></span>
+            <span>
+              <UserRound size={18} />
+            </span>
             <div>
               <h2>Demo identity</h2>
               <p>Browser-local session presentation.</p>
             </div>
           </div>
           <dl className="settings-definition-list">
-            <div><dt>Name</dt><dd>{session?.user.name ?? "Demo user"}</dd></div>
-            <div><dt>Role</dt><dd>{session?.user.role ?? "user"} · UX only</dd></div>
-            <div><dt>Tenant</dt><dd>{session?.tenant ?? "Demo tenant"}</dd></div>
+            <div>
+              <dt>Name</dt>
+              <dd>{session?.user.name ?? "Demo user"}</dd>
+            </div>
+            <div>
+              <dt>Role</dt>
+              <dd>{session?.user.role ?? "user"} · UX only</dd>
+            </div>
+            <div>
+              <dt>Tenant</dt>
+              <dd>{session?.tenant ?? "Demo tenant"}</dd>
+            </div>
           </dl>
-          <Link className="settings-link" href="/profile">Open profile presentation</Link>
+          <Link className="settings-link" href="/profile">
+            Open profile presentation
+          </Link>
         </section>
 
         <section className="settings-panel">
           <div className="settings-panel__heading">
-            <span><ShieldCheck size={18} /></span>
+            <span>
+              <ShieldCheck size={18} />
+            </span>
             <div>
               <h2>Security integration</h2>
-              <p>Authoritative controls are not implemented by this frontend.</p>
+              <p>
+                Authoritative controls are not implemented by this frontend.
+              </p>
             </div>
           </div>
           <ul className="settings-security-list">
-            <li><span>Frontend AuthGuard</span><b>Demo UX</b></li>
-            <li><span>Server authentication</span><b>Not connected</b></li>
-            <li><span>Backend RBAC</span><b>Not connected</b></li>
-            <li><span>Tenant enforcement</span><b>Not connected</b></li>
+            <li>
+              <span>Frontend AuthGuard</span>
+              <b>Demo UX</b>
+            </li>
+            <li>
+              <span>Server authentication</span>
+              <b>Not connected</b>
+            </li>
+            <li>
+              <span>Backend RBAC</span>
+              <b>Not connected</b>
+            </li>
+            <li>
+              <span>Tenant enforcement</span>
+              <b>Not connected</b>
+            </li>
           </ul>
         </section>
       </div>

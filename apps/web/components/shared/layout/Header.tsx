@@ -26,9 +26,21 @@ const searchableDestinations = [
   { label: "Reader", href: "/reader", group: "Reader" },
   { label: "AI Control Center", href: "/ai-control", group: "Intelligence" },
   { label: "Agent workforce", href: "/agents", group: "Intelligence" },
-  { label: "Predictive Intelligence", href: "/predictive", group: "Intelligence" },
-  { label: "Personalization Intelligence", href: "/personalization", group: "Intelligence" },
-  { label: "Multimodal Intelligence", href: "/multimodal", group: "Intelligence" },
+  {
+    label: "Predictive Intelligence",
+    href: "/predictive",
+    group: "Intelligence",
+  },
+  {
+    label: "Personalization Intelligence",
+    href: "/personalization",
+    group: "Intelligence",
+  },
+  {
+    label: "Multimodal Intelligence",
+    href: "/multimodal",
+    group: "Intelligence",
+  },
   { label: "Newsroom", href: "/newsroom", group: "Newsroom" },
   { label: "Truth Engine", href: "/truth", group: "Newsroom" },
   { label: "Distribution", href: "/distribution", group: "Distribution" },
@@ -48,10 +60,7 @@ interface HeaderProps {
   onOpenNavigation: () => void;
 }
 
-export function Header({
-  navigationOpen,
-  onOpenNavigation,
-}: HeaderProps) {
+export function Header({ navigationOpen, onOpenNavigation }: HeaderProps) {
   const router = useRouter();
   const { session, signOut } = useAuth();
   const displayName = session?.user.name ?? "Nexus User";
@@ -143,7 +152,11 @@ export function Header({
 
       <div className="app-header__actions">
         <form className="global-search" onSubmit={onSearch} role="search">
-          <Search aria-hidden="true" className="global-search__icon" size={16} />
+          <Search
+            aria-hidden="true"
+            className="global-search__icon"
+            size={16}
+          />
           <label className="sr-only" htmlFor="global-search">
             Search workspace destinations
           </label>
@@ -153,7 +166,7 @@ export function Header({
             autoComplete="off"
             id="global-search"
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search workspace"
+            placeholder="Search stories, agents, workflows"
             type="search"
             value={query}
           />
@@ -235,19 +248,40 @@ export function Header({
                   <CheckCheck size={14} /> Mark read
                 </button>
               </div>
-              <div className={unreadNotifications > 0 ? "notification-item notification-item--unread" : "notification-item"}>
-                {unreadNotifications > 0 ? <span className="notification-item__signal" /> : null}
+              <div
+                className={
+                  unreadNotifications > 0
+                    ? "notification-item notification-item--unread"
+                    : "notification-item"
+                }
+              >
+                {unreadNotifications > 0 ? (
+                  <span className="notification-item__signal" />
+                ) : null}
                 <div>
                   <strong>Frontend foundation available</strong>
-                  <p>Navigation and presentation layers are available for review.</p>
+                  <p>
+                    Navigation and presentation layers are available for review.
+                  </p>
                   <time>Demo event</time>
                 </div>
               </div>
-              <div className={unreadNotifications > 0 ? "notification-item notification-item--unread" : "notification-item"}>
-                {unreadNotifications > 0 ? <span className="notification-item__signal notification-item__signal--blue" /> : null}
+              <div
+                className={
+                  unreadNotifications > 0
+                    ? "notification-item notification-item--unread"
+                    : "notification-item"
+                }
+              >
+                {unreadNotifications > 0 ? (
+                  <span className="notification-item__signal notification-item__signal--blue" />
+                ) : null}
                 <div>
-                  <strong>Mock adapters connected</strong>
-                  <p>No backend, provider, or production event stream is connected.</p>
+                  <strong>Development adapters active</strong>
+                  <p>
+                    No backend, provider, or production event stream is
+                    connected.
+                  </p>
                   <time>Demo event</time>
                 </div>
               </div>
@@ -284,19 +318,31 @@ export function Header({
               role="menu"
             >
               <div className="user-menu__identity">
-                <span className="user-avatar user-avatar--large">{initials}</span>
+                <span className="user-avatar user-avatar--large">
+                  {initials}
+                </span>
                 <div>
                   <strong>{displayName}</strong>
-                  <span>{session?.user.email ?? "Demo workspace identity"}</span>
+                  <span>
+                    {session?.user.email ?? "Demo workspace identity"}
+                  </span>
                 </div>
               </div>
               <div className="user-menu__authority">
                 <FlaskConical size={13} /> Browser-local demo session
               </div>
-              <Link href="/profile" onClick={() => setUserMenuOpen(false)} role="menuitem">
+              <Link
+                href="/profile"
+                onClick={() => setUserMenuOpen(false)}
+                role="menuitem"
+              >
                 <User size={16} /> Profile
               </Link>
-              <Link href="/settings" onClick={() => setUserMenuOpen(false)} role="menuitem">
+              <Link
+                href="/settings"
+                onClick={() => setUserMenuOpen(false)}
+                role="menuitem"
+              >
                 <Settings size={16} /> Settings
               </Link>
               <button

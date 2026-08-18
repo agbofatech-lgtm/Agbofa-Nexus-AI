@@ -68,7 +68,7 @@ export function AgentCard({ agent }: AgentCardProps) {
       <div className="agent-card__task">
         {agent.currentTask ? (
           <>
-            <span>Simulated current task</span>
+            <span>Current task · development runtime</span>
             <strong>{agent.currentTask.title}</strong>
             <i>
               <b style={{ width: `${agent.currentTask.progress}%` }} />
@@ -78,6 +78,12 @@ export function AgentCard({ agent }: AgentCardProps) {
           <span>No active task · {agent.status}</span>
         )}
       </div>
+      {agent.lastExecution ? (
+        <div className="agent-card__latest-output">
+          <span>Latest output</span>
+          <strong>{agent.lastExecution.summary}</strong>
+        </div>
+      ) : null}
       <div className="agent-card__footer">
         <Badge variant="category" category="AI">
           {agent.category}

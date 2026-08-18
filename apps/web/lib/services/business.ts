@@ -1,6 +1,6 @@
 import { demoBusinessModules } from "@/lib/mocks/business";
 import type { BusinessModules } from "@/types/business";
-import type { DataState } from "@/types/data-state";
+import { unavailableDataState, type DataState } from "@/types/data-state";
 
 export type BusinessModuleKey = keyof BusinessModules;
 
@@ -33,13 +33,6 @@ export const businessService = {
   },
 
   unavailable<T>(source: string): DataState<T> {
-    return {
-      data: null,
-      state: "unavailable",
-      source,
-      lastUpdated: null,
-      error: null,
-      isDemo: false,
-    };
+    return unavailableDataState<T>(source);
   },
 };

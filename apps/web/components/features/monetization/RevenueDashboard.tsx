@@ -21,7 +21,7 @@ export function RevenueDashboard({ data }: { data: MonetizationData }) {
       <section className="business-chart-panel glass">
         <div className="business-panel-heading">
           <div>
-            <span>DEMO DATA</span>
+            <span>REVENUE MODEL</span>
             <h2>Revenue and subscriber trajectory</h2>
           </div>
         </div>
@@ -29,9 +29,13 @@ export function RevenueDashboard({ data }: { data: MonetizationData }) {
           data={data.revenueSeries}
           label="Demo revenue, subscribers, and churn series"
           series={[
-            { key: "revenue", label: "Revenue", color: "#D4AF37" },
-            { key: "subscribers", label: "Subscribers", color: "#6C5CE7" },
-            { key: "churn", label: "Churn", color: "#CF2020" },
+            { key: "revenue", label: "Revenue", color: "var(--chart-gold)" },
+            {
+              key: "subscribers",
+              label: "Subscribers",
+              color: "var(--chart-purple)",
+            },
+            { key: "churn", label: "Churn", color: "var(--chart-error)" },
           ]}
         />
       </section>

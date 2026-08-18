@@ -6,13 +6,26 @@
 
 .phase-one {
   background:
-    radial-gradient(circle at 78% -8%, rgba(212, 175, 55, 0.07), transparent 32rem),
-    radial-gradient(circle at 8% 78%, rgba(51, 153, 255, 0.045), transparent 36rem),
+    radial-gradient(
+      circle at 78% -8%,
+      rgba(212, 175, 55, 0.07),
+      transparent 32rem
+    ),
+    radial-gradient(
+      circle at 8% 78%,
+      rgba(51, 153, 255, 0.045),
+      transparent 36rem
+    ),
     linear-gradient(rgba(255, 255, 255, 0.012) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px),
     var(--page-bg);
   background-attachment: fixed;
-  background-size: auto, auto, 72px 72px, 72px 72px, auto;
+  background-size:
+    auto,
+    auto,
+    72px 72px,
+    72px 72px,
+    auto;
   font-size: clamp(16px, 0.22vw + 15px, 18px);
   line-height: 1.65;
 }
@@ -22,11 +35,12 @@
 }
 
 .phase-one :where(button, a, input, select, textarea):focus-visible {
-  outline: 2px solid var(--nexus-gold);
+  outline: 2px solid var(--nexus-blue);
   outline-offset: 3px;
 }
 
-.phase-one :where(.nexus-button, .icon-button, .nav-item, .top-navigation__item) {
+.phase-one
+  :where(.nexus-button, .icon-button, .nav-item, .top-navigation__item) {
   min-height: 42px;
 }
 
@@ -367,7 +381,11 @@
   z-index: calc(var(--layer-navigation) + 1);
   border-right-color: var(--glass-border-subtle);
   background:
-    radial-gradient(circle at 15% 0%, rgba(212, 175, 55, 0.075), transparent 19rem),
+    radial-gradient(
+      circle at 15% 0%,
+      rgba(212, 175, 55, 0.075),
+      transparent 19rem
+    ),
     color-mix(in srgb, var(--surface-0) 96%, transparent);
   box-shadow: 18px 0 80px rgba(0, 0, 0, 0.18);
   -webkit-backdrop-filter: blur(var(--blur-heavy));
@@ -447,7 +465,9 @@
   color: var(--nexus-gold);
 }
 
-.phase-one .nav-group--active-context:not(.nav-group--collapsed) .nav-group__label::after {
+.phase-one
+  .nav-group--active-context:not(.nav-group--collapsed)
+  .nav-group__label::after {
   display: inline-block;
   width: 4px;
   height: 4px;
@@ -509,8 +529,14 @@
 }
 
 @keyframes phase-one-enter {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .phase-one .dashboard-hero {
@@ -943,17 +969,18 @@
 }
 
 /* Shared feature hierarchy */
-.phase-one :where(
-  .reader-page,
-  .story-page,
-  .truth-page,
-  .newsroom-page,
-  .intelligence-page,
-  .agents-page,
-  .agent-detail-page,
-  .business-page,
-  .settings-page
-) {
+.phase-one
+  :where(
+    .reader-page,
+    .story-page,
+    .truth-page,
+    .newsroom-page,
+    .intelligence-page,
+    .agents-page,
+    .agent-detail-page,
+    .business-page,
+    .settings-page
+  ) {
   width: 100%;
   max-width: var(--content-max);
   margin-right: auto;
@@ -961,15 +988,16 @@
   animation: phase-one-enter var(--motion-slow) var(--ease-entrance) both;
 }
 
-.phase-one :where(
-  .reader-header,
-  .truth-header,
-  .newsroom-header,
-  .intelligence-header,
-  .agents-header,
-  .business-header,
-  .settings-header
-) {
+.phase-one
+  :where(
+    .reader-header,
+    .truth-header,
+    .newsroom-header,
+    .intelligence-header,
+    .agents-header,
+    .business-header,
+    .settings-header
+  ) {
   min-height: 150px;
   align-items: center;
   margin-bottom: clamp(24px, 3vw, 42px);
@@ -977,15 +1005,16 @@
   padding-bottom: clamp(22px, 2.5vw, 36px);
 }
 
-.phase-one :where(
-  .reader-header h1,
-  .truth-header h1,
-  .newsroom-header h1,
-  .intelligence-header h1,
-  .agents-header h1,
-  .business-header h1,
-  .settings-header h1
-) {
+.phase-one
+  :where(
+    .reader-header h1,
+    .truth-header h1,
+    .newsroom-header h1,
+    .intelligence-header h1,
+    .agents-header h1,
+    .business-header h1,
+    .settings-header h1
+  ) {
   margin-top: 8px;
   font-size: clamp(2.4rem, 4.5vw, 4.75rem);
   font-weight: 630;
@@ -993,15 +1022,16 @@
   line-height: 0.98;
 }
 
-.phase-one :where(
-  .reader-header__title-row p,
-  .truth-header p,
-  .newsroom-header p,
-  .intelligence-header p,
-  .agents-header p,
-  .business-header p,
-  .settings-header p
-) {
+.phase-one
+  :where(
+    .reader-header__title-row p,
+    .truth-header p,
+    .newsroom-header p,
+    .intelligence-header p,
+    .agents-header p,
+    .business-header p,
+    .settings-header p
+  ) {
   max-width: 780px;
   margin-top: 9px;
   color: var(--text-secondary);
@@ -1009,130 +1039,140 @@
   line-height: 1.65;
 }
 
-.phase-one :where(
-  .reader-header__eyebrow,
-  .truth-header__eyebrow,
-  .newsroom-header__eyebrow,
-  .intelligence-header > div:first-child > span,
-  .agents-header__eyebrow,
-  .business-header > div:first-child > span,
-  .settings-header__eyebrow
-) {
+.phase-one
+  :where(
+    .reader-header__eyebrow,
+    .truth-header__eyebrow,
+    .newsroom-header__eyebrow,
+    .intelligence-header > div:first-child > span,
+    .agents-header__eyebrow,
+    .business-header > div:first-child > span,
+    .settings-header__eyebrow
+  ) {
   font-size: 0.6875rem;
   letter-spacing: 0.14em;
 }
 
-.phase-one :where(
-  .reader-header__controls,
-  .truth-status-tabs,
-  .newsroom-subnav,
-  .source-filter-row,
-  .review-filter,
-  .agent-filters,
-  .analytics-controls
-) {
+.phase-one
+  :where(
+    .reader-header__controls,
+    .truth-status-tabs,
+    .newsroom-subnav,
+    .source-filter-row,
+    .review-filter,
+    .agent-filters,
+    .analytics-controls
+  ) {
   border-radius: var(--radius-card);
 }
 
-.phase-one :where(
-  .reader-story-card,
-  .compact-story-card,
-  .claim-card,
-  .truth-summary,
-  .evidence-panel,
-  .evidence-timeline,
-  .newsroom-stat,
-  .workspace-card,
-  .recent-activity,
-  .newsroom-health,
-  .source-card,
-  .ingestion-pipeline,
-  .factory-story-list,
-  .package-composer,
-  .package-preview,
-  .agent-card,
-  .agent-summary-card,
-  .agent-metric,
-  .agent-task-panel,
-  .agent-dependencies,
-  .agent-executions,
-  .intelligence-metric,
-  .prediction-hero-card,
-  .engagement-card,
-  .trend-analysis,
-  .optimization-card,
-  .predictive-chart-panel,
-  .profile-manager,
-  .recommendation-engine,
-  .topic-affinity,
-  .feed-intelligence,
-  .personalization-settings,
-  .media-uploader,
-  .media-analysis,
-  .cross-media,
-  .provider-card,
-  .model-selector,
-  .fallback-routing,
-  .business-metric,
-  .business-chart-panel,
-  .channel-card,
-  .publishing-calendar,
-  .growth-flywheel,
-  .audience-funnel,
-  .growth-list,
-  .referral-system,
-  .conversion-retention,
-  .growth-recommendations,
-  .experiment-table,
-  .plan-card,
-  .paywall-config,
-  .monetization-list,
-  .churn-analysis,
-  .content-analytics,
-  .business-insights,
-  .admin-table-panel,
-  .role-management,
-  .admin-settings,
-  .audit-log,
-  .provider-cost-card,
-  .agent-cost-breakdown,
-  .free-tier-monitor,
-  .budget-alerts,
-  .cost-recommendations
-) {
+.phase-one
+  :where(
+    .reader-story-card,
+    .compact-story-card,
+    .claim-card,
+    .truth-summary,
+    .evidence-panel,
+    .evidence-timeline,
+    .newsroom-stat,
+    .workspace-card,
+    .recent-activity,
+    .newsroom-health,
+    .source-card,
+    .ingestion-pipeline,
+    .factory-story-list,
+    .package-composer,
+    .package-preview,
+    .agent-card,
+    .agent-summary-card,
+    .agent-metric,
+    .agent-task-panel,
+    .agent-dependencies,
+    .agent-executions,
+    .intelligence-metric,
+    .prediction-hero-card,
+    .engagement-card,
+    .trend-analysis,
+    .optimization-card,
+    .predictive-chart-panel,
+    .profile-manager,
+    .recommendation-engine,
+    .topic-affinity,
+    .feed-intelligence,
+    .personalization-settings,
+    .media-uploader,
+    .media-analysis,
+    .cross-media,
+    .provider-card,
+    .model-selector,
+    .fallback-routing,
+    .business-metric,
+    .business-chart-panel,
+    .channel-card,
+    .publishing-calendar,
+    .growth-flywheel,
+    .audience-funnel,
+    .growth-list,
+    .referral-system,
+    .conversion-retention,
+    .growth-recommendations,
+    .experiment-table,
+    .plan-card,
+    .paywall-config,
+    .monetization-list,
+    .churn-analysis,
+    .content-analytics,
+    .business-insights,
+    .admin-table-panel,
+    .role-management,
+    .admin-settings,
+    .audit-log,
+    .provider-cost-card,
+    .agent-cost-breakdown,
+    .free-tier-monitor,
+    .budget-alerts,
+    .cost-recommendations
+  ) {
   border-color: var(--border-subtle);
   border-radius: var(--radius-card);
-  background-color: color-mix(in srgb, var(--surface-1) 97%, var(--nexus-gold) 3%);
+  background-color: color-mix(
+    in srgb,
+    var(--surface-1) 97%,
+    var(--nexus-gold) 3%
+  );
   box-shadow: var(--shadow-subtle);
 }
 
-.phase-one :where(
-  .newsroom-stat,
-  .agent-summary-card,
-  .intelligence-metric,
-  .business-metric
-) {
+.phase-one
+  :where(
+    .newsroom-stat,
+    .agent-summary-card,
+    .intelligence-metric,
+    .business-metric
+  ) {
   min-height: 150px;
   padding: 20px;
 }
 
-.phase-one :where(
-  .newsroom-stat > div strong,
-  .agent-summary-card strong,
-  .intelligence-metric strong,
-  .business-metric strong
-) {
+.phase-one
+  :where(
+    .newsroom-stat > div strong,
+    .agent-summary-card strong,
+    .intelligence-metric strong,
+    .business-metric strong
+  ) {
   font-size: clamp(1.65rem, 2.2vw, 2.25rem);
   letter-spacing: -0.04em;
 }
 
-.phase-one :where(
-  .demo-data-banner,
-  .data-state-banner,
-  .agent-registry-banner,
-  .workspace-error,
-  .personalization-error
-) {
+.phase-one
+  :where(
+    .demo-data-banner,
+    .data-state-banner,
+    .agent-registry-banner,
+    .workspace-error,
+    .personalization-error
+  ) {
   min-height: 56px;
   border-radius: var(--radius-card);
   font-size: 0.8125rem;
@@ -1299,7 +1339,9 @@
 
 .phase-one .truth-claim-list {
   top: calc(var(--header-height) + var(--context-bar-height) + 20px);
-  max-height: calc(100vh - var(--header-height) - var(--context-bar-height) - 40px);
+  max-height: calc(
+    100vh - var(--header-height) - var(--context-bar-height) - 40px
+  );
 }
 
 .phase-one .claim-card {
@@ -1891,7 +1933,12 @@
 @media (max-width: 768px) {
   .phase-one {
     background-attachment: scroll;
-    background-size: auto, auto, 48px 48px, 48px 48px, auto;
+    background-size:
+      auto,
+      auto,
+      48px 48px,
+      48px 48px,
+      auto;
   }
 
   .phase-one .app-header {
@@ -1915,15 +1962,16 @@
   }
 
   .phase-one .dashboard-hero,
-  .phase-one :where(
-    .reader-header,
-    .truth-header,
-    .newsroom-header,
-    .intelligence-header,
-    .agents-header,
-    .business-header,
-    .settings-header
-  ) {
+  .phase-one
+    :where(
+      .reader-header,
+      .truth-header,
+      .newsroom-header,
+      .intelligence-header,
+      .agents-header,
+      .business-header,
+      .settings-header
+    ) {
     min-height: 0;
     align-items: flex-start;
     flex-direction: column;
@@ -1936,15 +1984,16 @@
   }
 
   .phase-one .dashboard-hero h1,
-  .phase-one :where(
-    .reader-header h1,
-    .truth-header h1,
-    .newsroom-header h1,
-    .intelligence-header h1,
-    .agents-header h1,
-    .business-header h1,
-    .settings-header h1
-  ) {
+  .phase-one
+    :where(
+      .reader-header h1,
+      .truth-header h1,
+      .newsroom-header h1,
+      .intelligence-header h1,
+      .agents-header h1,
+      .business-header h1,
+      .settings-header h1
+    ) {
     font-size: clamp(2.2rem, 11vw, 3.6rem);
   }
 
@@ -2051,7 +2100,8 @@
 }
 
 @media (max-width: 600px) {
-  .phase-one :where(.nexus-button, .icon-button, .nav-item, .top-navigation__item) {
+  .phase-one
+    :where(.nexus-button, .icon-button, .nav-item, .top-navigation__item) {
     min-height: 44px;
   }
 
@@ -2160,18 +2210,19 @@
     background-attachment: scroll !important;
   }
 
-  .phase-one :where(
-    .dashboard-page,
-    .reader-page,
-    .story-page,
-    .truth-page,
-    .newsroom-page,
-    .intelligence-page,
-    .agents-page,
-    .agent-detail-page,
-    .business-page,
-    .settings-page
-  ) {
+  .phase-one
+    :where(
+      .dashboard-page,
+      .reader-page,
+      .story-page,
+      .truth-page,
+      .newsroom-page,
+      .intelligence-page,
+      .agents-page,
+      .agent-detail-page,
+      .business-page,
+      .settings-page
+    ) {
     animation: none !important;
   }
 }
@@ -2183,7 +2234,8 @@
     background: CanvasText;
   }
 
-  .phase-one :where(.nexus-card, .settings-panel, .profile-identity, .profile-details) {
+  .phase-one
+    :where(.nexus-card, .settings-panel, .profile-identity, .profile-details) {
     border: 1px solid CanvasText;
   }
 }

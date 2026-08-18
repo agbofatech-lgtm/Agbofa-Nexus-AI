@@ -11,6 +11,7 @@ import { GrowthHeader } from "@/components/features/growth/GrowthHeader";
 import { GrowthRecommendations } from "@/components/features/growth/GrowthRecommendations";
 import { GrowthStats } from "@/components/features/growth/GrowthStats";
 import { ReferralSystem } from "@/components/features/growth/ReferralSystem";
+import { WorkflowRail } from "@/components/shared/operations/WorkflowRail";
 import { useBusinessModule } from "@/hooks/useBusinessModule";
 export function GrowthDashboard() {
   const { value, retry } = useBusinessModule("growth");
@@ -44,6 +45,11 @@ export function GrowthDashboard() {
     <div className="business-page">
       <GrowthHeader />
       <DataStateBanner value={value} />
+      <WorkflowRail
+        description="Editorial value to audience, retention, conversion, and revenue."
+        stages={d.operatingLoop}
+        title="Growth value chain"
+      />
       <GrowthStats metrics={d.metrics} />
       <GrowthFlywheel stages={d.flywheel} />
       <div className="growth-primary">

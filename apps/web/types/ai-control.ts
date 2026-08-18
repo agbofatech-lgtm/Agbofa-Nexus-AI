@@ -1,5 +1,7 @@
+import type { WorkflowStage } from "@/types/operations";
+
 export type ProviderState =
-  "connected" | "degraded" | "offline" | "not-configured";
+  "development" | "connected" | "degraded" | "offline" | "not-configured";
 
 export interface AIModel {
   id: string;
@@ -25,6 +27,7 @@ export interface AIProvider {
 }
 
 export interface AIControlData {
+  workflow: WorkflowStage[];
   providers: AIProvider[];
   totalRequests: number;
   totalTokens: number;

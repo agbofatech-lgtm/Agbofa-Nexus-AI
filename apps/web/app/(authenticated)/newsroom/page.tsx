@@ -7,6 +7,7 @@ import { NewsroomHeader } from "@/components/features/newsroom/NewsroomHeader";
 import { NewsroomSidebar } from "@/components/features/newsroom/NewsroomSidebar";
 import { NewsroomStats } from "@/components/features/newsroom/NewsroomStats";
 import { RecentActivity } from "@/components/features/newsroom/RecentActivity";
+import { WorkflowRail } from "@/components/shared/operations/WorkflowRail";
 import { Button, Skeleton } from "@/components/ui";
 import { useNewsroom } from "@/hooks/useNewsroom";
 
@@ -59,6 +60,13 @@ export default function NewsroomPage() {
         loading={newsroom.loading.dashboard}
         metrics={newsroom.dashboard?.metrics ?? []}
       />
+      {newsroom.dashboard ? (
+        <WorkflowRail
+          description="Human editorial authority remains explicit; publishing requires integration."
+          stages={newsroom.dashboard.workflow}
+          title="Editorial operating pipeline"
+        />
+      ) : null}
       <section className="newsroom-workspaces" aria-label="Newsroom workspaces">
         {workspaces.map((item) => {
           const Icon = item.icon;
@@ -87,7 +95,7 @@ export default function NewsroomPage() {
           <RecentActivity activity={newsroom.dashboard?.activity ?? []} />
         )}
         <aside className="newsroom-health glass-gold">
-          <span className="section-kicker">Operational health</span>
+          <span className="section-kicker">Workflow health model</span>
           <div
             className="newsroom-health__ring"
             style={
@@ -108,11 +116,11 @@ export default function NewsroomPage() {
             </li>
             <li>
               <span>Pending reviews</span>
-              <strong>42</strong>
+              <strong>{newsroom.dashboard?.pendingReviews ?? 0}</strong>
             </li>
             <li>
               <span>Median review time</span>
-              <strong>18m</strong>
+              <strong>{newsroom.dashboard?.medianReviewMinutes ?? 0}m</strong>
             </li>
           </ul>
         </aside>

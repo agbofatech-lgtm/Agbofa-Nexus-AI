@@ -7,8 +7,8 @@ interface DemoDataBannerProps {
 }
 
 export function DemoDataBanner({
-  label = "DEMO DATA",
-  message = "Backend integration is unavailable. Values shown are deterministic examples, not live intelligence.",
+  label = "Development dataset",
+  message = "Deterministic service-adapter data is active. No live intelligence provider is connected.",
   partial = false,
 }: DemoDataBannerProps) {
   return (

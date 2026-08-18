@@ -29,7 +29,7 @@ export function NewsroomHeader({
       </div>
       <div className="newsroom-header__actions">
         <span className="newsroom-live">
-          <Sparkles size={12} /> Demo workspace
+          <Sparkles size={12} /> Editorial operations
         </span>
         {actions}
       </div>

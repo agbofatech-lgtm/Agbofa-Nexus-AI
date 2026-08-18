@@ -1,18 +1,19 @@
-import { DataAuthorityBadge } from "@/components/features/business/DataAuthorityBadge";
+import { DataSourceIndicator } from "@/components/shared/data/DataSourceIndicator";
 import type { DataState } from "@/types/data-state";
-
 export function DataStateBanner<T>({ value }: { value: DataState<T> }) {
   return (
-    <div className="data-state-banner" role="note">
-      <DataAuthorityBadge state={value.state} />
-      <span>Source: {value.source}</span>
-      <p>
-        {value.state === "demo"
-          ? "Values are isolated frontend fixtures and are not production business data."
-          : value.state === "unavailable"
-            ? "No verified backend capability exists in this checkout."
-            : (value.error ?? "Data authority is shown explicitly.")}
-      </p>
-    </div>
+    <aside className="data-state-banner" aria-label="Data source information">
+      <div>
+        <strong>{value.provenance.label}</strong>
+        <p>
+          {value.state === "unavailable"
+            ? "Available when an authoritative integration is connected."
+            : value.state === "error"
+              ? (value.error ?? "Data source unavailable.")
+              : "Presentation is ready for the authoritative adapter when available."}
+        </p>
+      </div>
+      <DataSourceIndicator details provenance={value.provenance} />
+    </aside>
   );
 }

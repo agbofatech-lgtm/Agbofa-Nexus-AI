@@ -1,3 +1,5 @@
+import type { OperationalMetric, WorkflowStage } from "@/types/operations";
+
 export type CommandMetricTone = "gold" | "blue" | "green" | "purple";
 export type CommandMetricId = "agents" | "stories" | "confidence" | "reach";
 export type CommandActivityTone = "green" | "gold" | "blue";
@@ -31,6 +33,8 @@ export interface CommandOverviewData {
   metrics: CommandMetric[];
   activity: CommandActivity[];
   signals: CommandPrioritySignal[];
+  operations: OperationalMetric[];
+  workflow: WorkflowStage[];
   network: {
     registeredAgents: number;
     simulatedConnectedAgents: number;

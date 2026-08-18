@@ -7,6 +7,7 @@ import { MonetizationHeader } from "@/components/features/monetization/Monetizat
 import { PaywallConfiguration } from "@/components/features/monetization/PaywallConfiguration";
 import { RevenueDashboard } from "@/components/features/monetization/RevenueDashboard";
 import { SubscriptionPlans } from "@/components/features/monetization/SubscriptionPlans";
+import { WorkflowRail } from "@/components/shared/operations/WorkflowRail";
 import { useBusinessModule } from "@/hooks/useBusinessModule";
 export function MonetizationDashboard() {
   const { value, retry } = useBusinessModule("monetization");
@@ -39,6 +40,11 @@ export function MonetizationDashboard() {
     <div className="business-page">
       <MonetizationHeader />
       <DataStateBanner value={value} />
+      <WorkflowRail
+        description="Subscription and billing systems are not connected."
+        stages={value.data.journey}
+        title="Reader value journey"
+      />
       <RevenueDashboard data={value.data} />
       <SubscriptionPlans plans={value.data.plans} />
       <div className="monetization-grid">

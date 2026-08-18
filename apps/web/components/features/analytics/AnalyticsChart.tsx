@@ -9,7 +9,7 @@ export function AnalyticsChart({
     <section className="business-chart-panel glass">
       <div className="business-panel-heading">
         <div>
-          <span>DEMO DATA</span>
+          <span>CROSS-MODULE VIEW</span>
           <h2>Cross-module performance</h2>
         </div>
       </div>
@@ -17,12 +17,16 @@ export function AnalyticsChart({
         data={series}
         label="Demo audience, content, distribution, growth, revenue, and AI performance"
         series={[
-          { key: "audience", label: "Audience", color: "#3399FF" },
-          { key: "content", label: "Content", color: "#D4AF37" },
-          { key: "distribution", label: "Distribution", color: "#8B5CF6" },
-          { key: "growth", label: "Growth", color: "#0D9040" },
-          { key: "revenue", label: "Revenue", color: "#F59E0B" },
-          { key: "ai", label: "AI", color: "#6C5CE7" },
+          { key: "audience", label: "Audience", color: "var(--chart-blue)" },
+          { key: "content", label: "Content", color: "var(--chart-gold)" },
+          {
+            key: "distribution",
+            label: "Distribution",
+            color: "var(--chart-purple)",
+          },
+          { key: "growth", label: "Growth", color: "var(--chart-green)" },
+          { key: "revenue", label: "Revenue", color: "var(--chart-warning)" },
+          { key: "ai", label: "AI", color: "var(--chart-purple)" },
         ]}
       />
     </section>

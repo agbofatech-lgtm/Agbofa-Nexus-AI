@@ -1,31 +1,34 @@
 export const colors = {
-  brand: {
-    gold: "#D4AF37",
-    goldLight: "#E8C84A",
-    goldDark: "#B8952E",
-  },
+  brand: { gold: "#D4AF37", goldLight: "#E4C65D", goldDark: "#A88924" },
   background: {
-    black: "#0A0A0A",
-    dark: "#121212",
-    surface: "#1A1A1A",
+    black: "#0D1321",
+    dark: "#11192B",
+    surface: "#151D30",
+    elevated: "#1A233A",
   },
   accent: {
-    blue: "#3399FF",
-    blueDark: "#1A6BCC",
-    cyan: "#00D4FF",
-    purple: "#6C5CE7",
+    blue: "#4A7CF7",
+    blueDark: "#315FD6",
+    cyan: "#55C2FF",
+    purple: "#8B7CF6",
   },
-  text: {
-    white: "#FFFFFF",
-    silver: "#A0A4A8",
-    muted: "#6B6F73",
-  },
+  text: { white: "#E8EDF5", silver: "#B7C1D3", muted: "#8E9AAF" },
   status: {
-    success: "#0D9040",
-    warning: "#F59E0B",
-    error: "#CF2020",
-    info: "#3399FF",
+    success: "#36B37E",
+    warning: "#F5A524",
+    error: "#E25563",
+    info: "#4A7CF7",
+  },
+  light: {
+    background: "#F6F8FC",
+    surface: "#FFFFFF",
+    elevated: "#EEF2F8",
+    text: "#172033",
+    secondary: "#475569",
+    muted: "#64748B",
+    border: "#D8DFEA",
+    primary: "#315FD6",
+    gold: "#A77D00",
   },
 } as const;
-
 export type ColorTokens = typeof colors;

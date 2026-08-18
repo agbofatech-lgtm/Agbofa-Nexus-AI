@@ -14,10 +14,18 @@ export function UsageForecast({ data }: { data: AICostData["forecast"] }) {
         data={data}
         label="Demo historical, current, and forecast AI cost"
         series={[
-          { key: "historical", label: "Historical demo", color: "#3399FF" },
-          { key: "current", label: "Current demo", color: "#D4AF37" },
-          { key: "forecast", label: "Forecast", color: "#8B5CF6" },
-          { key: "confidence", label: "Confidence", color: "#0D9040" },
+          {
+            key: "historical",
+            label: "Historical demo",
+            color: "var(--chart-blue)",
+          },
+          { key: "current", label: "Current demo", color: "var(--chart-gold)" },
+          { key: "forecast", label: "Forecast", color: "var(--chart-purple)" },
+          {
+            key: "confidence",
+            label: "Confidence",
+            color: "var(--chart-green)",
+          },
         ]}
       />
     </section>

@@ -9,7 +9,7 @@ export function ChannelPerformance({
     <section className="business-chart-panel glass">
       <div className="business-panel-heading">
         <div>
-          <span>DEMO DATA · SOURCE SEPARATED</span>
+          <span>CHANNEL COMPARISON</span>
           <h2>Personal vs owned channel performance</h2>
         </div>
       </div>
@@ -22,9 +22,21 @@ export function ChannelPerformance({
         }))}
         label="Demo channel reach, registrations, and subscriptions"
         series={[
-          { key: "reach", label: "Reach (thousands)", color: "#3399FF" },
-          { key: "registrations", label: "Registrations", color: "#D4AF37" },
-          { key: "subscriptions", label: "Subscriptions", color: "#8B5CF6" },
+          {
+            key: "reach",
+            label: "Reach (thousands)",
+            color: "var(--chart-blue)",
+          },
+          {
+            key: "registrations",
+            label: "Registrations",
+            color: "var(--chart-gold)",
+          },
+          {
+            key: "subscriptions",
+            label: "Subscriptions",
+            color: "var(--chart-purple)",
+          },
         ]}
         type="bar"
       />

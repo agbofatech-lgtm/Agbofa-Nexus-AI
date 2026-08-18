@@ -9,7 +9,7 @@ export function ChannelAnalytics({
     <section className="business-chart-panel glass">
       <div className="business-panel-heading">
         <div>
-          <span>DEMO DATA</span>
+          <span>DEVELOPMENT COMPARISON</span>
           <h2>Brand vs personal funnel example</h2>
         </div>
         <b>NOT AUTHORITATIVE</b>
@@ -18,8 +18,8 @@ export function ChannelAnalytics({
         data={data}
         label="Demo brand versus personal channel funnel"
         series={[
-          { key: "brand", label: "Brand", color: "#3399FF" },
-          { key: "personal", label: "Personal", color: "#8B5CF6" },
+          { key: "brand", label: "Brand", color: "var(--chart-blue)" },
+          { key: "personal", label: "Personal", color: "var(--chart-purple)" },
         ]}
         type="bar"
       />

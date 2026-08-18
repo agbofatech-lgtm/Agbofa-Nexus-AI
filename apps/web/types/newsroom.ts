@@ -1,3 +1,5 @@
+import type { WorkflowStage } from "@/types/operations";
+
 export type SourceStatus = "active" | "degraded" | "inactive";
 export type PipelineStageStatus = "complete" | "active" | "warning" | "pending";
 export type PackageType =
@@ -61,8 +63,11 @@ export interface NewsroomActivity {
 export interface NewsroomDashboardData {
   metrics: NewsroomMetric[];
   activity: NewsroomActivity[];
+  workflow: WorkflowStage[];
   queueHealth: number;
   activeSources: number;
+  pendingReviews: number;
+  medianReviewMinutes: number;
 }
 
 export interface FactoryStory {

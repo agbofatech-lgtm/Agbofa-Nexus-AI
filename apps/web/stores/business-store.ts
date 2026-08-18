@@ -2,20 +2,14 @@ import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 
 import type { BusinessModules } from "@/types/business";
-import type { DataState } from "@/types/data-state";
+import { loadingDataState, type DataState } from "@/types/data-state";
 
 export type BusinessModuleKey = keyof BusinessModules;
 
 type ModuleData = BusinessModules[BusinessModuleKey];
 
-const loadingState = <T>(source: string): DataState<T> => ({
-  data: null,
-  state: "loading",
-  source,
-  lastUpdated: null,
-  error: null,
-  isDemo: false,
-});
+const loadingState = <T>(source: string): DataState<T> =>
+  loadingDataState<T>(source);
 
 interface BusinessState {
   modules: BusinessModules;

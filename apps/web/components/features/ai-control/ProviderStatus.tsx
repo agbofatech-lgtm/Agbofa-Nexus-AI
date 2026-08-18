@@ -1,5 +1,6 @@
 import {
   AlertTriangle,
+  BrainCircuit,
   CheckCircle2,
   CircleOff,
   Settings2,
@@ -10,6 +11,7 @@ import { Badge } from "@/components/ui";
 import type { AIProvider } from "@/types/ai-control";
 
 const icons = {
+  development: BrainCircuit,
   connected: CheckCircle2,
   degraded: AlertTriangle,
   offline: CircleOff,
@@ -43,7 +45,7 @@ export function ProviderStatus({
         </span>
         <div>
           <strong>{provider.name}</strong>
-          <small>Example provider state</small>
+          <small>Catalog and development metrics</small>
         </div>
         <Badge
           status={
@@ -56,10 +58,10 @@ export function ProviderStatus({
                   : "disabled"
           }
         >
-          {provider.state}
+          {provider.state === "development" ? "not connected" : provider.state}
         </Badge>
       </div>
-      <HealthGauge label="demo health" value={provider.health} />
+      <HealthGauge label="modeled health" value={provider.health} />
       <dl>
         <div>
           <dt>Latency</dt>
@@ -75,7 +77,7 @@ export function ProviderStatus({
         </div>
       </dl>
       <footer>
-        <span>DEMO</span>
+        <span>NOT CONNECTED</span>
         <p>{provider.fallbackState}</p>
       </footer>
     </button>

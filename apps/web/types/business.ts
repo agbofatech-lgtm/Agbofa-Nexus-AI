@@ -1,4 +1,9 @@
 import type { DataAuthorityState, DataState } from "@/types/data-state";
+import type {
+  AIInsightData,
+  OperationalMetric,
+  WorkflowStage,
+} from "@/types/operations";
 
 export type ChannelStatus =
   | "connected"
@@ -36,6 +41,8 @@ export interface DistributionChannel {
 
 export interface DistributionData {
   channels: DistributionChannel[];
+  operations: OperationalMetric[];
+  workflow: WorkflowStage[];
   calendar: Array<{
     id: string;
     title: string;
@@ -47,6 +54,7 @@ export interface DistributionData {
 }
 
 export interface GrowthData {
+  operatingLoop: WorkflowStage[];
   metrics: Array<{
     id: string;
     label: string;
@@ -89,6 +97,7 @@ export interface GrowthData {
 }
 
 export interface MonetizationData {
+  journey: WorkflowStage[];
   metrics: Array<{
     id: string;
     label: string;
@@ -129,6 +138,8 @@ export interface MonetizationData {
 }
 
 export interface AnalyticsData {
+  operatingLoop: WorkflowStage[];
+  insight: AIInsightData;
   overview: Array<{
     id: string;
     label: string;
@@ -197,6 +208,7 @@ export interface AdminData {
 }
 
 export interface AICostData {
+  workflow: WorkflowStage[];
   metrics: Array<{
     id: string;
     label: string;

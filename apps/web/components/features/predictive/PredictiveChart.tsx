@@ -18,10 +18,22 @@ export function PredictiveChart({ series }: { series: PredictionPoint[] }) {
         data={data}
         label="Demo virality, engagement, confidence, and topic velocity trends"
         series={[
-          { key: "virality", label: "Virality", color: "#D4AF37" },
-          { key: "engagement", label: "Engagement", color: "#6C5CE7" },
-          { key: "confidence", label: "Confidence", color: "#0D9040" },
-          { key: "velocity", label: "Topic velocity", color: "#3399FF" },
+          { key: "virality", label: "Virality", color: "var(--chart-gold)" },
+          {
+            key: "engagement",
+            label: "Engagement",
+            color: "var(--chart-purple)",
+          },
+          {
+            key: "confidence",
+            label: "Confidence",
+            color: "var(--chart-green)",
+          },
+          {
+            key: "velocity",
+            label: "Topic velocity",
+            color: "var(--chart-blue)",
+          },
         ]}
       />
     </section>

@@ -8,7 +8,7 @@ export function MonetizationCampaigns({
     <section className="monetization-list glass">
       <div className="business-panel-heading">
         <div>
-          <span>DEMO DATA</span>
+          <span>CAMPAIGN MODEL</span>
           <h2>Campaign management</h2>
         </div>
       </div>

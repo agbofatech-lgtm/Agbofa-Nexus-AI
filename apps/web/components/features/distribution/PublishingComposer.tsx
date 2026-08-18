@@ -1,8 +1,9 @@
 "use client";
-import { CalendarClock, CheckCircle2, Send } from "lucide-react";
+import { CalendarClock, CheckCircle2, Send, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { ContentPreview } from "@/components/features/distribution/ContentPreview";
 import { Button, Input } from "@/components/ui";
+import { useDistributionAdaptation } from "@/hooks/useDistributionAdaptation";
 import type { DistributionChannel } from "@/types/business";
 export function PublishingComposer({
   channels,
@@ -13,37 +14,44 @@ export function PublishingComposer({
   const [selected, setSelected] = useState<string[]>([]);
   const [scheduled, setScheduled] = useState("");
   const [message, setMessage] = useState("");
-  const toggle = (id: string) =>
+  const selectedChannels = channels.filter((c) => selected.includes(c.id));
+  const previews = useDistributionAdaptation(content, selectedChannels);
+  const toggle = (id: string) => {
+    setMessage("");
     setSelected((v) =>
       v.includes(id) ? v.filter((x) => x !== id) : [...v, id],
     );
-  const submit = () => {
-    setMessage(
-      selected.some(
-        (id) => channels.find((c) => c.id === id)?.type === "personal",
-      )
-        ? "Demo schedule saved. Founder channels require manual distribution."
-        : "Demo schedule saved locally. Backend publishing integration required.",
-    );
   };
-  const first = channels.find((c) => c.id === selected[0]);
+  const save = () =>
+    setMessage(
+      selectedChannels.some((c) => c.type === "personal")
+        ? "Plan saved locally. Personal channels require manual distribution."
+        : "Plan saved locally. Publishing and scheduling integrations are not connected.",
+    );
   return (
     <section className="publishing-composer glass-gold">
       <div className="business-panel-heading">
         <div>
-          <span>FRONTEND DEMO</span>
-          <h2>Publishing composer</h2>
+          <span>LOCAL ADAPTATION STUDIO</span>
+          <h2>One story, channel-aware presentations</h2>
         </div>
-        <b>{content.length}/280</b>
+        <b>{selected.length} selected</b>
       </div>
+      <p className="publishing-composer__intro">
+        Prepare deterministic platform templates for editorial comparison. This
+        does not call an AI provider, connect an account, or publish content.
+      </p>
       <textarea
-        aria-label="Distribution content"
-        maxLength={280}
-        onChange={(e) => setContent(e.target.value)}
-        placeholder="Compose a demo distribution message..."
+        aria-label="Master story or distribution brief"
+        maxLength={1200}
+        onChange={(e) => {
+          setContent(e.target.value);
+          setMessage("");
+        }}
+        placeholder="Paste the master story angle or approved distribution brief…"
         value={content}
       />
-      <div className="composer-channels">
+      <div className="composer-channels" aria-label="Adaptation channels">
         {channels.map((c) => (
           <button
             aria-pressed={selected.includes(c.id)}
@@ -52,19 +60,51 @@ export function PublishingComposer({
             type="button"
           >
             {c.platform}
-            <small>{c.type === "personal" ? "manual" : "not verified"}</small>
+            <small>{c.type === "personal" ? "manual" : "not connected"}</small>
           </button>
         ))}
       </div>
       <Input
-        label="Demo schedule"
-        onChange={setScheduled}
+        label="Planned schedule"
+        onChange={(v) => {
+          setScheduled(v);
+          setMessage("");
+        }}
         placeholder="e.g. Monday 07:00 GMT"
         value={scheduled}
       />
-      <ContentPreview channel={first?.platform ?? ""} content={content} />
-      <Button disabled={!content || !selected.length} onClick={submit}>
-        <CalendarClock size={14} /> Schedule demo
+      {previews.length ? (
+        <section
+          className="platform-preview-studio"
+          aria-labelledby="platform-preview-title"
+        >
+          <div className="platform-preview-studio__heading">
+            <div>
+              <span>
+                <Sparkles size={13} /> Local template adapter
+              </span>
+              <h3 id="platform-preview-title">Compare channel outputs</h3>
+            </div>
+            <small>
+              {previews.length} previews · editorial approval required
+            </small>
+          </div>
+          <div className="platform-preview-grid">
+            {previews.map((p) => (
+              <ContentPreview key={p.channelId} preview={p} />
+            ))}
+          </div>
+        </section>
+      ) : (
+        <div className="platform-preview-empty">
+          <Sparkles size={18} />
+          <span>
+            Select channels and enter a master brief to compare templates.
+          </span>
+        </div>
+      )}
+      <Button disabled={!content || !selected.length} onClick={save}>
+        <CalendarClock size={14} /> Save local plan
       </Button>
       <span aria-live="polite">
         {message ? (
@@ -75,7 +115,7 @@ export function PublishingComposer({
         ) : (
           <>
             <Send size={13} />
-            No social API call will be made.
+            No social API or OAuth connection will be used.
           </>
         )}
       </span>

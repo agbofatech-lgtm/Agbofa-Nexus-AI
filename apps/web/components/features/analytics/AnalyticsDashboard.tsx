@@ -7,6 +7,8 @@ import { BusinessInsights } from "@/components/features/analytics/BusinessInsigh
 import { ContentAnalytics } from "@/components/features/analytics/ContentAnalytics";
 import { BusinessState } from "@/components/features/business/BusinessState";
 import { DataStateBanner } from "@/components/features/business/DataStateBanner";
+import { AIInsight } from "@/components/shared/operations/AIInsight";
+import { WorkflowRail } from "@/components/shared/operations/WorkflowRail";
 import { useBusinessModule } from "@/hooks/useBusinessModule";
 export function AnalyticsDashboard() {
   const { value, retry } = useBusinessModule("analytics");
@@ -40,7 +42,14 @@ export function AnalyticsDashboard() {
       <AnalyticsHeader />
       <DataStateBanner value={value} />
       <AnalyticsControls />
+      <WorkflowRail
+        description="Measurement connects content, audience, agents, growth, and revenue to human decisions."
+        loop
+        stages={value.data.operatingLoop}
+        title="Measurement and optimization loop"
+      />
       <AnalyticsOverview items={value.data.overview} />
+      <AIInsight insight={value.data.insight} />
       <AnalyticsChart series={value.data.series} />
       <div className="analytics-secondary">
         <ContentAnalytics categories={value.data.categories} />

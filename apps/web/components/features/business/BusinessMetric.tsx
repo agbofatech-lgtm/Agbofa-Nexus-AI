@@ -28,7 +28,7 @@ export function BusinessMetric({
         <small>{label}</small>
       </div>
       <p>{detail}</p>
-      <DataAuthorityBadge state={authority} />
+      {authority !== "demo" ? <DataAuthorityBadge state={authority} /> : null}
     </article>
   );
 }

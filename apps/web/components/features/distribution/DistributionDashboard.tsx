@@ -9,6 +9,8 @@ import { DistributionSkeleton } from "@/components/features/distribution/Distrib
 import { DistributionStats } from "@/components/features/distribution/DistributionStats";
 import { PublishingCalendar } from "@/components/features/distribution/PublishingCalendar";
 import { PublishingComposer } from "@/components/features/distribution/PublishingComposer";
+import { OperationsSummary } from "@/components/shared/operations/OperationsSummary";
+import { WorkflowRail } from "@/components/shared/operations/WorkflowRail";
 import { useBusinessModule } from "@/hooks/useBusinessModule";
 export function DistributionDashboard() {
   const { value, retry } = useBusinessModule("distribution");
@@ -40,6 +42,17 @@ export function DistributionDashboard() {
     <div className="business-page">
       <DistributionHeader />
       <DataStateBanner value={value} />
+      <OperationsSummary
+        eyebrow="Distribution operations"
+        metrics={value.data.operations}
+        provenance={value.provenance}
+        title="Publishing posture"
+      />
+      <WorkflowRail
+        description="Local adaptation and approval are available; publishing is not connected."
+        stages={value.data.workflow}
+        title="Story-to-channel workflow"
+      />
       <DistributionStats channels={value.data.channels} />
       <PublishingComposer channels={value.data.channels} />
       <div className="distribution-secondary">

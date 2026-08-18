@@ -19,6 +19,9 @@ export interface StoryEvidence {
 export interface StoryDetail extends ReaderStory {
   content: string;
   aiSummary: string;
+  whyItMatters: string;
+  keySignals: string[];
+  outlook: string[];
   sources: VerificationSource[];
   evidence: StoryEvidence;
 }

@@ -44,13 +44,17 @@ export function IntelligenceChart({
       <ResponsiveContainer height="100%" width="100%">
         {type === "bar" ? (
           <BarChart {...common}>
-            <CartesianGrid stroke="rgba(255,255,255,.06)" vertical={false} />
-            <XAxis dataKey="label" stroke="#74787d" tick={{ fontSize: 9 }} />
-            <YAxis stroke="#74787d" tick={{ fontSize: 9 }} />
+            <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
+            <XAxis
+              dataKey="label"
+              stroke="var(--chart-axis)"
+              tick={{ fontSize: 9 }}
+            />
+            <YAxis stroke="var(--chart-axis)" tick={{ fontSize: 9 }} />
             <Tooltip
               contentStyle={{
-                background: "#12121A",
-                border: "1px solid rgba(255,255,255,.1)",
+                background: "var(--chart-tooltip-bg)",
+                border: "1px solid var(--chart-tooltip-border)",
                 borderRadius: 8,
                 fontSize: 11,
               }}
@@ -68,13 +72,17 @@ export function IntelligenceChart({
           </BarChart>
         ) : (
           <LineChart {...common}>
-            <CartesianGrid stroke="rgba(255,255,255,.06)" vertical={false} />
-            <XAxis dataKey="label" stroke="#74787d" tick={{ fontSize: 9 }} />
-            <YAxis stroke="#74787d" tick={{ fontSize: 9 }} />
+            <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
+            <XAxis
+              dataKey="label"
+              stroke="var(--chart-axis)"
+              tick={{ fontSize: 9 }}
+            />
+            <YAxis stroke="var(--chart-axis)" tick={{ fontSize: 9 }} />
             <Tooltip
               contentStyle={{
-                background: "#12121A",
-                border: "1px solid rgba(255,255,255,.1)",
+                background: "var(--chart-tooltip-bg)",
+                border: "1px solid var(--chart-tooltip-border)",
                 borderRadius: 8,
                 fontSize: 11,
               }}
@@ -95,7 +103,7 @@ export function IntelligenceChart({
         )}
       </ResponsiveContainer>
       <span className="sr-only">
-        {label}. Demo values across {data.length} intervals.
+        {label}. Development values across {data.length} intervals.
       </span>
     </div>
   );

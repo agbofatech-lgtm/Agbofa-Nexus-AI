@@ -9,6 +9,7 @@ import { HeroImage } from "@/components/features/story/HeroImage";
 import { RelatedStories } from "@/components/features/story/RelatedStories";
 import { ShareActions } from "@/components/features/story/ShareActions";
 import { StoryHeader } from "@/components/features/story/StoryHeader";
+import { StoryIntelligence } from "@/components/features/story/StoryIntelligence";
 import { StoryNotFound } from "@/components/features/story/StoryNotFound";
 import { StorySkeleton } from "@/components/features/story/StorySkeleton";
 import { VerificationPanel } from "@/components/features/story/VerificationPanel";
@@ -54,6 +55,12 @@ export default function StoryPage() {
       <div className="story-reading-column">
         <ArticleBody content={story.content} />
         <AISummary summary={story.aiSummary} />
+        <StoryIntelligence
+          confidence={story.confidence}
+          keySignals={story.keySignals}
+          outlook={story.outlook}
+          whyItMatters={story.whyItMatters}
+        />
         <VerificationPanel
           confidence={story.confidence}
           evidence={story.evidence}

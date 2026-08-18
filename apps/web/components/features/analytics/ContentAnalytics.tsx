@@ -8,7 +8,7 @@ export function ContentAnalytics({
     <section className="content-analytics glass">
       <div className="business-panel-heading">
         <div>
-          <span>DEMO DATA</span>
+          <span>CATEGORY SIGNALS</span>
           <h2>Content intelligence</h2>
         </div>
       </div>

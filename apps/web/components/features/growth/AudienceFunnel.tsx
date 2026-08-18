@@ -5,7 +5,7 @@ export function AudienceFunnel({ funnel }: { funnel: GrowthData["funnel"] }) {
     <section className="audience-funnel glass">
       <div className="business-panel-heading">
         <div>
-          <span>DEMO DATA</span>
+          <span>AUDIENCE MODEL</span>
           <h2>Audience hierarchy</h2>
         </div>
       </div>

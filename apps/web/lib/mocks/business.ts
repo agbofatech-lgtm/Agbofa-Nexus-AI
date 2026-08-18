@@ -95,6 +95,69 @@ const personalChannels: DistributionChannel[] = personalPlatforms.map(
 
 export const demoDistributionData: DistributionData = {
   channels: [...brandChannels, ...personalChannels],
+  operations: [
+    {
+      id: "published",
+      label: "Published today",
+      value: "0",
+      detail: "Publishing integration unavailable",
+      tone: "blue",
+    },
+    {
+      id: "scheduled",
+      label: "Planned schedules",
+      value: "3",
+      detail: "Development calendar",
+      tone: "purple",
+    },
+    {
+      id: "approval",
+      label: "Awaiting approval",
+      value: "2",
+      detail: "Editorial workflow model",
+      tone: "gold",
+    },
+    {
+      id: "failed",
+      label: "Failed deliveries",
+      value: "—",
+      detail: "No delivery telemetry",
+      tone: "warning",
+    },
+  ],
+  workflow: [
+    {
+      id: "master",
+      label: "Master story",
+      status: "completed",
+      owner: "Editorial",
+    },
+    {
+      id: "adapt",
+      label: "Adapt",
+      status: "running",
+      owner: "Local template adapter",
+    },
+    { id: "approval", label: "Approval", status: "review", owner: "Editor" },
+    {
+      id: "schedule",
+      label: "Schedule",
+      status: "waiting",
+      owner: "Integration required",
+    },
+    {
+      id: "publish",
+      label: "Publish",
+      status: "unavailable",
+      owner: "Not connected",
+    },
+    {
+      id: "analyze",
+      label: "Analyze",
+      status: "unavailable",
+      owner: "Not connected",
+    },
+  ],
   calendar: [
     {
       id: "cal-1",
@@ -128,6 +191,39 @@ export const demoDistributionData: DistributionData = {
 };
 
 export const demoGrowthData: GrowthData = {
+  operatingLoop: [
+    { id: "content", label: "Content", status: "completed", owner: "Newsroom" },
+    {
+      id: "audience",
+      label: "Audience",
+      status: "running",
+      owner: "Development analytics",
+    },
+    {
+      id: "engagement",
+      label: "Engagement",
+      status: "running",
+      owner: "Reader signals",
+    },
+    {
+      id: "retention",
+      label: "Retention",
+      status: "review",
+      owner: "Growth intelligence",
+    },
+    {
+      id: "conversion",
+      label: "Conversion",
+      status: "waiting",
+      owner: "Estimated model",
+    },
+    {
+      id: "revenue",
+      label: "Revenue",
+      status: "waiting",
+      owner: "Billing not connected",
+    },
+  ],
   metrics: [
     {
       id: "reach",
@@ -280,6 +376,39 @@ export const demoGrowthData: GrowthData = {
 };
 
 export const demoMonetizationData: MonetizationData = {
+  journey: [
+    { id: "visitor", label: "Visitor", status: "completed", owner: "Reader" },
+    {
+      id: "reader",
+      label: "Reader",
+      status: "running",
+      owner: "Content experience",
+    },
+    {
+      id: "registered",
+      label: "Registered",
+      status: "running",
+      owner: "Development funnel",
+    },
+    {
+      id: "engaged",
+      label: "Engaged",
+      status: "review",
+      owner: "Retention model",
+    },
+    {
+      id: "premium",
+      label: "Premium",
+      status: "waiting",
+      owner: "Billing not connected",
+    },
+    {
+      id: "pro",
+      label: "Pro",
+      status: "unavailable",
+      owner: "Billing not connected",
+    },
+  ],
   metrics: [
     { id: "mrr", label: "Demo MRR", value: 42_800, unit: "$", change: 8.2 },
     { id: "arr", label: "Demo ARR", value: 513_600, unit: "$", change: 8.2 },
@@ -356,6 +485,71 @@ export const demoMonetizationData: MonetizationData = {
 };
 
 export const demoAnalyticsData: AnalyticsData = {
+  operatingLoop: [
+    {
+      id: "content",
+      label: "Content",
+      status: "completed",
+      owner: "Editorial",
+    },
+    {
+      id: "audience",
+      label: "Audience",
+      status: "running",
+      owner: "Reader signals",
+    },
+    {
+      id: "distribution",
+      label: "Distribution",
+      status: "waiting",
+      owner: "Integration required",
+    },
+    {
+      id: "agents",
+      label: "Agents",
+      status: "running",
+      owner: "Development runtime",
+    },
+    {
+      id: "growth",
+      label: "Growth",
+      status: "review",
+      owner: "Modeled attribution",
+    },
+    {
+      id: "revenue",
+      label: "Revenue",
+      status: "waiting",
+      owner: "Billing not connected",
+    },
+    {
+      id: "insight",
+      label: "Insight",
+      status: "running",
+      owner: "Analytics model",
+    },
+    {
+      id: "action",
+      label: "Action",
+      status: "review",
+      owner: "Human decision",
+    },
+  ],
+  insight: {
+    title: "Technology coverage aligns with stronger modeled retention",
+    summary:
+      "The development dataset shows technology stories holding attention longer than the cross-category baseline.",
+    confidence: 89,
+    reasons: [
+      "Higher modeled article completion",
+      "More repeat sessions in the technology cohort",
+      "Stronger sharing in the development series",
+    ],
+    recommendation:
+      "Test a focused technology distribution window and compare completion before increasing frequency.",
+    caveat:
+      "Development-dataset hypothesis, not a guaranteed outcome or live recommendation.",
+  },
   overview: [
     {
       id: "audience",
@@ -512,6 +706,44 @@ export const demoAdminData: AdminData = {
 };
 
 export const demoAICostData: AICostData = {
+  workflow: [
+    {
+      id: "agents",
+      label: "Agents",
+      status: "running",
+      owner: "Development runtime",
+    },
+    {
+      id: "models",
+      label: "Model usage",
+      status: "waiting",
+      owner: "Provider not connected",
+    },
+    {
+      id: "tokens",
+      label: "Tokens",
+      status: "unavailable",
+      owner: "Billing unavailable",
+    },
+    {
+      id: "cost",
+      label: "Cost",
+      status: "review",
+      owner: "Development allocation",
+    },
+    {
+      id: "output",
+      label: "Output",
+      status: "running",
+      owner: "Modeled stories",
+    },
+    {
+      id: "roi",
+      label: "ROI",
+      status: "waiting",
+      owner: "Revenue integration required",
+    },
+  ],
   metrics: [
     {
       id: "total",

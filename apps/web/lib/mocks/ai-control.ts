@@ -1,18 +1,50 @@
 import type { AIControlData } from "@/types/ai-control";
 
 export const mockAIControlData: AIControlData = {
+  workflow: [
+    {
+      id: "providers",
+      label: "Providers",
+      status: "unavailable",
+      owner: "Credentials not configured",
+    },
+    {
+      id: "models",
+      label: "Models",
+      status: "waiting",
+      owner: "Development catalog",
+    },
+    {
+      id: "routing",
+      label: "Routing",
+      status: "waiting",
+      owner: "No runtime rules",
+    },
+    {
+      id: "behavior",
+      label: "AI behavior",
+      status: "review",
+      owner: "Frontend policy preview",
+    },
+    {
+      id: "usage",
+      label: "Usage",
+      status: "unavailable",
+      owner: "Telemetry not connected",
+    },
+  ],
   providers: [
     {
       id: "gemini",
       name: "Gemini",
-      state: "connected",
+      state: "development",
       latency: 284,
       errorRate: 0.8,
       requestCount: 18_420,
       tokenUsage: 42_800_000,
       estimatedCost: 684.2,
       health: 97.1,
-      fallbackState: "OpenAI demo fallback ready",
+      fallbackState: "Modeled fallback path · no runtime routing",
       models: [
         {
           id: "gemini-pro-demo",
@@ -34,14 +66,14 @@ export const mockAIControlData: AIControlData = {
     {
       id: "openai",
       name: "OpenAI",
-      state: "degraded",
+      state: "development",
       latency: 468,
       errorRate: 3.7,
       requestCount: 12_870,
       tokenUsage: 31_200_000,
       estimatedCost: 912.55,
       health: 84.6,
-      fallbackState: "Anthropic demo fallback preferred",
+      fallbackState: "Modeled fallback preference · no runtime routing",
       models: [
         {
           id: "gpt-reasoning-demo",

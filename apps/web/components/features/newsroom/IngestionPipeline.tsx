@@ -26,7 +26,7 @@ export function IngestionPipeline({
     >
       <div className="ingestion-pipeline__heading">
         <div>
-          <span className="section-kicker">Real-time flow</span>
+          <span className="section-kicker">Source operations model</span>
           <h2 id="pipeline-title">Ingestion pipeline</h2>
         </div>
         <span>
