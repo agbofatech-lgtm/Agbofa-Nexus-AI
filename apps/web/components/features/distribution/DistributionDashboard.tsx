@@ -37,7 +37,7 @@ export function DistributionDashboard() {
       </>
     );
   return (
-    <main className="business-page">
+    <div className="business-page">
       <DistributionHeader />
       <DataStateBanner value={value} />
       <DistributionStats channels={value.data.channels} />
@@ -57,6 +57,6 @@ export function DistributionDashboard() {
         </p>
       </div>
       <ChannelGrid channels={value.data.channels} />
-    </main>
+    </div>
   );
 }

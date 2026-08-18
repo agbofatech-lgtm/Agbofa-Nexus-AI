@@ -1,4 +1,4 @@
-import { mockStories } from "@/lib/mocks/stories";
+import { mockStories, readerSources } from "@/lib/mocks/stories";
 import type { FeedOptions, FeedResponse, Story } from "@/types/reader";
 
 const MOCK_DELAY_MS = 620;
@@ -48,6 +48,10 @@ function includesSearch(story: Story, search: string): boolean {
 }
 
 export const readerService = {
+  getSources(): readonly string[] {
+    return readerSources;
+  },
+
   async getFeed(options: FeedOptions): Promise<FeedResponse> {
     await delay(MOCK_DELAY_MS, options.signal);
 

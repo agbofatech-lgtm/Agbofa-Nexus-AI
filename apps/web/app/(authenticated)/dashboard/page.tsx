@@ -4,8 +4,7 @@ import {
   Activity,
   ArrowUpRight,
   Bot,
-  CheckCircle2,
-  Clock3,
+  DatabaseZap,
   Newspaper,
   Radio,
   ShieldCheck,
@@ -13,10 +12,13 @@ import {
   TrendingUp,
   Users,
   Zap,
+  type LucideIcon,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
-import { useState } from "react";
+import Link from "next/link";
+import { useMemo, useState } from "react";
 
+import { DataAuthorityBadge } from "@/components/features/business/DataAuthorityBadge";
 import {
   Badge,
   Button,
@@ -28,6 +30,8 @@ import {
   Tabs,
   type TabItem,
 } from "@/components/ui";
+import { useAuth } from "@/hooks/useAuth";
+import { useCommandOverview } from "@/hooks/useCommandOverview";
 import {
   fadeIn,
   fadeInTransition,
@@ -35,135 +39,102 @@ import {
   slideUpTransition,
   staggerContainer,
 } from "@/lib/animations/presets";
+import type { CommandActivityId, CommandMetricId } from "@/types/command";
 
-const metrics = [
-  {
-    label: "Active agents",
-    value: "12",
-    change: "+2 online",
-    icon: Bot,
-    tone: "gold",
-  },
-  {
-    label: "Stories monitored",
-    value: "1,284",
-    change: "+18.4%",
-    icon: Newspaper,
-    tone: "blue",
-  },
-  {
-    label: "Truth confidence",
-    value: "94.8%",
-    change: "+1.2 pts",
-    icon: ShieldCheck,
-    tone: "green",
-  },
-  {
-    label: "Audience reach",
-    value: "2.4M",
-    change: "+12.6%",
-    icon: Users,
-    tone: "purple",
-  },
-] as const;
+const metricIcons: Record<CommandMetricId, LucideIcon> = {
+  agents: Bot,
+  stories: Newspaper,
+  confidence: ShieldCheck,
+  reach: Users,
+};
 
-const activity = [
-  {
-    title: "Market signal verified",
-    detail: "Truth Engine cross-checked 14 independent sources.",
-    time: "18s ago",
-    icon: ShieldCheck,
-    tone: "green",
-  },
-  {
-    title: "Newsroom agent dispatched",
-    detail: "Astra-04 is building the regional impact brief.",
-    time: "1m ago",
-    icon: Bot,
-    tone: "gold",
-  },
-  {
-    title: "Audience anomaly detected",
-    detail: "Mobile readership accelerated across Greater Accra.",
-    time: "4m ago",
-    icon: TrendingUp,
-    tone: "blue",
-  },
-] as const;
+const activityIcons: Record<CommandActivityId, LucideIcon> = {
+  verified: ShieldCheck,
+  agent: Bot,
+  audience: TrendingUp,
+};
 
 export default function DashboardPage() {
   const reduceMotion = useReducedMotion();
+  const { session } = useAuth();
+  const overview = useCommandOverview();
   const [brief, setBrief] = useState("");
   const [region, setRegion] = useState("ghana");
-  const [running, setRunning] = useState(false);
+  const [preparedBrief, setPreparedBrief] = useState<string | null>(null);
+  const data = overview.value?.data ?? null;
+  const firstName = session?.user.name.split(" ")[0] ?? "Nexus editor";
 
-  const runBrief = () => {
-    if (!brief.trim() || running) return;
-    setRunning(true);
-    window.setTimeout(() => setRunning(false), 1200);
-  };
-
-  const tabs: readonly TabItem[] = [
-    {
-      value: "activity",
-      label: "Live activity",
-      content: (
-        <div className="activity-list">
-          {activity.map((item) => {
-            const Icon = item.icon;
-            return (
-              <div key={item.title} className="activity-item">
-                <span
-                  className={`activity-item__icon activity-item__icon--${item.tone}`}
-                >
-                  <Icon size={17} />
-                </span>
-                <div className="activity-item__copy">
-                  <strong>{item.title}</strong>
-                  <p>{item.detail}</p>
+  const tabs = useMemo<readonly TabItem[]>(() => {
+    if (!data) return [];
+    return [
+      {
+        value: "activity",
+        label: "Demo activity",
+        content: (
+          <div className="activity-list">
+            {data.activity.map((item) => {
+              const Icon = activityIcons[item.id];
+              return (
+                <div key={item.title} className="activity-item">
+                  <span className={`activity-item__icon activity-item__icon--${item.tone}`}>
+                    <Icon size={17} />
+                  </span>
+                  <div className="activity-item__copy">
+                    <strong>{item.title}</strong>
+                    <p>{item.detail}</p>
+                  </div>
+                  <time>{item.timeLabel}</time>
                 </div>
-                <time>{item.time}</time>
+              );
+            })}
+          </div>
+        ),
+      },
+      {
+        value: "signals",
+        label: "Priority fixtures",
+        content: (
+          <div className="signal-grid">
+            {data.signals.map((signal) => (
+              <div key={signal.label}>
+                <span>{signal.label}</span>
+                <Badge
+                  status={
+                    signal.status === "queued-demo" ? "queued" : "running"
+                  }
+                >
+                  {signal.value}
+                </Badge>
               </div>
-            );
-          })}
-        </div>
-      ),
-    },
-    {
-      value: "signals",
-      label: "Priority signals",
-      content: (
-        <div className="signal-grid">
-          <div>
-            <Badge variant="verification" verification="verified" /> Monetary
-            policy brief
+            ))}
           </div>
-          <div>
-            <Badge variant="confidence" confidence={88} /> Climate resilience
-            report
+        ),
+      },
+      {
+        value: "system",
+        label: "Integration state",
+        content: (
+          <div className="system-health">
+            <DatabaseZap size={34} />
+            <div>
+              <strong>Frontend adapters are serving local fixtures</strong>
+              <p>
+                Backend, BFF, provider, publishing, and production telemetry
+                integrations remain required.
+              </p>
+            </div>
           </div>
-          <div>
-            <Badge status="queued" /> West Africa markets desk
-          </div>
-        </div>
-      ),
-    },
-    {
-      value: "system",
-      label: "System health",
-      content: (
-        <div className="system-health">
-          <CheckCircle2 size={34} />
-          <div>
-            <strong>All foundation systems operational</strong>
-            <p>
-              Theme, navigation, motion, and interface primitives are ready.
-            </p>
-          </div>
-        </div>
-      ),
-    },
-  ];
+        ),
+      },
+    ];
+  }, [data]);
+
+  const prepareBrief = () => {
+    if (!brief.trim()) return;
+    setPreparedBrief(
+      `${region.toUpperCase()} brief objective saved in component state. No AI request was sent.`,
+    );
+  };
 
   return (
     <motion.div
@@ -179,62 +150,80 @@ export default function DashboardPage() {
       >
         <div>
           <div className="eyebrow">
-            <span className="live-signal" />
-            Command centre online
+            <span className="demo-signal" />
+            Media Intelligence Operating System
           </div>
-          <h1>Good evening, Kofi.</h1>
+          <h1>Good evening, {firstName}.</h1>
           <p>
-            Your intelligence network is synchronized. Here is the signal that
-            matters now.
+            Move from information to evidence, editorial judgment, and action—
+            with every example clearly separated from production authority.
           </p>
         </div>
         <div className="dashboard-hero__actions">
-          <Button size="sm" variant="ghost">
-            <Clock3 size={16} /> View timeline
-          </Button>
-          <Button size="sm">
-            <Sparkles size={16} /> New intelligence brief
-          </Button>
+          <Link className="dashboard-action-link dashboard-action-link--quiet" href="/reader">
+            Open reader
+          </Link>
+          <Link className="dashboard-action-link" href="/newsroom/origination">
+            Enter newsroom <ArrowUpRight size={16} />
+          </Link>
         </div>
       </motion.section>
 
+      <motion.aside
+        className="command-authority-line"
+        role="note"
+        transition={reduceMotion ? { duration: 0 } : fadeInTransition}
+        variants={fadeIn}
+      >
+        <DataAuthorityBadge state={overview.error ? "error" : overview.loading ? "loading" : "demo"} />
+        <span>
+          {overview.value?.source ?? "Local Phase 1 command overview fixture"}
+        </span>
+        <strong>Not live · not production authority</strong>
+      </motion.aside>
+
       <motion.section
-        aria-label="Operational metrics"
+        aria-label="Illustrative command metrics"
         className="metrics-grid"
         transition={reduceMotion ? { duration: 0 } : fadeInTransition}
         variants={fadeIn}
       >
-        {metrics.map((metric) => {
-          const Icon = metric.icon;
-          return (
-            <Card
-              key={metric.label}
-              className="metric-card"
-              variant="interactive"
-            >
-              <div
-                className={`metric-card__icon metric-card__icon--${metric.tone}`}
-              >
-                <Icon size={19} />
-              </div>
-              <div className="metric-card__value-row">
-                <strong>{metric.value}</strong>
-                <Badge status="running">{metric.change}</Badge>
-              </div>
-              <span>{metric.label}</span>
-              <div className="metric-card__spark" aria-hidden="true">
-                <i />
-                <i />
-                <i />
-                <i />
-                <i />
-                <i />
-                <i />
-              </div>
-            </Card>
-          );
-        })}
+        {overview.loading
+          ? Array.from({ length: 4 }, (_, index) => (
+              <Card key={index} className="metric-card" variant="glass">
+                <Skeleton height={32} rounded="md" width={32} />
+                <Skeleton height={25} rounded="sm" width="54%" />
+                <Skeleton height={10} rounded="sm" width="82%" />
+              </Card>
+            ))
+          : data?.metrics.map((metric) => {
+              const Icon = metricIcons[metric.id];
+              return (
+                <Card key={metric.id} className="metric-card" variant="default">
+                  <div className={`metric-card__icon metric-card__icon--${metric.tone}`}>
+                    <Icon size={19} />
+                  </div>
+                  <div className="metric-card__value-row">
+                    <strong>{metric.value}</strong>
+                    <Badge variant="category" category="AI">Demo</Badge>
+                  </div>
+                  <span>{metric.label}</span>
+                  <small>{metric.context}</small>
+                </Card>
+              );
+            })}
       </motion.section>
+
+      {overview.error ? (
+        <Card className="command-error" role="alert" variant="glass">
+          <DatabaseZap size={20} />
+          <div>
+            <strong>Local command fixture unavailable</strong>
+            <p>{overview.error}</p>
+          </div>
+          <Button onClick={overview.retry} size="sm" variant="secondary">Retry</Button>
+        </Card>
+      ) : null}
 
       <div className="dashboard-grid">
         <motion.section
@@ -247,19 +236,23 @@ export default function DashboardPage() {
                 <span className="section-kicker">
                   <Zap size={13} /> Intelligence composer
                 </span>
-                <h2>Command the next brief</h2>
+                <h2>Frame the next editorial brief</h2>
               </div>
-              <Badge status="running">AI ready</Badge>
+              <Badge status="idle">Local draft</Badge>
             </div>
             <p className="section-description">
-              Frame a question for the Nexus intelligence layer. Phase 1 runs a
-              local interaction while the hybrid API boundary is prepared.
+              Prepare an objective for a future intelligence workflow. This
+              control stores presentation state only; an AI provider integration
+              is required to generate a brief.
             </p>
             <Input
               icon={<Sparkles size={17} />}
               label="Brief objective"
-              onChange={setBrief}
-              placeholder="e.g. Map the strongest AI policy signals across Africa"
+              onChange={(value) => {
+                setBrief(value);
+                setPreparedBrief(null);
+              }}
+              placeholder="Map the strongest AI policy signals across Africa"
               type="search"
               value={brief}
             />
@@ -274,15 +267,13 @@ export default function DashboardPage() {
                 ]}
                 value={region}
               />
-              <Button
-                disabled={!brief.trim()}
-                loading={running}
-                onClick={runBrief}
-              >
-                {running ? "Composing brief" : "Compose brief"}
-                {!running ? <ArrowUpRight size={16} /> : null}
+              <Button disabled={!brief.trim()} onClick={prepareBrief}>
+                Prepare local objective <ArrowUpRight size={16} />
               </Button>
             </div>
+            <span aria-live="polite" className="command-card__integration-state">
+              {preparedBrief ?? "AI generation: integration required"}
+            </span>
           </GlassCard>
         </motion.section>
 
@@ -290,34 +281,28 @@ export default function DashboardPage() {
           transition={reduceMotion ? { duration: 0 } : slideUpTransition}
           variants={slideUp}
         >
-          <Card className="network-card" variant="glass">
+          <Card className="network-card" variant="default">
             <div className="section-heading">
               <div>
                 <span className="section-kicker">
-                  <Radio size={13} /> Live network
+                  <Radio size={13} /> Demonstration topology
                 </span>
                 <h2>Agent constellation</h2>
               </div>
-              <Badge variant="confidence" confidence={96} />
+              <Badge variant="confidence" confidence={data?.network.exampleConfidence ?? 0} />
             </div>
-            <div className="constellation" aria-label="12 connected AI agents">
+            <div className="constellation" aria-label="Illustrative agent network graphic">
               <div className="constellation__orbit constellation__orbit--outer" />
               <div className="constellation__orbit constellation__orbit--inner" />
               <span className="constellation__node constellation__node--one" />
               <span className="constellation__node constellation__node--two" />
               <span className="constellation__node constellation__node--three" />
               <span className="constellation__node constellation__node--four" />
-              <div className="constellation__core">
-                <Sparkles size={23} />
-              </div>
+              <div className="constellation__core"><Sparkles size={23} /></div>
             </div>
             <div className="network-card__footer">
-              <span>
-                <Activity size={14} /> 847 events/min
-              </span>
-              <span>
-                <span className="live-signal" /> 12 connected
-              </span>
+              <span><Activity size={14} /> {data?.network.exampleEventsPerMinute ?? "—"} example events/min</span>
+              <span><span className="demo-signal" /> {data?.network.simulatedConnectedAgents ?? "—"}/{data?.network.registeredAgents ?? "—"} simulated</span>
             </div>
           </Card>
         </motion.section>
@@ -327,33 +312,33 @@ export default function DashboardPage() {
         transition={reduceMotion ? { duration: 0 } : fadeInTransition}
         variants={fadeIn}
       >
-        <Card className="activity-card" variant="glass">
-          <Tabs ariaLabel="Network intelligence views" items={tabs} />
+        <Card className="activity-card" variant="default">
+          {tabs.length ? (
+            <Tabs ariaLabel="Demo network intelligence views" items={tabs} />
+          ) : (
+            <div className="activity-card__loading">
+              <Skeleton height={42} rounded="md" />
+              <Skeleton height={120} rounded="md" />
+            </div>
+          )}
         </Card>
       </motion.section>
 
       <motion.section
-        aria-label="Loading state example"
-        className="foundation-strip glass"
+        aria-label="Frontend boundary summary"
+        className="foundation-strip"
         transition={reduceMotion ? { duration: 0 } : fadeInTransition}
         variants={fadeIn}
       >
         <div>
-          <span className="section-kicker">Foundation readiness</span>
-          <strong>
-            8 reusable primitives · 2 themes · reduced-motion safe
-          </strong>
+          <span className="section-kicker">Phase 1 foundation</span>
+          <strong>Cinematic · editorial · technical · evidence-aware</strong>
         </div>
-        <div
-          className="foundation-strip__skeletons"
-          aria-label="Skeleton component preview"
-        >
-          <Skeleton height={8} width={88} />
-          <Skeleton height={8} width={54} />
-          <Skeleton height={8} width={72} />
+        <div className="foundation-strip__boundary">
+          <DatabaseZap size={15} /> Backend integrations not connected
         </div>
         <Badge variant="verification" verification="verified">
-          Phase 1
+          Frontend only
         </Badge>
       </motion.section>
     </motion.div>

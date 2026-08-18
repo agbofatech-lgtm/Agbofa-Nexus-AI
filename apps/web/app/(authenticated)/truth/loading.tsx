@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui";
 
 export default function TruthLoading() {
   return (
-    <main className="workspace-loading" aria-label="Loading Truth Engine">
+    <div className="workspace-loading" aria-label="Loading Truth Engine">
       <Skeleton height={18} width={170} />
       <Skeleton height={48} width="55%" />
       <div>
@@ -11,6 +11,6 @@ export default function TruthLoading() {
         ))}
       </div>
       <Skeleton height={480} rounded="lg" />
-    </main>
+    </div>
   );
 }

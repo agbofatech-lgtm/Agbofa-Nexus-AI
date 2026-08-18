@@ -18,7 +18,7 @@ export default function AgentsPage() {
   const resetFilters = useAgentsStore((state) => state.resetFilters);
 
   return (
-    <main className="agents-page">
+    <div className="agents-page">
       <AgentHeader count={agents.summary.total} />
       <div className="agent-registry-banner glass" role="note">
         <DatabaseZap size={16} />
@@ -48,6 +48,6 @@ export default function AgentsPage() {
       {!agents.loading && !agents.error && agents.filteredAgents.length ? (
         <AgentGrid agents={agents.filteredAgents} />
       ) : null}
-    </main>
+    </div>
   );
 }

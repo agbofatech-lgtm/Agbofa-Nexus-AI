@@ -23,7 +23,7 @@ export default function OriginationPage() {
   const filter = useNewsroomStore((state) => state.sourceFilter);
   const setFilter = useNewsroomStore((state) => state.setSourceFilter);
   return (
-    <main className="newsroom-page">
+    <div className="newsroom-page">
       <NewsroomHeader
         eyebrow="Source intelligence"
         title="Origination"
@@ -77,6 +77,6 @@ export default function OriginationPage() {
         loading={newsroom.loading.origination}
         stages={newsroom.pipeline}
       />
-    </main>
+    </div>
   );
 }

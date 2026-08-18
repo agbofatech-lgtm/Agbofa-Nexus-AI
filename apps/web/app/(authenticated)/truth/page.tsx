@@ -13,7 +13,7 @@ import { useTruth } from "@/hooks/useTruth";
 export default function TruthPage() {
   const truth = useTruth();
   return (
-    <main className="truth-page">
+    <div className="truth-page">
       <TruthHeader claims={truth.claims} />
       {truth.error ? (
         <div className="workspace-error glass" role="alert">
@@ -68,6 +68,6 @@ export default function TruthPage() {
           ) : null}
         </div>
       )}
-    </main>
+    </div>
   );
 }

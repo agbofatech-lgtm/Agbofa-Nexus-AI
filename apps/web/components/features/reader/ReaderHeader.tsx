@@ -21,13 +21,13 @@ export function ReaderHeader({ total, loading }: ReaderHeaderProps) {
             Reader<span>.</span>
           </h1>
           <p>
-            AI-powered stories, verified and personalized for what you need to
-            know.
+            Explore an evidence-aware editorial experience using a clearly
+            identified local demonstration corpus.
           </p>
         </div>
         <div className="reader-header__status">
-          <Badge status="running">
-            <Sparkles size={11} /> Personalized
+          <Badge status="idle">
+            <Sparkles size={11} /> Demo corpus
           </Badge>
           <span aria-live="polite">
             {loading ? "Updating feed…" : `${total} stories available`}

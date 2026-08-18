@@ -4,11 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Bell,
-  BookOpen,
-  Bot,
-  BrainCircuit,
   CheckCheck,
   ChevronDown,
+  FlaskConical,
   LogOut,
   Menu,
   Search,
@@ -16,55 +14,33 @@ import {
   Sparkles,
   User,
   X,
-  type LucideIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
+import { TopNavigation } from "@/components/shared/navigation/TopNavigation";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { useAuth } from "@/hooks/useAuth";
 
-interface HeaderLink {
-  label: string;
-  href: string;
-  icon: LucideIcon;
-}
-
-const headerLinks: readonly HeaderLink[] = [
-  { label: "Reader", href: "/reader", icon: BookOpen },
-  { label: "AI Control", href: "/ai-control", icon: BrainCircuit },
-  { label: "Agents", href: "/agents", icon: Bot },
-];
-
 const searchableDestinations = [
   { label: "Command overview", href: "/dashboard", group: "Command" },
-  { label: "Reader", href: "/reader", group: "Command" },
+  { label: "Reader", href: "/reader", group: "Reader" },
   { label: "AI Control Center", href: "/ai-control", group: "Intelligence" },
   { label: "Agent workforce", href: "/agents", group: "Intelligence" },
-  {
-    label: "Predictive Intelligence",
-    href: "/predictive",
-    group: "Intelligence",
-  },
-  {
-    label: "Personalization Intelligence",
-    href: "/personalization",
-    group: "Intelligence",
-  },
-  {
-    label: "Multimodal Intelligence",
-    href: "/multimodal",
-    group: "Intelligence",
-  },
-  { label: "Newsroom", href: "/newsroom", group: "Content" },
-  { label: "Truth Engine", href: "/truth", group: "Content" },
-  { label: "Distribution", href: "/distribution", group: "Business" },
-  { label: "Growth Intelligence", href: "/growth", group: "Business" },
-  { label: "Analytics", href: "/analytics", group: "Business" },
-  { label: "Monetization", href: "/monetization", group: "Business" },
-  { label: "AI Cost Intelligence", href: "/ai-cost", group: "System" },
-  { label: "Administration", href: "/admin", group: "System" },
-  { label: "Tenant Management", href: "/admin/tenants", group: "System" },
-  { label: "User Management", href: "/admin/users", group: "System" },
+  { label: "Predictive Intelligence", href: "/predictive", group: "Intelligence" },
+  { label: "Personalization Intelligence", href: "/personalization", group: "Intelligence" },
+  { label: "Multimodal Intelligence", href: "/multimodal", group: "Intelligence" },
+  { label: "Newsroom", href: "/newsroom", group: "Newsroom" },
+  { label: "Truth Engine", href: "/truth", group: "Newsroom" },
+  { label: "Distribution", href: "/distribution", group: "Distribution" },
+  { label: "Growth Intelligence", href: "/growth", group: "Distribution" },
+  { label: "Monetization", href: "/monetization", group: "Distribution" },
+  { label: "Analytics", href: "/analytics", group: "Analytics" },
+  { label: "AI Cost Intelligence", href: "/ai-cost", group: "Analytics" },
+  { label: "Workspace settings", href: "/settings", group: "Settings" },
+  { label: "Profile", href: "/profile", group: "Settings" },
+  { label: "Administration", href: "/admin", group: "Settings" },
+  { label: "Tenant Management", href: "/admin/tenants", group: "Settings" },
+  { label: "User Management", href: "/admin/users", group: "Settings" },
 ] as const;
 
 interface HeaderProps {
@@ -95,7 +71,7 @@ export function Header({ onOpenNavigation }: HeaderProps) {
       .filter((item) =>
         `${item.label} ${item.group}`.toLowerCase().includes(normalized),
       )
-      .slice(0, 5);
+      .slice(0, 6);
   }, [query]);
 
   useEffect(() => {
@@ -156,39 +132,22 @@ export function Header({ onOpenNavigation }: HeaderProps) {
           <Sparkles size={17} />
           <span>NEXUS</span>
         </Link>
-        <nav aria-label="Workspace shortcuts" className="app-header__links">
-          {headerLinks.map((link) => {
-            const Icon = link.icon;
-            return (
-              <Link
-                key={link.href}
-                className="app-header__link"
-                href={link.href}
-              >
-                <Icon size={15} />
-                {link.label}
-              </Link>
-            );
-          })}
-        </nav>
+        <TopNavigation />
       </div>
 
       <div className="app-header__actions">
         <form className="global-search" onSubmit={onSearch} role="search">
-          <Search
-            aria-hidden="true"
-            className="global-search__icon"
-            size={16}
-          />
+          <Search aria-hidden="true" className="global-search__icon" size={16} />
           <label className="sr-only" htmlFor="global-search">
-            Search Nexus
+            Search workspace destinations
           </label>
           <input
             ref={searchInputRef}
+            aria-controls={query ? "global-search-results" : undefined}
             autoComplete="off"
             id="global-search"
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search Nexus..."
+            placeholder="Search workspace"
             type="search"
             value={query}
           />
@@ -204,13 +163,19 @@ export function Header({ onOpenNavigation }: HeaderProps) {
             </button>
           ) : null}
           {query ? (
-            <div className="search-results glass-dark">
+            <div
+              className="search-results glass-dark"
+              id="global-search-results"
+              role="listbox"
+            >
               {searchResults.length ? (
                 searchResults.map((result) => (
                   <button
                     key={result.href}
+                    aria-selected="false"
                     className="search-result"
                     onClick={() => navigateTo(result.href)}
+                    role="option"
                     type="button"
                   >
                     <span>{result.label}</span>
@@ -228,8 +193,9 @@ export function Header({ onOpenNavigation }: HeaderProps) {
 
         <div className="header-popover-anchor">
           <button
+            aria-controls="demo-notifications"
             aria-expanded={notificationsOpen}
-            aria-label={`Notifications, ${unreadNotifications} unread`}
+            aria-label={`Demo notifications, ${unreadNotifications} unread`}
             className="icon-button notification-button"
             onClick={() => {
               setNotificationsOpen((open) => !open);
@@ -243,11 +209,16 @@ export function Header({ onOpenNavigation }: HeaderProps) {
             ) : null}
           </button>
           {notificationsOpen ? (
-            <div className="header-popover notifications-panel glass-dark">
+            <div
+              aria-label="Demo notifications"
+              className="header-popover notifications-panel glass-dark"
+              id="demo-notifications"
+              role="region"
+            >
               <div className="header-popover__heading">
                 <div>
-                  <strong>Notifications</strong>
-                  <span>{unreadNotifications} unread</span>
+                  <strong>Demo notifications</strong>
+                  <span>Local interface examples · not live events</span>
                 </div>
                 <button
                   className="text-action"
@@ -258,36 +229,20 @@ export function Header({ onOpenNavigation }: HeaderProps) {
                   <CheckCheck size={14} /> Mark read
                 </button>
               </div>
-              <div
-                className={
-                  unreadNotifications > 0
-                    ? "notification-item notification-item--unread"
-                    : "notification-item"
-                }
-              >
-                {unreadNotifications > 0 ? (
-                  <span className="notification-item__signal" />
-                ) : null}
+              <div className={unreadNotifications > 0 ? "notification-item notification-item--unread" : "notification-item"}>
+                {unreadNotifications > 0 ? <span className="notification-item__signal" /> : null}
                 <div>
-                  <strong>Foundation workspace ready</strong>
-                  <p>Your cinematic command shell is online.</p>
-                  <time>Just now</time>
+                  <strong>Frontend foundation available</strong>
+                  <p>Navigation and presentation layers are available for review.</p>
+                  <time>Demo event</time>
                 </div>
               </div>
-              <div
-                className={
-                  unreadNotifications > 0
-                    ? "notification-item notification-item--unread"
-                    : "notification-item"
-                }
-              >
-                {unreadNotifications > 0 ? (
-                  <span className="notification-item__signal notification-item__signal--blue" />
-                ) : null}
+              <div className={unreadNotifications > 0 ? "notification-item notification-item--unread" : "notification-item"}>
+                {unreadNotifications > 0 ? <span className="notification-item__signal notification-item__signal--blue" /> : null}
                 <div>
-                  <strong>Theme preference synchronized</strong>
-                  <p>Dark and light modes are available.</p>
-                  <time>2 min ago</time>
+                  <strong>Mock adapters connected</strong>
+                  <p>No backend, provider, or production event stream is connected.</p>
+                  <time>Demo event</time>
                 </div>
               </div>
             </div>
@@ -298,6 +253,7 @@ export function Header({ onOpenNavigation }: HeaderProps) {
 
         <div className="header-popover-anchor">
           <button
+            aria-controls="workspace-user-menu"
             aria-expanded={userMenuOpen}
             aria-label="Open user menu"
             className="user-trigger"
@@ -310,27 +266,31 @@ export function Header({ onOpenNavigation }: HeaderProps) {
             <span className="user-avatar">{initials}</span>
             <span className="user-trigger__copy">
               <strong>{displayName}</strong>
-              <small>{session?.user.role ?? "User"}</small>
+              <small>{session?.user.role ?? "User"} · demo</small>
             </span>
             <ChevronDown size={14} />
           </button>
           {userMenuOpen ? (
-            <div className="header-popover user-menu glass-dark">
+            <div
+              aria-label="Workspace account"
+              className="header-popover user-menu glass-dark"
+              id="workspace-user-menu"
+              role="menu"
+            >
               <div className="user-menu__identity">
-                <span className="user-avatar user-avatar--large">
-                  {initials}
-                </span>
+                <span className="user-avatar user-avatar--large">{initials}</span>
                 <div>
                   <strong>{displayName}</strong>
-                  <span>
-                    {session?.user.email ?? "Authenticated workspace"}
-                  </span>
+                  <span>{session?.user.email ?? "Demo workspace identity"}</span>
                 </div>
               </div>
-              <Link href="/profile">
+              <div className="user-menu__authority">
+                <FlaskConical size={13} /> Browser-local demo session
+              </div>
+              <Link href="/profile" onClick={() => setUserMenuOpen(false)} role="menuitem">
                 <User size={16} /> Profile
               </Link>
-              <Link href="/settings">
+              <Link href="/settings" onClick={() => setUserMenuOpen(false)} role="menuitem">
                 <Settings size={16} /> Settings
               </Link>
               <button
@@ -339,9 +299,10 @@ export function Header({ onOpenNavigation }: HeaderProps) {
                   setUserMenuOpen(false);
                   router.replace("/");
                 }}
+                role="menuitem"
                 type="button"
               >
-                <LogOut size={16} /> Sign out
+                <LogOut size={16} /> Sign out of demo
               </button>
             </div>
           ) : null}

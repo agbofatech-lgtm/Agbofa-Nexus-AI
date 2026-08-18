@@ -43,7 +43,7 @@ export function AIControl() {
     control.data.providers[0] ??
     null;
   return (
-    <main className="intelligence-page">
+    <div className="intelligence-page">
       <AIControlHeader />
       <UsageMetrics agents={control.agentSummary} data={control.data} />
       <section className="provider-grid" aria-label="Demo AI providers">
@@ -64,6 +64,6 @@ export function AIControl() {
         />
         <FallbackRouting providers={control.data.providers} />
       </div>
-    </main>
+    </div>
   );
 }

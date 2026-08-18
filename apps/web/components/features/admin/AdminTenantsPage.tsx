@@ -24,7 +24,7 @@ export function AdminTenantsPage() {
     );
   if (!value.data) return <BusinessState state="empty" />;
   return (
-    <main className="business-page">
+    <div className="business-page">
       <AdminHeader
         subtitle="View isolated demo tenant context without implementing backend tenancy."
         title="Tenant Management"
@@ -32,6 +32,6 @@ export function AdminTenantsPage() {
       <DataStateBanner value={value} />
       <TenantContext tenant={value.data.currentTenant} />
       <TenantTable tenants={value.data.tenants} />
-    </main>
+    </div>
   );
 }

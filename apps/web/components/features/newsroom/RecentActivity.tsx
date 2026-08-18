@@ -23,7 +23,7 @@ export function RecentActivity({ activity }: RecentActivityProps) {
     >
       <div className="recent-activity__heading">
         <div>
-          <span className="section-kicker">Live operations</span>
+          <span className="section-kicker">Demo operations</span>
           <h2 id="recent-activity-title">Recent activity</h2>
         </div>
         <span>{activity.length} events</span>

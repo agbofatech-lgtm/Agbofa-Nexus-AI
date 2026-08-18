@@ -49,7 +49,7 @@ export function PredictiveDashboard() {
       </>
     );
   return (
-    <main className="intelligence-page">
+    <div className="intelligence-page">
       <PredictiveHeader />
       <PredictiveStats
         agentSummary={predictive.agentSummary}
@@ -64,6 +64,6 @@ export function PredictiveDashboard() {
         <TrendAnalysis trends={predictive.data.trends} />
         <OptimizationCard recommendations={predictive.data.recommendations} />
       </div>
-    </main>
+    </div>
   );
 }

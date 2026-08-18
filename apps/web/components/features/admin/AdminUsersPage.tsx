@@ -25,7 +25,7 @@ export function AdminUsersPage() {
     );
   if (!value.data) return <BusinessState state="empty" />;
   return (
-    <main className="business-page">
+    <div className="business-page">
       <AdminHeader
         subtitle="Inspect demo users and role labels. Backend authorization remains authoritative."
         title="User Management"
@@ -36,6 +36,6 @@ export function AdminUsersPage() {
         <UserTable users={value.data.users} />
         <RoleManagement />
       </div>
-    </main>
+    </div>
   );
 }

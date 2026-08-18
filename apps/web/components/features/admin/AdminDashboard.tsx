@@ -45,7 +45,7 @@ export function AdminDashboard() {
     );
   const d = value.data;
   return (
-    <main className="business-page">
+    <div className="business-page">
       <AdminHeader />
       <DataStateBanner value={value} />
       <TenantContext tenant={d.currentTenant} />
@@ -101,6 +101,6 @@ export function AdminDashboard() {
         <AdminSettings initial={d.settings} />
       </div>
       <AuditLog items={d.audit} />
-    </main>
+    </div>
   );
 }

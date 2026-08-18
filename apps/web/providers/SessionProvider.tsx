@@ -41,22 +41,28 @@ function isStoredSession(value: unknown): value is AuthSession {
   );
 }
 
-function readStoredSession(): AuthSession | null {
+interface StoredSessionResult {
+  session: AuthSession | null;
+  expired: boolean;
+}
+
+function readStoredSession(): StoredSessionResult {
   try {
     const raw = window.sessionStorage.getItem(SESSION_KEY);
-    if (!raw) return null;
+    if (!raw) return { session: null, expired: false };
     const parsed: unknown = JSON.parse(raw);
-    if (
-      !isStoredSession(parsed) ||
-      Date.parse(parsed.expiresAt) <= Date.now()
-    ) {
+    if (!isStoredSession(parsed)) {
       window.sessionStorage.removeItem(SESSION_KEY);
-      return null;
+      return { session: null, expired: false };
     }
-    return parsed;
+    if (Date.parse(parsed.expiresAt) <= Date.now()) {
+      window.sessionStorage.removeItem(SESSION_KEY);
+      return { session: null, expired: true };
+    }
+    return { session: parsed, expired: false };
   } catch {
     window.sessionStorage.removeItem(SESSION_KEY);
-    return null;
+    return { session: null, expired: false };
   }
 }
 
@@ -73,9 +79,11 @@ export function SessionProvider({ children }: SessionProviderProps) {
   const [status, setStatus] = useState<AuthStatus>("loading");
 
   useEffect(() => {
-    const storedSession = readStoredSession();
-    setSession(storedSession);
-    setStatus(storedSession ? "authenticated" : "unauthenticated");
+    const stored = readStoredSession();
+    setSession(stored.session);
+    setStatus(
+      stored.session ? "authenticated" : stored.expired ? "expired" : "unauthenticated",
+    );
   }, []);
 
   const signIn = useCallback(

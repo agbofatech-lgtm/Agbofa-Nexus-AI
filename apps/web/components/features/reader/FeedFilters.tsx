@@ -3,7 +3,7 @@
 import { RotateCcw, Search, SlidersHorizontal } from "lucide-react";
 
 import { Button, Input, Select, type SelectOption } from "@/components/ui";
-import { readerSources } from "@/lib/mocks/stories";
+import { useReaderSources } from "@/hooks/useReaderSources";
 import { useReaderStore } from "@/stores/reader-store";
 import { storyCategories, type StoryCategory } from "@/types/reader";
 
@@ -12,12 +12,12 @@ const topicOptions: readonly SelectOption[] = [
   ...storyCategories.map((category) => ({ value: category, label: category })),
 ];
 
-const sourceOptions: readonly SelectOption[] = [
-  { value: "", label: "All sources" },
-  ...readerSources.map((source) => ({ value: source, label: source })),
-];
-
 export function FeedFilters() {
+  const readerSources = useReaderSources();
+  const sourceOptions: readonly SelectOption[] = [
+    { value: "", label: "All sources" },
+    ...readerSources.map((source) => ({ value: source, label: source })),
+  ];
   const filters = useReaderStore((state) => state.filters);
   const searchQuery = useReaderStore((state) => state.searchQuery);
   const setFilters = useReaderStore((state) => state.setFilters);

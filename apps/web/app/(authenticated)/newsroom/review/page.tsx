@@ -12,7 +12,7 @@ import { useNewsroom } from "@/hooks/useNewsroom";
 export default function ReviewPage() {
   const newsroom = useNewsroom("review");
   return (
-    <main className="newsroom-page">
+    <div className="newsroom-page">
       <NewsroomHeader
         eyebrow="Human editorial control"
         title="Review"
@@ -36,6 +36,6 @@ export default function ReviewPage() {
         items={newsroom.reviewItems}
         loading={newsroom.loading.review}
       />
-    </main>
+    </div>
   );
 }

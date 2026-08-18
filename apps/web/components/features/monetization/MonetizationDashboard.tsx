@@ -36,7 +36,7 @@ export function MonetizationDashboard() {
       </>
     );
   return (
-    <main className="business-page">
+    <div className="business-page">
       <MonetizationHeader />
       <DataStateBanner value={value} />
       <RevenueDashboard data={value.data} />
@@ -48,6 +48,6 @@ export function MonetizationDashboard() {
           <ChurnAnalysis />
         </div>
       </div>
-    </main>
+    </div>
   );
 }

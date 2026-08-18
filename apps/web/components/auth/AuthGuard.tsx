@@ -1,6 +1,6 @@
 "use client";
 
-import { ShieldCheck } from "lucide-react";
+import { Clock3, ShieldCheck } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 
@@ -22,11 +22,26 @@ export function AuthGuard({ children, allowedRoles }: AuthGuardProps) {
     (session ? allowedRoles.includes(session.user.role) : false);
 
   useEffect(() => {
-    if (status === "unauthenticated") {
+    if (status === "unauthenticated" || status === "expired") {
       const next = encodeURIComponent(pathname || "/dashboard");
-      router.replace(`/login?next=${next}`);
+      const reason = status === "expired" ? "&reason=session-expired" : "";
+      router.replace(`/login?next=${next}${reason}`);
     }
   }, [pathname, router, status]);
+
+  if (status === "expired") {
+    return (
+      <main className="auth-guard-state" role="alert">
+        <div className="auth-guard-state__mark auth-guard-state__mark--error">
+          <Clock3 size={24} />
+        </div>
+        <div>
+          <strong>Your demo session expired</strong>
+          <span>Returning to the frontend access preview…</span>
+        </div>
+      </main>
+    );
+  }
 
   if (status === "loading" || status === "unauthenticated") {
     return (
@@ -35,8 +50,8 @@ export function AuthGuard({ children, allowedRoles }: AuthGuardProps) {
           <ShieldCheck size={24} />
         </div>
         <div>
-          <strong>Securing your workspace</strong>
-          <span>Validating the active Nexus session…</span>
+          <strong>Checking the demo workspace session</strong>
+          <span>Reading browser-local frontend session state…</span>
         </div>
         <Skeleton height={8} rounded="full" width={190} />
       </main>
@@ -52,7 +67,8 @@ export function AuthGuard({ children, allowedRoles }: AuthGuardProps) {
         <div>
           <strong>Access restricted</strong>
           <span>
-            Your account does not have permission to open this workspace.
+            This frontend role presentation does not include this workspace.
+            Authoritative server authorization is not implemented here.
           </span>
         </div>
       </main>

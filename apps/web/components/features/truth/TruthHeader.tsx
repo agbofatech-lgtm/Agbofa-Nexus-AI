@@ -41,7 +41,7 @@ export function TruthHeader({ claims }: TruthHeaderProps) {
           <strong>
             {claims.filter((claim) => claim.status === "verified").length}
           </strong>{" "}
-          verified claims
+          verified demo claims
         </span>
       </div>
       <div

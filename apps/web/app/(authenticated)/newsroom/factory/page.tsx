@@ -11,7 +11,7 @@ import { useNewsroom } from "@/hooks/useNewsroom";
 export default function FactoryPage() {
   const newsroom = useNewsroom("factory");
   return (
-    <main className="newsroom-page">
+    <div className="newsroom-page">
       <NewsroomHeader
         eyebrow="Multimodal production"
         title="Content Factory"
@@ -42,6 +42,6 @@ export default function FactoryPage() {
         selectedTypes={newsroom.packageTypes}
         stories={newsroom.factoryStories}
       />
-    </main>
+    </div>
   );
 }

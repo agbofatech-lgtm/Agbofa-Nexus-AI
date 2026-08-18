@@ -43,7 +43,7 @@ export function PersonalizationDashboard() {
       </>
     );
   return (
-    <main className="intelligence-page">
+    <div className="intelligence-page">
       <PersonalizationHeader />
       <PersonalizationStats metrics={intelligence.data.metrics} />
       <div className="personalization-intelligence-grid">
@@ -61,6 +61,6 @@ export function PersonalizationDashboard() {
         onChange={setSettings}
         settings={intelligence.settings}
       />
-    </main>
+    </div>
   );
 }

@@ -36,7 +36,7 @@ export function AnalyticsDashboard() {
       </>
     );
   return (
-    <main className="business-page">
+    <div className="business-page">
       <AnalyticsHeader />
       <DataStateBanner value={value} />
       <AnalyticsControls />
@@ -46,6 +46,6 @@ export function AnalyticsDashboard() {
         <ContentAnalytics categories={value.data.categories} />
         <BusinessInsights items={value.data.possibleDrivers} />
       </div>
-    </main>
+    </div>
   );
 }

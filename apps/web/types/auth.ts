@@ -1,4 +1,8 @@
-export type AuthStatus = "loading" | "authenticated" | "unauthenticated";
+export type AuthStatus =
+  | "loading"
+  | "authenticated"
+  | "unauthenticated"
+  | "expired";
 export type UserRole = "admin" | "editor" | "reader";
 export type AuthErrorCode = "invalid_credentials" | "network_error";
 

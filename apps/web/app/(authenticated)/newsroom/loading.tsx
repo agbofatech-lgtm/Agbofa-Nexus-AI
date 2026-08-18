@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui";
 
 export default function NewsroomLoading() {
   return (
-    <main className="workspace-loading" aria-label="Loading newsroom">
+    <div className="workspace-loading" aria-label="Loading newsroom">
       <Skeleton height={18} width={160} />
       <Skeleton height={48} width="48%" />
       <div>
@@ -11,6 +11,6 @@ export default function NewsroomLoading() {
         ))}
       </div>
       <Skeleton height={360} rounded="lg" />
-    </main>
+    </div>
   );
 }

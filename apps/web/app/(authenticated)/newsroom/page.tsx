@@ -40,7 +40,7 @@ const workspaces = [
 export default function NewsroomPage() {
   const newsroom = useNewsroom("dashboard");
   return (
-    <main className="newsroom-page">
+    <div className="newsroom-page">
       <NewsroomHeader
         title="Newsroom"
         subtitle="Your editorial command center for trusted, intelligent media operations."
@@ -117,6 +117,6 @@ export default function NewsroomPage() {
           </ul>
         </aside>
       </div>
-    </main>
+    </div>
   );
 }

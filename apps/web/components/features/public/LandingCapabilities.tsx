@@ -37,13 +37,13 @@ const capabilities: readonly Capability[] = [
   {
     id: "agents",
     number: "01",
-    title: "32-Agent Workforce",
+    title: "Agent Workforce",
     summary:
-      "An always-on AI newsroom that discovers, verifies, creates, and learns.",
+      "A transparent specialist registry for discovery, verification, creation, and learning.",
     detail:
-      "Specialist agents collaborate across editorial, truth, audience, production, and distribution workflows—with humans retaining final authority.",
+      "Twenty-eight canonical frontend agent definitions demonstrate collaboration across editorial, truth, audience, production, and distribution workflows—with humans retaining final authority.",
     icon: Bot,
-    stat: "32 specialists",
+    stat: "28 registered definitions",
     features: ["Visible activity", "Human checkpoints", "Role-based trust"],
   },
   {
@@ -55,7 +55,7 @@ const capabilities: readonly Capability[] = [
     detail:
       "The intelligence layer connects emerging patterns, regional context, audience momentum, and historical evidence into decision-ready briefs.",
     icon: BrainCircuit,
-    stat: "Real-time signals",
+    stat: "Illustrative signal models",
     features: ["Trend detection", "Context graphs", "Priority scoring"],
   },
   {
@@ -67,7 +67,7 @@ const capabilities: readonly Capability[] = [
     detail:
       "Evidence chains, source diversity, contradiction detection, and human review combine to make trust inspectable—not merely asserted.",
     icon: ScanSearch,
-    stat: "94.8% confidence",
+    stat: "Inspectable confidence UX",
     features: ["Claim evidence", "Source provenance", "Correction trails"],
   },
   {

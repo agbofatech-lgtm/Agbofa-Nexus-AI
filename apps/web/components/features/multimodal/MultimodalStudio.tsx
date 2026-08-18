@@ -37,7 +37,7 @@ export function MultimodalStudio() {
       </>
     );
   return (
-    <main className="intelligence-page">
+    <div className="intelligence-page">
       <MultimodalHeader />
       <MultimodalStats
         agentSummary={multimodal.agentSummary}
@@ -54,6 +54,6 @@ export function MultimodalStudio() {
         />
       </div>
       <CrossMediaView relationships={multimodal.data.relationships} />
-    </main>
+    </div>
   );
 }

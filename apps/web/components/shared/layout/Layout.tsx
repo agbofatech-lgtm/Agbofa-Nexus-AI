@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { Header } from "@/components/shared/layout/Header";
 import { Sidebar } from "@/components/shared/layout/Sidebar";
+import { WorkspaceContextBar } from "@/components/shared/layout/WorkspaceContextBar";
+import { MobileBottomNavigation } from "@/components/shared/navigation/MobileBottomNavigation";
 import { cn } from "@/lib/utils/cn";
 
 interface AppLayoutProps {
@@ -13,6 +15,18 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
+
+  useEffect(() => {
+    if (!mobileNavigationOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileNavigationOpen]);
+
+  const openNavigation = () => setMobileNavigationOpen(true);
+  const closeNavigation = () => setMobileNavigationOpen(false);
 
   return (
     <div
@@ -28,13 +42,15 @@ export function AppLayout({ children }: AppLayoutProps) {
         collapsed={sidebarCollapsed}
         mobileOpen={mobileNavigationOpen}
         onCollapseChange={setSidebarCollapsed}
-        onMobileClose={() => setMobileNavigationOpen(false)}
+        onMobileClose={closeNavigation}
       />
       <div className="app-shell__workspace">
-        <Header onOpenNavigation={() => setMobileNavigationOpen(true)} />
+        <Header onOpenNavigation={openNavigation} />
+        <WorkspaceContextBar />
         <main className="app-main" id="main-content" tabIndex={-1}>
           {children}
         </main>
+        <MobileBottomNavigation onOpenMore={openNavigation} />
       </div>
     </div>
   );

@@ -10,7 +10,10 @@ export const metadata: Metadata = {
 };
 
 interface LoginPageProps {
-  searchParams: Promise<{ next?: string | string[] }>;
+  searchParams: Promise<{
+    next?: string | string[];
+    reason?: string | string[];
+  }>;
 }
 
 function safeNextPath(value: string | string[] | undefined): string {
@@ -23,6 +26,8 @@ function safeNextPath(value: string | string[] | undefined): string {
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams;
   const nextPath = safeNextPath(params.next);
+  const reason = Array.isArray(params.reason) ? params.reason[0] : params.reason;
+  const sessionExpired = reason === "session-expired";
 
   return (
     <div className="login-page">
@@ -37,22 +42,22 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           <span>Exponentially smarter.</span>
         </h2>
         <p>
-          Command a transparent AI workforce built to discover the signal,
-          verify every claim, and turn trusted intelligence into impact.
+          Explore a transparent frontend demonstration built to discover the
+          signal, inspect evidence, and turn intelligence into editorial action.
         </p>
         <div className="login-story__signals">
           <div>
             <Activity size={18} />
             <span>
-              <strong>32 agents</strong>
-              <small>Visible and accountable</small>
+              <strong>28 agent definitions</strong>
+              <small>Visible demo registry</small>
             </span>
           </div>
           <div>
             <ShieldCheck size={18} />
             <span>
               <strong>Evidence first</strong>
-              <small>Confidence on every claim</small>
+              <small>Inspectable confidence UX</small>
             </span>
           </div>
           <div>
@@ -65,7 +70,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         </div>
       </aside>
       <section className="login-panel glass-dark">
-        <LoginForm nextPath={nextPath} />
+        <LoginForm nextPath={nextPath} sessionExpired={sessionExpired} />
       </section>
     </div>
   );

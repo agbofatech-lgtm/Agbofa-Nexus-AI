@@ -41,7 +41,7 @@ export function GrowthDashboard() {
     );
   const d = value.data;
   return (
-    <main className="business-page">
+    <div className="business-page">
       <GrowthHeader />
       <DataStateBanner value={value} />
       <GrowthStats metrics={d.metrics} />
@@ -59,6 +59,6 @@ export function GrowthDashboard() {
         <ReferralSystem />
       </div>
       <GrowthExperiments experiments={d.experiments} />
-    </main>
+    </div>
   );
 }

@@ -2,9 +2,10 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import {
-  CheckCircle2,
+  Eye,
   Globe2,
   Radio,
+  Scale,
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
@@ -40,8 +41,8 @@ export function LandingHero() {
           transition={reduceMotion ? { duration: 0 } : fadeInTransition}
           variants={fadeIn}
         >
-          <span className="live-signal" />
-          Ghana born · globally intelligent
+          <span className="demo-signal" />
+          Media Intelligence Operating System · Ghana to global
         </motion.div>
 
         <motion.h1
@@ -50,10 +51,8 @@ export function LandingHero() {
           variants={slideUp}
         >
           <span className="landing-hero__brand">AGBOFA NEXUS AI</span>
-          <span>AI-powered media for</span>
-          <span className="landing-hero__future">
-            technology, innovation &amp; the future.
-          </span>
+          <span>Covering the future,</span>
+          <span className="landing-hero__future">today.</span>
         </motion.h1>
 
         <motion.p
@@ -61,7 +60,8 @@ export function LandingHero() {
           transition={reduceMotion ? { duration: 0 } : slideUpTransition}
           variants={slideUp}
         >
-          Technology <i /> Innovation <i /> Business <i /> Science <i /> News
+          Turn media signals into verified editorial intelligence—then move
+          from evidence to decisions, distribution, and measurable impact.
           <br />
           <strong>Ghana · Africa · Beyond</strong>
         </motion.p>
@@ -78,21 +78,16 @@ export function LandingHero() {
           transition={reduceMotion ? { duration: 0 } : fadeInTransition}
           variants={fadeIn}
         >
-          <span>
-            <CheckCircle2 size={14} /> Verified intelligence
-          </span>
-          <span>
-            <ShieldCheck size={14} /> Confidence on every claim
-          </span>
-          <span>
-            <Globe2 size={14} /> Local context, global reach
-          </span>
+          <span><Scale size={14} /> Evidence before assertion</span>
+          <span><ShieldCheck size={14} /> Human editorial authority</span>
+          <span><Eye size={14} /> Transparent demo boundaries</span>
+          <span><Globe2 size={14} /> Local context, global view</span>
         </motion.div>
       </motion.div>
 
       <motion.aside
         animate={{ opacity: 1, y: 0 }}
-        aria-label="Nexus intelligence network status"
+        aria-label="Nexus intelligence system preview"
         className="landing-intelligence-map glass"
         initial={reduceMotion ? false : { opacity: 0, y: 24 }}
         transition={{
@@ -101,10 +96,8 @@ export function LandingHero() {
         }}
       >
         <div className="landing-intelligence-map__heading">
-          <span>
-            <Radio size={13} /> Intelligence network
-          </span>
-          <strong>LIVE</strong>
+          <span><Radio size={13} /> System topology</span>
+          <strong>PREVIEW</strong>
         </div>
         <div className="landing-intelligence-map__visual" aria-hidden="true">
           <span className="network-ring network-ring--one" />
@@ -115,24 +108,16 @@ export function LandingHero() {
           <span className="network-point network-point--two" />
           <span className="network-point network-point--three" />
           <span className="network-point network-point--four" />
-          <span className="network-core">
-            <Sparkles size={24} />
-          </span>
+          <span className="network-core"><Sparkles size={24} /></span>
         </div>
         <div className="landing-intelligence-map__metrics">
-          <div>
-            <strong>32</strong>
-            <span>AI agents</span>
-          </div>
-          <div>
-            <strong>94.8%</strong>
-            <span>Confidence</span>
-          </div>
-          <div>
-            <strong>24/7</strong>
-            <span>Coverage</span>
-          </div>
+          <div><strong>28</strong><span>Agent definitions</span></div>
+          <div><strong>DEMO</strong><span>Intelligence data</span></div>
+          <div><strong>HUMAN</strong><span>Final authority</span></div>
         </div>
+        <p className="landing-intelligence-map__authority">
+          Interface demonstration · no live provider or production feed connected
+        </p>
       </motion.aside>
     </section>
   );

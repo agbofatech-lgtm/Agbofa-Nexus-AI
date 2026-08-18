@@ -41,7 +41,7 @@ export function AICostDashboard() {
   const d = value.data;
   const icons = [CircleDollarSign, WalletCards, Hash, Gauge] as const;
   return (
-    <main className="business-page">
+    <div className="business-page">
       <AICostHeader />
       <DataStateBanner value={value} />
       <section className="business-metric-grid">
@@ -73,6 +73,6 @@ export function AICostDashboard() {
       </div>
       <UsageForecast data={d.forecast} />
       <CostOptimizationRecommendations items={d.recommendations} />
-    </main>
+    </div>
   );
 }

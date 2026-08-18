@@ -1,97 +1,22 @@
 "use client";
 
 import {
-  BarChart3,
-  BookOpen,
-  Bot,
-  BrainCircuit,
   Building2,
   ChevronLeft,
   ChevronRight,
-  ClipboardCheck,
-  Coins,
-  Factory,
-  LayoutDashboard,
-  Newspaper,
-  Orbit,
-  Radar,
-  Scale,
-  Send,
-  Settings2,
+  FlaskConical,
   Sparkles,
-  TrendingUp,
-  Users,
-  WalletCards,
   X,
-  type LucideIcon,
 } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 import { NavGroup } from "@/components/shared/navigation/NavGroup";
 import { NavItem } from "@/components/shared/navigation/NavItem";
+import {
+  getNavigationGroup,
+  primaryNavigation,
+} from "@/components/shared/navigation/navigation";
 import { cn } from "@/lib/utils/cn";
-
-interface NavigationItem {
-  label: string;
-  href: string;
-  icon: LucideIcon;
-  badge?: string;
-}
-
-interface NavigationGroup {
-  label: string;
-  items: readonly NavigationItem[];
-}
-
-const navigation: readonly NavigationGroup[] = [
-  {
-    label: "Command",
-    items: [
-      { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
-      { label: "Reader", href: "/reader", icon: BookOpen },
-    ],
-  },
-  {
-    label: "Intelligence",
-    items: [
-      { label: "AI Control", href: "/ai-control", icon: BrainCircuit },
-      { label: "Agents", href: "/agents", icon: Bot, badge: "28" },
-      { label: "Predictive", href: "/predictive", icon: Orbit },
-      { label: "Personalization", href: "/personalization", icon: Users },
-      { label: "Multimodal", href: "/multimodal", icon: Sparkles },
-    ],
-  },
-  {
-    label: "Content",
-    items: [
-      { label: "Newsroom", href: "/newsroom", icon: Newspaper },
-      { label: "Origination", href: "/newsroom/origination", icon: Radar },
-      { label: "Content Factory", href: "/newsroom/factory", icon: Factory },
-      {
-        label: "Editorial Review",
-        href: "/newsroom/review",
-        icon: ClipboardCheck,
-        badge: "42",
-      },
-      { label: "Truth Engine", href: "/truth", icon: Scale, badge: "24" },
-    ],
-  },
-  {
-    label: "Business",
-    items: [
-      { label: "Distribution", href: "/distribution", icon: Send },
-      { label: "Growth", href: "/growth", icon: TrendingUp },
-      { label: "Analytics", href: "/analytics", icon: BarChart3 },
-      { label: "Monetization", href: "/monetization", icon: WalletCards },
-    ],
-  },
-  {
-    label: "System",
-    items: [
-      { label: "AI Cost", href: "/ai-cost", icon: Coins },
-      { label: "Administration", href: "/admin", icon: Users },
-    ],
-  },
-];
 
 export interface SidebarProps {
   collapsed: boolean;
@@ -106,6 +31,10 @@ export function Sidebar({
   onCollapseChange,
   onMobileClose,
 }: SidebarProps) {
+  const pathname = usePathname();
+  const activeGroup = getNavigationGroup(pathname);
+  const ContextIcon = activeGroup.items[0]?.icon ?? Sparkles;
+
   return (
     <>
       <button
@@ -115,7 +44,7 @@ export function Sidebar({
         type="button"
       />
       <aside
-        aria-label="Primary navigation"
+        aria-label={`${activeGroup.label} contextual navigation`}
         className={cn(
           "sidebar",
           collapsed && "sidebar--collapsed",
@@ -140,45 +69,68 @@ export function Sidebar({
           </button>
         </div>
 
+        <div className="sidebar__context" title={collapsed ? activeGroup.label : undefined}>
+          <span aria-hidden="true">
+            <ContextIcon size={18} />
+          </span>
+          <div>
+            <small>Active workspace</small>
+            <strong>{activeGroup.label}</strong>
+            <p>{activeGroup.description}</p>
+          </div>
+        </div>
+
         <nav className="sidebar__navigation">
-          {navigation.map((group) => (
-            <NavGroup
-              key={group.label}
-              collapsed={collapsed}
-              label={group.label}
-            >
-              {group.items.map((item) => {
+          <NavGroup collapsed={collapsed} label={activeGroup.label}>
+            {activeGroup.items.map((item) => {
+              const Icon = item.icon;
+              return (
+                <NavItem
+                  key={item.href}
+                  badge={item.badge}
+                  collapsed={collapsed}
+                  href={item.href}
+                  icon={<Icon size={18} strokeWidth={1.8} />}
+                  label={item.label}
+                  onNavigate={onMobileClose}
+                />
+              );
+            })}
+          </NavGroup>
+
+          <div className="sidebar__workspace-switcher">
+            <NavGroup collapsed={collapsed} label="Switch workspace">
+              {primaryNavigation.map((item) => {
                 const Icon = item.icon;
                 return (
                   <NavItem
                     key={item.href}
-                    badge={item.badge}
                     collapsed={collapsed}
                     href={item.href}
-                    icon={<Icon size={18} strokeWidth={1.8} />}
+                    icon={<Icon size={17} strokeWidth={1.8} />}
                     label={item.label}
                     onNavigate={onMobileClose}
                   />
                 );
               })}
             </NavGroup>
-          ))}
+          </div>
         </nav>
 
         <div className="sidebar__footer">
           <div
             className="tenant-card"
-            title={collapsed ? "Agbofa Media" : undefined}
+            title={collapsed ? "Demo workspace" : undefined}
           >
             <span aria-hidden="true" className="tenant-card__icon">
               <Building2 size={17} />
             </span>
             <span className="tenant-card__copy">
-              <small>Tenant</small>
-              <strong>Agbofa Media</strong>
+              <small>Frontend environment</small>
+              <strong>Agbofa Media · Demo</strong>
             </span>
-            <Settings2
-              aria-hidden="true"
+            <FlaskConical
+              aria-label="Demo data"
               className="tenant-card__settings"
               size={15}
             />

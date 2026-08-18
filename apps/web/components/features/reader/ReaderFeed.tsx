@@ -60,7 +60,7 @@ export function ReaderFeed({
       <div className="reader-feed__section-heading">
         <div>
           <span className="section-kicker">
-            <Radio size={12} /> Live briefing
+            <Radio size={12} /> Demo briefing
           </span>
           <h2>Stories selected for you</h2>
         </div>
@@ -118,8 +118,8 @@ export function ReaderFeed({
           <div>
             <strong>You’ve reached the end.</strong>
             <p>
-              Every available story is in view. Check back later for new
-              verified intelligence.
+              Every available demo story is in view. The local corpus is fully
+              loaded.
             </p>
           </div>
         </div>

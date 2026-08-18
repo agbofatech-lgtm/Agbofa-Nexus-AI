@@ -5,6 +5,7 @@ import {
   AlertCircle,
   ArrowRight,
   CheckCircle2,
+  Clock3,
   KeyRound,
   RefreshCw,
   ShieldCheck,
@@ -31,9 +32,13 @@ const demoCredentials: LoginFormData = {
 
 interface LoginFormProps {
   nextPath?: string;
+  sessionExpired?: boolean;
 }
 
-export function LoginForm({ nextPath = "/dashboard" }: LoginFormProps) {
+export function LoginForm({
+  nextPath = "/dashboard",
+  sessionExpired = false,
+}: LoginFormProps) {
   const router = useRouter();
   const { signIn, status } = useAuth();
   const [formError, setFormError] = useState<string | null>(null);
@@ -92,11 +97,12 @@ export function LoginForm({ nextPath = "/dashboard" }: LoginFormProps) {
     <div className="login-form-wrap">
       <div className="login-form__heading">
         <span className="section-kicker">
-          <ShieldCheck size={13} /> Secure access
+          <ShieldCheck size={13} /> Frontend access preview
         </span>
-        <h1>Welcome back.</h1>
+        <h1>Enter the demo workspace.</h1>
         <p>
-          Enter your newsroom credentials to open the Nexus command workspace.
+          Use the published demonstration credentials. This creates a
+          browser-local session, not a production-authenticated account.
         </p>
       </div>
 
@@ -105,6 +111,16 @@ export function LoginForm({ nextPath = "/dashboard" }: LoginFormProps) {
         noValidate
         onSubmit={handleSubmit(onSubmit)}
       >
+        {sessionExpired && !formError && !success ? (
+          <div className="auth-toast auth-toast--notice" role="status">
+            <Clock3 size={17} />
+            <div>
+              <strong>Demo session expired</strong>
+              <span>Use the demonstration credentials to reopen the workspace.</span>
+            </div>
+          </div>
+        ) : null}
+
         {formError ? (
           <div className="auth-toast auth-toast--error" role="alert">
             <AlertCircle size={17} />
@@ -132,8 +148,8 @@ export function LoginForm({ nextPath = "/dashboard" }: LoginFormProps) {
           <div className="auth-toast auth-toast--success" role="status">
             <CheckCircle2 size={17} />
             <div>
-              <strong>Access granted</strong>
-              <span>Opening your intelligence workspace…</span>
+              <strong>Demo session created locally</strong>
+              <span>Opening the frontend workspace preview…</span>
             </div>
           </div>
         ) : null}
@@ -193,7 +209,7 @@ export function LoginForm({ nextPath = "/dashboard" }: LoginFormProps) {
         />
 
         <div className="login-form__options">
-          <span>Protected by tenant-scoped access</span>
+          <span>Frontend role preview · not a security boundary</span>
           <a href="mailto:support@agbofa.ai?subject=Nexus%20password%20recovery">
             Forgot password?
           </a>
@@ -226,7 +242,7 @@ export function LoginForm({ nextPath = "/dashboard" }: LoginFormProps) {
       </div>
 
       <p className="login-form__legal">
-        By continuing, you agree to the platform security policy.{" "}
+        Demonstration access is stored only in this browser session.{" "}
         <Link href="/">Return to public site</Link>
       </p>
     </div>

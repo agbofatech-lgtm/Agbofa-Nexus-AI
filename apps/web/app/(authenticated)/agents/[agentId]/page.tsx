@@ -24,7 +24,7 @@ export default function AgentDetailPage() {
   if (!agent) return <AgentNotFound />;
 
   return (
-    <main className="agent-detail-page">
+    <div className="agent-detail-page">
       <AgentDetailHeader agent={agent} />
       <AgentMetricCards agent={agent} />
       <AgentTelemetry telemetry={agent.telemetry} />
@@ -37,6 +37,6 @@ export default function AgentDetailPage() {
         <AgentDependencies agent={agent} dependencies={agent.dependencies} />
       </div>
       <AgentExecutionTimeline executions={agent.executions} />
-    </main>
+    </div>
   );
 }

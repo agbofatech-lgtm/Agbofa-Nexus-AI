@@ -29,7 +29,7 @@ export function AgentCategoryView({
   const resetFilters = useAgentsStore((state) => state.resetFilters);
 
   return (
-    <main className="agents-page">
+    <div className="agents-page">
       <AgentHeader
         count={agents.summary.total}
         description={description}
@@ -51,6 +51,6 @@ export function AgentCategoryView({
       {!agents.loading && !agents.error && agents.filteredAgents.length ? (
         <AgentGrid agents={agents.filteredAgents} />
       ) : null}
-    </main>
+    </div>
   );
 }

@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/providers/ThemeProvider";
 import "./globals.css";
 import "../styles/public.css";
 import "../styles/watermark.css";
+import "../styles/phase-one.css";
 
 const themeInitializationScript = `
 (function () {
@@ -121,7 +122,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
           dangerouslySetInnerHTML={{ __html: themeInitializationScript }}
         />
       </head>
-      <body>
+      <body className="phase-one">
         <ThemeProvider>
           <SessionProvider>{children}</SessionProvider>
         </ThemeProvider>
