@@ -44,9 +44,21 @@ JWT keys are identified by `kid`. Retired keys remain usable for verification in
 
 Arena cannot execute `go test`. Static review covers source inspection, secret-redaction tests as written, and git cleanliness.
 
-## Developer runtime evidence required
+## Developer runtime evidence
 
-Use this template. Do not include secret values in the output you return.
+A developer-runtime PASS was recorded against:
+
+```text
+f2a0b410205cf5a0b3da00edbf3ad853d7b72cdf
+```
+
+See `PROD-00_RUNTIME_EVIDENCE.md`. That result does not certify later commits.
+
+PROD-01 is not started and is not authorized by this record.
+
+## Developer runtime evidence template
+
+Use this template for any retest. Do not include secret values.
 
 ```text
 PHASE: 01
