@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -26,19 +27,29 @@ func TestEnvProviderMapsSecretNames(t *testing.T) {
 }
 
 func TestFileProviderReadsNestedAndFlatNames(t *testing.T) {
-	files := map[string]string{
-		"/secrets/jwt/keys/k1/public_pem": testPublicPEM,
+	root := t.TempDir()
+
+	nestedDir := filepath.Join(root, "jwt", "keys", "k1")
+	if err := os.MkdirAll(nestedDir, 0o700); err != nil {
+		t.Fatalf("create nested secret directory: %v", err)
 	}
-	provider := NewFileProvider("/secrets", func(name string) ([]byte, error) {
-		value, ok := files[filepathToSlash(name)]
-		if !ok {
-			value, ok = files[name]
-		}
-		if !ok {
-			return nil, errors.New("not found")
-		}
-		return []byte(value), nil
-	})
+	nestedPath := filepath.Join(nestedDir, "public_pem")
+	if err := os.WriteFile(nestedPath, []byte(testPublicPEM+"\n"), 0o600); err != nil {
+		t.Fatalf("write nested secret file: %v", err)
+	}
+	if _, err := os.Stat(nestedPath); err != nil {
+		t.Fatalf("nested secret file missing at %s: %v", nestedPath, err)
+	}
+
+	flatPath := filepath.Join(root, "jwt--keys--k1--private_pem")
+	if err := os.WriteFile(flatPath, []byte(testPrivatePEM+"\n"), 0o600); err != nil {
+		t.Fatalf("write flat secret file: %v", err)
+	}
+	if _, err := os.Stat(flatPath); err != nil {
+		t.Fatalf("flat secret file missing at %s: %v", flatPath, err)
+	}
+
+	provider := NewFileProvider(root, nil)
 	secret, err := provider.Get(context.Background(), "jwt/keys/k1/public_pem")
 	if err != nil {
 		t.Fatalf("get nested: %v", err)
@@ -47,12 +58,7 @@ func TestFileProviderReadsNestedAndFlatNames(t *testing.T) {
 		t.Fatal("expected pem")
 	}
 
-	flat := NewFileProvider("/secrets", func(name string) ([]byte, error) {
-		if name != "/secrets/jwt--keys--k1--private_pem" {
-			return nil, errors.New("not found")
-		}
-		return []byte(testPrivatePEM), nil
-	})
+	flat := NewFileProvider(root, nil)
 	got, err := flat.Get(context.Background(), "jwt/keys/k1/private_pem")
 	if err != nil {
 		t.Fatalf("get flat: %v", err)
