@@ -17,58 +17,7 @@ import type {
   SignInResult,
 } from "@/types/auth";
 
-const SESSION_KEY = "agbofa-nexus-demo-session";
-const DEMO_TENANT = "agbofa";
-const DEMO_ADMIN = "admin@agbofa.ai";
-const DEMO_PASSWORD = "nexus-demo";
-const SESSION_DURATION_MS = 8 * 60 * 60 * 1000;
-const MOCK_LATENCY_MS = 850;
-
 export const AuthContext = createContext<AuthContextValue | null>(null);
-
-function isStoredSession(value: unknown): value is AuthSession {
-  if (!value || typeof value !== "object") return false;
-  const candidate = value as Partial<AuthSession>;
-  return (
-    typeof candidate.tenant === "string" &&
-    typeof candidate.expiresAt === "string" &&
-    typeof candidate.user?.id === "string" &&
-    typeof candidate.user.name === "string" &&
-    typeof candidate.user.email === "string" &&
-    (candidate.user.role === "admin" ||
-      candidate.user.role === "editor" ||
-      candidate.user.role === "reader")
-  );
-}
-
-interface StoredSessionResult {
-  session: AuthSession | null;
-  expired: boolean;
-}
-
-function readStoredSession(): StoredSessionResult {
-  try {
-    const raw = window.sessionStorage.getItem(SESSION_KEY);
-    if (!raw) return { session: null, expired: false };
-    const parsed: unknown = JSON.parse(raw);
-    if (!isStoredSession(parsed)) {
-      window.sessionStorage.removeItem(SESSION_KEY);
-      return { session: null, expired: false };
-    }
-    if (Date.parse(parsed.expiresAt) <= Date.now()) {
-      window.sessionStorage.removeItem(SESSION_KEY);
-      return { session: null, expired: true };
-    }
-    return { session: parsed, expired: false };
-  } catch {
-    window.sessionStorage.removeItem(SESSION_KEY);
-    return { session: null, expired: false };
-  }
-}
-
-function wait(duration: number): Promise<void> {
-  return new Promise((resolve) => window.setTimeout(resolve, duration));
-}
 
 interface SessionProviderProps {
   children: ReactNode;
@@ -79,63 +28,74 @@ export function SessionProvider({ children }: SessionProviderProps) {
   const [status, setStatus] = useState<AuthStatus>("loading");
 
   useEffect(() => {
-    const stored = readStoredSession();
-    setSession(stored.session);
-    setStatus(
-      stored.session ? "authenticated" : stored.expired ? "expired" : "unauthenticated",
-    );
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await fetch("/api/v1/auth/session", { cache: "no-store" });
+        if (!response.ok) {
+          if (!cancelled) {
+            setSession(null);
+            setStatus(response.status === 401 ? "unauthenticated" : "unauthenticated");
+          }
+          return;
+        }
+        const body = (await response.json()) as {
+          authenticated?: boolean;
+          reason?: string;
+          session?: AuthSession;
+        };
+        if (cancelled) return;
+        if (body.authenticated && body.session) {
+          setSession(body.session);
+          setStatus("authenticated");
+          return;
+        }
+        setSession(null);
+        setStatus(body.reason === "expired" ? "expired" : "unauthenticated");
+      } catch {
+        if (!cancelled) {
+          setSession(null);
+          setStatus("unauthenticated");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const signIn = useCallback(
-    async (credentials: LoginCredentials): Promise<SignInResult> => {
-      await wait(MOCK_LATENCY_MS);
-
-      if (
-        !window.navigator.onLine ||
-        credentials.tenant.toLowerCase() === "offline"
-      ) {
+  const signIn = useCallback(async (credentials: LoginCredentials): Promise<SignInResult> => {
+    try {
+      const response = await fetch("/api/v1/auth/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(credentials),
+      });
+      const body = (await response.json()) as SignInResult | { error?: string };
+      if (!response.ok || !("success" in body) || !body.success) {
         return {
           success: false,
-          code: "network_error",
-          message: "Connection failed. Check your network and retry.",
-        };
-      }
-
-      const validCredentials =
-        credentials.tenant.trim().toLowerCase() === DEMO_TENANT &&
-        credentials.admin.trim().toLowerCase() === DEMO_ADMIN &&
-        credentials.password === DEMO_PASSWORD;
-
-      if (!validCredentials) {
-        return {
-          success: false,
-          code: "invalid_credentials",
+          code: response.status >= 500 ? "network_error" : "invalid_credentials",
           message:
-            "Invalid credentials. Check your tenant, admin, and password.",
+            "success" in body && !body.success
+              ? body.message
+              : "Sign-in failed.",
         };
       }
-
-      const nextSession: AuthSession = {
-        tenant: "Agbofa Media",
-        user: {
-          id: "demo-admin-001",
-          name: "Kofi Agbofa",
-          email: DEMO_ADMIN,
-          role: "admin",
-        },
-        expiresAt: new Date(Date.now() + SESSION_DURATION_MS).toISOString(),
-      };
-
-      window.sessionStorage.setItem(SESSION_KEY, JSON.stringify(nextSession));
-      setSession(nextSession);
+      setSession(body.session);
       setStatus("authenticated");
-      return { success: true, session: nextSession };
-    },
-    [],
-  );
+      return body;
+    } catch {
+      return {
+        success: false,
+        code: "network_error",
+        message: "Connection failed. Check your network and retry.",
+      };
+    }
+  }, []);
 
   const signOut = useCallback(() => {
-    window.sessionStorage.removeItem(SESSION_KEY);
+    void fetch("/api/v1/auth/logout", { method: "POST" });
     setSession(null);
     setStatus("unauthenticated");
   }, []);

@@ -39,6 +39,10 @@ func (h IdentityHTTP) AuthenticateUser(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h IdentityHTTP) ValidateToken(w http.ResponseWriter, r *http.Request) {
+	writeErr(w, http.StatusNotImplemented, "use_bff_session")
+}
+
 func (h IdentityHTTP) GetTenant(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
 	if id == "" {
@@ -64,5 +68,3 @@ func writeJSON(w http.ResponseWriter, status int, body any) {
 func writeErr(w http.ResponseWriter, status int, code string) {
 	writeJSON(w, status, map[string]string{"error": code})
 }
-
-var _ = domain.Tenant{}

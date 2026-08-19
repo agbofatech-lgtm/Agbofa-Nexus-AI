@@ -19,15 +19,20 @@ func (PasswordVerifier) VerifyCredential(_ context.Context, credentialHash, cred
 }
 
 type TokenService struct {
-	cfg config.JWTConfig
+	cfg     config.JWTConfig
+	refresh interface {
+		Create(ctx context.Context, token domain.RefreshToken) (domain.RefreshToken, error)
+	}
 	now func() time.Time
 }
 
-func NewTokenService(cfg config.JWTConfig) *TokenService {
-	return &TokenService{cfg: cfg, now: time.Now}
+func NewTokenService(cfg config.JWTConfig, refresh interface {
+	Create(ctx context.Context, token domain.RefreshToken) (domain.RefreshToken, error)
+}) *TokenService {
+	return &TokenService{cfg: cfg, refresh: refresh, now: time.Now}
 }
 
-func (s *TokenService) IssueTokens(_ context.Context, tenant domain.Tenant, user domain.User) (domain.AuthenticationTokens, error) {
+func (s *TokenService) IssueTokens(ctx context.Context, tenant domain.Tenant, user domain.User) (domain.AuthenticationTokens, error) {
 	now := s.now()
 	signer, err := auth.NewSigner(s.cfg, now)
 	if err != nil {
@@ -40,6 +45,14 @@ func (s *TokenService) IssueTokens(_ context.Context, tenant domain.Tenant, user
 	refresh, err := auth.NewRefreshMaterial("")
 	if err != nil {
 		return domain.AuthenticationTokens{}, err
+	}
+	if s.refresh != nil {
+		if _, err := s.refresh.Create(ctx, domain.RefreshToken{
+			UserID: user.ID, TenantID: tenant.ID, TokenHash: refresh.Hash, FamilyID: refresh.FamilyID,
+			ExpiresAt: now.Add(s.cfg.RefreshTTL),
+		}); err != nil {
+			return domain.AuthenticationTokens{}, err
+		}
 	}
 	return domain.AuthenticationTokens{
 		AccessToken:  access,

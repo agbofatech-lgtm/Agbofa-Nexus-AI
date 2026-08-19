@@ -34,7 +34,7 @@ func Compose(ctx context.Context, cfg config.RuntimeConfig) (*Runtime, error) {
 		return nil, fmt.Errorf("migrate: %w", err)
 	}
 	tenants := repositories.NewTenantRepository(pool)
-	tokens := authn.NewTokenService(cfg.JWT)
+	tokens := authn.NewTokenService(cfg.JWT, repositories.NewRefreshTokenRepository(pool))
 	svc := application.NewTenantIdentityService(tenants, authn.PasswordVerifier{}, tokens, noopEvents{})
 	verifier, err := auth.NewVerifier(cfg.JWT, time.Now())
 	if err != nil {
