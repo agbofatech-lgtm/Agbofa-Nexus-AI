@@ -1,10 +1,12 @@
 import { adaptDistributionContent } from "@/lib/adapters/distribution-templates";
-import type { DistributionChannel } from "@/types/business";
-import type { PlatformPreviewData } from "@/types/distribution";
+import type {
+  DistributionPreviewTarget,
+  PlatformPreviewData,
+} from "@/types/distribution";
 export const distributionAdaptationService = {
   preview(
     content: string,
-    channels: readonly DistributionChannel[],
+    channels: readonly DistributionPreviewTarget[],
   ): PlatformPreviewData[] {
     return adaptDistributionContent(content, channels);
   },

@@ -7,6 +7,7 @@ import {
   ClipboardCheck,
   Coins,
   Factory,
+  FlaskConical,
   LayoutDashboard,
   Newspaper,
   Orbit,
@@ -97,7 +98,7 @@ export const primaryNavigation: readonly PrimaryNavigationItem[] = [
     href: "/analytics",
     icon: BarChart3,
     featureFlag: "analytics",
-    matchPrefixes: ["/analytics", "/ai-cost"],
+    matchPrefixes: ["/analytics", "/experiments", "/ai-cost"],
   },
 ] as const;
 
@@ -189,6 +190,12 @@ export const navigationGroups: readonly NavigationGroup[] = [
         featureFlag: "analytics",
       },
       {
+        label: "Experiments",
+        href: "/experiments",
+        icon: FlaskConical,
+        featureFlag: "experiments",
+      },
+      {
         label: "Monetization",
         href: "/monetization",
         icon: WalletCards,
@@ -254,6 +261,7 @@ const contextPrefixes: readonly [string, NavigationContext][] = [
   ["/distribution", "business"],
   ["/growth", "business"],
   ["/analytics", "business"],
+  ["/experiments", "business"],
   ["/monetization", "business"],
   ["/ai-cost", "system"],
   ["/settings", "system"],

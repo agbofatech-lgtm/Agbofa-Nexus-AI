@@ -6,7 +6,15 @@ export type PlatformTemplate =
   | "tiktok"
   | "linkedin"
   | "threads"
+  | "pinterest"
+  | "reddit"
+  | "telegram"
+  | "whatsapp"
   | "generic";
+export interface DistributionPreviewTarget {
+  id: string;
+  platform: string;
+}
 export interface PlatformPreviewData {
   channelId: string;
   platform: string;

@@ -18,6 +18,10 @@ const icons: Record<PlatformTemplate, LucideIcon> = {
   tiktok: PlaySquare,
   linkedin: BriefcaseBusiness,
   threads: MessageCircle,
+  pinterest: ImageIcon,
+  reddit: MessageCircle,
+  telegram: MessageCircle,
+  whatsapp: MessageCircle,
   generic: MessageCircle,
 };
 export function ContentPreview({ preview }: { preview: PlatformPreviewData }) {

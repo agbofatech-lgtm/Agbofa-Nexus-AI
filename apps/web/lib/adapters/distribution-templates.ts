@@ -1,5 +1,5 @@
-import type { DistributionChannel } from "@/types/business";
 import type {
+  DistributionPreviewTarget,
   PlatformPreviewData,
   PlatformTemplate,
 } from "@/types/distribution";
@@ -12,6 +12,10 @@ function templateFor(platform: string): PlatformTemplate {
   if (n.includes("tiktok")) return "tiktok";
   if (n.includes("linkedin")) return "linkedin";
   if (n.includes("threads")) return "threads";
+  if (n.includes("pinterest")) return "pinterest";
+  if (n.includes("reddit")) return "reddit";
+  if (n.includes("telegram")) return "telegram";
+  if (n.includes("whatsapp")) return "whatsapp";
   return "generic";
 }
 function shorten(v: string, l: number) {
@@ -34,6 +38,14 @@ function body(c: string, t: PlatformTemplate) {
       return `${v}\n\nWhat this means for technology leaders and emerging markets — explore the full analysis.`;
     case "threads":
       return `${shorten(v, 430)}\n\nWhat signal are you watching next?`;
+    case "pinterest":
+      return `${shorten(v, 390)}\n\nSave the intelligence brief for later.`;
+    case "reddit":
+      return `Context and disclosure\n\n${v}\n\nEvidence and methods are available in the full brief. Please review community rules before manual posting.`;
+    case "telegram":
+      return `INTELLIGENCE BRIEF\n\n${shorten(v, 3900)}\n\nOpen the complete evidence note.`;
+    case "whatsapp":
+      return `Agbofa briefing\n\n${shorten(v, 3900)}\n\nRead when useful. Shared manually with context.`;
     default:
       return v;
   }
@@ -81,6 +93,26 @@ const presentation: Record<
     guidance: "Natural voice, compact context, media, and reply prompt",
     characterLimit: 500,
   },
+  pinterest: {
+    format: "Evergreen pin description",
+    guidance: "Searchable title, portrait asset, destination, and save-oriented CTA",
+    characterLimit: 500,
+  },
+  reddit: {
+    format: "Community-context post",
+    guidance: "Transparent identity, subreddit rules, evidence, and discussion prompt",
+    characterLimit: 40000,
+  },
+  telegram: {
+    format: "Scannable channel briefing",
+    guidance: "Headline, compact context, media, and complete-brief destination",
+    characterLimit: 4096,
+  },
+  whatsapp: {
+    format: "Consent-aware manual share",
+    guidance: "Trusted context, concise summary, destination, and no hashtag dependency",
+    characterLimit: 4096,
+  },
   generic: {
     format: "Channel-ready draft",
     guidance: "Review channel requirements before manual distribution",
@@ -89,7 +121,7 @@ const presentation: Record<
 };
 export function adaptDistributionContent(
   content: string,
-  channels: readonly DistributionChannel[],
+  channels: readonly DistributionPreviewTarget[],
 ): PlatformPreviewData[] {
   if (!content.trim()) return [];
   return channels.map((c) => {
