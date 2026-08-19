@@ -59,8 +59,10 @@ type RefreshToken struct {
 	UserID    string
 	TenantID  string
 	TokenHash string
+	FamilyID  string
 	ExpiresAt time.Time
 	Revoked   bool
+	UsedAt    *time.Time
 	CreatedAt time.Time
 }
 

@@ -24,11 +24,15 @@ func (r *RefreshTokenRepository) Create(ctx context.Context, token domain.Refres
 		}
 		token.ID = id
 	}
+	var family any
+	if token.FamilyID != "" {
+		family = token.FamilyID
+	}
 	row := r.db.QueryRow(ctx, `
-INSERT INTO refresh_tokens (id, user_id, tenant_id, token_hash, expires_at, revoked)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO refresh_tokens (id, user_id, tenant_id, token_hash, family_id, expires_at, revoked)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING created_at`,
-		token.ID, token.UserID, token.TenantID, token.TokenHash, token.ExpiresAt, token.Revoked)
+		token.ID, token.UserID, token.TenantID, token.TokenHash, family, token.ExpiresAt, token.Revoked)
 	if err := row.Scan(&token.CreatedAt); err != nil {
 		return domain.RefreshToken{}, mapDB(err)
 	}
@@ -37,13 +41,13 @@ RETURNING created_at`,
 
 func (r *RefreshTokenRepository) GetByHash(ctx context.Context, tokenHash string) (domain.RefreshToken, error) {
 	return scanRefresh(r.db.QueryRow(ctx, `
-SELECT id, user_id, COALESCE(tenant_id::text, ''), token_hash, expires_at, revoked, created_at
+SELECT id, user_id, COALESCE(tenant_id::text, ''), token_hash, COALESCE(family_id::text, ''), expires_at, revoked, used_at, created_at
 FROM refresh_tokens WHERE token_hash = $1`, tokenHash))
 }
 
 func (r *RefreshTokenRepository) ListByUser(ctx context.Context, userID string) ([]domain.RefreshToken, error) {
 	rows, err := r.db.Query(ctx, `
-SELECT id, user_id, COALESCE(tenant_id::text, ''), token_hash, expires_at, revoked, created_at
+SELECT id, user_id, COALESCE(tenant_id::text, ''), token_hash, COALESCE(family_id::text, ''), expires_at, revoked, used_at, created_at
 FROM refresh_tokens WHERE user_id = $1 ORDER BY created_at`, userID)
 	if err != nil {
 		return nil, mapDB(err)
@@ -69,6 +73,22 @@ func (r *RefreshTokenRepository) Revoke(ctx context.Context, id string) error {
 		return database.ErrNotFound
 	}
 	return nil
+}
+
+func (r *RefreshTokenRepository) MarkUsed(ctx context.Context, id string, at time.Time) error {
+	tag, err := r.db.Exec(ctx, `UPDATE refresh_tokens SET used_at = $2 WHERE id = $1`, id, at)
+	if err != nil {
+		return mapDB(err)
+	}
+	if tag.RowsAffected() == 0 {
+		return database.ErrNotFound
+	}
+	return nil
+}
+
+func (r *RefreshTokenRepository) RevokeFamily(ctx context.Context, familyID string) error {
+	_, err := r.db.Exec(ctx, `UPDATE refresh_tokens SET revoked = true WHERE family_id = $1`, familyID)
+	return mapDB(err)
 }
 
 func (r *RefreshTokenRepository) DeleteExpired(ctx context.Context, now time.Time) (int64, error) {
