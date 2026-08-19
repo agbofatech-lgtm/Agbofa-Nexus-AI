@@ -17,3 +17,7 @@ plugins:
     out: api/gen/python
   - remote: buf.build/grpc/python
     out: api/gen/python
+  - remote: buf.build/bufbuild/es
+    out: api/gen/ts
+    opt:
+      - target=ts

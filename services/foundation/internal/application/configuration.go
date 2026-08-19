@@ -43,6 +43,11 @@ func (s *ConfigurationService) GetConfiguration(ctx context.Context, namespace s
 	return bundle, nil
 }
 
+// WatchConfiguration is DEFERRED for Phase 01.
+// Lifecycle, cancellation, reconnection, backpressure, authorization, and
+// tenant scope must be defined before a streaming Watch is implemented.
+// Get and Set remain the current production configuration RPCs.
+
 func (s *ConfigurationService) SetConfiguration(ctx context.Context, namespace string, values map[string]string, modifiedBy string) (ConfigurationBundle, error) {
 	bundle, changes, err := s.repository.SetBundle(ctx, namespace, values, modifiedBy)
 	if err != nil {
