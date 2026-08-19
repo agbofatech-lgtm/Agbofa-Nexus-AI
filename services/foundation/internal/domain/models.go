@@ -54,12 +54,23 @@ type AuthenticationTokens struct {
 	ExpiresIn    int
 }
 
+type RefreshToken struct {
+	ID        string
+	UserID    string
+	TenantID  string
+	TokenHash string
+	ExpiresAt time.Time
+	Revoked   bool
+	CreatedAt time.Time
+}
+
 var (
 	ErrInvalidTenantConfig = errors.New("invalid tenant configuration")
 	ErrTenantSuspended     = errors.New("tenant suspended")
 	ErrTenantConflict      = errors.New("tenant already active")
 	ErrAuthentication      = errors.New("authentication failed")
 	ErrUserNotActive       = errors.New("user is not active")
+	ErrNotFound            = errors.New("not found")
 )
 
 func (c TenantConfig) Validate() error {
