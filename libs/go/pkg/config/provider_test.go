@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -75,6 +76,10 @@ func TestFileCandidatesIncludeSlashAndNativeNestedPaths(t *testing.T) {
 	if !containsString(candidates, "/secrets/jwt--keys--k1--public_pem") {
 		t.Fatalf("missing slash-form flat path in %v", candidates)
 	}
+}
+
+func filepathToSlash(name string) string {
+	return filepath.ToSlash(name)
 }
 
 func containsString(values []string, want string) bool {
