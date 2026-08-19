@@ -1,0 +1,1621 @@
+/* Phase 5 — Autonomy, Memory, Scenario Intelligence, and AI Economics */
+.phase5-page {
+  --phase5-line: rgba(74, 124, 247, 0.22);
+  --phase5-gold-line: rgba(212, 175, 55, 0.24);
+  width: 100%;
+  max-width: var(--content-max);
+  margin-inline: auto;
+}
+.phase5-stack {
+  display: grid;
+  gap: 18px;
+}
+.phase5-page textarea:focus-visible,
+.phase5-page select:focus-visible,
+.phase5-page input:focus-visible {
+  outline: 2px solid var(--nexus-blue);
+  outline-offset: 3px;
+}
+.execution-reality--estimated {
+  border-color: rgba(245, 165, 36, 0.28);
+  background: rgba(245, 165, 36, 0.08);
+  color: var(--nexus-warning);
+}
+.ai-control-workspace-nav {
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  margin-bottom: 16px;
+  padding: 5px;
+  background: var(--surface-1);
+}
+.ai-control-workspace-nav a {
+  display: flex;
+  min-width: max-content;
+  min-height: 40px;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 8px;
+  padding-inline: 14px;
+  color: var(--text-tertiary);
+  font-size: 0.625rem;
+  font-weight: 700;
+}
+.ai-control-workspace-nav a[aria-current="page"] {
+  background: rgba(74, 124, 247, 0.1);
+  color: var(--nexus-blue);
+}
+.autonomy-posture,
+.autonomy-levels,
+.autonomy-domain-matrix,
+.approval-policy-table,
+.autonomy-run-preview,
+.kill-switch,
+.autonomy-audit,
+.run-register,
+.run-simulator,
+.memory-loop,
+.memory-filters,
+.memory-register,
+.memory-detail,
+.memory-conflicts,
+.scenario-selector,
+.scenario-detail,
+.scenario-comparison-table,
+.financial-truth-contract,
+.model-routing,
+.task-cost-table,
+.cost-aware-strategy,
+.budget-simulation,
+.roi-unavailable,
+.preserved-ai-cost {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-panel);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-subtle);
+}
+.autonomy-posture,
+.financial-truth-contract {
+  display: grid;
+  min-height: 240px;
+  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.6fr);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 0 0, rgba(74, 124, 247, 0.12), transparent 28rem),
+    radial-gradient(circle at 100% 100%, rgba(212, 175, 55, 0.08), transparent 24rem),
+    var(--surface-1);
+}
+.autonomy-posture > div,
+.financial-truth-contract > div {
+  display: grid;
+  align-content: center;
+  padding: 34px;
+}
+.autonomy-posture > div > span,
+.autonomy-levels > header span,
+.autonomy-domain-matrix > header span,
+.approval-policy-table > header span,
+.autonomy-run-preview > div > span,
+.kill-switch > header span,
+.autonomy-audit > header span,
+.run-simulator > header span,
+.run-simulator__context section > span,
+.run-detail-grid section > span,
+.run-outcome > span,
+.memory-loop > header span,
+.memory-register > header span,
+.memory-detail > header span,
+.memory-trust-grid span,
+.memory-evidence > span,
+.memory-detail > section > span,
+.memory-conflicts > header span,
+.memory-conflicts article > div > span,
+.scenario-detail > header span,
+.scenario-detail__columns section > span,
+.scenario-projections > header span,
+.scenario-truth-grid section > span,
+.scenario-comparison-table > header span,
+.financial-truth-contract > div > span,
+.model-routing > header span,
+.routing-reason span,
+.task-cost-table > header span,
+.cost-aware-strategy > header span,
+.cost-aware-strategy article > section span,
+.budget-simulation > header span,
+.budget-simulation article > header span,
+.budget-simulation__metrics section span,
+.budget-model-mix > span,
+.roi-unavailable span {
+  color: var(--nexus-blue);
+  font: 0.5625rem var(--font-mono);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.autonomy-posture h2,
+.financial-truth-contract h2 {
+  max-width: 860px;
+  margin: 10px 0;
+  font-size: clamp(1.8rem, 3.5vw, 3.5rem);
+  letter-spacing: -0.045em;
+  line-height: 1.08;
+}
+.autonomy-posture > div > p,
+.financial-truth-contract > div > p {
+  max-width: 800px;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.75;
+}
+.autonomy-posture > aside {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 7px;
+  border-left: 1px solid var(--border-subtle);
+  padding: 25px;
+  color: var(--nexus-blue);
+  text-align: center;
+}
+.autonomy-posture > aside > svg {
+  width: 38px;
+  height: 38px;
+}
+.autonomy-posture > aside > strong {
+  color: var(--text-primary);
+  font: 2.2rem var(--font-heading);
+}
+.autonomy-posture > aside > span,
+.autonomy-posture > aside > small {
+  color: var(--text-tertiary);
+  font-size: 0.5625rem;
+}
+.autonomy-posture > aside > small {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.autonomy-levels,
+.autonomy-domain-matrix,
+.approval-policy-table,
+.kill-switch,
+.autonomy-audit,
+.run-simulator,
+.memory-loop,
+.memory-detail,
+.memory-conflicts,
+.scenario-detail,
+.scenario-comparison-table,
+.model-routing,
+.task-cost-table,
+.cost-aware-strategy,
+.budget-simulation {
+  padding: 22px;
+}
+.autonomy-levels > header,
+.autonomy-domain-matrix > header,
+.approval-policy-table > header,
+.kill-switch > header,
+.autonomy-audit > header,
+.run-simulator > header,
+.memory-loop > header,
+.memory-detail > header,
+.memory-conflicts > header,
+.scenario-detail > header,
+.scenario-comparison-table > header,
+.model-routing > header,
+.task-cost-table > header,
+.cost-aware-strategy > header,
+.budget-simulation > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+.autonomy-levels h2,
+.autonomy-domain-matrix h2,
+.approval-policy-table h2,
+.kill-switch h2,
+.autonomy-audit h2,
+.run-simulator h2,
+.memory-loop h2,
+.memory-detail h2,
+.memory-conflicts h2,
+.scenario-detail h2,
+.scenario-comparison-table h2,
+.model-routing h2,
+.task-cost-table h2,
+.cost-aware-strategy h2,
+.budget-simulation h2 {
+  margin: 5px 0 0;
+  font-size: 1.25rem;
+}
+.autonomy-levels > header p,
+.approval-policy-table > header p,
+.scenario-comparison-table > header p,
+.task-cost-table > header p {
+  max-width: 470px;
+  margin: 0;
+  color: var(--text-tertiary);
+  font-size: 0.625rem;
+  text-align: right;
+}
+.autonomy-levels > ol {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(130px, 1fr));
+  overflow-x: auto;
+  margin: 17px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.autonomy-level {
+  display: grid;
+  min-height: 190px;
+  align-content: start;
+  gap: 7px;
+  border: 1px solid var(--border-subtle);
+  padding: 15px;
+  background: var(--surface-2);
+}
+.autonomy-level--configured-range {
+  background: linear-gradient(145deg, rgba(74, 124, 247, 0.09), transparent), var(--surface-2);
+}
+.autonomy-level > span {
+  color: var(--nexus-blue);
+  font: 0.5625rem var(--font-mono);
+}
+.autonomy-level > strong {
+  font-size: 0.75rem;
+}
+.autonomy-level > p,
+.autonomy-level > small {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.5625rem;
+  line-height: 1.55;
+}
+.autonomy-level > small {
+  color: var(--text-tertiary);
+}
+.autonomy-level .execution-reality {
+  margin-top: auto;
+}
+.autonomy-domain-matrix__message {
+  border-left: 2px solid var(--nexus-gold);
+  margin: 14px 0;
+  padding-left: 10px;
+  color: var(--text-secondary);
+  font-size: 0.625rem;
+}
+.autonomy-domain-matrix > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.autonomy-domain-matrix article {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 17px;
+  background: var(--surface-2);
+}
+.autonomy-domain-matrix article > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+.autonomy-domain-matrix article h3 {
+  margin: 4px 0 0;
+  font-size: 1rem;
+}
+.autonomy-domain-matrix article header span,
+.autonomy-actions span {
+  color: var(--nexus-gold);
+  font: 0.5rem var(--font-mono);
+}
+.autonomy-domain-matrix article header b {
+  color: var(--text-tertiary);
+  font: 0.5rem var(--font-mono);
+}
+.autonomy-domain-matrix label,
+.cost-aware-strategy label {
+  display: grid;
+  gap: 5px;
+  color: var(--text-secondary);
+  font-size: 0.5625rem;
+  font-weight: 700;
+}
+.autonomy-domain-matrix select,
+.cost-aware-strategy select {
+  min-height: 38px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding-inline: 10px;
+  background: var(--surface-0);
+  color: var(--text-primary);
+  font-size: 0.625rem;
+}
+.autonomy-domain-matrix article > strong {
+  color: var(--text-secondary);
+  font-size: 0.625rem;
+}
+.autonomy-domain-matrix dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  margin: 0;
+  background: var(--border-subtle);
+}
+.autonomy-domain-matrix dl > div {
+  padding: 9px;
+  background: var(--surface-1);
+}
+.autonomy-domain-matrix dt {
+  color: var(--text-tertiary);
+  font: 0.5rem var(--font-mono);
+  text-transform: uppercase;
+}
+.autonomy-domain-matrix dd {
+  display: flex;
+  gap: 4px;
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 0.5625rem;
+}
+.autonomy-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.autonomy-actions section {
+  border-left: 2px solid var(--nexus-success);
+  padding-left: 9px;
+}
+.autonomy-actions section:last-child {
+  border-color: var(--nexus-error);
+}
+.autonomy-actions ul {
+  margin: 6px 0 0;
+  padding-left: 14px;
+  color: var(--text-secondary);
+  font-size: 0.5625rem;
+}
+.autonomy-domain-matrix article > footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 10px;
+  color: var(--text-tertiary);
+  font: 0.5rem var(--font-mono);
+}
+.autonomy-domain-matrix article > footer .execution-reality {
+  margin-left: auto;
+}
+.autonomy-domain-matrix > aside,
+.phase5-trust-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 14px;
+  border: 1px solid rgba(245, 165, 36, 0.2);
+  border-radius: 10px;
+  padding: 13px;
+  background: rgba(245, 165, 36, 0.055);
+  color: var(--nexus-warning);
+}
+.autonomy-domain-matrix > aside p,
+.phase5-trust-note p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.625rem;
+}
+.phase5-trust-note {
+  margin: 0;
+  border-color: rgba(74, 124, 247, 0.2);
+  background: rgba(74, 124, 247, 0.055);
+  color: var(--nexus-blue);
+}
+.phase5-trust-note strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 0.6875rem;
+}
+.approval-policy-table .responsive-table,
+.autonomy-audit .responsive-table,
+.task-cost-table .responsive-table,
+.scenario-comparison-table .responsive-table {
+  margin-top: 16px;
+}
+.approval-policy-table table,
+.autonomy-audit table,
+.task-cost-table table,
+.scenario-comparison-table table {
+  width: 100%;
+  min-width: 1040px;
+  border-collapse: collapse;
+}
+.approval-policy-table th,
+.approval-policy-table td,
+.autonomy-audit th,
+.autonomy-audit td,
+.task-cost-table th,
+.task-cost-table td,
+.scenario-comparison-table th,
+.scenario-comparison-table td {
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 11px 9px;
+  color: var(--text-secondary);
+  font-size: 0.5625rem;
+  text-align: left;
+  vertical-align: top;
+}
+.approval-policy-table thead th,
+.autonomy-audit thead th,
+.task-cost-table thead th,
+.scenario-comparison-table thead th {
+  color: var(--text-tertiary);
+  font: 0.5rem var(--font-mono);
+  text-transform: uppercase;
+}
+.approval-policy-table tbody th,
+.autonomy-audit tbody th,
+.task-cost-table tbody th,
+.scenario-comparison-table tbody th {
+  color: var(--text-primary);
+}
+.approval-policy-table th small,
+.approval-policy-table td small,
+.autonomy-audit th small,
+.autonomy-audit td small,
+.task-cost-table th small,
+.task-cost-table td small,
+.scenario-comparison-table th small,
+.scenario-comparison-table td small {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-tertiary);
+  font-size: 0.5rem;
+}
+.autonomy-run-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 150px;
+  padding: 24px;
+  background: linear-gradient(100deg, rgba(74, 124, 247, 0.08), transparent), var(--surface-1);
+}
+.autonomy-run-preview h2 {
+  margin: 6px 0;
+  font-size: 1.35rem;
+}
+.autonomy-run-preview p {
+  max-width: 850px;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.6875rem;
+}
+.autonomy-run-preview a {
+  display: flex;
+  min-width: max-content;
+  align-items: center;
+  gap: 6px;
+  color: var(--nexus-blue);
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+.kill-switch {
+  border-color: rgba(226, 85, 99, 0.25);
+  background: linear-gradient(135deg, rgba(226, 85, 99, 0.07), transparent), var(--surface-1);
+}
+.kill-switch__body {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+  margin-top: 15px;
+  border: 1px solid rgba(226, 85, 99, 0.2);
+  border-radius: 12px;
+  padding: 16px;
+  background: var(--surface-0);
+}
+.kill-switch__body > span {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: rgba(226, 85, 99, 0.1);
+  color: var(--nexus-error);
+  place-items: center;
+}
+.kill-switch__body strong,
+.kill-switch__body small {
+  display: block;
+}
+.kill-switch__body p {
+  margin: 4px 0;
+  color: var(--text-secondary);
+  font-size: 0.625rem;
+}
+.kill-switch__body small {
+  color: var(--text-tertiary);
+  font-size: 0.5625rem;
+}
+.kill-switch button,
+.run-actions button,
+.memory-actions button {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid rgba(226, 85, 99, 0.3);
+  border-radius: 8px;
+  padding-inline: 12px;
+  background: rgba(226, 85, 99, 0.08);
+  color: var(--nexus-error);
+  font-size: 0.5625rem;
+  cursor: pointer;
+}
+.kill-switch__confirm {
+  display: grid;
+  gap: 6px;
+}
+.kill-switch > p {
+  margin: 12px 0 0;
+  color: var(--nexus-error);
+  font: 0.5625rem var(--font-mono);
+}
+.run-register,
+.scenario-selector {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.run-register button,
+.scenario-selector button {
+  display: grid;
+  min-height: 112px;
+  align-content: center;
+  gap: 5px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  padding: 15px;
+  background: var(--surface-1);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+.run-register button[aria-pressed="true"],
+.scenario-selector button[aria-pressed="true"] {
+  border-color: rgba(74, 124, 247, 0.4);
+  background: rgba(74, 124, 247, 0.07);
+  box-shadow: inset 2px 0 var(--nexus-blue);
+}
+.run-register button span,
+.scenario-selector button span {
+  color: var(--nexus-blue);
+  font: 0.5rem var(--font-mono);
+}
+.run-register button strong,
+.scenario-selector button strong {
+  font-size: 0.75rem;
+}
+.run-register button small,
+.scenario-selector button small {
+  color: var(--text-tertiary);
+  font-size: 0.5625rem;
+}
+.run-simulator > header > div:last-child,
+.memory-detail > header > div:last-child,
+.scenario-detail > header > div:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.run-simulator__context,
+.scenario-truth-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: 11px;
+  margin-top: 17px;
+  background: var(--border-subtle);
+}
+.run-simulator__context section,
+.scenario-truth-grid section {
+  display: grid;
+  min-height: 105px;
+  align-content: start;
+  gap: 6px;
+  padding: 13px;
+  background: var(--surface-2);
+}
+.run-simulator__context strong,
+.run-simulator__context small,
+.scenario-truth-grid strong,
+.scenario-truth-grid small {
+  display: block;
+}
+.run-simulator__context strong,
+.scenario-truth-grid strong {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+}
+.run-simulator__context small,
+.scenario-truth-grid small {
+  color: var(--text-tertiary);
+  font-size: 0.5625rem;
+}
+.run-stage-map {
+  overflow-x: auto;
+  margin-top: 15px;
+}
+.run-stage-map ol {
+  display: grid;
+  min-width: 760px;
+  grid-template-columns: repeat(6, 1fr);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.run-stage {
+  display: grid;
+  min-height: 110px;
+  align-content: center;
+  gap: 5px;
+  border: 1px solid var(--border-subtle);
+  padding: 12px;
+  background: var(--surface-2);
+}
+.run-stage--complete {
+  background: rgba(54, 179, 126, 0.055);
+}
+.run-stage--active {
+  border-color: rgba(74, 124, 247, 0.4);
+  background: rgba(74, 124, 247, 0.09);
+}
+.run-stage > span {
+  color: var(--nexus-blue);
+  font: 0.5rem var(--font-mono);
+}
+.run-stage strong {
+  font-size: 0.625rem;
+}
+.run-stage small {
+  color: var(--text-tertiary);
+  font-size: 0.5rem;
+}
+.run-detail-grid,
+.scenario-detail__columns {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 15px;
+}
+.run-detail-grid > section,
+.scenario-detail__columns > section {
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 13px;
+  background: var(--surface-2);
+}
+.run-detail-grid ul,
+.run-detail-grid section > div,
+.scenario-detail__columns ol,
+.scenario-detail__columns ul,
+.scenario-detail__columns dl {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.run-detail-grid li,
+.run-detail-grid a,
+.scenario-detail__columns li,
+.scenario-detail__columns dl > div {
+  display: grid;
+  gap: 3px;
+  border-left: 2px solid var(--nexus-blue);
+  padding: 7px 9px;
+  background: var(--surface-1);
+  color: var(--text-secondary);
+  font-size: 0.5625rem;
+}
+.run-detail-grid li small,
+.run-detail-grid a small {
+  color: var(--text-tertiary);
+}
+.run-detail-grid li b {
+  color: var(--nexus-warning);
+  font: 0.5rem var(--font-mono);
+}
+.run-outcome {
+  margin-top: 15px;
+  border-left: 2px solid var(--nexus-gold);
+  padding: 12px;
+  background: var(--surface-0);
+}
+.run-outcome p {
+  color: var(--text-secondary);
+  font-size: 0.6875rem;
+}
+.run-outcome > div {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+.run-outcome i,
+.budget-model-mix i {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-3);
+}
+.run-outcome i b,
+.budget-model-mix i b {
+  display: block;
+  height: 100%;
+  background: var(--nexus-blue);
+}
+.run-outcome > div strong {
+  color: var(--text-tertiary);
+  font: 0.5rem var(--font-mono);
+}
+.run-actions,
+.memory-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 15px;
+}
+.run-actions button,
+.memory-actions button {
+  border-color: rgba(74, 124, 247, 0.25);
+  background: rgba(74, 124, 247, 0.08);
+  color: var(--nexus-blue);
+}
+.run-message,
+.memory-message {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-left: 2px solid var(--nexus-gold);
+  margin: 13px 0 0;
+  padding-left: 10px;
+  color: var(--text-secondary);
+  font-size: 0.625rem;
+}
+.memory-loop > ol {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(120px, 1fr));
+  overflow-x: auto;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.memory-loop li {
+  display: grid;
+  min-height: 90px;
+  grid-template-columns: auto auto 1fr;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border-subtle);
+  padding: 11px;
+  background: var(--surface-2);
+}
+.memory-loop li span {
+  color: var(--nexus-blue);
+  font: 0.5rem var(--font-mono);
+}
+.memory-loop li svg {
+  color: var(--nexus-gold);
+}
+.memory-loop li strong {
+  font-size: 0.625rem;
+}
+.memory-filters {
+  display: grid;
+  grid-template-columns: minmax(250px, 1fr) 220px 190px auto;
+  align-items: end;
+  gap: 9px;
+  padding: 12px;
+}
+.memory-filters label {
+  display: grid;
+  gap: 5px;
+  color: var(--text-secondary);
+  font-size: 0.5625rem;
+  font-weight: 700;
+}
+.memory-filters label:first-child {
+  position: relative;
+}
+.memory-filters label:first-child svg {
+  position: absolute;
+  bottom: 12px;
+  left: 9px;
+  color: var(--text-tertiary);
+}
+.memory-filters input,
+.memory-filters select {
+  min-height: 38px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding-inline: 10px;
+  background: var(--surface-0);
+  color: var(--text-primary);
+  font-size: 0.625rem;
+}
+.memory-filters input {
+  padding-left: 28px;
+}
+.memory-filters > span {
+  align-self: center;
+  color: var(--text-tertiary);
+  font: 0.5625rem var(--font-mono);
+}
+.memory-layout {
+  display: grid;
+  grid-template-columns: minmax(270px, 0.65fr) minmax(0, 1.35fr);
+  gap: 14px;
+}
+.memory-register {
+  overflow: hidden;
+}
+.memory-register > header {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 15px;
+  color: var(--nexus-blue);
+  font: 0.5625rem var(--font-mono);
+}
+.memory-register > div {
+  display: grid;
+}
+.memory-register button {
+  display: grid;
+  gap: 6px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 14px;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+.memory-register button[aria-pressed="true"] {
+  background: rgba(74, 124, 247, 0.07);
+  box-shadow: inset 2px 0 var(--nexus-blue);
+}
+.memory-register button > span,
+.memory-register button > small {
+  color: var(--text-tertiary);
+  font: 0.5rem var(--font-mono);
+}
+.memory-register button > strong {
+  font-size: 0.6875rem;
+  line-height: 1.5;
+}
+.memory-register > aside {
+  padding: 20px;
+  color: var(--text-tertiary);
+  font-size: 0.625rem;
+  text-align: center;
+}
+.memory-state {
+  display: inline-flex;
+  width: max-content;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  padding: 5px 8px;
+  color: var(--text-tertiary);
+  font: 0.5625rem var(--font-mono);
+}
+.memory-state--active {
+  color: var(--nexus-success);
+}
+.memory-state--needs_review,
+.memory-state--stale,
+.memory-state--contradicted {
+  color: var(--nexus-warning);
+}
+.memory-trust-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  margin-top: 16px;
+  background: var(--border-subtle);
+}
+.memory-trust-grid > div {
+  display: grid;
+  min-height: 90px;
+  align-content: start;
+  gap: 7px;
+  padding: 12px;
+  background: var(--surface-2);
+}
+.memory-trust-grid strong,
+.memory-trust-grid time {
+  color: var(--text-secondary);
+  font-size: 0.625rem;
+}
+.memory-evidence,
+.memory-detail > section {
+  margin-top: 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 13px;
+  background: var(--surface-2);
+}
+.memory-evidence > div {
+  display: grid;
+  gap: 7px;
+  margin-top: 8px;
+}
+.memory-evidence article {
+  border-left: 2px solid var(--nexus-blue);
+  padding: 10px;
+  background: var(--surface-1);
+}
+.memory-evidence article header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.memory-evidence article strong {
+  font-size: 0.625rem;
+}
+.memory-evidence article p,
+.memory-detail > section p {
+  margin: 6px 0;
+  color: var(--text-secondary);
+  font-size: 0.625rem;
+}
+.memory-evidence article small,
+.memory-detail > section small {
+  color: var(--text-tertiary);
+  font-size: 0.5625rem;
+}
+.memory-conflicts article {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+  margin-top: 15px;
+  border: 1px solid rgba(245, 165, 36, 0.22);
+  border-radius: 11px;
+  padding: 14px;
+  background: rgba(245, 165, 36, 0.04);
+}
+.memory-conflicts article > div {
+  display: grid;
+  gap: 6px;
+}
+.memory-conflicts article > div strong {
+  font-size: 0.6875rem;
+}
+.memory-conflicts article > div small {
+  color: var(--text-tertiary);
+  font-size: 0.5625rem;
+}
+.memory-conflicts article > b {
+  color: var(--nexus-warning);
+  font: 0.5625rem var(--font-mono);
+}
+.memory-conflicts article > footer {
+  display: flex;
+  grid-column: 1/-1;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 10px;
+}
+.memory-conflicts article > footer p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.625rem;
+}
+.memory-conflicts article > footer strong {
+  color: var(--nexus-warning);
+  font: 0.5rem var(--font-mono);
+}
+.scenario-selector {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.scenario-selector button > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 7px;
+}
+.scenario-selector button b {
+  color: var(--text-secondary);
+  font: 0.5rem var(--font-mono);
+}
+.scenario-detail > p,
+.cost-aware-strategy > p,
+.budget-simulation > p {
+  color: var(--text-secondary);
+  font-size: 0.6875rem;
+  line-height: 1.65;
+}
+.scenario-detail__columns {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.scenario-detail__columns dt {
+  color: var(--text-tertiary);
+  font: 0.5rem var(--font-mono);
+}
+.scenario-detail__columns dd {
+  margin: 3px 0 0;
+}
+.scenario-detail__columns li b {
+  color: var(--nexus-blue);
+  font: 0.5rem var(--font-mono);
+}
+.scenario-projections {
+  margin-top: 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 14px;
+  background: var(--surface-0);
+}
+.scenario-projections > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.scenario-projections > header small {
+  color: var(--text-tertiary);
+  font-size: 0.5625rem;
+}
+.scenario-range {
+  display: grid;
+  grid-template-columns: 120px 1fr 150px;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+.scenario-range > span,
+.scenario-range > strong {
+  color: var(--text-secondary);
+  font-size: 0.5625rem;
+}
+.scenario-range > div {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--surface-3);
+}
+.scenario-range > div i {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--nexus-blue), var(--nexus-gold));
+}
+.scenario-truth-grid {
+  margin-top: 14px;
+}
+.scenario-truth-grid section > strong > svg {
+  width: 14px;
+  height: 14px;
+  color: var(--nexus-gold);
+}
+.scenario-detail > footer {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 9px;
+  margin-top: 14px;
+  border-left: 2px solid var(--nexus-gold);
+  padding-left: 11px;
+  color: var(--nexus-gold);
+}
+.scenario-detail > footer p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.625rem;
+}
+.scenario-detail > footer small {
+  color: var(--text-tertiary);
+  font-size: 0.5625rem;
+}
+.financial-truth-contract > dl {
+  display: grid;
+  align-content: center;
+  gap: 1px;
+  margin: 0;
+  border-left: 1px solid var(--border-subtle);
+  background: var(--border-subtle);
+}
+.financial-truth-contract dl > div {
+  display: grid;
+  align-content: center;
+  gap: 5px;
+  padding: 18px;
+  background: var(--surface-2);
+}
+.financial-truth-contract dt {
+  color: var(--text-tertiary);
+  font: 0.5625rem var(--font-mono);
+  text-transform: uppercase;
+}
+.financial-truth-contract dd {
+  margin: 0;
+  color: var(--nexus-error);
+  font: 1.1rem var(--font-heading);
+}
+.routing-chain {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(110px, 1fr));
+  overflow-x: auto;
+  margin: 16px 0;
+  padding: 0;
+  list-style: none;
+}
+.routing-chain li {
+  display: grid;
+  min-height: 72px;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--border-subtle);
+  padding: 9px;
+  background: var(--surface-2);
+}
+.routing-chain li span {
+  color: var(--nexus-blue);
+  font: 0.5rem var(--font-mono);
+}
+.routing-chain li strong {
+  font-size: 0.5rem;
+}
+.routing-chain li svg {
+  color: var(--nexus-gold);
+}
+.model-routing__layout {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.55fr) minmax(0, 1.45fr);
+  gap: 12px;
+}
+.model-routing__layout > nav {
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+}
+.model-routing__layout > nav button {
+  display: grid;
+  width: 100%;
+  gap: 5px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 13px;
+  background: var(--surface-2);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+.model-routing__layout > nav button[aria-pressed="true"] {
+  background: rgba(74, 124, 247, 0.09);
+  box-shadow: inset 2px 0 var(--nexus-blue);
+}
+.model-routing__layout nav span,
+.model-routing__layout nav small,
+.model-routing__layout article > header span {
+  color: var(--text-tertiary);
+  font: 0.5rem var(--font-mono);
+}
+.model-routing__layout nav strong {
+  font-size: 0.6875rem;
+}
+.model-routing__layout > article {
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 15px;
+  background: var(--surface-2);
+}
+.model-routing__layout article > header,
+.cost-aware-strategy article > header,
+.budget-simulation article > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 9px;
+}
+.model-routing__layout article h3,
+.budget-simulation article h3 {
+  margin: 4px 0;
+  font-size: 1rem;
+}
+.routing-candidates {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 12px;
+}
+.routing-candidate {
+  display: grid;
+  gap: 5px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 9px;
+  padding: 11px;
+  background: var(--surface-1);
+}
+.routing-candidate--selected {
+  border-color: rgba(212, 175, 55, 0.35);
+  background: rgba(212, 175, 55, 0.06);
+}
+.routing-candidate > svg {
+  color: var(--nexus-blue);
+}
+.routing-candidate > strong {
+  font-size: 0.6875rem;
+}
+.routing-candidate > span,
+.routing-candidate > small {
+  color: var(--text-tertiary);
+  font-size: 0.5rem;
+}
+.routing-candidate > b {
+  color: var(--nexus-gold);
+  font: 0.5rem var(--font-mono);
+}
+.routing-candidate dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  margin: 4px 0;
+  background: var(--border-subtle);
+}
+.routing-candidate dl > div {
+  padding: 6px;
+  background: var(--surface-2);
+}
+.routing-candidate dt {
+  color: var(--text-tertiary);
+  font: 0.45rem var(--font-mono);
+}
+.routing-candidate dd {
+  margin: 2px 0 0;
+  font-size: 0.5625rem;
+}
+.routing-reason {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  border-left: 2px solid var(--nexus-gold);
+  padding: 10px;
+  background: var(--surface-0);
+  color: var(--nexus-gold);
+}
+.routing-reason p,
+.routing-reason small {
+  display: block;
+  margin: 4px 0;
+  color: var(--text-secondary);
+  font-size: 0.625rem;
+}
+.routing-reason small {
+  color: var(--text-tertiary);
+  font-size: 0.5625rem;
+}
+.routing-reason > strong {
+  color: var(--text-primary);
+  font-size: 0.6875rem;
+}
+.cost-aware-strategy > header label {
+  min-width: 260px;
+}
+.cost-aware-strategy > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.cost-aware-strategy article {
+  display: grid;
+  gap: 11px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 11px;
+  padding: 15px;
+  background: var(--surface-2);
+}
+.cost-aware-strategy article > header > span {
+  color: var(--nexus-blue);
+  font: 0.625rem var(--font-mono);
+}
+.cost-aware-strategy article dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  margin: 0;
+  background: var(--border-subtle);
+}
+.cost-aware-strategy article dl > div {
+  padding: 9px;
+  background: var(--surface-1);
+}
+.cost-aware-strategy article dt {
+  color: var(--text-tertiary);
+  font: 0.5rem var(--font-mono);
+}
+.cost-aware-strategy article dd {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 4px 0 0;
+  font-size: 0.6875rem;
+}
+.cost-aware-strategy article dd svg {
+  width: 12px;
+  height: 12px;
+  color: var(--nexus-gold);
+}
+.cost-aware-strategy article > section {
+  display: grid;
+  gap: 5px;
+  border-left: 2px solid var(--nexus-gold);
+  padding-left: 9px;
+}
+.cost-aware-strategy article > section strong {
+  font-size: 0.625rem;
+}
+.cost-aware-strategy article > ul {
+  margin: 0;
+  padding-left: 16px;
+  color: var(--text-secondary);
+  font-size: 0.5625rem;
+}
+.budget-simulation > label {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: center;
+  gap: 9px;
+  margin-top: 16px;
+  color: var(--text-secondary);
+  font-size: 0.6875rem;
+}
+.budget-simulation > label strong {
+  color: var(--nexus-gold);
+}
+.budget-simulation input[type="range"] {
+  width: 100%;
+  accent-color: var(--nexus-blue);
+}
+.budget-simulation > article {
+  margin-top: 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 11px;
+  padding: 15px;
+  background: var(--surface-2);
+}
+.budget-simulation__metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  margin-top: 12px;
+  background: var(--border-subtle);
+}
+.budget-simulation__metrics section {
+  display: grid;
+  min-height: 90px;
+  align-content: center;
+  gap: 5px;
+  padding: 11px;
+  background: var(--surface-1);
+}
+.budget-simulation__metrics strong {
+  font: 1.1rem var(--font-heading);
+}
+.budget-simulation__metrics small {
+  color: var(--text-tertiary);
+  font-size: 0.5rem;
+}
+.budget-model-mix {
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+}
+.budget-model-mix > div {
+  display: grid;
+  grid-template-columns: 220px 1fr 45px;
+  align-items: center;
+  gap: 8px;
+}
+.budget-model-mix strong,
+.budget-model-mix > div > span {
+  font-size: 0.5625rem;
+}
+.roi-unavailable {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 22px;
+  background: linear-gradient(100deg, rgba(226, 85, 99, 0.05), transparent), var(--surface-1);
+}
+.roi-unavailable > svg {
+  color: var(--nexus-error);
+}
+.roi-unavailable h2 {
+  margin: 5px 0;
+  font-size: 1.35rem;
+}
+.roi-unavailable p,
+.roi-unavailable ul {
+  margin: 4px 0;
+  color: var(--text-secondary);
+  font-size: 0.625rem;
+}
+.preserved-ai-cost {
+  padding: 16px;
+}
+.preserved-ai-cost > summary {
+  color: var(--nexus-blue);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.preserved-ai-cost > div > p {
+  border-left: 2px solid var(--nexus-gold);
+  margin: 13px 0;
+  padding-left: 10px;
+  color: var(--text-secondary);
+  font-size: 0.625rem;
+}
+
+@media (min-width: 1920px) {
+  .autonomy-posture,
+  .financial-truth-contract { min-height: 280px; }
+}
+@media (max-width: 1280px) {
+  .autonomy-levels > ol { grid-template-columns: repeat(6, 150px); }
+  .run-detail-grid { grid-template-columns: 1fr 1fr; }
+  .scenario-selector { grid-template-columns: 1fr 1fr; }
+  .routing-candidates { grid-template-columns: 1fr 1fr; }
+  .memory-trust-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 1024px) {
+  .autonomy-posture,
+  .financial-truth-contract { grid-template-columns: 1fr; }
+  .autonomy-posture > aside,
+  .financial-truth-contract > dl { border-top: 1px solid var(--border-subtle); border-left: 0; }
+  .financial-truth-contract > dl { grid-template-columns: repeat(3, 1fr); }
+  .autonomy-domain-matrix > div { grid-template-columns: 1fr; }
+  .memory-layout,
+  .model-routing__layout { grid-template-columns: 1fr; }
+  .memory-register > div { grid-template-columns: 1fr 1fr; }
+  .scenario-detail__columns { grid-template-columns: 1fr 1fr; }
+  .cost-aware-strategy > div { grid-template-columns: 1fr; }
+  .budget-simulation__metrics { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 768px) {
+  .autonomy-levels > header,
+  .autonomy-domain-matrix > header,
+  .approval-policy-table > header,
+  .kill-switch > header,
+  .autonomy-audit > header,
+  .run-simulator > header,
+  .memory-loop > header,
+  .memory-detail > header,
+  .memory-conflicts > header,
+  .scenario-detail > header,
+  .scenario-comparison-table > header,
+  .model-routing > header,
+  .task-cost-table > header,
+  .cost-aware-strategy > header,
+  .budget-simulation > header { align-items: flex-start; flex-direction: column; }
+  .autonomy-levels > header p,
+  .approval-policy-table > header p,
+  .scenario-comparison-table > header p,
+  .task-cost-table > header p { text-align: left; }
+  .autonomy-run-preview { align-items: flex-start; flex-direction: column; }
+  .kill-switch__body { grid-template-columns: auto 1fr; }
+  .kill-switch__body > button,
+  .kill-switch__confirm { grid-column: 1/-1; }
+  .run-register { grid-template-columns: 1fr; }
+  .run-simulator__context,
+  .scenario-truth-grid { grid-template-columns: 1fr 1fr; }
+  .memory-filters { grid-template-columns: 1fr 1fr; }
+  .memory-register > div { grid-template-columns: 1fr; }
+  .memory-conflicts article { grid-template-columns: 1fr; }
+  .memory-conflicts article > b { text-align: center; }
+  .scenario-selector { grid-template-columns: 1fr; }
+  .scenario-detail__columns { grid-template-columns: 1fr; }
+  .scenario-detail > footer { grid-template-columns: auto 1fr; }
+  .scenario-detail > footer small { grid-column: 1/-1; }
+  .routing-candidates { grid-template-columns: 1fr; }
+  .routing-reason { grid-template-columns: auto 1fr; }
+  .routing-reason > strong { grid-column: 1/-1; }
+  .cost-aware-strategy > header label { width: 100%; min-width: 0; }
+  .budget-simulation > label { grid-template-columns: 1fr auto; }
+  .budget-simulation > label input { grid-column: 1/-1; }
+  .roi-unavailable { grid-template-columns: auto 1fr; }
+  .roi-unavailable .execution-reality { grid-column: 1/-1; }
+}
+@media (max-width: 520px) {
+  .autonomy-posture > div,
+  .autonomy-posture > aside,
+  .financial-truth-contract > div,
+  .autonomy-levels,
+  .autonomy-domain-matrix,
+  .approval-policy-table,
+  .kill-switch,
+  .autonomy-audit,
+  .run-simulator,
+  .memory-loop,
+  .memory-detail,
+  .memory-conflicts,
+  .scenario-detail,
+  .scenario-comparison-table,
+  .model-routing,
+  .task-cost-table,
+  .cost-aware-strategy,
+  .budget-simulation { padding: 17px; }
+  .autonomy-posture h2,
+  .financial-truth-contract h2 { font-size: 1.75rem; }
+  .autonomy-actions,
+  .autonomy-domain-matrix dl,
+  .run-simulator__context,
+  .run-detail-grid,
+  .memory-filters,
+  .memory-trust-grid,
+  .scenario-truth-grid,
+  .financial-truth-contract > dl,
+  .budget-simulation__metrics { grid-template-columns: 1fr; }
+  .run-actions,
+  .memory-actions { display: grid; }
+  .memory-conflicts article > footer { align-items: flex-start; flex-direction: column; }
+  .scenario-range { grid-template-columns: 92px 1fr; }
+  .scenario-range > strong { grid-column: 1/-1; }
+  .cost-aware-strategy article dl { grid-template-columns: 1fr; }
+  .budget-model-mix > div { grid-template-columns: 1fr 42px; }
+  .budget-model-mix i { grid-column: 1/-1; }
+}
+@media (max-width: 414px) {
+  .autonomy-posture h2,
+  .financial-truth-contract h2 { font-size: 1.6rem; }
+  .scenario-selector button { min-height: 100px; }
+}
+@media (max-width: 390px) {
+  .autonomy-domain-matrix article { padding: 13px; }
+  .kill-switch__body { grid-template-columns: 1fr; }
+}
+@media (max-width: 375px) {
+  .run-stage-map ol { min-width: 700px; }
+  .memory-loop > ol { grid-template-columns: repeat(6, 130px); }
+}
+@media (max-width: 340px) {
+  .autonomy-posture h2,
+  .financial-truth-contract h2 { font-size: 1.45rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .phase5-page *,
+  .phase5-page *::before,
+  .phase5-page *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

@@ -1,0 +1,14 @@
+<svg width="220" height="60" viewBox="0 0 220 60" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="logo-title">
+  <title id="logo-title">Agbofa Nexus AI</title>
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#E8C84A"/>
+      <stop offset="1" stop-color="#B8952E"/>
+    </linearGradient>
+  </defs>
+  <rect x="1" y="11" width="38" height="38" rx="11" fill="url(#gold)"/>
+  <path d="M12 35.5L20 20L28 35.5M15.5 29H24.5" stroke="#0A0A0A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="30.5" cy="20.5" r="2.5" fill="#0A0A0A"/>
+  <text x="50" y="31" font-family="Space Grotesk, Arial, sans-serif" font-weight="700" font-size="18" letter-spacing="2" fill="#D4AF37">AGBOFA</text>
+  <text x="51" y="44" font-family="Inter, Arial, sans-serif" font-weight="500" font-size="9" letter-spacing="3.2" fill="#A0A4A8">NEXUS AI</text>
+</svg>

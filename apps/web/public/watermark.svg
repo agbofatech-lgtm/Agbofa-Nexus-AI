@@ -1,0 +1,10 @@
+<svg width="320" height="112" viewBox="0 0 320 112" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="watermark-title">
+  <title id="watermark-title">Agbofa Nexus AI watermark</title>
+  <rect width="320" height="112" rx="18" fill="#080808" fill-opacity=".76"/>
+  <rect x="13" y="15" width="65" height="65" rx="18" fill="#D4AF37"/>
+  <path d="M29 66L45.5 29L63 66M35.5 53H57" stroke="#090909" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="65" cy="29" r="4.5" fill="#090909"/>
+  <text x="94" y="49" font-family="Space Grotesk, Arial, sans-serif" font-size="29" font-weight="700" letter-spacing="3" fill="#D4AF37">AGBOFA</text>
+  <text x="95" y="74" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="600" letter-spacing="4" fill="#FFFFFF" fill-opacity=".92">NEXUS AI</text>
+  <text x="16" y="99" font-family="Inter, Arial, sans-serif" font-size="9" letter-spacing="3" fill="#A0A4A8">AI-POWERED MEDIA</text>
+</svg>

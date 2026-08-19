@@ -1,0 +1,115 @@
+import type { PersonalizationIntelligenceData } from "@/types/personalization-intelligence";
+
+export const mockPersonalizationIntelligence: PersonalizationIntelligenceData =
+  {
+    metrics: [
+      {
+        id: "readers",
+        label: "Active readers",
+        value: 128_400,
+        unit: "",
+        change: 12.4,
+      },
+      {
+        id: "complete",
+        label: "Profile completeness",
+        value: 78.6,
+        unit: "%",
+        change: 4.1,
+      },
+      {
+        id: "engagement",
+        label: "Feed engagement",
+        value: 68.3,
+        unit: "%",
+        change: 7.8,
+      },
+      {
+        id: "confidence",
+        label: "Recommendation confidence",
+        value: 86.2,
+        unit: "%",
+        change: 2.3,
+      },
+    ],
+    segments: [
+      {
+        id: "segment-1",
+        name: "AI Builders",
+        readers: 38_200,
+        completeness: 91,
+        engagementRate: 74,
+        primaryInterest: "AI",
+      },
+      {
+        id: "segment-2",
+        name: "Ghana Decision Makers",
+        readers: 29_700,
+        completeness: 88,
+        engagementRate: 71,
+        primaryInterest: "Ghana",
+      },
+      {
+        id: "segment-3",
+        name: "Science Explorers",
+        readers: 24_100,
+        completeness: 76,
+        engagementRate: 64,
+        primaryInterest: "Science",
+      },
+      {
+        id: "segment-4",
+        name: "Business Signals",
+        readers: 21_800,
+        completeness: 69,
+        engagementRate: 61,
+        primaryInterest: "Business",
+      },
+    ],
+    topicAffinity: [
+      { topic: "AI", affinity: 92, emerging: false, confidence: 94 },
+      { topic: "Ghana", affinity: 86, emerging: false, confidence: 91 },
+      { topic: "Technology", affinity: 79, emerging: false, confidence: 88 },
+      { topic: "Clean Energy", affinity: 68, emerging: true, confidence: 81 },
+      { topic: "Space", affinity: 57, emerging: true, confidence: 76 },
+      { topic: "Business", affinity: 53, emerging: false, confidence: 84 },
+    ],
+    recommendations: [
+      {
+        title: "African Language Models Move Into Infrastructure",
+        category: "AI",
+        rank: 1,
+        ctr: 12.8,
+        confidence: 93,
+      },
+      {
+        title: "Ghana Digital Public Services Roadmap",
+        category: "Ghana",
+        rank: 2,
+        ctr: 10.7,
+        confidence: 91,
+      },
+      {
+        title: "Cross-Border 5G Trial Completes",
+        category: "Technology",
+        rank: 3,
+        ctr: 9.9,
+        confidence: 87,
+      },
+      {
+        title: "Climate-Tech Financing Models Evolve",
+        category: "Business",
+        rank: 4,
+        ctr: 8.4,
+        confidence: 82,
+      },
+    ],
+    feed: {
+      averageSessionMinutes: 11.8,
+      feedEngagement: 68.3,
+      contentDiversity: 74.5,
+      averageScrollDepth: 63.7,
+    },
+    mode: "demo",
+    dataStatus: "partial",
+  };
