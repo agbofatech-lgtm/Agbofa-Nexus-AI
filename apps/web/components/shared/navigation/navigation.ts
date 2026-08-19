@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  Binoculars,
   BookOpen,
   Bot,
   BrainCircuit,
@@ -11,6 +12,7 @@ import {
   Orbit,
   Radar,
   Scale,
+  ScanSearch,
   Send,
   Settings2,
   Sparkles,
@@ -149,10 +151,36 @@ export const navigationGroups: readonly NavigationGroup[] = [
         featureFlag: "distribution",
       },
       {
-        label: "Growth",
+        label: "Growth Overview",
         href: "/growth",
         icon: TrendingUp,
+        exact: true,
         featureFlag: "growth",
+      },
+      {
+        label: "Opportunities",
+        href: "/growth/opportunities",
+        icon: Binoculars,
+        featureFlag: "opportunities",
+      },
+      { label: "Trend Radar", href: "/growth/trends", icon: Radar },
+      {
+        label: "Content Gap",
+        href: "/growth/content-gap",
+        icon: ScanSearch,
+        featureFlag: "contentDNA",
+      },
+      {
+        label: "Audience Intelligence",
+        href: "/growth/audience",
+        icon: Users,
+        featureFlag: "audienceIntelligence",
+      },
+      {
+        label: "Competitors",
+        href: "/growth/competitors",
+        icon: BarChart3,
+        featureFlag: "competitorIntelligence",
       },
       {
         label: "Analytics",

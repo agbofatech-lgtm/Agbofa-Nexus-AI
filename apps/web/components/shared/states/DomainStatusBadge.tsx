@@ -20,7 +20,12 @@ export type DomainStatus =
   | "review"
   | "approved"
   | "completed"
-  | "failed";
+  | "failed"
+  | "discovered"
+  | "qualified"
+  | "prioritized"
+  | "rejected"
+  | "expired";
 const positive = new Set<DomainStatus>([
   "available",
   "success",
