@@ -3,8 +3,9 @@
 **Phase:** 01  
 **Subphase:** PROD-00  
 **Gap addressed:** GAP-SECRET-001  
-**Status:** IMPLEMENTED — STATIC VALIDATION ONLY IN ARENA  
-**Runtime verification:** REQUIRED in the developer environment  
+**Status:** IMPLEMENTED + STATIC INSPECTED + RUNTIME VERIFIED for `f2a0b410205cf5a0b3da00edbf3ad853d7b72cdf`  
+**Certification:** NOT CERTIFIED — awaiting certification review  
+**Runtime evidence:** `docs/implementation/phase01/PROD-00_RUNTIME_EVIDENCE.md`  
 
 ## What was implemented
 
