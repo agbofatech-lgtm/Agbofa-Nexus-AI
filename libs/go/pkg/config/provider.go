@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 )
 
@@ -79,55 +78,6 @@ func envSecretKey(name string) string {
 	normalized := strings.ToUpper(name)
 	normalized = strings.NewReplacer("/", "_", "-", "_", ".", "_").Replace(normalized)
 	return "AGBOFA_SECRET_" + normalized
-}
-
-// FileProvider reads secrets from a directory tree.
-//
-// Name "jwt/keys/k1/private_pem" maps to <dir>/jwt/keys/k1/private_pem and
-// also to <dir>/jwt--keys--k1--private_pem.
-type FileProvider struct {
-	dir  string
-	read FileReader
-}
-
-func NewFileProvider(dir string, read FileReader) *FileProvider {
-	if read == nil {
-		read = os.ReadFile
-	}
-	return &FileProvider{dir: dir, read: read}
-}
-
-func (p *FileProvider) Name() string { return "file" }
-
-func (p *FileProvider) Get(_ context.Context, name string) (Secret, error) {
-	if strings.TrimSpace(p.dir) == "" {
-		return Secret{}, fmt.Errorf("%w: secret file directory is not configured", ErrInvalidSecret)
-	}
-	if strings.Contains(name, "..") {
-		return Secret{}, fmt.Errorf("%w: illegal secret name", ErrInvalidSecret)
-	}
-	candidates := []string{
-		filepath.Join(p.dir, filepath.FromSlash(name)),
-		filepath.Join(p.dir, strings.NewReplacer("/", "--", "\\", "--").Replace(name)),
-	}
-	var last error
-	for _, path := range candidates {
-		raw, err := p.read(path)
-		if err != nil {
-			last = err
-			continue
-		}
-		value := strings.TrimSpace(string(raw))
-		if value == "" {
-			last = fmt.Errorf("%w: %s", ErrSecretNotFound, name)
-			continue
-		}
-		return NewSecret(name, value), nil
-	}
-	if last != nil {
-		return Secret{}, fmt.Errorf("%w: %s", ErrSecretNotFound, name)
-	}
-	return Secret{}, fmt.Errorf("%w: %s", ErrSecretNotFound, name)
 }
 
 // StaticProvider is a test-only in-memory provider. It must not be selected

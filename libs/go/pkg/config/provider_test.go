@@ -29,7 +29,10 @@ func TestFileProviderReadsNestedAndFlatNames(t *testing.T) {
 		"/secrets/jwt/keys/k1/public_pem": testPublicPEM,
 	}
 	provider := NewFileProvider("/secrets", func(name string) ([]byte, error) {
-		value, ok := files[name]
+		value, ok := files[filepathToSlash(name)]
+		if !ok {
+			value, ok = files[name]
+		}
 		if !ok {
 			return nil, errors.New("not found")
 		}
@@ -56,6 +59,31 @@ func TestFileProviderReadsNestedAndFlatNames(t *testing.T) {
 	if !strings.Contains(got.Reveal(), "PRIVATE KEY") {
 		t.Fatal("expected private pem")
 	}
+}
+
+func TestFileCandidatesIncludeSlashAndNativeNestedPaths(t *testing.T) {
+	provider := NewFileProvider("/secrets", func(string) ([]byte, error) {
+		return nil, errors.New("not used")
+	})
+	candidates, err := provider.fileCandidates("jwt/keys/k1/public_pem")
+	if err != nil {
+		t.Fatalf("candidates: %v", err)
+	}
+	if !containsString(candidates, "/secrets/jwt/keys/k1/public_pem") {
+		t.Fatalf("missing slash-form nested path in %v", candidates)
+	}
+	if !containsString(candidates, "/secrets/jwt--keys--k1--public_pem") {
+		t.Fatalf("missing slash-form flat path in %v", candidates)
+	}
+}
+
+func containsString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
 }
 
 func TestFileProviderRejectsTraversal(t *testing.T) {
