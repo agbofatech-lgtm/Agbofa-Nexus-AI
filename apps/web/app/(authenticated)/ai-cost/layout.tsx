@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "@/styles/business.css";
+import "@/styles/strategy-os.css";
+import "@/styles/phase-five.css";
 export const metadata: Metadata = {
   title: "AI Cost Intelligence",
   robots: { index: false, follow: false },

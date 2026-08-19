@@ -1,4 +1,5 @@
-import { AICostDashboard } from "@/components/features/ai-cost/AICostDashboard";
+import { AIEconomicsExperience } from "@/components/features/ai-cost/AIEconomicsExperience";
+
 export default function Page() {
-  return <AICostDashboard />;
+  return <AIEconomicsExperience />;
 }

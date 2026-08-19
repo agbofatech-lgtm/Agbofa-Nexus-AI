@@ -15,27 +15,27 @@ import { DataStateBanner } from "@/components/features/business/DataStateBanner"
 import { WorkflowRail } from "@/components/shared/operations/WorkflowRail";
 import { useAgents } from "@/hooks/useAgents";
 import { useBusinessModule } from "@/hooks/useBusinessModule";
-export function AICostDashboard() {
+export function AICostDashboard({ embedded = false }: { embedded?: boolean }) {
   const { value, retry } = useBusinessModule("aiCost");
   const agents = useAgents();
   if (value.state === "loading")
     return (
       <>
-        <AICostHeader />
+        {!embedded ? <AICostHeader /> : null}
         <AICostSkeleton />
       </>
     );
   if (value.state === "error")
     return (
       <>
-        <AICostHeader />
+        {!embedded ? <AICostHeader /> : null}
         <AICostErrorState message={value.error ?? ""} onRetry={retry} />
       </>
     );
   if (!value.data)
     return (
       <>
-        <AICostHeader />
+        {!embedded ? <AICostHeader /> : null}
         <AICostEmptyState />
       </>
     );
@@ -43,7 +43,7 @@ export function AICostDashboard() {
   const icons = [CircleDollarSign, WalletCards, Hash, Gauge] as const;
   return (
     <div className="business-page">
-      <AICostHeader />
+      {!embedded ? <AICostHeader /> : null}
       <DataStateBanner value={value} />
       <WorkflowRail
         description="Provider billing and token authority are unavailable."

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "@/styles/intelligence.css";
+import "@/styles/strategy-os.css";
+import "@/styles/phase-five.css";
 export const metadata: Metadata = {
   title: "AI Control Center",
   robots: { index: false, follow: false },

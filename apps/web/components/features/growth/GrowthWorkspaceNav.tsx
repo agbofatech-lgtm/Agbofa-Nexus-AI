@@ -4,7 +4,10 @@ import {
   Binoculars,
   BrainCircuit,
   GanttChart,
+  GitCompareArrows,
   LayoutDashboard,
+  Library,
+  PlayCircle,
   Radar,
   Scale,
   ScanSearch,
@@ -23,6 +26,9 @@ const links = [
   { label: "Strategy", href: "/growth/strategy", icon: BrainCircuit },
   { label: "Decisions", href: "/growth/decisions", icon: Scale },
   { label: "Timeline", href: "/growth/strategy/timeline", icon: GanttChart },
+  { label: "Runs", href: "/growth/runs", icon: PlayCircle },
+  { label: "Memory", href: "/growth/memory", icon: Library },
+  { label: "Scenarios", href: "/growth/scenarios", icon: GitCompareArrows },
 ] as const;
 export function GrowthWorkspaceNav() {
   const path = usePathname();

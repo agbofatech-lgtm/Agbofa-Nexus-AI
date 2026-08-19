@@ -81,9 +81,10 @@ export const phase1FoundationFixture: Phase1FoundationFixture = {
     {
       id: "autonomy",
       label: "Autonomy",
-      description: "Frontend policy contracts only",
-      state: "blocked",
-      reality: "execution-unavailable",
+      description:
+        "Simulated domain policies, approval gates, runs, intervention controls, and kill-switch UX; backend enforcement unavailable",
+      state: "simulated",
+      reality: "simulation",
       featureFlag: "autonomy",
       executionFlag: "autonomousExecution",
       dependency: "Authorized agent runtime and enforcement service",
@@ -91,11 +92,31 @@ export const phase1FoundationFixture: Phase1FoundationFixture = {
     {
       id: "memory",
       label: "Persistent AI memory",
-      description: "Frontend memory contracts only",
-      state: "blocked",
-      reality: "execution-unavailable",
+      description:
+        "Simulated evidence-backed memory, conflicts, trust, review, and learning loop; persistence unavailable",
+      state: "simulated",
+      reality: "simulation",
       featureFlag: "memory",
       dependency: "Tenant-scoped persistent memory service",
+    },
+    {
+      id: "scenarios",
+      label: "Scenario Intelligence",
+      description:
+        "Deterministic what-if comparisons with assumptions, ranges, confidence, risk, and no guarantees",
+      state: "simulated",
+      reality: "simulation",
+      featureFlag: "scenarioSimulation",
+      dependency: "Authoritative forecasting and scenario execution service",
+    },
+    {
+      id: "ai-economics",
+      label: "AI Economics",
+      description:
+        "Estimated token, model, quality, latency, and cost trade-offs; billing and ROI authority unavailable",
+      state: "simulated",
+      reality: "simulation",
+      dependency: "Authoritative provider usage, billing, attribution, and revenue sources",
     },
     {
       id: "publishing",

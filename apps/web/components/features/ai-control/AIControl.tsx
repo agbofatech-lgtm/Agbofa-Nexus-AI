@@ -2,6 +2,7 @@
 
 import { AIControlHeader } from "@/components/features/ai-control/AIControlHeader";
 import { AIControlSkeleton } from "@/components/features/ai-control/AIControlSkeleton";
+import { AIControlWorkspaceNav } from "@/components/features/ai-control/AIControlWorkspaceNav";
 import { FallbackRouting } from "@/components/features/ai-control/FallbackRouting";
 import { ModelSelector } from "@/components/features/ai-control/ModelSelector";
 import { ProviderStatus } from "@/components/features/ai-control/ProviderStatus";
@@ -16,6 +17,7 @@ export function AIControl() {
     return (
       <>
         <AIControlHeader />
+        <AIControlWorkspaceNav />
         <AIControlSkeleton />
       </>
     );
@@ -23,6 +25,7 @@ export function AIControl() {
     return (
       <>
         <AIControlHeader />
+        <AIControlWorkspaceNav />
         <IntelligenceState
           message={control.error}
           onRetry={control.retry}
@@ -34,6 +37,7 @@ export function AIControl() {
     return (
       <>
         <AIControlHeader />
+        <AIControlWorkspaceNav />
         <IntelligenceState state="unavailable" />
       </>
     );
@@ -46,6 +50,7 @@ export function AIControl() {
   return (
     <div className="intelligence-page">
       <AIControlHeader />
+      <AIControlWorkspaceNav />
       <WorkflowRail
         description="Provider credentials, routing, and authoritative usage are not connected."
         stages={control.data.workflow}

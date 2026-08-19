@@ -8,7 +8,9 @@ import {
   Coins,
   Factory,
   FlaskConical,
+  GitCompareArrows,
   LayoutDashboard,
+  Library,
   Newspaper,
   Orbit,
   Radar,
@@ -114,6 +116,12 @@ export const navigationGroups: readonly NavigationGroup[] = [
     items: [
       { label: "AI Control", href: "/ai-control", icon: BrainCircuit },
       {
+        label: "Autonomy Simulation",
+        href: "/ai-control/autonomy",
+        icon: BrainCircuit,
+        featureFlag: "autonomy",
+      },
+      {
         label: "Agents",
         href: "/agents",
         icon: Bot,
@@ -182,6 +190,18 @@ export const navigationGroups: readonly NavigationGroup[] = [
         href: "/growth/decisions",
         icon: Scale,
         featureFlag: "decisions",
+      },
+      {
+        label: "Memory & Learning",
+        href: "/growth/memory",
+        icon: Library,
+        featureFlag: "memory",
+      },
+      {
+        label: "Scenario Intelligence",
+        href: "/growth/scenarios",
+        icon: GitCompareArrows,
+        featureFlag: "scenarioSimulation",
       },
       { label: "Trend Radar", href: "/growth/trends", icon: Radar },
       {

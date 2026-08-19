@@ -11,6 +11,7 @@ import type {
 export type StrategyExecutionReality =
   | "PLANNED"
   | "SIMULATED"
+  | "ESTIMATED"
   | "UNAVAILABLE"
   | "ACTUAL";
 export type StrategyRiskLevel = "LOW" | "MEDIUM" | "HIGH";
