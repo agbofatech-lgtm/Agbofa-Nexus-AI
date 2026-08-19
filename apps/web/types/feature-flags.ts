@@ -1,6 +1,8 @@
 export type FrontendFeatureFlag =
   | "growth"
   | "strategyDirector"
+  | "decisions"
+  | "agents"
   | "opportunities"
   | "contentDNA"
   | "audienceIntelligence"

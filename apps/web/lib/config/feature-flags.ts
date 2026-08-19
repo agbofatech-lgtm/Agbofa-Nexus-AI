@@ -6,7 +6,9 @@ import type {
 
 export const frontendFeatureFlags: FeatureFlagMap<FrontendFeatureFlag> = {
   growth: true,
-  strategyDirector: false,
+  strategyDirector: true,
+  decisions: true,
+  agents: true,
   opportunities: true,
   contentDNA: true,
   audienceIntelligence: true,

@@ -8,6 +8,7 @@ import { AgentGrid } from "@/components/features/agents/AgentGrid";
 import { AgentHeader } from "@/components/features/agents/AgentHeader";
 import { AgentSkeleton } from "@/components/features/agents/AgentSkeleton";
 import { AgentSummaryCards } from "@/components/features/agents/AgentSummaryCards";
+import { AgentWorkforceNav } from "@/components/features/agents/AgentWorkforceNav";
 import { useAgents } from "@/hooks/useAgents";
 import { useAgentsStore } from "@/stores/agents-store";
 import type { AgentCategory } from "@/types/agents";
@@ -35,6 +36,7 @@ export function AgentCategoryView({
         description={description}
         title={title}
       />
+      <AgentWorkforceNav />
       <div className="agent-discrepancy-note" role="note">
         {discrepancyNote}
       </div>

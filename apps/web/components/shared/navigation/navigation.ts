@@ -84,6 +84,7 @@ export const primaryNavigation: readonly PrimaryNavigationItem[] = [
     label: "Agents",
     href: "/agents",
     icon: Bot,
+    featureFlag: "agents",
     matchPrefixes: ["/agents"],
   },
   {
@@ -112,7 +113,13 @@ export const navigationGroups: readonly NavigationGroup[] = [
     description: "AI operations, signals, and specialist workforces",
     items: [
       { label: "AI Control", href: "/ai-control", icon: BrainCircuit },
-      { label: "Agents", href: "/agents", icon: Bot, badge: "28" },
+      {
+        label: "Agents",
+        href: "/agents",
+        icon: Bot,
+        badge: "28",
+        featureFlag: "agents",
+      },
       { label: "Predictive", href: "/predictive", icon: Orbit },
       { label: "Personalization", href: "/personalization", icon: Users },
       { label: "Multimodal", href: "/multimodal", icon: Sparkles },
@@ -163,6 +170,18 @@ export const navigationGroups: readonly NavigationGroup[] = [
         href: "/growth/opportunities",
         icon: Binoculars,
         featureFlag: "opportunities",
+      },
+      {
+        label: "Strategy Director",
+        href: "/growth/strategy",
+        icon: BrainCircuit,
+        featureFlag: "strategyDirector",
+      },
+      {
+        label: "Decision Center",
+        href: "/growth/decisions",
+        icon: Scale,
+        featureFlag: "decisions",
       },
       { label: "Trend Radar", href: "/growth/trends", icon: Radar },
       {

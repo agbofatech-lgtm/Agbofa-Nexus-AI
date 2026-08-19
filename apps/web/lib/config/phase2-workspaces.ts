@@ -64,7 +64,7 @@ export const futureWorkspaceRoutes: readonly FutureWorkspaceRoute[] = [
     label: "Strategy Director",
     href: "/growth/strategy",
     workspace: "strategy",
-    readiness: "foundation",
+    readiness: "existing",
     featureFlag: "strategyDirector",
   },
   {
@@ -72,7 +72,15 @@ export const futureWorkspaceRoutes: readonly FutureWorkspaceRoute[] = [
     label: "Decision Center",
     href: "/growth/decisions",
     workspace: "strategy",
-    readiness: "future",
+    readiness: "existing",
+    featureFlag: "decisions",
+  },
+  {
+    id: "timeline",
+    label: "Strategy Timeline",
+    href: "/growth/strategy/timeline",
+    workspace: "strategy",
+    readiness: "existing",
     featureFlag: "strategyDirector",
   },
   {

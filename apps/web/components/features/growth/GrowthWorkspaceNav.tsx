@@ -2,8 +2,11 @@
 import {
   BarChart3,
   Binoculars,
+  BrainCircuit,
+  GanttChart,
   LayoutDashboard,
   Radar,
+  Scale,
   ScanSearch,
   Users,
 } from "lucide-react";
@@ -17,16 +20,20 @@ const links = [
   { label: "Content Gap", href: "/growth/content-gap", icon: ScanSearch },
   { label: "Audience", href: "/growth/audience", icon: Users },
   { label: "Competitors", href: "/growth/competitors", icon: BarChart3 },
+  { label: "Strategy", href: "/growth/strategy", icon: BrainCircuit },
+  { label: "Decisions", href: "/growth/decisions", icon: Scale },
+  { label: "Timeline", href: "/growth/strategy/timeline", icon: GanttChart },
 ] as const;
 export function GrowthWorkspaceNav() {
   const path = usePathname();
+  const activeHref = [...links]
+    .filter((item) => path === item.href || path.startsWith(`${item.href}/`))
+    .sort((first, second) => second.href.length - first.href.length)[0]?.href;
   return (
     <nav aria-label="Growth Intelligence sections" className="growth-os-nav">
       {links.map((x) => {
         const I = x.icon;
-        const active =
-          path === x.href ||
-          (x.href !== "/growth" && path.startsWith(`${x.href}/`));
+        const active = x.href === activeHref;
         return (
           <Link
             key={x.href}

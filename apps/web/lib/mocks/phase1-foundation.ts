@@ -70,9 +70,10 @@ export const phase1FoundationFixture: Phase1FoundationFixture = {
     {
       id: "strategy",
       label: "Strategy Director",
-      description: "Frontend contracts only; engine unavailable",
-      state: "blocked",
-      reality: "execution-unavailable",
+      description:
+        "Simulated recommendations, plans, decisions, timelines, and workforce projections; execution engine unavailable",
+      state: "simulated",
+      reality: "simulation",
       featureFlag: "strategyDirector",
       executionFlag: "strategyExecution",
       dependency: "Backend strategy engine and approval service",
