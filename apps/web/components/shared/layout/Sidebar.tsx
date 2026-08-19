@@ -16,6 +16,7 @@ import { NavItem } from "@/components/shared/navigation/NavItem";
 import {
   getNavigationContext,
   getNavigationContextDetails,
+  isNavigationItemVisible,
   navigationGroups,
 } from "@/components/shared/navigation/navigation";
 import { cn } from "@/lib/utils/cn";
@@ -100,7 +101,7 @@ export function Sidebar({
               collapsed={collapsed}
               label={group.label}
             >
-              {group.items.map((item) => {
+              {group.items.filter(isNavigationItemVisible).map((item) => {
                 const Icon = item.icon;
                 return (
                   <NavItem

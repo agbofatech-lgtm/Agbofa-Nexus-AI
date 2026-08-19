@@ -21,13 +21,11 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { isFrontendFeatureEnabled } from "@/lib/config/feature-flags";
+import type { FrontendFeatureFlag } from "@/types/feature-flags";
+
 export type NavigationContext =
-  | "command"
-  | "reader"
-  | "intelligence"
-  | "content"
-  | "business"
-  | "system";
+  "command" | "reader" | "intelligence" | "content" | "business" | "system";
 
 export interface NavigationItem {
   label: string;
@@ -35,6 +33,7 @@ export interface NavigationItem {
   icon: LucideIcon;
   badge?: string;
   exact?: boolean;
+  featureFlag?: FrontendFeatureFlag;
 }
 
 export interface PrimaryNavigationItem extends NavigationItem {
@@ -88,12 +87,14 @@ export const primaryNavigation: readonly PrimaryNavigationItem[] = [
     label: "Distribution",
     href: "/distribution",
     icon: Send,
+    featureFlag: "distribution",
     matchPrefixes: ["/distribution", "/growth", "/monetization"],
   },
   {
     label: "Analytics",
     href: "/analytics",
     icon: BarChart3,
+    featureFlag: "analytics",
     matchPrefixes: ["/analytics", "/ai-cost"],
   },
 ] as const;
@@ -141,10 +142,30 @@ export const navigationGroups: readonly NavigationGroup[] = [
     label: "Business",
     description: "Distribution, growth, analytics, and revenue intelligence",
     items: [
-      { label: "Distribution", href: "/distribution", icon: Send },
-      { label: "Growth", href: "/growth", icon: TrendingUp },
-      { label: "Analytics", href: "/analytics", icon: BarChart3 },
-      { label: "Monetization", href: "/monetization", icon: WalletCards },
+      {
+        label: "Distribution",
+        href: "/distribution",
+        icon: Send,
+        featureFlag: "distribution",
+      },
+      {
+        label: "Growth",
+        href: "/growth",
+        icon: TrendingUp,
+        featureFlag: "growth",
+      },
+      {
+        label: "Analytics",
+        href: "/analytics",
+        icon: BarChart3,
+        featureFlag: "analytics",
+      },
+      {
+        label: "Monetization",
+        href: "/monetization",
+        icon: WalletCards,
+        featureFlag: "monetization",
+      },
     ],
   },
   {
@@ -237,6 +258,10 @@ export function isPrimaryNavigationActive(
   return item.matchPrefixes.some((prefix) =>
     pathnameMatchesPrefix(pathname, prefix),
   );
+}
+
+export function isNavigationItemVisible(item: NavigationItem): boolean {
+  return item.featureFlag ? isFrontendFeatureEnabled(item.featureFlag) : true;
 }
 
 export function isNavigationItemActive(

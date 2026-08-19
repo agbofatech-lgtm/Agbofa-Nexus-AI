@@ -11,8 +11,9 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
-import { ControlPlaneDirectory } from "@/components/features/settings/ControlPlaneDirectory";
 import { DataAuthorityBadge } from "@/components/features/business/DataAuthorityBadge";
+import { ControlPlaneDirectory } from "@/components/features/settings/ControlPlaneDirectory";
+import { Phase1FoundationStatus } from "@/components/shared/foundation/Phase1FoundationStatus";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -61,6 +62,7 @@ export function SettingsWorkspace() {
         </div>
       </aside>
 
+      <Phase1FoundationStatus />
       <ControlPlaneDirectory />
       <div className="settings-layout">
         <section className="settings-panel settings-panel--primary">

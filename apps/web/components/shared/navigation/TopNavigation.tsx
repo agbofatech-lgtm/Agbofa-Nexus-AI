@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import {
+  isNavigationItemVisible,
   isPrimaryNavigationActive,
   primaryNavigation,
 } from "@/components/shared/navigation/navigation";
@@ -14,7 +15,7 @@ export function TopNavigation() {
 
   return (
     <nav aria-label="Primary workspaces" className="top-navigation">
-      {primaryNavigation.map((item) => {
+      {primaryNavigation.filter(isNavigationItemVisible).map((item) => {
         const Icon = item.icon;
         const active = isPrimaryNavigationActive(pathname, item);
         return (

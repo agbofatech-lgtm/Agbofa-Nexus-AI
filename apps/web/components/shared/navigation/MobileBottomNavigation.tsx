@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import {
+  isNavigationItemVisible,
   isPrimaryNavigationActive,
   mobileNavigation,
 } from "@/components/shared/navigation/navigation";
@@ -20,13 +21,14 @@ export function MobileBottomNavigation({
   onOpenMore,
 }: MobileBottomNavigationProps) {
   const pathname = usePathname();
-  const anyPrimaryActive = mobileNavigation.some((item) =>
+  const visibleNavigation = mobileNavigation.filter(isNavigationItemVisible);
+  const anyPrimaryActive = visibleNavigation.some((item) =>
     isPrimaryNavigationActive(pathname, item),
   );
 
   return (
     <nav aria-label="Mobile workspaces" className="mobile-bottom-navigation">
-      {mobileNavigation.map((item) => {
+      {visibleNavigation.map((item) => {
         const Icon = item.icon;
         const active = isPrimaryNavigationActive(pathname, item);
         return (

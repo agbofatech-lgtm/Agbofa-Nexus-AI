@@ -1,8 +1,10 @@
 import {
+  BarChart3,
   Bell,
   Bot,
   Code2,
   CreditCard,
+  DatabaseZap,
   PlugZap,
   Send,
   ShieldCheck,
@@ -106,6 +108,51 @@ const groups: readonly Group[] = [
       {
         label: "Automation",
         detail: "Publishing integration required",
+        status: "unavailable",
+      },
+    ],
+  },
+  {
+    id: "analytics",
+    label: "Analytics",
+    icon: BarChart3,
+    items: [
+      {
+        label: "Measurement",
+        detail: "Development analytics workspace",
+        status: "development",
+        href: "/analytics",
+      },
+      {
+        label: "Data sources",
+        detail: "Live analytics adapter unavailable",
+        status: "unavailable",
+      },
+      {
+        label: "Exports",
+        detail: "Export integration required",
+        status: "unavailable",
+      },
+    ],
+  },
+  {
+    id: "data-privacy",
+    label: "Data & Privacy",
+    icon: DatabaseZap,
+    items: [
+      {
+        label: "Provenance",
+        detail: "Contextual source disclosure enabled",
+        status: "available",
+      },
+      {
+        label: "Data retention",
+        detail: "Backend policy required",
+        status: "unavailable",
+      },
+      {
+        label: "Consent",
+        detail: "Consent service unavailable",
         status: "unavailable",
       },
     ],
