@@ -7,7 +7,7 @@ import { mockStories } from "@/lib/mocks/stories";
 import type { DataState } from "@/types/data-state";
 import type { StrategyDirectorData } from "@/types/strategy-director";
 
-const validatedStrategyWorkspace = adaptStrategyDirector(
+export const validatedStrategyWorkspace = adaptStrategyDirector(
   strategyDirectorFixture,
   {
     agents: mockAgents,
@@ -34,6 +34,9 @@ function delay(ms: number, signal?: AbortSignal) {
 }
 
 export const strategyDirectorService = {
+  snapshot(): DataState<StrategyDirectorData> {
+    return validatedStrategyWorkspace;
+  },
   async getWorkspace(
     signal?: AbortSignal,
   ): Promise<DataState<StrategyDirectorData>> {

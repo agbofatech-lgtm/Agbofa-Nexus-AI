@@ -8,7 +8,7 @@ import { strategyDirectorFixture } from "@/lib/mocks/strategy-director";
 import type { DataState } from "@/types/data-state";
 import type { Phase5ExperienceData } from "@/types/phase5-experience";
 
-const validatedPhase5Workspace = adaptPhase5Experience(
+export const validatedPhase5Workspace = adaptPhase5Experience(
   phase5ExperienceFixture,
   {
     agents: mockAgents,
@@ -36,6 +36,9 @@ function delay(ms: number, signal?: AbortSignal) {
 }
 
 export const phase5ExperienceService = {
+  snapshot(): DataState<Phase5ExperienceData> {
+    return validatedPhase5Workspace;
+  },
   async getWorkspace(
     signal?: AbortSignal,
   ): Promise<DataState<Phase5ExperienceData>> {

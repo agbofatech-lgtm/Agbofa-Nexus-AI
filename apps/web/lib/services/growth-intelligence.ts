@@ -19,14 +19,19 @@ function delay(ms: number, signal?: AbortSignal) {
     );
   });
 }
+const validatedGrowthWorkspace = adaptGrowthIntelligence(
+  growthIntelligenceFixture,
+  { stories: mockStories, agents: mockAgents },
+);
+
 export const growthIntelligenceService = {
+  snapshot(): DataState<GrowthIntelligenceData> {
+    return validatedGrowthWorkspace;
+  },
   async getWorkspace(
     signal?: AbortSignal,
   ): Promise<DataState<GrowthIntelligenceData>> {
     await delay(420, signal);
-    return adaptGrowthIntelligence(growthIntelligenceFixture, {
-      stories: mockStories,
-      agents: mockAgents,
-    });
+    return validatedGrowthWorkspace;
   },
 };

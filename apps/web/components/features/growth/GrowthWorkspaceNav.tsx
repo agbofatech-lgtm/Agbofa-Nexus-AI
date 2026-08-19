@@ -17,7 +17,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
 const links = [
-  { label: "Overview", href: "/growth", icon: LayoutDashboard },
+  { label: "Executive", href: "/growth", icon: LayoutDashboard },
   { label: "Opportunities", href: "/growth/opportunities", icon: Binoculars },
   { label: "Trends", href: "/growth/trends", icon: Radar },
   { label: "Content Gap", href: "/growth/content-gap", icon: ScanSearch },

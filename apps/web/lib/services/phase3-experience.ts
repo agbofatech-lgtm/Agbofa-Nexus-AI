@@ -21,14 +21,19 @@ function delay(ms: number, signal?: AbortSignal) {
   });
 }
 
+const validatedPhase3Workspace = adaptPhase3Experience(
+  phase3ExperienceFixture,
+  { stories: mockStories, agents: mockAgents },
+);
+
 export const phase3ExperienceService = {
+  snapshot(): DataState<Phase3ExperienceData> {
+    return validatedPhase3Workspace;
+  },
   async getWorkspace(
     signal?: AbortSignal,
   ): Promise<DataState<Phase3ExperienceData>> {
     await delay(360, signal);
-    return adaptPhase3Experience(phase3ExperienceFixture, {
-      stories: mockStories,
-      agents: mockAgents,
-    });
+    return validatedPhase3Workspace;
   },
 };

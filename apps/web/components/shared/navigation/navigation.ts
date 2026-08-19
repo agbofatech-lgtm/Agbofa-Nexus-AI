@@ -167,7 +167,7 @@ export const navigationGroups: readonly NavigationGroup[] = [
         featureFlag: "distribution",
       },
       {
-        label: "Growth Overview",
+        label: "Executive Growth OS",
         href: "/growth",
         icon: TrendingUp,
         exact: true,

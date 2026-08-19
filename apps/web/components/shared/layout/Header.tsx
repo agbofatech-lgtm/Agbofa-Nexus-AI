@@ -15,58 +15,14 @@ import {
   User,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { TopNavigation } from "@/components/shared/navigation/TopNavigation";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { useAuth } from "@/hooks/useAuth";
+import { useGlobalCommandSearch } from "@/hooks/useGlobalCommandSearch";
 
-const searchableDestinations = [
-  { label: "Command overview", href: "/dashboard", group: "Command" },
-  { label: "Reader", href: "/reader", group: "Reader" },
-  { label: "AI Control Center", href: "/ai-control", group: "Intelligence" },
-  { label: "Agent workforce", href: "/agents", group: "Intelligence" },
-  {
-    label: "Predictive Intelligence",
-    href: "/predictive",
-    group: "Intelligence",
-  },
-  {
-    label: "Personalization Intelligence",
-    href: "/personalization",
-    group: "Intelligence",
-  },
-  {
-    label: "Multimodal Intelligence",
-    href: "/multimodal",
-    group: "Intelligence",
-  },
-  { label: "Newsroom", href: "/newsroom", group: "Newsroom" },
-  { label: "Truth Engine", href: "/truth", group: "Newsroom" },
-  { label: "Distribution", href: "/distribution", group: "Distribution" },
-  { label: "Growth Command Center", href: "/growth", group: "Growth" },
-  {
-    label: "Opportunity Center",
-    href: "/growth/opportunities",
-    group: "Growth",
-  },
-  { label: "Trend Radar", href: "/growth/trends", group: "Growth" },
-  { label: "Content Gap", href: "/growth/content-gap", group: "Growth" },
-  { label: "Audience Intelligence", href: "/growth/audience", group: "Growth" },
-  {
-    label: "Competitor Intelligence",
-    href: "/growth/competitors",
-    group: "Growth",
-  },
-  { label: "Monetization", href: "/monetization", group: "Distribution" },
-  { label: "Analytics", href: "/analytics", group: "Analytics" },
-  { label: "AI Cost Intelligence", href: "/ai-cost", group: "Analytics" },
-  { label: "Workspace settings", href: "/settings", group: "Settings" },
-  { label: "Profile", href: "/profile", group: "Settings" },
-  { label: "Administration", href: "/admin", group: "Settings" },
-  { label: "Tenant Management", href: "/admin/tenants", group: "Settings" },
-  { label: "User Management", href: "/admin/users", group: "Settings" },
-] as const;
+
 
 interface HeaderProps {
   navigationOpen: boolean;
@@ -90,15 +46,11 @@ export function Header({ navigationOpen, onOpenNavigation }: HeaderProps) {
   const headerRef = useRef<HTMLElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const searchResults = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    if (!normalized) return [];
-    return searchableDestinations
-      .filter((item) =>
-        `${item.label} ${item.group}`.toLowerCase().includes(normalized),
-      )
-      .slice(0, 6);
-  }, [query]);
+  const {
+    results: searchResults,
+    loading: searchLoading,
+    error: searchError,
+  } = useGlobalCommandSearch(query);
 
   useEffect(() => {
     const closeMenus = (event: PointerEvent) => {
@@ -171,7 +123,7 @@ export function Header({ navigationOpen, onOpenNavigation }: HeaderProps) {
             size={16}
           />
           <label className="sr-only" htmlFor="global-search">
-            Search workspace destinations
+            Search stories, intelligence, opportunities, agents, strategies, and workspace destinations
           </label>
           <input
             ref={searchInputRef}
@@ -179,7 +131,7 @@ export function Header({ navigationOpen, onOpenNavigation }: HeaderProps) {
             autoComplete="off"
             id="global-search"
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search stories, agents, workflows"
+            placeholder="Search Nexus OS"
             type="search"
             value={query}
           />
@@ -200,10 +152,18 @@ export function Header({ navigationOpen, onOpenNavigation }: HeaderProps) {
               id="global-search-results"
               role="listbox"
             >
-              {searchResults.length ? (
+              {searchLoading ? (
+                <p className="search-results__empty" role="status">
+                  Building frontend search projection…
+                </p>
+              ) : searchError ? (
+                <p className="search-results__empty" role="alert">
+                  {searchError}
+                </p>
+              ) : searchResults.length ? (
                 searchResults.map((result) => (
                   <button
-                    key={result.href}
+                    key={result.id}
                     aria-selected="false"
                     className="search-result"
                     onClick={() => navigateTo(result.href)}
@@ -211,12 +171,14 @@ export function Header({ navigationOpen, onOpenNavigation }: HeaderProps) {
                     type="button"
                   >
                     <span>{result.label}</span>
-                    <small>{result.group}</small>
+                    <small>
+                      {result.domain} · {result.executionReality}
+                    </small>
                   </button>
                 ))
               ) : (
                 <p className="search-results__empty">
-                  No destinations match “{query}”.
+                  No frontend records match “{query}”.
                 </p>
               )}
             </div>

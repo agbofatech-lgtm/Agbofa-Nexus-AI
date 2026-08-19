@@ -19,11 +19,16 @@ function delay(duration: number, signal?: AbortSignal): Promise<void> {
     );
   });
 }
+const validatedFoundation = adaptPhase1Foundation(phase1FoundationFixture);
+
 export const phase1FoundationService = {
+  snapshot(): DataState<Phase2FoundationSnapshot> {
+    return validatedFoundation;
+  },
   async getFoundation(
     signal?: AbortSignal,
   ): Promise<DataState<Phase2FoundationSnapshot>> {
     await delay(180, signal);
-    return adaptPhase1Foundation(phase1FoundationFixture);
+    return validatedFoundation;
   },
 };
