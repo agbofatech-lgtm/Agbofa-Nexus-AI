@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -13,9 +12,10 @@ import (
 )
 
 type SocialHTTP struct {
-	Store *repositories.SocialStore
-	Jobs  *repositories.DistStore
-	Box   *social.TokenBox
+	Store    *repositories.SocialStore
+	Jobs     *repositories.DistStore
+	Box      *social.TokenBox
+	Adapters *social.Router
 }
 
 func (h SocialHTTP) Connect(w http.ResponseWriter, r *http.Request) {
@@ -37,16 +37,26 @@ func (h SocialHTTP) Connect(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "unknown_platform")
 		return
 	}
+	if h.Box == nil {
+		writeErr(w, http.StatusServiceUnavailable, "oauth_unconfigured")
+		return
+	}
+	if req.Redirect == "" {
+		req.Redirect = social.RedirectURI(spec.ID)
+	}
+	if err := social.RedirectAllowed(spec.ID, req.Redirect); err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid_oauth")
+		return
+	}
 	st, err := social.NewOAuthState(principal.TenantID, principal.SubjectID, spec.ID, req.Redirect, 10*time.Minute)
 	if err != nil {
 		writeErr(w, http.StatusBadRequest, "invalid_oauth")
 		return
 	}
-	verEnc := st.Verifier
-	if h.Box != nil {
-		if sealed, err := h.Box.Seal(st.Verifier); err == nil {
-			verEnc = sealed
-		}
+	verEnc, err := h.Box.Seal(st.Verifier)
+	if err != nil {
+		writeErr(w, http.StatusServiceUnavailable, "oauth_unconfigured")
+		return
 	}
 	if err := h.Store.SaveState(r.Context(), repositories.OAuthStateRow{
 		Hash: st.Hash, TenantID: st.TenantID, UserID: st.UserID, Platform: string(st.Platform),
@@ -55,7 +65,7 @@ func (h SocialHTTP) Connect(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, "state_persist")
 		return
 	}
-	clientID := os.Getenv("AGBOFA_OAUTH_" + strings.ToUpper(string(spec.ID)) + "_CLIENT_ID")
+	clientID := social.ClientID(spec.ID)
 	authURL, err := social.AuthorizationURL(spec, clientID, req.Redirect, st.Raw, st.Challenge)
 	if err != nil {
 		writeErr(w, http.StatusServiceUnavailable, "oauth_unconfigured")
@@ -72,18 +82,33 @@ func (h SocialHTTP) Callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rawState := r.URL.Query().Get("state")
-	if rawState == "" && r.Body != nil {
+	code := r.URL.Query().Get("code")
+	if r.Body != nil && (rawState == "" || code == "") {
 		var body struct {
 			State string `json:"state"`
+			Code  string `json:"code"`
 		}
 		_ = json.NewDecoder(r.Body).Decode(&body)
-		rawState = body.State
+		if rawState == "" {
+			rawState = body.State
+		}
+		if code == "" {
+			code = body.Code
+		}
 	}
 	if rawState == "" {
 		writeErr(w, http.StatusForbidden, "oauth_state_missing")
 		return
 	}
-	row, err := h.Store.ConsumeState(r.Context(), social.HashOpaque(rawState))
+	if strings.TrimSpace(code) == "" {
+		writeErr(w, http.StatusBadRequest, "oauth_code_missing")
+		return
+	}
+	if h.Box == nil {
+		writeErr(w, http.StatusServiceUnavailable, "oauth_unconfigured")
+		return
+	}
+	row, err := h.Store.ConsumeState(r.Context(), social.HashOpaque(rawState), principal.TenantID, principal.SubjectID)
 	if err != nil {
 		writeErr(w, http.StatusForbidden, "oauth_state_denied")
 		return
@@ -93,12 +118,80 @@ func (h SocialHTTP) Callback(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusForbidden, "oauth_state_denied")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
-		"connected": false,
-		"status":    "PENDING_CODE_EXCHANGE",
-		"platform":  row.Platform,
-		"note":      "authorization code accepted only after official token exchange; tokens are never returned",
+	verifier, err := h.Box.Open(row.VerifierEnc)
+	if err != nil {
+		writeErr(w, http.StatusForbidden, "oauth_state_denied")
+		return
+	}
+	adapter := h.adapter(social.Platform(row.Platform))
+	tokens, err := adapter.Exchange(r.Context(), code, row.Redirect, verifier)
+	if err != nil || tokens.AccessToken == "" {
+		writeErr(w, http.StatusBadGateway, "oauth_exchange_failed")
+		return
+	}
+	accountID, accountName := tokens.AccountID, tokens.AccountName
+	if ident, ok := adapter.(social.Identifier); ok {
+		id, name, identErr := ident.Identify(r.Context(), tokens)
+		if identErr != nil {
+			writeErr(w, http.StatusBadGateway, "oauth_identity_failed")
+			return
+		}
+		accountID, accountName = id, name
+	}
+	if accountID == "" {
+		writeErr(w, http.StatusBadGateway, "oauth_identity_failed")
+		return
+	}
+	encAccess, err := h.Box.Seal(tokens.AccessToken)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, "token_seal_failed")
+		return
+	}
+	encRefresh := ""
+	if tokens.RefreshToken != "" {
+		encRefresh, err = h.Box.Seal(tokens.RefreshToken)
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, "token_seal_failed")
+			return
+		}
+	}
+	var exp *time.Time
+	if !tokens.ExpiresAt.IsZero() {
+		e := tokens.ExpiresAt
+		exp = &e
+	}
+	conn, err := h.Store.UpsertConnection(r.Context(), repositories.Connection{
+		TenantID: principal.TenantID, UserID: principal.SubjectID, Platform: row.Platform,
+		ProviderAccountID: accountID, AccountName: accountName, Status: "CONNECTED",
+		EncAccess: encAccess, EncRefresh: encRefresh, Scopes: strings.Join(tokens.Scopes, " "),
+		ExpiresAt: exp,
 	})
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, "connection_persist")
+		return
+	}
+	_ = h.Jobs.Audit(r.Context(), principal.TenantID, principal.SubjectID, "SOCIAL_ACCOUNT_CONNECTED", row.Platform, conn.ID, "", "", r.Header.Get("X-Correlation-ID"))
+	writeJSON(w, http.StatusOK, map[string]any{
+		"connected":           true,
+		"status":              "CONNECTED",
+		"platform":            row.Platform,
+		"account_id":          conn.ID,
+		"provider_account_id": conn.ProviderAccountID,
+		"account_name":        conn.AccountName,
+	})
+}
+
+func (h SocialHTTP) adapter(p social.Platform) social.Adapter {
+	if h.Adapters != nil {
+		if a, ok := h.Adapters.For(p); ok {
+			return a
+		}
+	}
+	if p == social.PlatformYouTube {
+		return social.NewYouTubeAdapter(nil)
+	}
+	spec, _ := social.Lookup(string(p))
+	return social.OAuthClient{Spec: spec, ClientID: social.ClientID(p), ClientSec: social.ClientSecret(p)}
 }
 
 func (h SocialHTTP) Accounts(w http.ResponseWriter, r *http.Request) {
@@ -164,6 +257,7 @@ func (h SocialHTTP) CreateDistribution(w http.ResponseWriter, r *http.Request) {
 		Body           string `json:"body"`
 		BrandApplied   bool   `json:"brand_identity_applied"`
 		ScheduledAt    string `json:"scheduled_at"`
+		MediaURL       string `json:"media_url"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeErr(w, http.StatusBadRequest, "invalid_argument")
@@ -181,7 +275,7 @@ func (h SocialHTTP) CreateDistribution(w http.ResponseWriter, r *http.Request) {
 	}
 	pkg, err := social.Adapt(social.CanonicalContent{
 		ID: req.ContentID, Version: req.ContentVersion, TenantID: principal.TenantID,
-		Body: req.Body, BrandApplied: req.BrandApplied, AuthorID: principal.SubjectID,
+		Body: req.Body, MediaURL: req.MediaURL, BrandApplied: req.BrandApplied, AuthorID: principal.SubjectID,
 	}, spec)
 	if err != nil {
 		if err == social.ErrBrandingRequired {
@@ -206,7 +300,7 @@ func (h SocialHTTP) CreateDistribution(w http.ResponseWriter, r *http.Request) {
 	job, err := h.Jobs.CreateJob(r.Context(), repositories.DistJob{
 		TenantID: principal.TenantID, ActorID: principal.SubjectID, AccountID: acct.ID,
 		Platform: string(spec.ID), ContentID: req.ContentID, ContentVersion: req.ContentVersion,
-		IdempotencyKey: key, Status: status, ScheduledAt: scheduled, Snapshot: pkg.Text, BrandApplied: true,
+		IdempotencyKey: key, Status: status, ScheduledAt: scheduled, Snapshot: social.EncodeSnapshot(pkg.Text, pkg.MediaURL), BrandApplied: true,
 	})
 	if err == social.ErrDuplicateJob {
 		writeJSON(w, http.StatusOK, map[string]any{"idempotent": true, "idempotency_key": key})

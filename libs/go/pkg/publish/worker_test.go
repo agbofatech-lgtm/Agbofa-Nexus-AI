@@ -115,6 +115,42 @@ func TestWorkerPublishesOnceAndSkipsDuplicate(t *testing.T) {
 	}
 }
 
+func TestWorkerEmptyProviderIDIsPendingVerification(t *testing.T) {
+	store := newMem()
+	job := Job{
+		ID: "j3", TenantID: "t1", AccountID: "a1", Platform: "x", ContentID: "c1", ContentVersion: "v1",
+		Status: StatusQueued, Snapshot: "hello", BrandApplied: true,
+	}
+	store.jobs[job.ID] = job
+	store.order = []string{job.ID}
+	w := Worker{
+		Store: store,
+		Adapter: stubAdapter{res: social.PublishResult{ExternalID: "", RawStatus: 200}},
+		Tokens:  func(context.Context, Job) (social.TokenSet, error) { return social.TokenSet{AccessToken: "tok"}, nil },
+	}
+	if err := w.Tick(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if store.jobs[job.ID].Status != StatusPendingVerify {
+		t.Fatalf("status %s", store.jobs[job.ID].Status)
+	}
+	if store.jobs[job.ID].PlatformPublicationID != "" {
+		t.Fatal("must not invent platform id")
+	}
+}
+
+func TestWorkerReauthWhenTokensMissing(t *testing.T) {
+	store := newMem()
+	job := Job{ID: "j4", TenantID: "t1", AccountID: "a1", Platform: "youtube", ContentID: "c1", ContentVersion: "v1", Status: StatusQueued, Snapshot: "x", BrandApplied: true}
+	store.jobs[job.ID] = job
+	store.order = []string{job.ID}
+	w := Worker{Store: store, Adapter: stubAdapter{}, Tokens: func(context.Context, Job) (social.TokenSet, error) { return social.TokenSet{}, social.ErrReauthRequired }}
+	_ = w.Tick(context.Background())
+	if store.jobs[job.ID].Status != StatusReauthRequired {
+		t.Fatalf("status %s", store.jobs[job.ID].Status)
+	}
+}
+
 func TestWorkerBrandFailure(t *testing.T) {
 	store := newMem()
 	job := Job{ID: "j2", TenantID: "t1", AccountID: "a1", Platform: "x", ContentID: "c1", ContentVersion: "v1", Status: StatusQueued, Snapshot: "x", BrandApplied: false}

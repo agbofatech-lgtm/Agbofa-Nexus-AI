@@ -49,6 +49,11 @@ func TestPolicyGateBrandAndTenant(t *testing.T) {
 	if g := Validate(sched); g.OK || g.Code != "SCHEDULE_INVALID" {
 		t.Fatalf("schedule: %+v", g)
 	}
+	yt := base
+	yt.Platform = "youtube"
+	if g := Validate(yt); !g.OK {
+		t.Fatalf("youtube gate: %+v", g)
+	}
 }
 
 func TestBackoffAndClassify(t *testing.T) {

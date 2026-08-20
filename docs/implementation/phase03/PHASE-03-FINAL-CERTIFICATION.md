@@ -1,10 +1,10 @@
 # PHASE 03: SOCIAL OAUTH + DISTRIBUTION
 
 ```text
-STATUS: BLOCKED / PENDING
+STATUS: IMPLEMENTED / RUNTIME BLOCKED
 CERTIFICATION: NOT CERTIFIED
-CERTIFICATION SHA: e7dd6edee620f1725c3300c6135531b6662eb589
 BRANCH: arena/01a01a0f-agbofa-nexus-ai
+BASELINE SHA: 4f3d80dde8a2b97164bf8519c65bd8eaeda4816c
 ```
 
 ## TEST MATRIX
@@ -13,7 +13,7 @@ BRANCH: arena/01a01a0f-agbofa-nexus-ai
 Authentication ........ NOT RE-EXECUTED IN THIS SESSION
 JWT ................... NOT RE-EXECUTED IN THIS SESSION
 OAuth (YouTube) ....... BLOCKED
-OAuth State/CSRF ...... PENDING
+OAuth State/CSRF ...... PENDING (tests not executed — Go unavailable)
 Token Encryption ...... PENDING
 Tenant Isolation ...... PENDING
 Distribution .......... BLOCKED
@@ -24,7 +24,7 @@ Secret Leakage ........ PENDING
 ## PROVIDER RUNTIME
 
 ```text
-YouTube:  BLOCKED — not in platform catalog; no Google OAuth executed
+YouTube:  IMPLEMENTED IN CATALOG / NOT RUNTIME VERIFIED
 X:        IMPLEMENTED / STRUCTURALLY VERIFIED / NOT RUNTIME VERIFIED
 LinkedIn: IMPLEMENTED / STRUCTURALLY VERIFIED / NOT RUNTIME VERIFIED
 Meta:     IMPLEMENTED / STRUCTURALLY VERIFIED / NOT RUNTIME VERIFIED
@@ -34,16 +34,17 @@ Meta:     IMPLEMENTED / STRUCTURALLY VERIFIED / NOT RUNTIME VERIFIED
 
 Phase 03 **cannot** be certified from this Arena session.
 
-Required YouTube OAuth and real YouTube distribution were **not executed**.  
+Required YouTube OAuth and real YouTube distribution were **not executed**.
 They cannot be marked PASS.
 
-Arena blockers: no Go, no PostgreSQL, no listening `:8080`/`:3000`, no Google/YouTube credentials, no interactive OAuth.
+Arena blockers: no Go, no PostgreSQL, no listening `:8080`/`:3000`, no Google/YouTube credentials, no interactive OAuth. Toolchain download from go.dev/dl.google.com failed (`SSL_ERROR_SYSCALL`).
 
-Implementation gap vs this test plan: catalog is `x` | `linkedin` | `meta` only; callback does not complete token exchange; BFF GET connect and `/api/v1/social/publish` are stubs.
+Source repairs in this session (YouTube catalog, code exchange, encrypted storage, BFF wiring) are **implementation**, not certification.
 
 ```text
 PHASE 03 — SOCIAL OAUTH + DISTRIBUTION
-STATUS: BLOCKED / PENDING
-PHASE 04: LOCKED
+STATUS: IMPLEMENTED / RUNTIME BLOCKED
+CERTIFICATION: NOT CERTIFIED
+PHASE 04: IMPLEMENTED / RUNTIME BLOCKED / NOT CERTIFIED
 AUTO-ADVANCE: PROHIBITED
 ```

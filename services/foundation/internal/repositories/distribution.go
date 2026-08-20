@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/agbofa/nexus/libs/go/pkg/database"
+	"github.com/agbofa/nexus/libs/go/pkg/publish"
 	"github.com/agbofa/nexus/libs/go/pkg/social"
 )
 

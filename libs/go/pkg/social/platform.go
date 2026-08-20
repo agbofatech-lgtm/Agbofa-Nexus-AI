@@ -8,6 +8,7 @@ const (
 	PlatformX        Platform = "x"
 	PlatformLinkedIn Platform = "linkedin"
 	PlatformMeta     Platform = "meta"
+	PlatformYouTube  Platform = "youtube"
 )
 
 type Capability string
@@ -33,6 +34,7 @@ type Spec struct {
 	MaxText      int
 	PKCE         bool
 	Docs         string
+	AuthExtra    map[string]string
 }
 
 func Catalog() map[Platform]Spec {
@@ -60,6 +62,22 @@ func Catalog() map[Platform]Spec {
 			Capabilities: []Capability{CapabilityText, CapabilityImage, CapabilityVideo, CapabilityLink},
 			MaxText:      63206, PKCE: false,
 			Docs: "https://developers.facebook.com/docs/facebook-login/guides/advanced/manual-flow",
+		},
+		PlatformYouTube: {
+			ID: PlatformYouTube, DisplayName: "YouTube", OAuthKind: "oauth2_pkce",
+			AuthURL: "https://accounts.google.com/o/oauth2/v2/auth", TokenURL: "https://oauth2.googleapis.com/token",
+			Scopes: []string{
+				"https://www.googleapis.com/auth/youtube.upload",
+				"https://www.googleapis.com/auth/youtube.readonly",
+			},
+			Capabilities: []Capability{CapabilityVideo, CapabilityText, CapabilityScheduling, CapabilityAnalytics},
+			MaxText:      5000, PKCE: true,
+			Docs: "https://developers.google.com/youtube/v3/guides/auth/server-side-web-apps",
+			AuthExtra: map[string]string{
+				"access_type":            "offline",
+				"prompt":                 "consent",
+				"include_granted_scopes": "true",
+			},
 		},
 	}
 }

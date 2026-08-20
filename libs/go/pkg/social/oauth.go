@@ -30,7 +30,7 @@ func NewOAuthState(tenantID, userID string, platform Platform, redirect string, 
 	if _, ok := Lookup(string(platform)); !ok {
 		return OAuthState{}, ErrUnknownPlatform
 	}
-	if err := validateRedirect(redirect); err != nil {
+	if err := RedirectAllowed(platform, redirect); err != nil {
 		return OAuthState{}, err
 	}
 	raw, err := randomB64(32)
@@ -95,8 +95,26 @@ func AuthorizationURL(spec Spec, clientID, redirect, state, challenge string) (s
 		q.Set("code_challenge", challenge)
 		q.Set("code_challenge_method", "S256")
 	}
+	for k, v := range spec.AuthExtra {
+		if k != "" && v != "" {
+			q.Set(k, v)
+		}
+	}
 	u.RawQuery = q.Encode()
 	return u.String(), nil
+}
+
+// RedirectAllowed rejects open redirects and, when a platform redirect is
+// configured, requires an exact match with the stored OAuth redirect.
+func RedirectAllowed(platform Platform, requested string) error {
+	if err := validateRedirect(requested); err != nil {
+		return err
+	}
+	configured := RedirectURI(platform)
+	if configured != "" && configured != requested {
+		return ErrInvalidRedirect
+	}
+	return nil
 }
 
 func validateRedirect(redirect string) error {

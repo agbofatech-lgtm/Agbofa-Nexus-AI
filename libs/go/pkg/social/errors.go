@@ -22,4 +22,6 @@ var (
 	ErrDuplicateJob         = errors.New("social: duplicate distribution job")
 	ErrNotRetryable         = errors.New("social: failure is not retryable")
 	ErrSimulatedForbidden   = errors.New("social: simulated publication is forbidden")
+	ErrMissingCode          = errors.New("social: authorization code missing")
+	ErrProviderIdentity     = errors.New("social: provider account identity unavailable")
 )

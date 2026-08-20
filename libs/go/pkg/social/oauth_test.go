@@ -44,6 +44,26 @@ func TestRedirectAndPKCE(t *testing.T) {
 	}
 }
 
+func TestYouTubeCatalogAndGoogleAuthURL(t *testing.T) {
+	spec, ok := Lookup("youtube")
+	if !ok || spec.ID != PlatformYouTube {
+		t.Fatal("youtube must be in the platform catalog")
+	}
+	if !spec.Supports(CapabilityVideo) {
+		t.Fatal("youtube must advertise video")
+	}
+	u, err := AuthorizationURL(spec, "client", "http://localhost:3000/api/v1/social/callback", "state", "challenge")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(u, "accounts.google.com") || !strings.Contains(u, "access_type=offline") {
+		t.Fatalf("google auth url: %s", u)
+	}
+	if _, err := NewOAuthState("t", "u", PlatformYouTube, "http://localhost:3000/api/v1/social/callback", time.Minute); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestTokenBoxRoundTrip(t *testing.T) {
 	box, err := NewTokenBox("0123456789abcdef0123456789abcdef")
 	if err != nil {

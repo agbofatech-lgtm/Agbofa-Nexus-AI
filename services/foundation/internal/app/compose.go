@@ -3,7 +3,9 @@ package app
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/agbofa/nexus/libs/go/pkg/auth"
@@ -56,12 +58,11 @@ func Compose(ctx context.Context, cfg config.RuntimeConfig) (*Runtime, error) {
 	box, _ := social.NewTokenBox(os.Getenv("AGBOFA_SECRET_SOCIAL_TOKEN_KEY"))
 	jobs := repositories.NewDistStore(pool)
 	socialStore := repositories.NewSocialStore(pool)
-	socialHTTP := handlers.SocialHTTP{Store: socialStore, Jobs: jobs, Box: box}
+	adapters := social.NewDefaultRouter(http.DefaultClient)
+	socialHTTP := handlers.SocialHTTP{Store: socialStore, Jobs: jobs, Box: box, Adapters: adapters}
 	worker := &publish.Worker{
-		Store: jobs, Adapter: social.OAuthClient{}, WorkerID: "foundation-1", MaxTries: 5,
-		Tokens: func(context.Context, publish.Job) (social.TokenSet, error) {
-			return social.TokenSet{}, social.ErrReauthRequired
-		},
+		Store: jobs, Adapter: adapters, WorkerID: "foundation-1", MaxTries: 5,
+		Tokens: loadConnectionTokens(socialStore, box, adapters),
 	}
 	pubHTTP := handlers.PublishingHTTP{Jobs: jobs, Social: socialStore, Worker: worker}
 	httpSrv := server.NewHTTP(
@@ -87,4 +88,71 @@ func (noopEvents) PublishTenantProvisioned(context.Context, domain.Tenant) error
 func (noopEvents) PublishUserCreated(context.Context, domain.User) error         { return nil }
 func (noopEvents) PublishUserAuthenticated(context.Context, domain.User, time.Time) error {
 	return nil
+}
+
+func loadConnectionTokens(store *repositories.SocialStore, box *social.TokenBox, adapters *social.Router) func(context.Context, publish.Job) (social.TokenSet, error) {
+	return func(ctx context.Context, job publish.Job) (social.TokenSet, error) {
+		if box == nil || store == nil {
+			return social.TokenSet{}, social.ErrReauthRequired
+		}
+		conn, err := store.GetConnection(ctx, job.TenantID, job.AccountID)
+		if err != nil {
+			return social.TokenSet{}, social.ErrReauthRequired
+		}
+		status := strings.ToUpper(conn.Status)
+		if status == "DISCONNECTED" || status == "REVOKED" {
+			return social.TokenSet{}, social.ErrReauthRequired
+		}
+		access, err := box.Open(conn.EncAccess)
+		if err != nil || access == "" {
+			return social.TokenSet{}, social.ErrReauthRequired
+		}
+		refresh := ""
+		if conn.EncRefresh != "" {
+			refresh, _ = box.Open(conn.EncRefresh)
+		}
+		tokens := social.TokenSet{
+			AccessToken: access, RefreshToken: refresh,
+			AccountID: conn.ProviderAccountID, AccountName: conn.AccountName,
+			Scopes: strings.Fields(conn.Scopes),
+		}
+		if conn.ExpiresAt != nil {
+			tokens.ExpiresAt = *conn.ExpiresAt
+		}
+		expired := conn.ExpiresAt != nil && !time.Now().UTC().Before(conn.ExpiresAt.Add(-60*time.Second))
+		if !expired {
+			return tokens, nil
+		}
+		if refresh == "" || adapters == nil {
+			return social.TokenSet{}, social.ErrReauthRequired
+		}
+		adapter, ok := adapters.For(social.Platform(job.Platform))
+		if !ok {
+			return social.TokenSet{}, social.ErrReauthRequired
+		}
+		refreshed, err := adapter.Refresh(ctx, refresh)
+		if err != nil || refreshed.AccessToken == "" {
+			return social.TokenSet{}, social.ErrReauthRequired
+		}
+		encAccess, err := box.Seal(refreshed.AccessToken)
+		if err != nil {
+			return social.TokenSet{}, social.ErrReauthRequired
+		}
+		encRefresh := ""
+		if refreshed.RefreshToken != "" {
+			encRefresh, err = box.Seal(refreshed.RefreshToken)
+			if err != nil {
+				return social.TokenSet{}, social.ErrReauthRequired
+			}
+		}
+		var exp *time.Time
+		if !refreshed.ExpiresAt.IsZero() {
+			e := refreshed.ExpiresAt
+			exp = &e
+		}
+		if err := store.UpdateTokens(ctx, job.TenantID, conn.ID, encAccess, encRefresh, exp); err != nil {
+			return social.TokenSet{}, social.ErrReauthRequired
+		}
+		return refreshed, nil
+	}
 }

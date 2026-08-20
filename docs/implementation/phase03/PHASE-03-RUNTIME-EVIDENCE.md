@@ -2,149 +2,120 @@
 # RUNTIME CERTIFICATION EVIDENCE
 
 ```text
-CURRENT COMMIT: e7dd6edee620f1725c3300c6135531b6662eb589
+BASELINE SHA: 4f3d80dde8a2b97164bf8519c65bd8eaeda4816c
 BRANCH: arena/01a01a0f-agbofa-nexus-ai
-REMOTE: e7dd6edee620f1725c3300c6135531b6662eb589 (at inspection start)
 ENVIRONMENT:
   OS: Linux e2b.local (Debian 12 E2B/KVM sandbox) — not the developer Windows host
   PowerShell: not applicable
-  Go: unavailable
+  Go: unavailable (go.dev and dl.google.com TLS failed: SSL_ERROR_SYSCALL)
   Node: v22.22.3
   npm: 10.9.8
   Next.js: 15.5.23 (from apps/web/package.json; not running)
   PostgreSQL: unavailable
+  Docker: unavailable
   Listening app ports: none (no :8080, no :3000)
-DATE/TIME: 2026-08-20T08:27:02Z
+DATE/TIME: 2026-08-20T18:20:00Z
 ```
 
-## Previously reported (developer host)
+IMPLEMENTATION SHA and FINAL SHA are recorded in
+`docs/implementation/PHASE-03-04-CERTIFICATION-REPORT.md` after git persist.
 
-Those results were **not re-executed** in this Arena session against this SHA. They are **not reused as PASS for this certification**.
+## PART A — CONTRACT AUDIT (pre-repair)
 
-```text
-Backend RPC / Authentication / Argon2id / Database / Frontend Login / BFF / JWT:
-NOT RE-EXECUTED HERE
-```
+Inspected from certified-work HEAD `4f3d80d` before this session's edits.
 
-## Actual routes discovered (do not assume)
-
-| Capability | Actual route | Behavior observed in source |
+| # | Contract item | Found |
 |---|---|---|
-| OAuth connect (BFF GET) | `/api/v1/social/connect?platform=` | Returns JSON stub `"Connect endpoint is ready"`. **Does not start OAuth.** |
-| OAuth connect (backend) | `POST /rpc/social.v1.SocialService/Connect` | Requires auth; body `{platform, redirect_uri}`; builds official authorize URL |
-| OAuth callback (BFF) | `GET /api/v1/social/callback` | Forwards `{state}` only; does not send authorization code to a provider |
-| OAuth callback (backend) | `/rpc/social.v1.SocialService/Callback` | Validates/consumes state; returns `connected: false`, `PENDING_CODE_EXCHANGE`. **No token exchange.** |
-| Accounts | `GET /api/v1/social/accounts` → `POST /rpc/social.v1.SocialService/Accounts` | Lists connections without tokens |
-| Distribution create | `POST /api/v1/distribution/create` → `CreateDistribution` | Queues job; response includes `"published": false` |
-| Publish stub (BFF) | `POST /api/v1/social/publish` | Returns `{success: true, status: "PENDING"}` **without calling a platform** |
+| 1 | Social provider abstraction | `libs/go/pkg/social` Adapter + OAuthClient |
+| 2 | Platform catalog | `x`, `linkedin`, `meta` only — **YouTube missing** |
+| 3 | OAuth state | persisted `oauth_states`, SHA-256 hash, PKCE, tenant/user bind, TTL |
+| 4 | Token encryption | AES-256-GCM `TokenBox`; callback did **not** exchange or store tokens |
+| 5 | Social connection tables | `social_connections` with encrypted token columns + RLS |
+| 6 | Distribution service | `CreateDistribution` queues job, `published: false` |
+| 7 | Publishing service | Phase 04 `libs/go/pkg/publish` + RPC |
+| 8 | Scheduling API | `POST /rpc/publish.v1.PublishingService/Schedule` |
+| 9 | Queue | `FOR UPDATE SKIP LOCKED` on `distribution_jobs` |
+| 10 | Worker | `publish.Worker.Tick`; tokens always `REAUTH_REQUIRED` |
+| 11 | Retry | classify + backoff; not runtime-proven |
+| 12 | Idempotency | unique `(tenant_id, idempotency_key)` |
+| 13 | Cancellation | tenant-scoped transition to CANCELLED |
+| 14 | JWT/session | Phase 01 RS256 + BFF httpOnly cookie |
+| 15 | Tenant authz | `authz.Decide` + `WHERE tenant_id` |
+| 16 | BFF | connect/callback/accounts/publish were stubs |
 
-Platform catalog in `libs/go/pkg/social/platform.go`: **`x`, `linkedin`, `meta` only.**  
-`Lookup("youtube")` is not defined. There is no Google/YouTube authorize or token URL.
+## Repairs implemented in this session (source only)
 
-There is **no** `http://localhost:3000/social/connect?platform=youtube` page route.
+These close genuine gaps. They are **not** runtime PASS.
 
-## Actual schema (from migration `20260820120000_phase03_social.up.sql`)
+- YouTube added to `Catalog()` (Google authorize + token URLs, upload/readonly scopes, PKCE, `access_type=offline`).
+- Credential names: `AGBOFA_SECRET_SOCIAL_YOUTUBE_CLIENT_ID` / `_CLIENT_SECRET` and `AGBOFA_SOCIAL_YOUTUBE_REDIRECT_URI` (fallback `AGBOFA_OAUTH_YOUTUBE_*`).
+- Callback performs official authorization-code exchange, AES-GCM seal, connection upsert. Tokens are never written to the HTTP response.
+- OAuth state consume is atomic on `(hash, tenant_id, user_id)` and rejects replay/expiry/cross-tenant/cross-user.
+- PKCE verifier is sealed; Connect fails closed if `TokenBox` is missing.
+- YouTube Data API v3 resumable upload adapter. Empty provider `id` is left empty (worker → `PUBLISHED_PENDING_VERIFICATION`). No invented video IDs.
+- BFF GET `/api/v1/social/connect` starts OAuth (session required). GET `/api/v1/social/callback` forwards `state`+`code`. Accounts and publish proxy the backend. Publish stub `success: true` removed.
+- Page `/social/connect?platform=youtube` redirects into the BFF connect route.
+- Worker loads/decrypts stored tokens (refresh if expired). Does not fabricate tokens.
+
+## Runtime execution in this environment
 
 ```text
-oauth_states (state_hash, tenant_id, user_id, platform, redirect_uri, pkce_verifier_encrypted, expires_at, consumed_at)
-social_connections (encrypted_access_token, encrypted_refresh_token, tenant_id, platform, provider_account_id, status, ...)
-distribution_jobs, distribution_attempts, publication_records, distribution_audit
+go version                 NOT EXECUTED — Go binary absent; TLS fetch of toolchain failed
+go test ./...              NOT EXECUTED
+go vet / go build          NOT EXECUTED
+psql / SELECT version()    NOT EXECUTED — PostgreSQL absent
+server :8080               NOT STARTED
+next dev :3000             NOT STARTED
+Google/YouTube OAuth       NOT EXECUTED — no credentials, no interactive browser, no Google account
+YouTube videos.insert      NOT EXECUTED
+SQL token-at-rest proof    NOT EXECUTED
+two-tenant HTTP isolation  NOT EXECUTED
+log secret-leakage search  NOT EXECUTED (no live OAuth/distribution run)
 ```
 
-SQL was **not executed** (no PostgreSQL).
-
-## NEW RUNTIME TESTS
+## Test matrix
 
 ```text
 YouTube OAuth:            BLOCKED
-OAuth State/CSRF:         PENDING (unit tests exist; not executed — Go unavailable)
-Token Encryption:         PENDING (AES-GCM code exists; no DB query executed)
-Cross-Tenant Isolation:   PENDING (RLS + tenant-scoped queries exist; not executed)
+OAuth State/CSRF:         PENDING (unit tests exist; not executed)
+Token Encryption:         PENDING (code + schema; no live row)
+Cross-Tenant Isolation:   PENDING (queries + consume scope; no HTTP proof)
 Real Distribution:        BLOCKED
-Branding/Provenance:      PENDING (unit tests exist; no live publish artifact)
-Secret Leakage:           PENDING (no live OAuth/distribution logs in this environment)
+Branding/Provenance:      PENDING (unit tests exist; no live YouTube asset)
+Secret Leakage:           PENDING
 ```
-
----
 
 ### PHASE03-RUNTIME-01 YouTube OAuth — BLOCKED
 
-**TEST ID:** PHASE03-RUNTIME-01  
-**COMMAND:** not executed  
-**ACTION:** Inspected catalog and routes; attempted no Google login (no browser, no Google OAuth client, no YouTube in catalog).  
-**EXPECTED:** Real YouTube OAuth through to persisted connection.  
-**ACTUAL:** Cannot start. Platform `youtube` is absent. Arena has no backend/frontend process and no Google account flow.  
-**HTTP STATUS:** n/a  
-**RESULT:** BLOCKED  
-
-Blockers:
-1. No YouTube adapter / Google OAuth URLs in `Catalog()`.
-2. BFF GET connect is a stub, not a redirect to Google.
-3. Callback does not exchange an authorization code.
-4. This sandbox cannot complete Google authorization.
-
----
-
-### PHASE03-RUNTIME-02A OAuth state/CSRF — PENDING
-
-**TEST ID:** PHASE03-RUNTIME-02A  
-**COMMAND:** `go test ./libs/go/pkg/social/...` — **not executed** (Go unavailable)  
-**ACTION:** Source inspection only of `ValidateCallback` (missing/invalid/expired/wrong tenant/wrong user).  
-**RESULT:** PENDING  
-
-Source inspection is **not** PASS.
-
----
+**EXPECTED:** Authenticated user → `/social/connect?platform=youtube` → Google consent → callback → code exchange → encrypted tokens → CONNECTED.  
+**ACTUAL:** Flow is implemented in source. This sandbox cannot obtain Google credentials, run the backend, or complete consent.  
+**RESULT:** BLOCKED
 
 ### PHASE03-RUNTIME-02 Token encryption — PENDING
 
-**TEST ID:** PHASE03-RUNTIME-02  
-**COMMAND:** no SQL executed  
-**ACTION:** Schema lists `encrypted_access_token` / `encrypted_refresh_token`. `TokenBox` is AES-256-GCM. No live row was read.  
-**RESULT:** PENDING  
+Schema stores `encrypted_access_token` / `encrypted_refresh_token`. Seal happens only after a real exchange. No database row was read.  
+**RESULT:** PENDING (not PASS)
 
----
+### PHASE03-RUNTIME-03 Tenant isolation — PENDING
 
-### PHASE03-RUNTIME-03 Cross-tenant isolation — PENDING
-
-**TEST ID:** PHASE03-RUNTIME-03  
-**COMMAND:** not executed  
-**ACTION:** `GetConnection`/`ListConnections` filter `tenant_id` from authenticated principal; RLS policies exist. No two-tenant HTTP test was run.  
-**RESULT:** PENDING  
-
----
+`GetConnection`/`ListConnections`/`ConsumeState` are tenant-scoped. No Tenant A/B HTTP test ran.  
+**RESULT:** PENDING
 
 ### PHASE03-RUNTIME-04 Real distribution — BLOCKED
 
-**TEST ID:** PHASE03-RUNTIME-04  
-**COMMAND:** not executed  
-**ACTION:** Inspected endpoints. `CreateDistribution` persists a job and returns `"published": false`. `/api/v1/social/publish` returns `success: true` with `status: "PENDING"` and does **not** call YouTube.  
-**ACTUAL:** No YouTube API request. No platform resource ID.  
-**RESULT:** BLOCKED  
-
-A mock/stub `success: true` is **not** real-platform PASS.
-
----
-
-### Branding — PENDING
-
-Backend `Adapt()` rejects `brand_identity_applied == false` with `BRANDING_REQUIRED`. No live distributed asset was produced.  
-**RESULT:** PENDING (cannot exercise on a real YouTube item)
-
----
-
-### PHASE03-RUNTIME-05 Secret leakage — PENDING
-
-No OAuth/token-exchange/distribution run occurred here, so logs were not searched under load.  
-**RESULT:** PENDING  
-
----
+`CreateDistribution` still returns `published: false` until the worker gets a real provider id. No YouTube API call was made.  
+**RESULT:** BLOCKED
 
 ## Provider runtime
 
 ```text
-YouTube:  NOT IMPLEMENTED IN CATALOG / NOT RUNTIME VERIFIED
+YouTube:  IMPLEMENTED IN CATALOG / NOT RUNTIME VERIFIED
 X:        IMPLEMENTED (structurally) / NOT RUNTIME VERIFIED
 LinkedIn: IMPLEMENTED (structurally) / NOT RUNTIME VERIFIED
 Meta:     IMPLEMENTED (structurally) / NOT RUNTIME VERIFIED
+```
+
+```text
+PHASE 03 CERTIFICATION: NOT CERTIFIED
+STATUS: IMPLEMENTED / RUNTIME BLOCKED
 ```

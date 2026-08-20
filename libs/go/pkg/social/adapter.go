@@ -33,6 +33,11 @@ type Adapter interface {
 	Publish(ctx context.Context, tokens TokenSet, pkg PublicationPackage) (PublishResult, error)
 }
 
+// Identifier resolves the provider account after a successful token exchange.
+type Identifier interface {
+	Identify(ctx context.Context, tokens TokenSet) (accountID, accountName string, err error)
+}
+
 type HTTPClient interface {
 	Do(*http.Request) (*http.Response, error)
 }

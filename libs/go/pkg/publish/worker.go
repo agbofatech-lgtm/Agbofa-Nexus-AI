@@ -85,9 +85,10 @@ func (w Worker) execute(ctx context.Context, job Job) error {
 		job.Status = StatusFailed
 		return w.Store.Complete(ctx, job, Attempt{Number: job.AttemptCount + 1, Status: StatusFailed, ErrorCode: "PLATFORM_NOT_SUPPORTED"})
 	}
+	text, mediaURL := social.ParseSnapshot(job.Snapshot)
 	pkg, err := social.Adapt(social.CanonicalContent{
 		ID: job.ContentID, Version: job.ContentVersion, TenantID: job.TenantID,
-		Body: job.Snapshot, BrandApplied: true,
+		Body: text, MediaURL: mediaURL, BrandApplied: true,
 	}, spec)
 	if err != nil {
 		job.Status = StatusFailed

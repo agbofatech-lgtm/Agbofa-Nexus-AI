@@ -5,6 +5,7 @@ export async function backendRPC<T>(
   method: string,
   body: unknown,
   init: RequestInit = {},
+  timeoutMs = 8000,
 ): Promise<{ ok: boolean; status: number; data: T | null }> {
   const response = await fetch(`${backendURL()}${method}`, {
     method: "POST",
@@ -14,7 +15,7 @@ export async function backendRPC<T>(
     },
     body: JSON.stringify(body),
     cache: "no-store",
-    signal: AbortSignal.timeout(8000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   let data: T | null = null;
   try {

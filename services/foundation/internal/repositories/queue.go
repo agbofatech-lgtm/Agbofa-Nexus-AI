@@ -9,7 +9,15 @@ import (
 	"github.com/agbofa/nexus/libs/go/pkg/publish"
 )
 
+func tenantOrEmpty(ctx context.Context) (string, bool) {
+	return database.TenantFromContext(ctx)
+}
+
 func (s *DistStore) Claim(ctx context.Context, workerID string, now time.Time, lease time.Duration) (publish.Job, bool, error) {
+	tenantID, ok := tenantOrEmpty(ctx)
+	if !ok {
+		return publish.Job{}, false, nil
+	}
 	until := now.Add(lease)
 	var job DistJob
 	var pubID string
@@ -24,7 +32,8 @@ UPDATE distribution_jobs SET
     updated_at = now()
 WHERE id = (
     SELECT id FROM distribution_jobs
-    WHERE status IN ('QUEUED', 'RETRY_WAITING')
+    WHERE tenant_id = $4
+      AND status IN ('QUEUED', 'RETRY_WAITING')
       AND (next_attempt_at IS NULL OR next_attempt_at <= $3)
       AND (lease_until IS NULL OR lease_until < $3)
     ORDER BY created_at
@@ -34,7 +43,7 @@ WHERE id = (
 RETURNING id, tenant_id::text, actor_id::text, account_id::text, platform, content_id, content_version,
           idempotency_key, status, snapshot_body, brand_applied, attempt_count, max_attempts,
           COALESCE(platform_publication_id, ''), scheduled_at`,
-		workerID, until, now).Scan(
+		workerID, until, now, tenantID).Scan(
 		&job.ID, &job.TenantID, &job.ActorID, &job.AccountID, &job.Platform, &job.ContentID, &job.ContentVersion,
 		&job.IdempotencyKey, &job.Status, &job.Snapshot, &job.BrandApplied, &job.RetryCount, &maxAtt, &pubID, &job.ScheduledAt)
 	if err != nil {
@@ -48,12 +57,16 @@ RETURNING id, tenant_id::text, actor_id::text, account_id::text, platform, conte
 }
 
 func (s *DistStore) DueScheduled(ctx context.Context, now time.Time) ([]publish.Job, error) {
+	tenantID, ok := tenantOrEmpty(ctx)
+	if !ok {
+		return nil, nil
+	}
 	rows, err := s.db.Query(ctx, `
 SELECT id, tenant_id::text, actor_id::text, account_id::text, platform, content_id, content_version,
        idempotency_key, status, snapshot_body, brand_applied, attempt_count, max_attempts,
        COALESCE(platform_publication_id, ''), scheduled_at
 FROM distribution_jobs
-WHERE status = 'SCHEDULED' AND scheduled_at IS NOT NULL AND scheduled_at <= $1`, now)
+WHERE tenant_id = $2 AND status = 'SCHEDULED' AND scheduled_at IS NOT NULL AND scheduled_at <= $1`, now, tenantID)
 	if err != nil {
 		return nil, mapDB(err)
 	}

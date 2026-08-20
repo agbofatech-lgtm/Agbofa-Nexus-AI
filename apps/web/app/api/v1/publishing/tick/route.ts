@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { backendRPC } from "@/lib/bff/backend";
 
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
   const cookie = request.cookies.get("agbofa_session")?.value;
   if (!cookie) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
-  const result = await backendRPC("/rpc/social.v1.SocialService/Accounts", {}, {
+  const result = await backendRPC("/rpc/publish.v1.PublishingService/Tick", {}, {
     headers: { authorization: `Bearer ${cookie}` },
-  });
-  return NextResponse.json(result.data ?? { accounts: [] }, { status: result.status });
+  }, 120000);
+  return NextResponse.json(result.data ?? { error: "upstream" }, { status: result.status });
 }

@@ -26,7 +26,7 @@ VALUES ($1,$2,$3,$4,$5,$6,$7)`,
 	return mapDB(err)
 }
 
-func (s *SocialStore) ConsumeState(ctx context.Context, hash string) (OAuthStateRow, error) {
+func (s *SocialStore) GetState(ctx context.Context, hash string) (OAuthStateRow, error) {
 	var row OAuthStateRow
 	var consumed *time.Time
 	err := s.db.QueryRow(ctx, `
@@ -36,13 +36,59 @@ FROM oauth_states WHERE state_hash = $1`, hash).Scan(
 	if err != nil {
 		return OAuthStateRow{}, mapDB(err)
 	}
-	if consumed != nil {
-		return row, social.ErrReplayState
-	}
-	if _, err := s.db.Exec(ctx, `UPDATE oauth_states SET consumed_at = now() WHERE state_hash = $1 AND consumed_at IS NULL`, hash); err != nil {
-		return OAuthStateRow{}, mapDB(err)
-	}
+	row.Consumed = consumed != nil
 	return row, nil
+}
+
+func (s *SocialStore) ConsumeState(ctx context.Context, hash, tenantID, userID string) (OAuthStateRow, error) {
+	var row OAuthStateRow
+	var consumed *time.Time
+	err := s.db.QueryRow(ctx, `
+UPDATE oauth_states SET consumed_at = now()
+WHERE state_hash = $1 AND tenant_id = $2 AND user_id = $3
+  AND consumed_at IS NULL AND expires_at > now()
+RETURNING state_hash, tenant_id::text, user_id::text, platform, redirect_uri, pkce_verifier_encrypted, expires_at, consumed_at`,
+		hash, tenantID, userID).Scan(
+		&row.Hash, &row.TenantID, &row.UserID, &row.Platform, &row.Redirect, &row.VerifierEnc, &row.ExpiresAt, &consumed)
+	if err == nil {
+		row.Consumed = true
+		return row, nil
+	}
+	existing, getErr := s.GetState(ctx, hash)
+	if getErr != nil {
+		return OAuthStateRow{}, social.ErrInvalidState
+	}
+	if existing.Consumed {
+		return existing, social.ErrReplayState
+	}
+	if existing.TenantID != tenantID {
+		return existing, social.ErrStateTenant
+	}
+	if existing.UserID != userID {
+		return existing, social.ErrStateUser
+	}
+	if !existing.ExpiresAt.After(time.Now().UTC()) {
+		return existing, social.ErrExpiredState
+	}
+	return existing, mapDB(err)
+}
+
+func (s *SocialStore) UpdateTokens(ctx context.Context, tenantID, id, encAccess, encRefresh string, exp *time.Time) error {
+	tag, err := s.db.Exec(ctx, `
+UPDATE social_connections SET
+    encrypted_access_token = $3,
+    encrypted_refresh_token = CASE WHEN $4 <> '' THEN $4 ELSE encrypted_refresh_token END,
+    token_expires_at = $5,
+    last_refresh_at = now(),
+    updated_at = now()
+WHERE tenant_id = $1 AND id = $2 AND status NOT IN ('DISCONNECTED','REVOKED')`, tenantID, id, encAccess, encRefresh, exp)
+	if err != nil {
+		return mapDB(err)
+	}
+	if tag.RowsAffected() == 0 {
+		return database.ErrNotFound
+	}
+	return nil
 }
 
 type Connection struct {

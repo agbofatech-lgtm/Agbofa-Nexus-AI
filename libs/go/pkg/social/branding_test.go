@@ -40,3 +40,15 @@ func TestIllegalTransitionAndIdempotency(t *testing.T) {
 func containsBrand(s string) bool {
 	return strings.Contains(s, "Agbofa Nexus AI")
 }
+
+func TestSnapshotRoundTrip(t *testing.T) {
+	raw := EncodeSnapshot("hello — Agbofa Nexus AI", "https://example.invalid/v.mp4")
+	text, media := ParseSnapshot(raw)
+	if text != "hello — Agbofa Nexus AI" || media != "https://example.invalid/v.mp4" {
+		t.Fatalf("%q %q", text, media)
+	}
+	plain, empty := ParseSnapshot("just text")
+	if plain != "just text" || empty != "" {
+		t.Fatal("plain snapshot")
+	}
+}

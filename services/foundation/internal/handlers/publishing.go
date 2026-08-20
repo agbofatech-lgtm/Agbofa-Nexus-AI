@@ -31,6 +31,7 @@ func (h PublishingHTTP) Schedule(w http.ResponseWriter, r *http.Request) {
 		BrandApplied   bool   `json:"brand_identity_applied"`
 		ScheduledAt    string `json:"scheduledAt"`
 		Approve        bool   `json:"approved"`
+		MediaURL       string `json:"media_url"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeErr(w, http.StatusBadRequest, "invalid_argument")
@@ -63,7 +64,7 @@ func (h PublishingHTTP) Schedule(w http.ResponseWriter, r *http.Request) {
 	spec, _ := social.Lookup(acct.Platform)
 	pkg, err := social.Adapt(social.CanonicalContent{
 		ID: req.ContentID, Version: firstNV(req.ContentVersion, "v1"), TenantID: principal.TenantID,
-		Body: req.Body, BrandApplied: true, AuthorID: principal.SubjectID,
+		Body: req.Body, MediaURL: req.MediaURL, BrandApplied: true, AuthorID: principal.SubjectID,
 	}, spec)
 	if err != nil {
 		writeErr(w, http.StatusUnprocessableEntity, "INVALID_CONTENT")
@@ -84,7 +85,7 @@ func (h PublishingHTTP) Schedule(w http.ResponseWriter, r *http.Request) {
 	job, err := h.Jobs.CreateJob(r.Context(), repositories.DistJob{
 		TenantID: principal.TenantID, ActorID: principal.SubjectID, AccountID: acct.ID,
 		Platform: string(spec.ID), ContentID: req.ContentID, ContentVersion: firstNV(req.ContentVersion, "v1"),
-		IdempotencyKey: key, Status: status, ScheduledAt: when, Snapshot: pkg.Text, BrandApplied: true,
+		IdempotencyKey: key, Status: status, ScheduledAt: when, Snapshot: social.EncodeSnapshot(pkg.Text, pkg.MediaURL), BrandApplied: true,
 	})
 	if err == social.ErrDuplicateJob {
 		writeJSON(w, http.StatusOK, map[string]any{"idempotent": true, "idempotency_key": key})
