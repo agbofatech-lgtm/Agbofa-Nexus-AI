@@ -10,6 +10,7 @@ import (
 	"github.com/agbofa/nexus/libs/go/pkg/config"
 	"github.com/agbofa/nexus/libs/go/pkg/database"
 	"github.com/agbofa/nexus/libs/go/pkg/llm"
+	"github.com/agbofa/nexus/libs/go/pkg/publish"
 	"github.com/agbofa/nexus/libs/go/pkg/social"
 	"github.com/agbofa/nexus/services/foundation/internal/application"
 	"github.com/agbofa/nexus/services/foundation/internal/authn"
@@ -53,15 +54,21 @@ func Compose(ctx context.Context, cfg config.RuntimeConfig) (*Runtime, error) {
 		llm.WithUsageSink(llm.NewMemoryUsage()),
 	)
 	box, _ := social.NewTokenBox(os.Getenv("AGBOFA_SECRET_SOCIAL_TOKEN_KEY"))
-	socialHTTP := handlers.SocialHTTP{
-		Store: repositories.NewSocialStore(pool),
-		Jobs:  repositories.NewDistStore(pool),
-		Box:   box,
+	jobs := repositories.NewDistStore(pool)
+	socialStore := repositories.NewSocialStore(pool)
+	socialHTTP := handlers.SocialHTTP{Store: socialStore, Jobs: jobs, Box: box}
+	worker := &publish.Worker{
+		Store: jobs, Adapter: social.OAuthClient{}, WorkerID: "foundation-1", MaxTries: 5,
+		Tokens: func(context.Context, publish.Job) (social.TokenSet, error) {
+			return social.TokenSet{}, social.ErrReauthRequired
+		},
 	}
+	pubHTTP := handlers.PublishingHTTP{Jobs: jobs, Social: socialStore, Worker: worker}
 	httpSrv := server.NewHTTP(
 		handlers.IdentityHTTP{Svc: svc, Tenants: tenants},
 		handlers.AIHTTP{Gateway: gateway},
 		socialHTTP,
+		pubHTTP,
 		verifier,
 		pool,
 	)

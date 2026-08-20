@@ -16,7 +16,7 @@ type HTTP struct {
 	Handler http.Handler
 }
 
-func NewHTTP(identity handlers.IdentityHTTP, ai handlers.AIHTTP, social handlers.SocialHTTP, verifier *auth.Verifier, pool *database.Pool) *HTTP {
+func NewHTTP(identity handlers.IdentityHTTP, ai handlers.AIHTTP, social handlers.SocialHTTP, pub handlers.PublishingHTTP, verifier *auth.Verifier, pool *database.Pool) *HTTP {
 	mux := http.NewServeMux()
 	s := &HTTP{Mux: mux, Ready: func() bool { return pool.Ping(context.Background()) == nil }}
 	public := map[string]struct{}{
@@ -43,6 +43,11 @@ func NewHTTP(identity handlers.IdentityHTTP, ai handlers.AIHTTP, social handlers
 	mux.Handle("/rpc/social.v1.SocialService/CreateDistribution", authorize("content", "create")(http.HandlerFunc(social.CreateDistribution)))
 	mux.Handle("/rpc/social.v1.SocialService/ListDistributions", authorize("content", "read")(http.HandlerFunc(social.ListDistributions)))
 	mux.Handle("/rpc/social.v1.SocialService/CancelDistribution", authorize("content", "create")(http.HandlerFunc(social.Cancel)))
+	mux.Handle("/rpc/publish.v1.PublishingService/Schedule", authorize("content", "create")(http.HandlerFunc(pub.Schedule)))
+	mux.Handle("/rpc/publish.v1.PublishingService/Approve", authorize("content", "create")(http.HandlerFunc(pub.Approve)))
+	mux.Handle("/rpc/publish.v1.PublishingService/Cancel", authorize("content", "create")(http.HandlerFunc(pub.Cancel)))
+	mux.Handle("/rpc/publish.v1.PublishingService/Get", authorize("content", "read")(http.HandlerFunc(pub.Get)))
+	mux.Handle("/rpc/publish.v1.PublishingService/Tick", authorize("content", "create")(http.HandlerFunc(pub.Tick)))
 
 	var h http.Handler = mux
 	h = authenticate(verifier, public)(h)
