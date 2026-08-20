@@ -16,12 +16,13 @@ type HTTP struct {
 	Handler http.Handler
 }
 
-func NewHTTP(identity handlers.IdentityHTTP, verifier *auth.Verifier, pool *database.Pool) *HTTP {
+func NewHTTP(identity handlers.IdentityHTTP, ai handlers.AIHTTP, verifier *auth.Verifier, pool *database.Pool) *HTTP {
 	mux := http.NewServeMux()
 	s := &HTTP{Mux: mux, Ready: func() bool { return pool.Ping(context.Background()) == nil }}
 	public := map[string]struct{}{
 		"/healthz": true, "/readyz": true,
 		"/rpc/foundation.tenant_identity.v1.TenantIdentityService/AuthenticateUser": true,
+		"/rpc/ai.v1.AIGateway/Health": true,
 	}
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
 	mux.HandleFunc("/readyz", func(w http.ResponseWriter, _ *http.Request) {
@@ -33,6 +34,8 @@ func NewHTTP(identity handlers.IdentityHTTP, verifier *auth.Verifier, pool *data
 	})
 	mux.HandleFunc("/rpc/foundation.tenant_identity.v1.TenantIdentityService/AuthenticateUser", identity.AuthenticateUser)
 	mux.Handle("/rpc/foundation.tenant_identity.v1.TenantIdentityService/GetTenant", authorize("tenant", "read")(http.HandlerFunc(identity.GetTenant)))
+	mux.HandleFunc("/rpc/ai.v1.AIGateway/Health", ai.Health)
+	mux.Handle("/rpc/ai.v1.AIGateway/Complete", authorize("content", "create")(http.HandlerFunc(ai.Complete)))
 
 	var h http.Handler = mux
 	h = authenticate(verifier, public)(h)

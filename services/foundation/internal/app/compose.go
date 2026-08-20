@@ -8,6 +8,7 @@ import (
 	"github.com/agbofa/nexus/libs/go/pkg/auth"
 	"github.com/agbofa/nexus/libs/go/pkg/config"
 	"github.com/agbofa/nexus/libs/go/pkg/database"
+	"github.com/agbofa/nexus/libs/go/pkg/llm"
 	"github.com/agbofa/nexus/services/foundation/internal/application"
 	"github.com/agbofa/nexus/services/foundation/internal/authn"
 	"github.com/agbofa/nexus/services/foundation/internal/domain"
@@ -41,7 +42,20 @@ func Compose(ctx context.Context, cfg config.RuntimeConfig) (*Runtime, error) {
 		pool.Close()
 		return nil, err
 	}
-	httpSrv := server.NewHTTP(handlers.IdentityHTTP{Svc: svc, Tenants: tenants}, verifier, pool)
+	aiSettings := llm.LoadSettings(ctx, nil)
+	gateway := llm.NewGateway(
+		llm.DefaultRegistry(),
+		aiSettings.Providers(),
+		llm.WithTimeout(aiSettings.Timeout),
+		llm.WithRetries(aiSettings.Retries),
+		llm.WithUsageSink(llm.NewMemoryUsage()),
+	)
+	httpSrv := server.NewHTTP(
+		handlers.IdentityHTTP{Svc: svc, Tenants: tenants},
+		handlers.AIHTTP{Gateway: gateway},
+		verifier,
+		pool,
+	)
 	return &Runtime{Config: cfg, Pool: pool, HTTP: httpSrv, Verifier: verifier}, nil
 }
 

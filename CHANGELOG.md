@@ -2,6 +2,10 @@
 
 This project follows Keep a Changelog conventions for release notes.
 
+## 2026-08-20
+
+- Phase 02: added AI gateway, model registry, OpenAI/Anthropic HTTP adapters, usage accounting, and BFF `/api/v1/ai` routes. Real-provider runtime remains pending.
+
 ## 2026-08-19
 
 - PROD-01: added pgx pool, deterministic SQL migrations, and concrete foundation repositories. Runtime PostgreSQL verification is required.
