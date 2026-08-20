@@ -4,6 +4,7 @@ This project follows Keep a Changelog conventions for release notes.
 
 ## 2026-08-20
 
+- Phase 03: added OAuth state/PKCE, AES-GCM token box, branding gate, distribution state machine, social/distribution persistence, and BFF routes. Real platform OAuth/publish remain pending.
 - Phase 02: added AI gateway, model registry, OpenAI/Anthropic HTTP adapters, usage accounting, and BFF `/api/v1/ai` routes. Real-provider runtime remains pending.
 
 ## 2026-08-19

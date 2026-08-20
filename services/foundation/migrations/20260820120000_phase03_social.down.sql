@@ -1,0 +1,12 @@
+DROP POLICY IF EXISTS distribution_audit_isolation ON distribution_audit;
+DROP POLICY IF EXISTS publication_records_isolation ON publication_records;
+DROP POLICY IF EXISTS distribution_attempts_isolation ON distribution_attempts;
+DROP POLICY IF EXISTS distribution_jobs_isolation ON distribution_jobs;
+DROP POLICY IF EXISTS social_connections_isolation ON social_connections;
+DROP POLICY IF EXISTS oauth_states_isolation ON oauth_states;
+DROP TABLE IF EXISTS distribution_audit;
+DROP TABLE IF EXISTS publication_records;
+DROP TABLE IF EXISTS distribution_attempts;
+DROP TABLE IF EXISTS distribution_jobs;
+DROP TABLE IF EXISTS social_connections;
+DROP TABLE IF EXISTS oauth_states;

@@ -16,7 +16,7 @@ type HTTP struct {
 	Handler http.Handler
 }
 
-func NewHTTP(identity handlers.IdentityHTTP, ai handlers.AIHTTP, verifier *auth.Verifier, pool *database.Pool) *HTTP {
+func NewHTTP(identity handlers.IdentityHTTP, ai handlers.AIHTTP, social handlers.SocialHTTP, verifier *auth.Verifier, pool *database.Pool) *HTTP {
 	mux := http.NewServeMux()
 	s := &HTTP{Mux: mux, Ready: func() bool { return pool.Ping(context.Background()) == nil }}
 	public := map[string]struct{}{
@@ -36,6 +36,13 @@ func NewHTTP(identity handlers.IdentityHTTP, ai handlers.AIHTTP, verifier *auth.
 	mux.Handle("/rpc/foundation.tenant_identity.v1.TenantIdentityService/GetTenant", authorize("tenant", "read")(http.HandlerFunc(identity.GetTenant)))
 	mux.HandleFunc("/rpc/ai.v1.AIGateway/Health", ai.Health)
 	mux.Handle("/rpc/ai.v1.AIGateway/Complete", authorize("content", "create")(http.HandlerFunc(ai.Complete)))
+	mux.Handle("/rpc/social.v1.SocialService/Connect", authorize("content", "create")(http.HandlerFunc(social.Connect)))
+	mux.Handle("/rpc/social.v1.SocialService/Callback", authorize("content", "create")(http.HandlerFunc(social.Callback)))
+	mux.Handle("/rpc/social.v1.SocialService/Accounts", authorize("content", "read")(http.HandlerFunc(social.Accounts)))
+	mux.Handle("/rpc/social.v1.SocialService/Disconnect", authorize("content", "create")(http.HandlerFunc(social.Disconnect)))
+	mux.Handle("/rpc/social.v1.SocialService/CreateDistribution", authorize("content", "create")(http.HandlerFunc(social.CreateDistribution)))
+	mux.Handle("/rpc/social.v1.SocialService/ListDistributions", authorize("content", "read")(http.HandlerFunc(social.ListDistributions)))
+	mux.Handle("/rpc/social.v1.SocialService/CancelDistribution", authorize("content", "create")(http.HandlerFunc(social.Cancel)))
 
 	var h http.Handler = mux
 	h = authenticate(verifier, public)(h)
