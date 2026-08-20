@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package distribution.social.v1;
+
+option go_package = "github.com/agbofa/nexus-api/gen/go/distribution/social/v1;socialv1";
+
+// WatchConfiguration-style streaming is not used here.
+service SocialService {
+  rpc ConnectSocialAccount(ConnectSocialAccountRequest) returns (ConnectSocialAccountResponse);
+  rpc GetSocialAccounts(GetSocialAccountsRequest) returns (GetSocialAccountsResponse);
+  rpc DisconnectSocialAccount(DisconnectSocialAccountRequest) returns (DisconnectSocialAccountResponse);
+  rpc CreateDistribution(CreateDistributionRequest) returns (CreateDistributionResponse);
+  rpc ScheduleDistribution(CreateDistributionRequest) returns (CreateDistributionResponse);
+  rpc CancelDistribution(CancelDistributionRequest) returns (CancelDistributionResponse);
+  rpc ListDistributions(ListDistributionsRequest) returns (ListDistributionsResponse);
+}
+
+message ConnectSocialAccountRequest {
+  string platform = 1;
+  string redirect_uri = 2;
+}
+message ConnectSocialAccountResponse { string authorization_url = 1; }
+
+message GetSocialAccountsRequest {}
+message GetSocialAccountsResponse { repeated SocialAccount accounts = 1; }
+message SocialAccount {
+  string id = 1;
+  string platform = 2;
+  string account_name = 3;
+  string status = 4;
+}
+
+message DisconnectSocialAccountRequest { string id = 1; }
+message DisconnectSocialAccountResponse { bool disconnected = 1; }
+
+message CreateDistributionRequest {
+  string account_id = 1;
+  string content_id = 2;
+  string content_version = 3;
+  string body = 4;
+  bool brand_identity_applied = 5;
+  string scheduled_at = 6;
+}
+message CreateDistributionResponse {
+  string job_id = 1;
+  string status = 2;
+  bool brand_applied = 3;
+}
+
+message CancelDistributionRequest { string id = 1; }
+message CancelDistributionResponse { string status = 1; }
+
+message ListDistributionsRequest {}
+message ListDistributionsResponse { repeated DistributionJob jobs = 1; }
+message DistributionJob {
+  string id = 1;
+  string status = 2;
+  string platform = 3;
+  string content_id = 4;
+}

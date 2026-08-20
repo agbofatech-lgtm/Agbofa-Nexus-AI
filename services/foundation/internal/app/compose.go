@@ -3,12 +3,14 @@ package app
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/agbofa/nexus/libs/go/pkg/auth"
 	"github.com/agbofa/nexus/libs/go/pkg/config"
 	"github.com/agbofa/nexus/libs/go/pkg/database"
 	"github.com/agbofa/nexus/libs/go/pkg/llm"
+	"github.com/agbofa/nexus/libs/go/pkg/social"
 	"github.com/agbofa/nexus/services/foundation/internal/application"
 	"github.com/agbofa/nexus/services/foundation/internal/authn"
 	"github.com/agbofa/nexus/services/foundation/internal/domain"
@@ -50,9 +52,16 @@ func Compose(ctx context.Context, cfg config.RuntimeConfig) (*Runtime, error) {
 		llm.WithRetries(aiSettings.Retries),
 		llm.WithUsageSink(llm.NewMemoryUsage()),
 	)
+	box, _ := social.NewTokenBox(os.Getenv("AGBOFA_SECRET_SOCIAL_TOKEN_KEY"))
+	socialHTTP := handlers.SocialHTTP{
+		Store: repositories.NewSocialStore(pool),
+		Jobs:  repositories.NewDistStore(pool),
+		Box:   box,
+	}
 	httpSrv := server.NewHTTP(
 		handlers.IdentityHTTP{Svc: svc, Tenants: tenants},
 		handlers.AIHTTP{Gateway: gateway},
+		socialHTTP,
 		verifier,
 		pool,
 	)
