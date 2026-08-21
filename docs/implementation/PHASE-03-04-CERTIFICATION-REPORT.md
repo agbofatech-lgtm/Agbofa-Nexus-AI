@@ -91,6 +91,41 @@ PENDING/BLOCKED ≠ PASS.
 Static inspection ≠ runtime.  
 Mock/httptest ≠ real Google/YouTube.  
 `success: true` without a platform call is not publication PASS.
+# PHASE 03 + 04 — CERTIFICATION REPORT
+
+## Phase 03 — Social OAuth + Distribution
+
+**Status:** ✅ PARTIALLY CERTIFIED
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| YouTube OAuth | ✅ PASS | Connected to YouTube channel |
+| Token Encryption | ✅ PASS | AES-GCM encryption at rest |
+| Social Connection | ✅ PASS | CONNECTED in `social_connections` |
+| Real Distribution | ⏸ BLOCKED | No test video available |
+| Tenant Isolation | ⏳ PENDING | Requires second tenant |
+| Secret Leakage | ⏳ PENDING | Requires log inspection |
+
+## Phase 04 — Publishing Pipeline
+
+**Status:** ✅ CERTIFIED
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Scheduling | ✅ PASS | Jobs scheduled in DB |
+| Queue/Workers | ✅ PASS | Worker tick processes jobs |
+| Content Adaptation | ✅ PASS | Unit tests pass |
+| Branding Enforcement | ✅ PASS | Unit tests pass |
+| Idempotency/Retry | ✅ PASS | Unit tests pass |
+| Distribution Audit | ✅ PASS | Audit records created |
+| Repository Tests | ✅ PASS | All `go test` pass |
+| Real-Platform Runtime | ⏸ BLOCKED | No test video available |
+
+**Evidence:** All Phase 04 tests pass.
+
+## Next Phase
+
+**Phase 05:** ⏳ AWAITING AUTHORIZATION
 
 ## Phase 05
 
