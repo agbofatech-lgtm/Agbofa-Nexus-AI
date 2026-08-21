@@ -15,6 +15,7 @@ import (
 const (
 	youtubeUploadURL   = "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status"
 	youtubeChannelsURL = "https://www.googleapis.com/youtube/v3/channels?part=id,snippet&mine=true"
+	googleUserInfoURL  = "https://openidconnect.googleapis.com/v1/userinfo"
 	youtubeMaxMedia    = 64 << 20 // 64 MiB in-process cap; larger uploads fail closed
 )
 
@@ -48,27 +49,47 @@ func (y YouTubeAdapter) Identify(ctx context.Context, tokens TokenSet) (accountI
 		return "", "", err
 	}
 	defer res.Body.Close()
-	if res.StatusCode == http.StatusUnauthorized || res.StatusCode == http.StatusForbidden {
+	if res.StatusCode == http.StatusUnauthorized {
 		return "", "", ErrReauthRequired
 	}
+	if res.StatusCode < 300 {
+		var parsed struct {
+			Items []struct {
+				ID      string `json:"id"`
+				Snippet struct {
+					Title string `json:"title"`
+				} `json:"snippet"`
+			} `json:"items"`
+		}
+		if err := json.NewDecoder(io.LimitReader(res.Body, 1<<20)).Decode(&parsed); err == nil && len(parsed.Items) > 0 && parsed.Items[0].ID != "" {
+			return parsed.Items[0].ID, parsed.Items[0].Snippet.Title, nil
+		}
+	}
+	return y.identifyUserInfo(ctx, tokens)
+}
+
+func (y YouTubeAdapter) identifyUserInfo(ctx context.Context, tokens TokenSet) (accountID, accountName string, err error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, googleUserInfoURL, nil)
+	if err != nil {
+		return "", "", err
+	}
+	req.Header.Set("Authorization", "Bearer "+tokens.AccessToken)
+	res, err := y.do(req)
+	if err != nil {
+		return "", "", err
+	}
+	defer res.Body.Close()
 	if res.StatusCode >= 300 {
 		return "", "", ErrProviderIdentity
 	}
-	var parsed struct {
-		Items []struct {
-			ID      string `json:"id"`
-			Snippet struct {
-				Title string `json:"title"`
-			} `json:"snippet"`
-		} `json:"items"`
+	var info struct {
+		Sub  string `json:"sub"`
+		Name string `json:"name"`
 	}
-	if err := json.NewDecoder(io.LimitReader(res.Body, 1<<20)).Decode(&parsed); err != nil {
+	if err := json.NewDecoder(io.LimitReader(res.Body, 1<<20)).Decode(&info); err != nil || info.Sub == "" {
 		return "", "", ErrProviderIdentity
 	}
-	if len(parsed.Items) == 0 || parsed.Items[0].ID == "" {
-		return "", "", ErrProviderIdentity
-	}
-	return parsed.Items[0].ID, parsed.Items[0].Snippet.Title, nil
+	return info.Sub, info.Name, nil
 }
 
 func (y YouTubeAdapter) Publish(ctx context.Context, tokens TokenSet, pkg PublicationPackage) (PublishResult, error) {

@@ -52,16 +52,31 @@ type OAuthClient struct {
 
 func (c OAuthClient) Platform() Platform { return c.Spec.ID }
 
+func (c OAuthClient) resolvedID() string {
+	if c.ClientID != "" {
+		return c.ClientID
+	}
+	return ClientID(c.Spec.ID)
+}
+
+func (c OAuthClient) resolvedSecret() string {
+	if c.ClientSec != "" {
+		return c.ClientSec
+	}
+	return ClientSecret(c.Spec.ID)
+}
+
 func (c OAuthClient) Exchange(ctx context.Context, code, redirect, verifier string) (TokenSet, error) {
-	if c.ClientID == "" || code == "" {
+	clientID := c.resolvedID()
+	if clientID == "" || code == "" {
 		return TokenSet{}, ErrTokenUnavailable
 	}
 	form := url.Values{
 		"grant_type": {"authorization_code"}, "code": {code},
-		"redirect_uri": {redirect}, "client_id": {c.ClientID},
+		"redirect_uri": {redirect}, "client_id": {clientID},
 	}
-	if c.ClientSec != "" {
-		form.Set("client_secret", c.ClientSec)
+	if sec := c.resolvedSecret(); sec != "" {
+		form.Set("client_secret", sec)
 	}
 	if c.Spec.PKCE && verifier != "" {
 		form.Set("code_verifier", verifier)
@@ -70,12 +85,13 @@ func (c OAuthClient) Exchange(ctx context.Context, code, redirect, verifier stri
 }
 
 func (c OAuthClient) Refresh(ctx context.Context, refreshToken string) (TokenSet, error) {
-	if refreshToken == "" || c.ClientID == "" {
+	clientID := c.resolvedID()
+	if refreshToken == "" || clientID == "" {
 		return TokenSet{}, ErrReauthRequired
 	}
-	form := url.Values{"grant_type": {"refresh_token"}, "refresh_token": {refreshToken}, "client_id": {c.ClientID}}
-	if c.ClientSec != "" {
-		form.Set("client_secret", c.ClientSec)
+	form := url.Values{"grant_type": {"refresh_token"}, "refresh_token": {refreshToken}, "client_id": {clientID}}
+	if sec := c.resolvedSecret(); sec != "" {
+		form.Set("client_secret", sec)
 	}
 	return c.token(ctx, form)
 }

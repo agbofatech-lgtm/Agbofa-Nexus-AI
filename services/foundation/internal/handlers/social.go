@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -110,7 +112,21 @@ func (h SocialHTTP) Callback(w http.ResponseWriter, r *http.Request) {
 	}
 	row, err := h.Store.ConsumeState(r.Context(), social.HashOpaque(rawState), principal.TenantID, principal.SubjectID)
 	if err != nil {
-		writeErr(w, http.StatusForbidden, "oauth_state_denied")
+		code := "oauth_state_denied"
+		switch {
+		case errors.Is(err, social.ErrReplayState):
+			code = "oauth_state_replay"
+		case errors.Is(err, social.ErrStateTenant):
+			code = "oauth_state_tenant"
+		case errors.Is(err, social.ErrStateUser):
+			code = "oauth_state_user"
+		case errors.Is(err, social.ErrExpiredState):
+			code = "oauth_state_expired"
+		case errors.Is(err, social.ErrInvalidState):
+			code = "oauth_state_unknown"
+		}
+		log.Printf("social callback: consume failed class=%s tenant_set=%t", code, principal.TenantID != "")
+		writeErr(w, http.StatusForbidden, code)
 		return
 	}
 	stored := social.OAuthState{Hash: row.Hash, TenantID: row.TenantID, UserID: row.UserID, Platform: social.Platform(row.Platform), Redirect: row.Redirect, ExpiresAt: row.ExpiresAt}
@@ -126,6 +142,7 @@ func (h SocialHTTP) Callback(w http.ResponseWriter, r *http.Request) {
 	adapter := h.adapter(social.Platform(row.Platform))
 	tokens, err := adapter.Exchange(r.Context(), code, row.Redirect, verifier)
 	if err != nil || tokens.AccessToken == "" {
+		log.Printf("social callback: exchange failed platform=%s", row.Platform)
 		writeErr(w, http.StatusBadGateway, "oauth_exchange_failed")
 		return
 	}
