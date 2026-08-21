@@ -53,6 +53,8 @@ type Plane struct {
 	rate          map[string][]time.Time
 	running       map[string]int
 	Phase04       Phase04Schedule
+	Truth         func(string) (bool, error)    // Truth engine for Phase 08
+	Compliance    func(string) (bool, error)    // Compliance engine for Phase 08
 }
 
 type Execution struct {
@@ -81,10 +83,22 @@ type Memory struct {
 
 func NewPlane() *Plane {
 	return &Plane{
-		Production: false, maxConcurrent: 2, maxDepth: 1, budget: 100000, ratePerMin: 20,
-		enabled: map[string]map[string]bool{}, kill: map[string]string{}, level: map[string]int{},
-		execs: map[string]*Execution{}, idem: map[string]string{}, approvals: map[string]*Approval{},
-		spend: map[string]int{}, rate: map[string][]time.Time{}, running: map[string]int{},
+		Production:    false,
+		maxConcurrent: 2,
+		maxDepth:      1,
+		budget:        100000,
+		ratePerMin:    20,
+		enabled:       map[string]map[string]bool{},
+		kill:          map[string]string{},
+		level:         map[string]int{},
+		execs:         map[string]*Execution{},
+		idem:          map[string]string{},
+		approvals:     map[string]*Approval{},
+		spend:         map[string]int{},
+		rate:          map[string][]time.Time{},
+		running:       map[string]int{},
+		Truth:         nil, // Will be set in Phase 08
+		Compliance:    nil, // Will be set in Phase 08
 	}
 }
 
@@ -399,7 +413,7 @@ func (p *Plane) runTool(id string, actor authz.Principal, in map[string]any, bra
 		return map[string]any{"text": "DRAFT", "cost_source": "ESTIMATED", "provider_called": false}, nil
 	case "validate_facts":
 		if p.Truth == nil {
-			return nil, fmt.Errorf("TRUTH_REQUIRED")
+			return nil, fmt.Errorf("TRUTH_ENGINE_NOT_INITIALIZED")
 		}
 		ok, err := p.Truth(fmt.Sprint(in["text"]))
 		if err != nil || !ok {
@@ -408,7 +422,7 @@ func (p *Plane) runTool(id string, actor authz.Principal, in map[string]any, bra
 		return map[string]any{"passed": true}, nil
 	case "check_compliance":
 		if p.Compliance == nil {
-			return nil, fmt.Errorf("COMPLIANCE_REQUIRED")
+			return nil, fmt.Errorf("COMPLIANCE_ENGINE_NOT_INITIALIZED")
 		}
 		ok, err := p.Compliance(fmt.Sprint(in["text"]))
 		if err != nil || !ok {
