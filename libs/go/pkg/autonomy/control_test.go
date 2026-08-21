@@ -1,0 +1,132 @@
+package autonomy
+
+import (
+	"testing"
+
+	"github.com/agbofa/nexus/libs/go/pkg/authz"
+)
+
+func admin() authz.Principal {
+	return authz.Principal{SubjectID: "admin-1", TenantID: "tenant-a", Roles: []string{authz.RoleTenantAdmin}}
+}
+
+func reader() authz.Principal {
+	return authz.Principal{SubjectID: "r", TenantID: "tenant-a", Roles: []string{authz.RoleReader}}
+}
+
+func TestRegistryUniqueAndNotCertified(t *testing.T) {
+	if !UniqueAgentIDs() {
+		t.Fatal("ids")
+	}
+	if len(CanonicalAgents()) != 28 {
+		t.Fatalf("want 28 got %d", len(CanonicalAgents()))
+	}
+	for _, a := range CanonicalAgents() {
+		if a.Certified || a.Enabled {
+			t.Fatalf("declared agent must not be certified or enabled: %s", a.ID)
+		}
+	}
+}
+
+func TestResolveDenials(t *testing.T) {
+	p := NewPlane()
+	if err := p.Enable("tenant-a", "AGT-026", admin()); err != nil {
+		t.Fatal(err)
+	}
+	if _, m, err := p.Resolve("AGT-026", admin()); err != nil || m != MaturityExecutable {
+		t.Fatalf("%s %v", m, err)
+	}
+	if _, _, err := p.Resolve("AGT-999", admin()); err == nil {
+		t.Fatal("invalid")
+	}
+	if _, _, err := p.Resolve("AGT-001", admin()); err == nil {
+		t.Fatal("declared")
+	}
+	if _, _, err := p.Resolve("AGT-026", reader()); err == nil {
+		t.Fatal("reader")
+	}
+	other := admin()
+	other.TenantID = "tenant-b"
+	if _, _, err := p.Resolve("AGT-026", other); err == nil {
+		t.Fatal("other tenant")
+	}
+}
+
+func TestExecuteObserveAndForbidden(t *testing.T) {
+	p := NewPlane()
+	_ = p.Enable("tenant-a", "AGT-026", admin())
+	ex := p.Execute(ExecRequest{AgentID: "AGT-026", Actor: admin()})
+	if ex.Status != StatusSucceeded {
+		t.Fatalf("%+v", ex)
+	}
+	if ex.Result["provider_called"] != false {
+		t.Fatal("must not claim provider")
+	}
+	bad := p.Execute(ExecRequest{AgentID: "AGT-026", Actor: admin(), Tools: []ToolStep{{ToolID: "direct_social_api"}}})
+	if bad.Status != StatusFailed || bad.Error != "FORBIDDEN_TOOL" {
+		t.Fatalf("%+v", bad)
+	}
+}
+
+func TestKillAndProductionDisabled(t *testing.T) {
+	p := NewPlane()
+	_ = p.Enable("tenant-a", "AGT-014", admin())
+	_ = p.SetKill("tenant-a", admin(), true)
+	ex := p.Execute(ExecRequest{AgentID: "AGT-014", Actor: admin()})
+	if ex.Status != StatusBlocked || ex.Error != "KILL_SWITCH_ENGAGED" {
+		t.Fatalf("%+v", ex)
+	}
+	_ = p.SetKill("tenant-a", admin(), false)
+	pub := p.Execute(ExecRequest{
+		AgentID: "AGT-014", Actor: admin(), Truth: true, Compliance: true, Brand: true,
+		Tools: []ToolStep{{ToolID: "publish_content", Input: map[string]any{"tenant_id": "tenant-a", "content_id": "c", "brand_identity_applied": true}}},
+	})
+	if pub.Error != "PRODUCTION_AUTONOMY_DISABLED" && pub.Status != StatusBlocked && pub.Status != StatusWaitingApproval {
+		t.Fatalf("production must remain disabled: %+v", pub)
+	}
+	if p.Production {
+		t.Fatal("default production must be false")
+	}
+}
+
+func TestPublishUsesPhase04Only(t *testing.T) {
+	p := NewPlane()
+	p.Production = true
+	called := 0
+	p.Phase04 = func(tenant, actor, contentID, body string, brand bool) (string, error) {
+		called++
+		if !brand {
+			t.Fatal("brand")
+		}
+		return "job-1", nil
+	}
+	_ = p.Enable("tenant-a", "AGT-014", admin())
+	waiting := p.Execute(ExecRequest{
+		AgentID: "AGT-014", Actor: admin(), Truth: true, Compliance: true, Brand: true,
+		Tools: []ToolStep{{ToolID: "publish_content", Input: map[string]any{"content_id": "c1", "brand_identity_applied": true, "body": "x"}}},
+	})
+	if waiting.Status != StatusWaitingApproval {
+		t.Fatalf("%+v", waiting)
+	}
+}
+
+func TestIdempotency(t *testing.T) {
+	p := NewPlane()
+	_ = p.Enable("tenant-a", "AGT-026", admin())
+	a := p.Execute(ExecRequest{AgentID: "AGT-026", Actor: admin(), IdempotencyKey: "k"})
+	b := p.Execute(ExecRequest{AgentID: "AGT-026", Actor: admin(), IdempotencyKey: "k"})
+	if a.ID != b.ID {
+		t.Fatal("idem")
+	}
+}
+
+func TestCrossTenantGetDenied(t *testing.T) {
+	p := NewPlane()
+	_ = p.Enable("tenant-a", "AGT-026", admin())
+	ex := p.Execute(ExecRequest{AgentID: "AGT-026", Actor: admin()})
+	other := admin()
+	other.TenantID = "tenant-b"
+	if _, err := p.Get(ex.ID, other); err == nil {
+		t.Fatal("expected tenant mismatch")
+	}
+}
