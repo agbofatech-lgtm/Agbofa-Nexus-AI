@@ -101,7 +101,17 @@ func (r *RefreshTokenRepository) DeleteExpired(ctx context.Context, now time.Tim
 
 func scanRefresh(row interface{ Scan(dest ...any) error }) (domain.RefreshToken, error) {
 	var token domain.RefreshToken
-	if err := row.Scan(&token.ID, &token.UserID, &token.TenantID, &token.TokenHash, &token.ExpiresAt, &token.Revoked, &token.CreatedAt); err != nil {
+	if err := row.Scan(
+		&token.ID,
+		&token.UserID,
+		&token.TenantID,
+		&token.TokenHash,
+		&token.FamilyID,
+		&token.ExpiresAt,
+		&token.Revoked,
+		&token.UsedAt,
+		&token.CreatedAt,
+	); err != nil {
 		return domain.RefreshToken{}, mapDB(err)
 	}
 	return token, nil
