@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS analytics_snapshots (
     job_id UUID NOT NULL REFERENCES distribution_jobs(id),
     platform TEXT NOT NULL,
     resource_id TEXT NOT NULL,
-    window TEXT NOT NULL DEFAULT '',
+    "window" TEXT NOT NULL DEFAULT '',
     impressions BIGINT,
     views BIGINT,
     likes BIGINT,
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS analytics_snapshots (
     clicks BIGINT,
     source_metric TEXT NOT NULL DEFAULT '',
     retrieved_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE (tenant_id, resource_id, window, source_metric)
+    UNIQUE (tenant_id, resource_id, "window", source_metric)
 );
 
 ALTER TABLE analytics_snapshots ENABLE ROW LEVEL SECURITY;

@@ -75,7 +75,7 @@ func NewSigner(cfg config.JWTConfig, at time.Time) (*Signer, error) {
 		kid: key.KID,
 		key: priv,
 		ttl: cfg.AccessTokenTTL,
-		now: func() time.Time { return time.Now() },
+		now: func() time.Time { return at },
 	}, nil
 }
 

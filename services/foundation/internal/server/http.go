@@ -20,9 +20,10 @@ func NewHTTP(identity handlers.IdentityHTTP, ai handlers.AIHTTP, social handlers
 	mux := http.NewServeMux()
 	s := &HTTP{Mux: mux, Ready: func() bool { return pool.Ping(context.Background()) == nil }}
 	public := map[string]struct{}{
-		"/healthz": true, "/readyz": true,
-		"/rpc/foundation.tenant_identity.v1.TenantIdentityService/AuthenticateUser": true,
-		"/rpc/ai.v1.AIGateway/Health": true,
+		"/healthz": {},
+		"/readyz": {},
+		"/rpc/foundation.tenant_identity.v1.TenantIdentityService/AuthenticateUser": {},
+		"/rpc/ai.v1.AIGateway/Health": {},
 	}
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
 	mux.HandleFunc("/readyz", func(w http.ResponseWriter, _ *http.Request) {
