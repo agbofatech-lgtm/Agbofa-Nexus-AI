@@ -65,18 +65,49 @@ func (b *TokenBox) Open(ciphertext string) (string, error) {
 }
 
 func parseKey(raw string) ([]byte, error) {
-	raw = strings.TrimSpace(raw)
+	raw = normalizeKeyMaterial(raw)
 	if raw == "" {
 		return nil, errors.New("social: token encryption key required")
 	}
-	if decoded, err := hex.DecodeString(raw); err == nil && len(decoded) == 32 {
-		return decoded, nil
+	if decoded, err := hex.DecodeString(raw); err == nil {
+		if len(decoded) == 32 {
+			return decoded, nil
+		}
+		return nil, fmt.Errorf("social: token key hex decoded to %d bytes, want 32", len(decoded))
 	}
 	if decoded, err := base64.StdEncoding.DecodeString(raw); err == nil && len(decoded) == 32 {
+		return decoded, nil
+	}
+	if decoded, err := base64.RawStdEncoding.DecodeString(raw); err == nil && len(decoded) == 32 {
 		return decoded, nil
 	}
 	if len(raw) == 32 {
 		return []byte(raw), nil
 	}
-	return nil, fmt.Errorf("social: token key must be 32 bytes")
+	return nil, fmt.Errorf("social: token key must be 32 bytes (64 hex chars or base64); chars=%d", len(raw))
+}
+
+// normalizeKeyMaterial strips wrapping that Windows/.env files often add.
+// It does not accept a shorter or longer cryptographic key.
+func normalizeKeyMaterial(raw string) string {
+	raw = strings.TrimSpace(raw)
+	raw = strings.TrimPrefix(raw, "\uFEFF")
+	raw = strings.TrimSpace(raw)
+	if len(raw) >= 2 {
+		if (raw[0] == '"' && raw[len(raw)-1] == '"') || (raw[0] == '\'' && raw[len(raw)-1] == '\'') {
+			raw = strings.TrimSpace(raw[1 : len(raw)-1])
+		}
+	}
+	if strings.HasPrefix(raw, "0x") || strings.HasPrefix(raw, "0X") {
+		raw = raw[2:]
+	}
+	raw = strings.Map(func(r rune) rune {
+		switch r {
+		case ' ', '\t', '\n', '\r', '-':
+			return -1
+		default:
+			return r
+		}
+	}, raw)
+	return raw
 }

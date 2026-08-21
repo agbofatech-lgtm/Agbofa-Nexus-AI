@@ -55,7 +55,12 @@ func Compose(ctx context.Context, cfg config.RuntimeConfig) (*Runtime, error) {
 		llm.WithRetries(aiSettings.Retries),
 		llm.WithUsageSink(llm.NewMemoryUsage()),
 	)
-	box, _ := social.NewTokenBox(os.Getenv("AGBOFA_SECRET_SOCIAL_TOKEN_KEY"))
+	tokenKey := os.Getenv("AGBOFA_SECRET_SOCIAL_TOKEN_KEY")
+	box, err := social.NewTokenBox(tokenKey)
+	if err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("social token box (AGBOFA_SECRET_SOCIAL_TOKEN_KEY chars=%d): %w", len(strings.TrimSpace(tokenKey)), err)
+	}
 	jobs := repositories.NewDistStore(pool)
 	socialStore := repositories.NewSocialStore(pool)
 	adapters := social.NewDefaultRouter(http.DefaultClient)

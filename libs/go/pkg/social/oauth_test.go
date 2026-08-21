@@ -81,3 +81,28 @@ func TestTokenBoxRoundTrip(t *testing.T) {
 		t.Fatalf("open: %q %v", plain, err)
 	}
 }
+
+func TestTokenBoxAccepts64HexAndQuotedHex(t *testing.T) {
+	raw := strings.Repeat("ab", 32) // 64 hex chars → 32 bytes
+	if _, err := hex.DecodeString(raw); err != nil || len(raw) != 64 {
+		t.Fatal("test fixture")
+	}
+	if box, err := NewTokenBox(raw); err != nil || box == nil {
+		t.Fatalf("64 hex: box=%v err=%v", box != nil, err)
+	}
+	if box, err := NewTokenBox(`"` + raw + `"`); err != nil || box == nil {
+		t.Fatalf("quoted 64 hex: box=%v err=%v", box != nil, err)
+	}
+	if box, err := NewTokenBox("0x" + raw); err != nil || box == nil {
+		t.Fatalf("0x 64 hex: box=%v err=%v", box != nil, err)
+	}
+}
+
+func TestTokenBoxRejectsEmptyAndWrongLength(t *testing.T) {
+	if box, err := NewTokenBox(""); err == nil || box != nil {
+		t.Fatal("empty must fail closed")
+	}
+	if box, err := NewTokenBox("deadbeef"); err == nil || box != nil {
+		t.Fatal("short hex must fail closed")
+	}
+}
