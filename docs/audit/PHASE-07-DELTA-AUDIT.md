@@ -1,22 +1,19 @@
-# PHASE 07-D — Delta audit
+# PHASE 07-D — Delta audit (updated after Gate 5 implementation)
 
 Forensic baseline product: `920f219`  
-Audit docs: `1321a2f`  
-Remediation: this commit series on `arena/01a01a0f-agbofa-nexus-ai`
+Previous session HEAD before Gate 5: `dcc9a80154450ab6d66045c55af26eca57e3d3ae`
 
-| ID | Forensic | After 07-B | Status | Evidence |
-|---|---|---|---|---|
-| G-004 server.exe | EXISTS | untracked/removed from index | **RESOLVED** (working tree) | `git rm`; SHA-256 recorded; no PEM blobs |
-| G-006 BFF JWT | decode only | RS256 verify | **RESOLVED** (unit) | `node --test` jwt.test.ts 6/6 PASS. Host runtime needs public PEM. |
-| G-007 CSRF | unused | Origin + double-submit middleware | **RESOLVED** (unit + build) | csrf-core tests; middleware matcher `/api/v1/*`; login exempt |
-| G-008 rate limit | XFF + memory | UA/sub identity; still process-local | **REMAINING** | distributed store BLOCKED |
-| G-013 headers | missing | nosniff/DENY/referrer/permissions (+ HSTS prod) | **RESOLVED** (build) | `next.config.ts` |
-| G-001 OAuth | UNVERIFIED | unchanged | **BLOCKED** | no Google/Windows in Arena |
-| G-002 real publish | BLOCKED | unchanged | **BLOCKED** | no provider media |
-| G-003 agent runtime | MISSING | unchanged | **REMAINING** | Gate 5 not entered |
-| G-005 proto | INCONSISTENT | unchanged | **BLOCKED** | no Buf/protoc |
-| G-009 RLS | unproven | unchanged | **BLOCKED** | no PostgreSQL |
+| ID | After Gate 5 | Status | Evidence |
+|---|---|---|---|
+| G-003 agent runtime | Control plane + Execute RPC added | **PARTIAL** | Node unit 19/19 PASS. `go test` BLOCKED. Live foundation Execute BLOCKED. |
+| G-001 OAuth | unchanged | **BLOCKED** | no Google/Windows in this Gate 5 run |
+| G-002 real publish | unchanged | **BLOCKED** | no agent→YouTube evidence; do not fabricate |
+| G-008 rate limit | process-local autonomy limiter added | **REMAINING** | not distributed |
+| G-009 RLS | unchanged | **BLOCKED** | no PostgreSQL |
+| G-005 proto | unchanged | **BLOCKED** | no Buf/protoc |
 
-**Gate 4 result: NOT READY** (P0 G-001/G-002 BLOCKED; G-003 REMAINING; G-008 REMAINING).
+**Gate 4 historical write-up:** NOT READY (P0 provider gaps). Owner nonetheless authorized Gate 5.
 
-**Gate 5: NOT STARTED** — contract forbids autonomy implementation unless READY.
+**Gate 5:** IMPLEMENTED (control plane). **NOT CERTIFIED.**
+
+PRODUCTION AUTONOMOUS EXECUTION: **DISABLED**
