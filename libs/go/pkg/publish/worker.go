@@ -3,6 +3,8 @@ package publish
 import (
 	"context"
 	"errors"
+	"log"
+	"strings"
 	"time"
 
 	"github.com/agbofa/nexus/libs/go/pkg/social"
@@ -72,18 +74,26 @@ func (w Worker) Tick(ctx context.Context) error {
 }
 
 func (w Worker) execute(ctx context.Context, job Job) error {
+	fail := func(status Status, code, stageName string, err error, httpStatus int) error {
+		attempt := Attempt{
+			Number: job.AttemptCount + 1, Status: status, ErrorCode: code,
+			ErrorText: sanitizeWorkerError(err), HTTPStatus: httpStatus,
+		}
+		job.Status = status
+		log.Printf("distribution worker failed job_id=%s tenant_id=%s stage=%s platform=%s error_code=%s error=%s attempt=%d http=%d",
+			job.ID, job.TenantID, stageName, job.Platform, code, attempt.ErrorText, attempt.Number, httpStatus)
+		return w.Store.Complete(ctx, job, attempt)
+	}
 	if job.PlatformPublicationID != "" {
 		job.Status = StatusPublished
 		return w.Store.Complete(ctx, job, Attempt{Number: job.AttemptCount, Status: StatusPublished, ErrorCode: "DUPLICATE_PUBLICATION"})
 	}
 	if !job.BrandApplied {
-		job.Status = StatusFailed
-		return w.Store.Complete(ctx, job, Attempt{Number: job.AttemptCount + 1, Status: StatusFailed, ErrorCode: "BRAND_VALIDATION_FAILED"})
+		return fail(StatusFailed, "BRAND_VALIDATION_FAILED", "brand", social.ErrBrandingRequired, 0)
 	}
 	spec, ok := social.Lookup(job.Platform)
 	if !ok {
-		job.Status = StatusFailed
-		return w.Store.Complete(ctx, job, Attempt{Number: job.AttemptCount + 1, Status: StatusFailed, ErrorCode: "PLATFORM_NOT_SUPPORTED"})
+		return fail(StatusFailed, "PLATFORM_NOT_SUPPORTED", "platform", social.ErrUnknownPlatform, 0)
 	}
 	text, mediaURL := social.ParseSnapshot(job.Snapshot)
 	pkg, err := social.Adapt(social.CanonicalContent{
@@ -91,16 +101,17 @@ func (w Worker) execute(ctx context.Context, job Job) error {
 		Body: text, MediaURL: mediaURL, BrandApplied: true,
 	}, spec)
 	if err != nil {
-		job.Status = StatusFailed
-		return w.Store.Complete(ctx, job, Attempt{Number: job.AttemptCount + 1, Status: StatusFailed, ErrorCode: "INVALID_CONTENT", ErrorText: err.Error()})
+		return fail(StatusFailed, "INVALID_CONTENT", "adapt", err, 0)
+	}
+	if strings.TrimSpace(pkg.MediaURL) == "" && spec.ID == social.PlatformYouTube {
+		return fail(StatusFailed, "INVALID_CONTENT", "media", errors.New("youtube requires media_url in job snapshot"), 0)
 	}
 	tokens, err := w.Tokens(ctx, job)
 	if err != nil {
-		job.Status = StatusReauthRequired
-		return w.Store.Complete(ctx, job, Attempt{Number: job.AttemptCount + 1, Status: StatusReauthRequired, ErrorCode: "REAUTH_REQUIRED"})
+		return fail(StatusReauthRequired, "REAUTH_REQUIRED", "oauth", err, 0)
 	}
 	res, err := w.Adapter.Publish(ctx, tokens, pkg)
-	attempt := Attempt{Number: job.AttemptCount + 1, HTTPStatus: res.RawStatus, ExternalID: res.ExternalID}
+	attempt := Attempt{Number: job.AttemptCount + 1, HTTPStatus: res.RawStatus, ExternalID: res.ExternalID, ErrorText: sanitizeWorkerError(err)}
 	if err != nil {
 		class := Classify(err, res.RawStatus)
 		switch class {
@@ -122,7 +133,12 @@ func (w Worker) execute(ctx context.Context, job Job) error {
 			job.Status = StatusFailed
 			attempt.Status = StatusFailed
 			attempt.ErrorCode = "PUBLISH_FAILED"
+			if errors.Is(err, social.ErrInvalidContent) {
+				attempt.ErrorCode = "INVALID_CONTENT"
+			}
 		}
+		log.Printf("distribution worker failed job_id=%s tenant_id=%s stage=youtube_upload platform=%s error_code=%s error=%s attempt=%d http=%d",
+			job.ID, job.TenantID, job.Platform, attempt.ErrorCode, attempt.ErrorText, attempt.Number, res.RawStatus)
 		return w.Store.Complete(ctx, job, attempt)
 	}
 	if res.ExternalID == "" {
@@ -156,4 +172,22 @@ func (w Worker) max() int {
 		return w.MaxTries
 	}
 	return 5
+}
+
+func sanitizeWorkerError(err error) string {
+	if err == nil {
+		return ""
+	}
+	s := err.Error()
+	lower := strings.ToLower(s)
+	for _, needle := range []string{"bearer ", "ya29.", "1//", "access_token", "refresh_token", "client_secret"} {
+		if i := strings.Index(lower, needle); i >= 0 {
+			s = s[:i] + "[redacted]"
+			break
+		}
+	}
+	if len(s) > 400 {
+		s = s[:400]
+	}
+	return s
 }

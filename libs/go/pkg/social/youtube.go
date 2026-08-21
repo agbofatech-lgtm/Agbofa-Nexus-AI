@@ -27,6 +27,9 @@ type YouTubeAdapter struct {
 
 func NewYouTubeAdapter(httpClient HTTPClient) YouTubeAdapter {
 	spec, _ := Lookup(string(PlatformYouTube))
+	if httpClient == nil {
+		httpClient = &http.Client{Timeout: 90 * time.Second}
+	}
 	return YouTubeAdapter{OAuthClient: OAuthClient{
 		Spec:      spec,
 		ClientID:  ClientID(PlatformYouTube),
@@ -114,6 +117,7 @@ func (y YouTubeAdapter) Publish(ctx context.Context, tokens TokenSet, pkg Public
 		"snippet": map[string]any{
 			"title":       title,
 			"description": pkg.Text,
+			"categoryId":  "22",
 		},
 		"status": map[string]any{
 			"privacyStatus": "unlisted",
@@ -133,15 +137,15 @@ func (y YouTubeAdapter) Publish(ctx context.Context, tokens TokenSet, pkg Public
 	initReq.Header.Set("X-Upload-Content-Length", fmt.Sprintf("%d", len(media)))
 	initRes, err := y.do(initReq)
 	if err != nil {
-		return PublishResult{}, err
+		return PublishResult{}, fmt.Errorf("youtube_init: %w", err)
 	}
-	io.Copy(io.Discard, io.LimitReader(initRes.Body, 1<<20))
+	initBody, _ := io.ReadAll(io.LimitReader(initRes.Body, 2048))
 	initRes.Body.Close()
 	if initRes.StatusCode == http.StatusUnauthorized || initRes.StatusCode == http.StatusForbidden {
 		return PublishResult{RawStatus: initRes.StatusCode}, ErrReauthRequired
 	}
 	if initRes.StatusCode >= 300 {
-		return PublishResult{RawStatus: initRes.StatusCode}, fmt.Errorf("%w: platform status %d", classError(initRes.StatusCode), initRes.StatusCode)
+		return PublishResult{RawStatus: initRes.StatusCode}, youtubeAPIError(initRes.StatusCode, initBody)
 	}
 	uploadURL := initRes.Header.Get("Location")
 	if uploadURL == "" {
@@ -164,7 +168,8 @@ func (y YouTubeAdapter) Publish(ctx context.Context, tokens TokenSet, pkg Public
 		return result, ErrReauthRequired
 	}
 	if putRes.StatusCode >= 300 {
-		return result, fmt.Errorf("%w: platform status %d", classError(putRes.StatusCode), putRes.StatusCode)
+		putBody, _ := io.ReadAll(io.LimitReader(putRes.Body, 2048))
+		return result, youtubeAPIError(putRes.StatusCode, putBody)
 	}
 	var body struct {
 		ID string `json:"id"`
@@ -191,38 +196,78 @@ func (y YouTubeAdapter) client() HTTPClient {
 func fetchMedia(ctx context.Context, client HTTPClient, raw string, max int64) ([]byte, string, error) {
 	u, err := url.Parse(raw)
 	if err != nil || u.Scheme == "" || u.Host == "" {
-		return nil, "", ErrInvalidContent
+		return nil, "", fmt.Errorf("%w: media_url invalid", ErrInvalidContent)
 	}
 	if u.Scheme != "https" && u.Hostname() != "localhost" && u.Hostname() != "127.0.0.1" {
-		return nil, "", ErrInvalidContent
+		return nil, "", fmt.Errorf("%w: media_url scheme", ErrInvalidContent)
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, raw, nil)
 	if err != nil {
 		return nil, "", err
 	}
+	req.Header.Set("User-Agent", "AgbofaNexusAI/1.0")
+	req.Header.Set("Accept", "*/*")
 	if client == nil {
-		client = http.DefaultClient
+		client = &http.Client{Timeout: 90 * time.Second}
 	}
 	res, err := client.Do(req)
 	if err != nil {
-		return nil, "", err
+		return nil, "", fmt.Errorf("media_fetch host=%s: %w", u.Host, err)
 	}
 	defer res.Body.Close()
 	if res.StatusCode >= 300 {
-		return nil, "", ErrInvalidContent
+		return nil, "", fmt.Errorf("%w: media_http=%d host=%s", ErrInvalidContent, res.StatusCode, u.Host)
 	}
 	data, err := io.ReadAll(io.LimitReader(res.Body, max+1))
 	if err != nil {
-		return nil, "", err
+		return nil, "", fmt.Errorf("%w: media_read host=%s", ErrInvalidContent, u.Host)
 	}
 	if int64(len(data)) > max {
-		return nil, "", ErrInvalidContent
+		return nil, "", fmt.Errorf("%w: media_too_large host=%s", ErrInvalidContent, u.Host)
 	}
 	ct := res.Header.Get("Content-Type")
+	if strings.Contains(strings.ToLower(ct), "text/html") {
+		return nil, "", fmt.Errorf("%w: media_html host=%s", ErrInvalidContent, u.Host)
+	}
 	if ct == "" {
 		ct = "video/mp4"
 	}
 	return data, ct, nil
+}
+
+func youtubeAPIError(status int, body []byte) error {
+	reason := ""
+	var parsed struct {
+		Error struct {
+			Message string `json:"message"`
+			Errors  []struct {
+				Reason string `json:"reason"`
+			} `json:"errors"`
+		} `json:"error"`
+	}
+	if json.Unmarshal(body, &parsed) == nil {
+		if len(parsed.Error.Errors) > 0 {
+			reason = parsed.Error.Errors[0].Reason
+		}
+		if reason == "" {
+			reason = parsed.Error.Message
+		}
+	}
+	reason = strings.TrimSpace(reason)
+	lower := strings.ToLower(reason)
+	for _, needle := range []string{"bearer ", "ya29.", "access_token"} {
+		if strings.Contains(lower, needle) {
+			reason = "redacted"
+			break
+		}
+	}
+	if len(reason) > 180 {
+		reason = reason[:180]
+	}
+	if reason == "" {
+		return fmt.Errorf("%w: youtube_http=%d", classError(status), status)
+	}
+	return fmt.Errorf("%w: youtube_http=%d reason=%s", classError(status), status, reason)
 }
 
 func firstLine(s string) string {

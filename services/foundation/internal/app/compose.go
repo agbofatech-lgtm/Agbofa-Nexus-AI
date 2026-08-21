@@ -64,7 +64,7 @@ func Compose(ctx context.Context, cfg config.RuntimeConfig) (*Runtime, error) {
 	}
 	jobs := repositories.NewDistStore(pool)
 	socialStore := repositories.NewSocialStore(pool)
-	adapters := social.NewDefaultRouter(http.DefaultClient)
+	adapters := social.NewDefaultRouter(&http.Client{Timeout: 90 * time.Second})
 	socialHTTP := handlers.SocialHTTP{Store: socialStore, Jobs: jobs, Box: box, Adapters: adapters}
 	worker := &publish.Worker{
 		Store: jobs, Adapter: adapters, WorkerID: "foundation-1", MaxTries: 5,

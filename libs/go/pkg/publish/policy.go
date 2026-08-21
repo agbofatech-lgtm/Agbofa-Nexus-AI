@@ -1,6 +1,8 @@
 package publish
 
 import (
+	"context"
+	"errors"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -79,6 +81,12 @@ func Classify(err error, httpStatus int) ErrorClass {
 	if httpStatus == 429 {
 		return ClassRateLimited
 	}
+	if errors.Is(err, social.ErrReauthRequired) || httpStatus == 401 || httpStatus == 403 {
+		return ClassReauth
+	}
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+		return ClassRetryable
+	}
 	c := social.ClassifyHTTP(httpStatus)
 	if social.Retryable(c) {
 		return ClassRetryable
@@ -86,10 +94,7 @@ func Classify(err error, httpStatus int) ErrorClass {
 	if c == social.FailAuthentication {
 		return ClassReauth
 	}
-	if err == social.ErrReauthRequired {
-		return ClassReauth
-	}
-	if err == social.ErrBrandingRequired || err == social.ErrInvalidContent || err == social.ErrCapabilityUnsupported {
+	if errors.Is(err, social.ErrBrandingRequired) || errors.Is(err, social.ErrInvalidContent) || errors.Is(err, social.ErrCapabilityUnsupported) {
 		return ClassPermanent
 	}
 	return ClassPermanent

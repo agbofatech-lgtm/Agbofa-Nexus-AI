@@ -44,6 +44,51 @@ func TestYouTubePublishDoesNotInventID(t *testing.T) {
 	}
 }
 
+func TestYouTubeInitIncludesCategoryAndUserAgent(t *testing.T) {
+	var sawCategory, sawUA bool
+	adapter := YouTubeAdapter{OAuthClient: OAuthClient{
+		Spec: func() Spec { s, _ := Lookup("youtube"); return s }(),
+		HTTP: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+			if strings.Contains(r.URL.RawQuery, "uploadType=resumable") {
+				body, _ := io.ReadAll(r.Body)
+				if strings.Contains(string(body), `"categoryId":"22"`) {
+					sawCategory = true
+				}
+				return &http.Response{
+					StatusCode: 400,
+					Header:     http.Header{"Content-Type": []string{"application/json"}},
+					Body:       io.NopCloser(strings.NewReader(`{"error":{"errors":[{"reason":"invalidCategoryId"}],"message":"bad category"}}`)),
+					Request:    r,
+				}, nil
+			}
+			if r.Header.Get("User-Agent") == "AgbofaNexusAI/1.0" {
+				sawUA = true
+			}
+			return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"video/mp4"}}, Body: io.NopCloser(strings.NewReader("bytes")), Request: r}, nil
+		}),
+	}}
+	media := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "video/mp4")
+		_, _ = w.Write([]byte("not-a-real-video"))
+	}))
+	defer media.Close()
+	_, err := adapter.Publish(context.Background(), TokenSet{AccessToken: "tok"}, PublicationPackage{
+		Platform: PlatformYouTube, Text: "hello — Agbofa Nexus AI", BrandApplied: true, MediaURL: media.URL,
+	})
+	if err == nil {
+		t.Fatal("expected youtube init error")
+	}
+	if !strings.Contains(err.Error(), "invalidCategoryId") && !strings.Contains(err.Error(), "youtube_http=400") {
+		t.Fatalf("error %v", err)
+	}
+	if !sawCategory {
+		t.Fatal("youtube init metadata missing categoryId=22")
+	}
+	if !sawUA {
+		t.Fatal("media fetch missing User-Agent")
+	}
+}
+
 func TestYouTubePublishRequiresMediaAndBrand(t *testing.T) {
 	y := NewYouTubeAdapter(nil)
 	if _, err := y.Publish(context.Background(), TokenSet{AccessToken: "t"}, PublicationPackage{BrandApplied: true}); err != ErrInvalidContent {

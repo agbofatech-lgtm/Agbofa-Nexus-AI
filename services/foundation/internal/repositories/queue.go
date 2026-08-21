@@ -113,6 +113,21 @@ WHERE id = $1 AND tenant_id = $2`,
 	_, err = s.db.Exec(ctx, `
 INSERT INTO distribution_attempts (id, job_id, tenant_id, attempt_no, status, error_class, http_status)
 VALUES ($1,$2,$3,$4,$5,$6,$7)`, id, job.ID, job.TenantID, attempt.Number, string(attempt.Status), attempt.ErrorCode, attempt.HTTPStatus)
+	if err != nil {
+		return mapDB(err)
+	}
+	if attempt.ExternalID == "" || job.Status != publish.StatusPublished {
+		return nil
+	}
+	pubID, err := newID()
+	if err != nil {
+		return err
+	}
+	_, err = s.db.Exec(ctx, `
+INSERT INTO publication_records (
+    id, job_id, tenant_id, account_id, platform, content_id, content_version, external_id, brand_applied, published_at
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,true,now())`,
+		pubID, job.ID, job.TenantID, job.AccountID, job.Platform, job.ContentID, job.ContentVersion, attempt.ExternalID)
 	return mapDB(err)
 }
 
