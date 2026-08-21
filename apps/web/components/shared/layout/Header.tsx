@@ -123,13 +123,16 @@ export function Header({ navigationOpen, onOpenNavigation }: HeaderProps) {
             size={16}
           />
           <label className="sr-only" htmlFor="global-search">
-            Search stories, intelligence, opportunities, agents, strategies, and workspace destinations
+            Search stories, intelligence, opportunities, agents, strategies, experiments, analytics, memory, scenarios, distribution, publishing, and settings. Search does not execute.
           </label>
           <input
             ref={searchInputRef}
             aria-controls={query ? "global-search-results" : undefined}
+            aria-expanded={Boolean(query)}
+            aria-autocomplete="list"
             autoComplete="off"
             id="global-search"
+            role="combobox"
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search Nexus OS"
             type="search"

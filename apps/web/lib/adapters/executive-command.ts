@@ -9,8 +9,10 @@ import type {
   ExecutiveActivityEvent,
   ExecutiveCapabilityHealth,
   ExecutiveCommandData,
+  ExecutiveGovernance,
   ExecutiveLoopNode,
   ExecutiveMetric,
+  ExecutivePhaseStatus,
   ExecutiveSearchRecord,
   ExecutiveSignal,
 } from "@/types/executive-command";
@@ -66,15 +68,13 @@ function signal(
 export function adaptExecutiveCommand(
   sources: ExecutiveSources,
 ): DataState<ExecutiveCommandData> {
-  if (sources.strategy.canonicalAgentCount !== 28)
-    throw new Error("Executive projection requires the canonical 28-agent registry.");
   const enabledExecution = Object.values(sources.foundation.execution).filter(Boolean);
   if (enabledExecution.length)
     throw new Error("Executive projection detected an enabled execution flag.");
 
   const opportunities = [...sources.growth.opportunities]
     .sort((first, second) => second.score - first.score)
-    .slice(0, 3)
+    .slice(0, 5)
     .map((item) => ({
       id: item.id,
       title: item.title,
@@ -88,6 +88,7 @@ export function adaptExecutiveCommand(
       href: `/growth/opportunities#${item.id}`,
       provenance: item.provenance,
       executionReality: "SIMULATED" as const,
+      classification: "FIXTURE" as const,
     }));
   const priorityOrder = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 } as const;
   const decisions = [...sources.strategy.decisions]
@@ -107,6 +108,7 @@ export function adaptExecutiveCommand(
       href: "/growth/decisions",
       provenance: item.provenance,
       executionReality: "SIMULATED" as const,
+      classification: "RECOMMENDATION" as const,
     }));
   const strategies = sources.strategy.plans.map((item) => ({
     id: item.id,
@@ -124,9 +126,13 @@ export function adaptExecutiveCommand(
     href: "/growth/strategy",
     provenance: item.provenance,
     executionReality: item.executionReality,
+    classification: "RECOMMENDATION" as const,
   }));
+  const registeredAgents = sources.strategy.workforce.length;
   const workforce = {
-    total: 28 as const,
+    total: registeredAgents,
+    registeredSource: "FIXTURE" as const,
+    liveTelemetry: "UNAVAILABLE" as const,
     working: sources.strategy.workforce.filter((item) => item.status === "WORKING")
       .length,
     blocked: sources.strategy.workforce.filter((item) => item.status === "BLOCKED")
@@ -141,6 +147,7 @@ export function adaptExecutiveCommand(
       .length,
     provenance: sources.strategy.provenance,
     executionReality: "SIMULATED" as const,
+    classification: "FIXTURE" as const,
   };
   const completedExperiment = sources.phase3.experimentation.experiments.find(
     (item) => item.state === "COMPLETED",
@@ -164,6 +171,7 @@ export function adaptExecutiveCommand(
     href: "/experiments",
     provenance: sources.phase3.experimentation.provenance,
     executionReality: "SIMULATED" as const,
+    classification: "FIXTURE" as const,
   };
   const estimatedTaskCost = Number(
     sources.phase5.taskCosts
@@ -181,6 +189,8 @@ export function adaptExecutiveCommand(
     verifiedRoi: "UNAVAILABLE" as const,
     provenance: sources.phase5.taskCosts[0]?.provenance ?? unavailableProvenance,
     executionReality: "ESTIMATED" as const,
+    classification: "ESTIMATED" as const,
+    costKind: "ESTIMATED" as const,
   };
   const latestLearning =
     sources.phase5.memories.find((item) => item.trustState === "NEEDS_REVIEW") ??
@@ -198,6 +208,8 @@ export function adaptExecutiveCommand(
     href: `/growth/memory#${latestLearning.id}`,
     provenance: latestLearning.provenance,
     executionReality: "SIMULATED" as const,
+    classification: "FIXTURE" as const,
+    privilege: "DATA_ONLY" as const,
   };
 
   const growthMetrics = new Map(
@@ -218,6 +230,7 @@ export function adaptExecutiveCommand(
       sourceId: source.id,
       provenance: source.provenance,
       executionReality: "SIMULATED",
+      classification: "FIXTURE",
     };
   };
   const metrics: ExecutiveMetric[] = [
@@ -235,6 +248,7 @@ export function adaptExecutiveCommand(
       sourceId: "financial-truth",
       provenance: sources.phase5.financialTruth.actualRevenue.provenance,
       executionReality: "UNAVAILABLE",
+      classification: "UNAVAILABLE",
     },
     {
       id: "distribution",
@@ -253,6 +267,7 @@ export function adaptExecutiveCommand(
           (item) => item.id === "metric-distribution",
         )?.provenance ?? unavailableProvenance,
       executionReality: "UNAVAILABLE",
+      classification: "PENDING",
     },
     {
       id: "experiments",
@@ -264,17 +279,19 @@ export function adaptExecutiveCommand(
       sourceId: "phase3-experiments",
       provenance: experiments.provenance,
       executionReality: "SIMULATED",
+      classification: "FIXTURE",
     },
     {
       id: "strategy-progress",
       label: "Average strategic progress",
       displayValue: `${Math.round(strategies.reduce((sum, item) => sum + item.progress, 0) / strategies.length)}%`,
-      context: "Across three simulated 30-day plans",
+      context: "Across simulated 30-day plans",
       authority: "mock",
       confidence: confidence(81, "Average of deterministic plan progress"),
       sourceId: "phase4-strategies",
       provenance: sources.strategy.provenance,
       executionReality: "SIMULATED",
+      classification: "FIXTURE",
     },
     {
       id: "ai-cost",
@@ -286,6 +303,7 @@ export function adaptExecutiveCommand(
       sourceId: "phase5-task-costs",
       provenance: economics.provenance,
       executionReality: "ESTIMATED",
+      classification: "ESTIMATED",
     },
   ];
 
@@ -378,6 +396,7 @@ export function adaptExecutiveCommand(
       sourceId: sources.strategy.decisionHistory[0]?.decisionId ?? "dec-001",
       provenance: sources.strategy.provenance,
       executionReality: "SIMULATED",
+      classification: "FIXTURE",
     },
     ...sources.phase5.autonomyAudit
       .slice(0, 5)
@@ -392,6 +411,7 @@ export function adaptExecutiveCommand(
       sourceId: item.target,
       provenance: item.provenance,
       executionReality: "SIMULATED" as const,
+      classification: "FIXTURE" as const,
     })),
     {
       id: `activity-${completedExperiment?.id ?? "experiment"}`,
@@ -415,6 +435,7 @@ export function adaptExecutiveCommand(
       sourceId: completedExperiment?.id ?? "phase3-experiment",
       provenance: sources.phase3.experimentation.provenance,
       executionReality: "SIMULATED",
+      classification: "FIXTURE",
     },
     {
       id: sources.phase5.memoryConflicts[0]?.id ?? "activity-conflict",
@@ -428,6 +449,7 @@ export function adaptExecutiveCommand(
       sourceId: sources.phase5.memoryConflicts[0]?.id ?? "memory-conflict",
       provenance: sources.phase5.provenance,
       executionReality: "SIMULATED",
+      classification: "FIXTURE",
     },
     {
       id: sources.growth.evidence[0]?.id ?? "activity-growth",
@@ -442,6 +464,7 @@ export function adaptExecutiveCommand(
       sourceId: topOpportunity.id,
       provenance: topOpportunity.provenance,
       executionReality: "SIMULATED",
+      classification: "FIXTURE",
     },
   ];
   activity.sort((first, second) =>
@@ -461,10 +484,10 @@ export function adaptExecutiveCommand(
     { id: "DISCOVER", description: "Growth Intelligence ranks modeled opportunities.", href: "/growth/opportunities", capabilityState: "SIMULATED", reality: "SIMULATED", provenance: sources.growth.provenance },
     { id: "RECOMMEND", description: "Strategy Director prepares evidence-backed recommendations.", href: "/growth/strategy", capabilityState: "SIMULATED", reality: "SIMULATED", provenance: sources.strategy.provenance },
     { id: "DECIDE", description: "A human reviews simulated decisions.", href: "/growth/decisions", capabilityState: "AVAILABLE", reality: "SIMULATED", provenance: sources.strategy.provenance },
-    { id: "EXECUTE", description: "Backend execution, dispatch, publishing, and provider effects are unavailable.", href: "/growth/runs", capabilityState: "UNAVAILABLE", reality: "UNAVAILABLE", provenance: unavailableProvenance },
+    { id: "EXECUTE", description: "Phase 04 publishing exists; real provider publication remains blocked. Command Center cannot bypass CONTENT → BRAND → POLICY → APPROVAL → PHASE 04 → PROVIDER.", href: "/distribution", capabilityState: "PENDING", reality: "PENDING", provenance: unavailableProvenance },
     { id: "MEASURE", description: "Phase 3 exposes deterministic measurement and truth states.", href: "/analytics", capabilityState: "SIMULATED", reality: "SIMULATED", provenance: sources.phase3.provenance },
     { id: "LEARN", description: "Experiment and analytics fixtures produce qualified learnings.", href: "/experiments", capabilityState: "SIMULATED", reality: "SIMULATED", provenance: sources.phase3.provenance },
-    { id: "REMEMBER", description: "Memory records remain inspectable and non-persistent.", href: "/growth/memory", capabilityState: "SIMULATED", reality: "SIMULATED", provenance: sources.phase5.provenance },
+    { id: "REMEMBER", description: "Memory is data. It cannot grant RBAC, approve publishing, or disable safety.", href: "/growth/memory", capabilityState: "SIMULATED", reality: "SIMULATED", provenance: sources.phase5.provenance },
     { id: "NEXT_STRATEGY", description: "Learning returns to human-reviewed strategic planning.", href: "/growth/strategy", capabilityState: "SIMULATED", reality: "PLANNED", provenance: sources.strategy.provenance },
   ];
   const loop = loopSpecs.map((item, index) => ({
@@ -478,39 +501,56 @@ export function adaptExecutiveCommand(
   }));
 
   const capabilities: ExecutiveCapabilityHealth[] = [
-    { id: "health-frontend", domain: "Frontend OS", capability: "AVAILABLE", detail: "57 page routes before Phase 6, static frontend adapters, and shared architecture.", telemetryReality: "SIMULATED", sourceId: "phase1-foundation", href: "/settings", provenance: sources.foundation.provenance, executionReality: "PLANNED" },
-    { id: "health-agents", domain: "Agent Workforce", capability: "SIMULATED", detail: "28 canonical agents; assignment and status are presentation projections.", telemetryReality: "SIMULATED", sourceId: "canonical-agent-registry", href: "/agents", provenance: sources.strategy.provenance, executionReality: "SIMULATED" },
-    { id: "health-distribution", domain: "Distribution", capability: "SIMULATED", detail: "Structural previews and local queues; zero verified provider connections.", telemetryReality: "UNAVAILABLE", sourceId: "metric-distribution", href: "/distribution", provenance: sources.phase3.provenance, executionReality: "UNAVAILABLE" },
+    { id: "health-frontend", domain: "Frontend OS", capability: "AVAILABLE", detail: "Cinematic frontend shell is present. Rendering is not production uptime telemetry.", telemetryReality: "PENDING", sourceId: "phase1-foundation", href: "/settings", provenance: sources.foundation.provenance, executionReality: "PLANNED" },
+    { id: "health-agents", domain: "Agent Workforce", capability: "SIMULATED", detail: `${registeredAgents} registered fixture agents. Live workforce telemetry is UNAVAILABLE. Count is not live reality.`, telemetryReality: "UNAVAILABLE", sourceId: "canonical-agent-registry", href: "/agents", provenance: sources.strategy.provenance, executionReality: "SIMULATED" },
+    { id: "health-distribution", domain: "Distribution", capability: "PENDING", detail: "Phase 03 is PARTIALLY CERTIFIED. YouTube OAuth is not collapsed into full distribution certification.", telemetryReality: "PENDING", sourceId: "metric-distribution", href: "/distribution", provenance: sources.phase3.provenance, executionReality: "PENDING" },
+    { id: "health-youtube", domain: "YouTube", capability: "NOT_CONNECTED", detail: "Do not treat OAuth connection as complete provider publication. Connection state hydrates from BFF when authenticated.", telemetryReality: "PENDING", sourceId: "youtube-boundary", href: "/social/connect", provenance: unavailableProvenance, executionReality: "NOT_CONNECTED" },
+    { id: "health-publishing", domain: "Publishing", capability: "PENDING", detail: "Phase 04 schedule/cancel exist. Real provider publication remains blocked. Kill-switch ENGAGED blocks schedule.", telemetryReality: "PENDING", sourceId: "phase4-publishing", href: "/distribution", provenance: sources.phase3.provenance, executionReality: "PENDING" },
     { id: "health-analytics", domain: "Analytics", capability: "SIMULATED", detail: "Truth-aware deterministic analytics; no live analytics backend.", telemetryReality: "SIMULATED", sourceId: "metric-overview", href: "/analytics", provenance: sources.phase3.provenance, executionReality: "SIMULATED" },
     { id: "health-strategy", domain: "Strategy", capability: "SIMULATED", detail: "Recommendations, plans, decisions, and timelines; no execution engine.", telemetryReality: "SIMULATED", sourceId: "phase4-strategy", href: "/growth/strategy", provenance: sources.strategy.provenance, executionReality: "SIMULATED" },
-    { id: "health-autonomy", domain: "Autonomy", capability: "SIMULATED", detail: "Policy and run simulation; backend enforcement unavailable.", telemetryReality: "UNAVAILABLE", sourceId: "phase5-autonomy", href: "/ai-control/autonomy", provenance: sources.phase5.provenance, executionReality: "SIMULATED" },
-    { id: "health-memory", domain: "Memory", capability: "SIMULATED", detail: "Inspectable records and conflicts; persistence unavailable.", telemetryReality: "UNAVAILABLE", sourceId: "phase5-memory", href: "/growth/memory", provenance: sources.phase5.provenance, executionReality: "SIMULATED" },
-    { id: "health-economics", domain: "AI Economics", capability: "SIMULATED", detail: "Estimated tokens and cost trade-offs; billing and ROI unavailable.", telemetryReality: "ESTIMATED", sourceId: "phase5-economics", href: "/ai-cost", provenance: economics.provenance, executionReality: "ESTIMATED" },
-    { id: "health-providers", domain: "External Providers", capability: "NOT_CONNECTED", detail: "No OAuth, provider credentials, routing, publishing, or billing authority.", telemetryReality: "UNAVAILABLE", sourceId: "provider-boundary", href: "/ai-control", provenance: unavailableProvenance, executionReality: "UNAVAILABLE" },
+    { id: "health-autonomy", domain: "Autonomy", capability: "PENDING", detail: "Phase 05 control is implemented. Dashboard display does not grant autonomy. Live kill-switch hydrates from BFF when authenticated.", telemetryReality: "PENDING", sourceId: "phase5-autonomy", href: "/ai-control/autonomy", provenance: sources.phase5.provenance, executionReality: "PENDING" },
+    { id: "health-memory", domain: "Memory", capability: "PENDING", detail: "Memory is data only. Live list hydrates from BFF; fixture learning remains labeled FIXTURE.", telemetryReality: "PENDING", sourceId: "phase5-memory", href: "/growth/memory", provenance: sources.phase5.provenance, executionReality: "PENDING" },
+    { id: "health-scenarios", domain: "Scenarios", capability: "SIMULATED", detail: "Scenarios are PROJECTED, not historical actuals.", telemetryReality: "PROJECTED", sourceId: "phase5-scenarios", href: "/growth/scenarios", provenance: sources.phase5.provenance, executionReality: "PROJECTED" },
+    { id: "health-economics", domain: "AI Cost", capability: "SIMULATED", detail: "Estimated micros from the model registry. Not invoices or provider billing.", telemetryReality: "ESTIMATED", sourceId: "phase5-economics", href: "/ai-cost", provenance: economics.provenance, executionReality: "ESTIMATED" },
+    { id: "health-providers", domain: "External Providers", capability: "NOT_CONNECTED", detail: "Provider credentials never enter the browser. Connection is not distribution certification.", telemetryReality: "UNAVAILABLE", sourceId: "provider-boundary", href: "/ai-control", provenance: unavailableProvenance, executionReality: "NOT_CONNECTED" },
   ];
 
-  const staticSearch: Array<
-    Pick<ExecutiveSearchRecord, "id" | "label" | "description" | "href" | "domain" | "keywords">
-  > = [
-    { id: "search-reader", label: "Reader", description: "Evidence-aware story feed", href: "/reader", domain: "Story", keywords: ["news", "stories"] },
-    { id: "search-growth", label: "Executive Growth OS", description: "Cross-system executive operating surface", href: "/growth", domain: "Intelligence", keywords: ["executive", "command"] },
-    { id: "search-distribution", label: "Distribution", description: "Adaptation, accounts, queues, and health", href: "/distribution", domain: "Distribution", keywords: ["publishing", "channels"] },
-    { id: "search-analytics", label: "Analytics", description: "Truth-aware measurement and attribution", href: "/analytics", domain: "Analytics", keywords: ["performance", "metrics"] },
-    { id: "search-experiments", label: "Experiment Lab", description: "Simulated experiment register", href: "/experiments", domain: "Experiment", keywords: ["hypothesis", "variants"] },
-    { id: "search-ai-cost", label: "AI Economics", description: "Estimated model, token, and strategy costs", href: "/ai-cost", domain: "AI Cost", keywords: ["budget", "tokens", "cost"] },
-    { id: "search-ai-control", label: "AI Control", description: "Provider catalog and autonomy simulation", href: "/ai-control", domain: "AI Control", keywords: ["models", "providers", "autonomy"] },
-    { id: "search-settings", label: "Settings", description: "Canonical frontend control plane", href: "/settings", domain: "Settings", keywords: ["preferences", "capabilities"] },
+  const withSearch = (
+    item: Omit<ExecutiveSearchRecord, "mutates" | "sourceId" | "provenance" | "executionReality"> &
+      Partial<Pick<ExecutiveSearchRecord, "sourceId" | "provenance" | "executionReality">>,
+  ): ExecutiveSearchRecord => ({
+    ...item,
+    sourceId: item.sourceId ?? item.id,
+    provenance: item.provenance ?? aggregateProvenance,
+    executionReality: item.executionReality ?? "PLANNED",
+    mutates: false,
+  });
+  const staticSearch: ExecutiveSearchRecord[] = [
+    withSearch({ id: "search-reader", label: "Reader", description: "Evidence-aware story feed", href: "/reader", domain: "Story", keywords: ["news", "stories"] }),
+    withSearch({ id: "search-growth", label: "Executive Command Center", description: "Cross-system executive operating surface", href: "/growth", domain: "Intelligence", keywords: ["executive", "command", "growth"] }),
+    withSearch({ id: "search-distribution", label: "Distribution", description: "Adaptation, accounts, queues, and health", href: "/distribution", domain: "Distribution", keywords: ["channels"] }),
+    withSearch({ id: "search-publishing", label: "Publishing", description: "Navigate to the publishing workflow. Does not publish.", href: "/distribution", domain: "Publishing", keywords: ["publish", "schedule", "brand"] }),
+    withSearch({ id: "search-analytics", label: "Analytics", description: "Truth-aware measurement and attribution", href: "/analytics", domain: "Analytics", keywords: ["performance", "metrics"] }),
+    withSearch({ id: "search-experiments", label: "Experiment Lab", description: "Simulated experiment register", href: "/experiments", domain: "Experiment", keywords: ["hypothesis", "variants"] }),
+    withSearch({ id: "search-memory", label: "Memory", description: "Governed learning records. Memory is data, not permission.", href: "/growth/memory", domain: "Memory", keywords: ["learning", "insight"] }),
+    withSearch({ id: "search-scenarios", label: "Scenarios", description: "PROJECTED what-if records, not historical actuals", href: "/growth/scenarios", domain: "Scenario", keywords: ["projected", "what-if"] }),
+    withSearch({ id: "search-ai-cost", label: "AI Economics", description: "Estimated model, token, and strategy costs", href: "/ai-cost", domain: "AI Cost", keywords: ["budget", "tokens", "cost"] }),
+    withSearch({ id: "search-ai-control", label: "AI Control", description: "Autonomy control and kill-switch. Display does not grant autonomy.", href: "/ai-control/autonomy", domain: "AI Control", keywords: ["models", "providers", "autonomy", "kill switch"] }),
+    withSearch({ id: "search-settings", label: "Settings", description: "Canonical frontend control plane", href: "/settings", domain: "Settings", keywords: ["preferences", "capabilities"] }),
+    withSearch({ id: "search-cmd-publish", label: "Publish", description: "Navigate to publishing. Does not publish, spend, or call a provider.", href: "/distribution", domain: "Publishing", keywords: ["publish", "post"] }),
+    withSearch({ id: "search-cmd-approve", label: "Approve", description: "Navigate to the decision/approval workflow. Does not approve.", href: "/growth/decisions", domain: "Decision", keywords: ["approve", "review"] }),
+    withSearch({ id: "search-cmd-run", label: "Run strategy", description: "Navigate to run simulation. Does not execute a strategy.", href: "/growth/runs", domain: "Strategy", keywords: ["run", "execute", "dispatch"] }),
   ];
   const searchIndex: ExecutiveSearchRecord[] = [
-    ...staticSearch.map((item) => ({ ...item, sourceId: item.id, provenance: aggregateProvenance, executionReality: "PLANNED" as const })),
-    ...sources.stories.map((item) => ({ id: `search-${item.id}`, label: item.headline, description: item.summary, href: `/reader/${item.id}`, domain: "Story" as const, keywords: [item.id, "article"], sourceId: item.id, provenance: aggregateProvenance, executionReality: "PLANNED" as const })),
-    ...sources.growth.opportunities.map((item) => ({ id: `search-${item.id}`, label: item.title, description: item.summary, href: `/growth/opportunities#${item.id}`, domain: "Opportunity" as const, keywords: [item.id, item.source, item.urgency], sourceId: item.id, provenance: item.provenance, executionReality: "SIMULATED" as const })),
-    ...sources.strategy.workforce.map((item) => ({ id: `search-${item.agent.id}`, label: `${item.agent.id} · ${item.agent.name}`, description: item.agent.description, href: `/agents/${item.agent.id}`, domain: "Agent" as const, keywords: [item.agent.category, item.status], sourceId: item.agent.id, provenance: item.provenance, executionReality: "SIMULATED" as const })),
-    ...sources.strategy.plans.map((item) => ({ id: `search-${item.id}`, label: item.title, description: item.objective, href: "/growth/strategy", domain: "Strategy" as const, keywords: [item.id, item.status], sourceId: item.id, provenance: item.provenance, executionReality: item.executionReality })),
-    ...sources.strategy.decisions.map((item) => ({ id: `search-${item.id}`, label: item.recommendation, description: item.reason, href: "/growth/decisions", domain: "Decision" as const, keywords: [item.id, item.domain, item.priority], sourceId: item.id, provenance: item.provenance, executionReality: "SIMULATED" as const })),
-    ...sources.phase3.experimentation.experiments.map((item) => ({ id: `search-${item.id}`, label: item.name, description: item.hypothesis, href: "/experiments", domain: "Experiment" as const, keywords: [item.id, item.state], sourceId: item.id, provenance: item.provenance, executionReality: "SIMULATED" as const })),
-    ...sources.phase5.memories.map((item) => ({ id: `search-${item.id}`, label: item.insight, description: `${item.category} · ${item.trustState}`, href: `/growth/memory#${item.id}`, domain: "Memory" as const, keywords: [item.id, item.category, item.trustState], sourceId: item.id, provenance: item.provenance, executionReality: "SIMULATED" as const })),
-    ...sources.phase5.scenarios.map((item) => ({ id: `search-${item.id}`, label: item.name, description: item.expectedImpact, href: `/growth/scenarios#${item.id}`, domain: "Scenario" as const, keywords: [item.id, item.mode], sourceId: item.id, provenance: item.provenance, executionReality: "SIMULATED" as const })),
+    ...staticSearch,
+    ...sources.stories.map((item) => withSearch({ id: `search-${item.id}`, label: item.headline, description: item.summary, href: `/reader/${item.id}`, domain: "Story", keywords: [item.id, "article"], sourceId: item.id, executionReality: "PLANNED" })),
+    ...sources.growth.opportunities.map((item) => withSearch({ id: `search-${item.id}`, label: item.title, description: item.summary, href: `/growth/opportunities#${item.id}`, domain: "Opportunity", keywords: [item.id, item.source, item.urgency], sourceId: item.id, provenance: item.provenance, executionReality: "SIMULATED" })),
+    ...sources.strategy.workforce.map((item) => withSearch({ id: `search-${item.agent.id}`, label: `${item.agent.id} · ${item.agent.name}`, description: item.agent.description, href: `/agents/${item.agent.id}`, domain: "Agent", keywords: [item.agent.category, item.status], sourceId: item.agent.id, provenance: item.provenance, executionReality: "SIMULATED" })),
+    ...sources.strategy.plans.map((item) => withSearch({ id: `search-${item.id}`, label: item.title, description: item.objective, href: "/growth/strategy", domain: "Strategy", keywords: [item.id, item.status], sourceId: item.id, provenance: item.provenance, executionReality: item.executionReality })),
+    ...sources.strategy.decisions.map((item) => withSearch({ id: `search-${item.id}`, label: item.recommendation, description: item.reason, href: "/growth/decisions", domain: "Decision", keywords: [item.id, item.domain, item.priority], sourceId: item.id, provenance: item.provenance, executionReality: "SIMULATED" })),
+    ...sources.phase3.experimentation.experiments.map((item) => withSearch({ id: `search-${item.id}`, label: item.name, description: item.hypothesis, href: "/experiments", domain: "Experiment", keywords: [item.id, item.state], sourceId: item.id, provenance: item.provenance, executionReality: "SIMULATED" })),
+    ...sources.phase5.memories.map((item) => withSearch({ id: `search-${item.id}`, label: item.insight, description: `${item.category} · ${item.trustState}`, href: `/growth/memory#${item.id}`, domain: "Memory", keywords: [item.id, item.category, item.trustState], sourceId: item.id, provenance: item.provenance, executionReality: "SIMULATED" })),
+    ...sources.phase5.scenarios.map((item) => withSearch({ id: `search-${item.id}`, label: item.name, description: item.expectedImpact, href: `/growth/scenarios#${item.id}`, domain: "Scenario", keywords: [item.id, item.mode], sourceId: item.id, provenance: item.provenance, executionReality: "PROJECTED" })),
   ];
   const duplicateSearchIds = new Set<string>();
   for (const item of searchIndex) {
@@ -721,8 +761,95 @@ export function adaptExecutiveCommand(
   if (broken.length)
     throw new Error(`Cross-phase integrity contains ${broken.length} broken links.`);
 
+  const journey = sources.phase3.analytics.attribution[0];
+  const attribution = {
+    id: journey?.id ?? "attribution-unavailable",
+    label: journey?.label ?? "Attribution path",
+    causality: "NOT_ESTABLISHED" as const,
+    stages: (journey?.stages ?? [
+      { stage: "CONTENT" as const, state: "UNKNOWN" as const, value: "UNAVAILABLE", evidence: "No attribution source.", caveat: "Do not fabricate revenue attribution." },
+      { stage: "DISTRIBUTION" as const, state: "UNKNOWN" as const, value: "UNAVAILABLE", evidence: "No distribution telemetry.", caveat: "OAuth is not publication." },
+      { stage: "AUDIENCE" as const, state: "UNKNOWN" as const, value: "UNAVAILABLE", evidence: "No audience events.", caveat: "No person was observed." },
+      { stage: "CONVERSION" as const, state: "UNKNOWN" as const, value: "UNAVAILABLE", evidence: "No conversion contract.", caveat: "No conversion can be attributed." },
+      { stage: "REVENUE" as const, state: "UNKNOWN" as const, value: "UNAVAILABLE", evidence: "No billing source.", caveat: "No revenue claim is possible." },
+    ]).map((stage) => ({
+      stage: stage.stage,
+      value: stage.value,
+      state: stage.state,
+      evidence: stage.evidence,
+      caveat: stage.caveat,
+      executionReality:
+        stage.state === "UNKNOWN" || stage.value === "Unavailable"
+          ? ("UNAVAILABLE" as const)
+          : stage.state === "ESTIMATED"
+            ? ("ESTIMATED" as const)
+            : ("FIXTURE" as const),
+    })),
+    provenance: journey?.provenance ?? unavailableProvenance,
+    classification: journey ? ("FIXTURE" as const) : ("UNAVAILABLE" as const),
+  };
+
+  const phases: ExecutivePhaseStatus[] = [
+    { id: "PHASE_01", label: "Foundation", status: "CERTIFIED", note: "Authoritative previous-phase status. This view does not recertify.", mutable: false },
+    { id: "PHASE_02", label: "Growth Intelligence", status: "CERTIFIED", note: "Authoritative previous-phase status. This view does not recertify.", mutable: false },
+    { id: "PHASE_03", label: "Distribution / Analytics", status: "PARTIALLY CERTIFIED", note: "YouTube OAuth path is not complete real-distribution certification.", mutable: false },
+    { id: "PHASE_04", label: "Publishing", status: "CERTIFIED", note: "Publishing controls remain authoritative. Command Center cannot bypass them.", mutable: false },
+    { id: "PHASE_05", label: "Autonomy / Memory / Cost", status: "IMPLEMENTED", note: "Runtime verification from Windows is authoritative. Not auto-certified by this dashboard.", mutable: false },
+    { id: "PHASE_06", label: "Executive Command Center", status: "PENDING", note: "Frontend certification is informational here and is not mutated by this UI.", mutable: false },
+  ];
+
+  const governance: ExecutiveGovernance = {
+    killSwitch: {
+      state: sources.phase5.killSwitch.state,
+      source: "NOT_FETCHED",
+      blocksPublishingSchedule: false,
+      executionReality: "PENDING",
+      note: "Kill-switch ENGAGED blocks Phase 04 schedule. This dashboard cannot disarm it.",
+    },
+    autonomy: {
+      globalLevel: null,
+      source: "NOT_FETCHED",
+      domains: sources.phase5.autonomyDomains.map((domain) => ({
+        id: domain.id,
+        label: domain.label,
+        level: domain.level,
+        approvalRequirement: domain.approvalRequirement,
+        source: "NOT_FETCHED" as const,
+        executionReality: "FIXTURE" as const,
+      })),
+      grantsAutonomy: false,
+    },
+    publishing: {
+      chain: ["CONTENT", "BRAND IDENTITY", "BRAND VALIDATION", "POLICY VALIDATION", "APPROVAL WHERE REQUIRED", "PHASE 04 PUBLISHING", "PROVIDER"],
+      bypass: false,
+      note: "No executive action publishes, schedules, or spends.",
+    },
+    branding: {
+      required: true,
+      missingBlocksPublish: true,
+      note: "Missing Agbofa brand identity blocks publish. Phase 06 cannot bypass branding.",
+    },
+    memoryPrivilege: {
+      memoryIsData: true,
+      canGrantRbac: false,
+      canApprovePublish: false,
+      canDisableSafety: false,
+      note: "Memory cannot grant RBAC, approve publishing or spending, or disable safety systems.",
+    },
+    scenarios: {
+      kind: "PROJECTED",
+      historicalActuals: false,
+      note: "Scenarios are PROJECTED, not historical actuals.",
+    },
+    cost: {
+      kind: "ESTIMATED",
+      invoices: false,
+      note: "AI cost remains ESTIMATED. Not invoices or provider billing.",
+    },
+  };
+
   const data: ExecutiveCommandData = {
-    architectureVersion: "phase-6-executive-command-v1",
+    architectureVersion: "phase-6-executive-command-v2",
     situation,
     metrics,
     opportunities,
@@ -737,6 +864,18 @@ export function adaptExecutiveCommand(
     capabilities,
     searchIndex,
     integrity,
+    attribution,
+    phases,
+    governance,
+    liveSources: {
+      session: "NOT_FETCHED",
+      autonomyControl: "NOT_FETCHED",
+      cost: "NOT_FETCHED",
+      memory: "NOT_FETCHED",
+      scenarios: "NOT_FETCHED",
+      accounts: "NOT_FETCHED",
+      distributions: "NOT_FETCHED",
+    },
     provenance: aggregateProvenance,
   };
   const state = demoDataState(data, aggregateProvenance.source);

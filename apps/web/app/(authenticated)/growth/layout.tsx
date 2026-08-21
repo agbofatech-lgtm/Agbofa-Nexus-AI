@@ -6,7 +6,7 @@ import "@/styles/strategy-os.css";
 import "@/styles/phase-five.css";
 import "@/styles/phase-six.css";
 export const metadata: Metadata = {
-  title: "Growth Intelligence",
+  title: "Executive Command Center",
   robots: { index: false, follow: false },
 };
 export default function Layout({ children }: { children: ReactNode }) {

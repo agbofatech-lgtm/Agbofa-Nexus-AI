@@ -36,6 +36,41 @@ export type ExecutiveSearchDomain =
   | "AI Cost"
   | "AI Control"
   | "Settings";
+export type ExecutiveReality =
+  | StrategyExecutionReality
+  | "PROJECTED"
+  | "PENDING"
+  | "NOT_CONNECTED"
+  | "DEGRADED"
+  | "RECOMMENDATION"
+  | "FIXTURE";
+export type ExecutiveClassification =
+  | "ACTUAL"
+  | "SIMULATION"
+  | "ESTIMATED"
+  | "PROJECTED"
+  | "RECOMMENDATION"
+  | "PLANNED"
+  | "PENDING"
+  | "UNAVAILABLE"
+  | "NOT_CONNECTED"
+  | "DEGRADED"
+  | "FIXTURE"
+  | "DEMO";
+export type LiveSourceState =
+  | "LIVE"
+  | "UNAUTHENTICATED"
+  | "UNAVAILABLE"
+  | "ERROR"
+  | "NOT_FETCHED";
+export type PhaseCertificationState =
+  | "CERTIFIED"
+  | "PARTIALLY CERTIFIED"
+  | "IMPLEMENTED"
+  | "CONDITIONAL"
+  | "NOT CERTIFIED"
+  | "PENDING"
+  | "BLOCKED";
 
 export interface ExecutiveSignal {
   id: string;
@@ -44,7 +79,7 @@ export interface ExecutiveSignal {
   sourceId: string;
   confidence: DataConfidence | null;
   provenance: DataProvenance;
-  executionReality: StrategyExecutionReality;
+  executionReality: ExecutiveReality;
 }
 
 export interface ExecutiveSituation {
@@ -66,7 +101,8 @@ export interface ExecutiveMetric {
   confidence: DataConfidence | null;
   sourceId: string;
   provenance: DataProvenance;
-  executionReality: StrategyExecutionReality;
+  executionReality: ExecutiveReality;
+  classification: ExecutiveClassification;
 }
 
 export interface ExecutiveOpportunity {
@@ -79,6 +115,7 @@ export interface ExecutiveOpportunity {
   href: string;
   provenance: DataProvenance;
   executionReality: "SIMULATED";
+  classification: "FIXTURE";
 }
 
 export interface ExecutiveStrategy {
@@ -93,6 +130,7 @@ export interface ExecutiveStrategy {
   href: string;
   provenance: DataProvenance;
   executionReality: Exclude<StrategyExecutionReality, "ACTUAL">;
+  classification: "FIXTURE" | "RECOMMENDATION";
 }
 
 export interface ExecutiveDecision {
@@ -106,17 +144,21 @@ export interface ExecutiveDecision {
   href: string;
   provenance: DataProvenance;
   executionReality: "SIMULATED";
+  classification: "RECOMMENDATION";
 }
 
 export interface ExecutiveWorkforceSummary {
-  total: 28;
+  total: number;
+  registeredSource: "FIXTURE" | "UNAVAILABLE";
+  liveTelemetry: "UNAVAILABLE" | "PENDING";
   working: number;
   blocked: number;
   waitingApproval: number;
   completed: number;
   failed: number;
   provenance: DataProvenance;
-  executionReality: "SIMULATED";
+  executionReality: "SIMULATED" | "UNAVAILABLE";
+  classification: "FIXTURE" | "UNAVAILABLE";
 }
 
 export interface ExecutiveExperimentSummary {
@@ -128,6 +170,7 @@ export interface ExecutiveExperimentSummary {
   href: string;
   provenance: DataProvenance;
   executionReality: "SIMULATED";
+  classification: "FIXTURE";
 }
 
 export interface ExecutiveEconomicsSummary {
@@ -139,6 +182,8 @@ export interface ExecutiveEconomicsSummary {
   verifiedRoi: "UNAVAILABLE";
   provenance: DataProvenance;
   executionReality: "ESTIMATED";
+  classification: "ESTIMATED";
+  costKind: "ESTIMATED";
 }
 
 export interface ExecutiveLearningSummary {
@@ -148,12 +193,21 @@ export interface ExecutiveLearningSummary {
   confidence: DataConfidence;
   sampleSize: number | null;
   source: string;
+  classification: MemoryDisplayClassification;
   applicability: string[];
   memoryState: string;
   href: string;
   provenance: DataProvenance;
-  executionReality: "SIMULATED";
+  executionReality: ExecutiveReality;
+  privilege: "DATA_ONLY";
 }
+
+export type MemoryDisplayClassification =
+  | "OBSERVATION"
+  | "FIXTURE"
+  | "ACTUAL"
+  | "PENDING"
+  | "UNAVAILABLE";
 
 export interface ExecutiveActivityEvent {
   id: string;
@@ -165,7 +219,8 @@ export interface ExecutiveActivityEvent {
   status: string;
   sourceId: string;
   provenance: DataProvenance;
-  executionReality: "SIMULATED" | "ESTIMATED" | "UNAVAILABLE";
+  executionReality: ExecutiveReality;
+  classification: ExecutiveClassification;
 }
 
 export interface ExecutiveLoopNode {
@@ -175,7 +230,7 @@ export interface ExecutiveLoopNode {
   href: string;
   capabilityState: ExecutiveCapabilityState;
   provenance: DataProvenance;
-  executionReality: StrategyExecutionReality;
+  executionReality: ExecutiveReality;
 }
 
 export interface ExecutiveCapabilityHealth {
@@ -183,11 +238,11 @@ export interface ExecutiveCapabilityHealth {
   domain: string;
   capability: ExecutiveCapabilityState;
   detail: string;
-  telemetryReality: "SIMULATED" | "UNAVAILABLE" | "ESTIMATED";
+  telemetryReality: ExecutiveReality;
   sourceId: string;
   href: string;
   provenance: DataProvenance;
-  executionReality: StrategyExecutionReality;
+  executionReality: ExecutiveReality;
 }
 
 export interface ExecutiveSearchRecord {
@@ -199,7 +254,8 @@ export interface ExecutiveSearchRecord {
   keywords: string[];
   sourceId: string;
   provenance: DataProvenance;
-  executionReality: StrategyExecutionReality;
+  executionReality: ExecutiveReality;
+  mutates: false;
 }
 
 export interface CrossPhaseIntegrityRecord {
@@ -211,8 +267,96 @@ export interface CrossPhaseIntegrityRecord {
   detail: string;
 }
 
+export interface ExecutiveAttributionStage {
+  stage: "CONTENT" | "DISTRIBUTION" | "AUDIENCE" | "CONVERSION" | "REVENUE";
+  value: string;
+  state: "OBSERVED" | "ESTIMATED" | "ATTRIBUTED" | "UNKNOWN" | "UNAVAILABLE";
+  evidence: string;
+  caveat: string;
+  executionReality: ExecutiveReality;
+}
+
+export interface ExecutiveAttribution {
+  id: string;
+  label: string;
+  causality: "NOT_ESTABLISHED";
+  stages: ExecutiveAttributionStage[];
+  provenance: DataProvenance;
+  classification: "FIXTURE" | "UNAVAILABLE";
+}
+
+export interface ExecutivePhaseStatus {
+  id: "PHASE_01" | "PHASE_02" | "PHASE_03" | "PHASE_04" | "PHASE_05" | "PHASE_06";
+  label: string;
+  status: PhaseCertificationState;
+  note: string;
+  mutable: false;
+}
+
+export interface ExecutiveAutonomyDomain {
+  id: string;
+  label: string;
+  level: number;
+  approvalRequirement: string;
+  source: LiveSourceState;
+  executionReality: ExecutiveReality;
+}
+
+export interface ExecutiveGovernance {
+  killSwitch: {
+    state: string;
+    source: LiveSourceState;
+    blocksPublishingSchedule: boolean;
+    executionReality: ExecutiveReality;
+    note: string;
+  };
+  autonomy: {
+    globalLevel: number | null;
+    domains: ExecutiveAutonomyDomain[];
+    source: LiveSourceState;
+    grantsAutonomy: false;
+  };
+  publishing: {
+    chain: string[];
+    bypass: false;
+    note: string;
+  };
+  branding: {
+    required: true;
+    missingBlocksPublish: true;
+    note: string;
+  };
+  memoryPrivilege: {
+    memoryIsData: true;
+    canGrantRbac: false;
+    canApprovePublish: false;
+    canDisableSafety: false;
+    note: string;
+  };
+  scenarios: {
+    kind: "PROJECTED";
+    historicalActuals: false;
+    note: string;
+  };
+  cost: {
+    kind: "ESTIMATED";
+    invoices: false;
+    note: string;
+  };
+}
+
+export interface ExecutiveLiveSources {
+  session: LiveSourceState;
+  autonomyControl: LiveSourceState;
+  cost: LiveSourceState;
+  memory: LiveSourceState;
+  scenarios: LiveSourceState;
+  accounts: LiveSourceState;
+  distributions: LiveSourceState;
+}
+
 export interface ExecutiveCommandData {
-  architectureVersion: "phase-6-executive-command-v1";
+  architectureVersion: "phase-6-executive-command-v2";
   situation: ExecutiveSituation;
   metrics: ExecutiveMetric[];
   opportunities: ExecutiveOpportunity[];
@@ -227,5 +371,9 @@ export interface ExecutiveCommandData {
   capabilities: ExecutiveCapabilityHealth[];
   searchIndex: ExecutiveSearchRecord[];
   integrity: CrossPhaseIntegrityRecord[];
+  attribution: ExecutiveAttribution;
+  phases: ExecutivePhaseStatus[];
+  governance: ExecutiveGovernance;
+  liveSources: ExecutiveLiveSources;
   provenance: DataProvenance;
 }

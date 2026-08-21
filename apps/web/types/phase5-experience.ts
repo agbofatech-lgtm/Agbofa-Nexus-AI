@@ -348,7 +348,7 @@ export interface Phase5ExperienceFixture {
   killSwitch: {
     state: KillSwitchState;
     backendEnforcement: "UNAVAILABLE";
-    disclosure: "Simulation only — no backend execution is affected.";
+    disclosure: string;
     provenance: DataProvenance;
     executionReality: "SIMULATED";
   };

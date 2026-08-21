@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest} from "next/server";
+import { NextResponse } from "next/server";
 import { backendRPC } from "@/lib/bff/backend";
 
 export async function sessionRPC(request: NextRequest, method: string, body: unknown = {}, timeoutMs = 8000) {

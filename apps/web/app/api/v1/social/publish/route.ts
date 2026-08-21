@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest} from "next/server";
+import { NextResponse } from "next/server";
 
 import { backendRPC } from "@/lib/bff/backend";
 import { rateLimit } from "@/lib/bff/limits";

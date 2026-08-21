@@ -36,7 +36,7 @@ export function GrowthWorkspaceNav() {
     .filter((item) => path === item.href || path.startsWith(`${item.href}/`))
     .sort((first, second) => second.href.length - first.href.length)[0]?.href;
   return (
-    <nav aria-label="Growth Intelligence sections" className="growth-os-nav">
+    <nav aria-label="Executive Command Center sections" className="growth-os-nav">
       {links.map((x) => {
         const I = x.icon;
         const active = x.href === activeHref;
