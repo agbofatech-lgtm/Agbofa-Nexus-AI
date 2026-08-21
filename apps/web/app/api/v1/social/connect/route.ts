@@ -31,7 +31,18 @@ async function startConnect(request: NextRequest, platform: string, redirect: st
   if (!result.ok || !url) {
     return NextResponse.json(result.data ?? { error: "upstream" }, { status: result.status || 502 });
   }
-  return NextResponse.redirect(url);
+  // Never NextResponse.redirect() a Google authorize URL from a Route Handler
+  // that was itself reached via next/navigation redirect(): the query string
+  // (including response_type) is dropped and Google reports it missing.
+  try {
+    const dest = new URL(url);
+    if (dest.searchParams.get("response_type") !== "code") {
+      return NextResponse.json({ error: "oauth_url_invalid" }, { status: 502 });
+    }
+  } catch {
+    return NextResponse.json({ error: "oauth_url_invalid" }, { status: 502 });
+  }
+  return NextResponse.json(result.data, { status: 200 });
 }
 
 export async function GET(request: NextRequest) {
