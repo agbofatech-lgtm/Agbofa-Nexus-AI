@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/agbofa/nexus/libs/go/pkg/database"
+	"github.com/agbofa/nexus/libs/go/pkg/publish"
 	"github.com/agbofa/nexus/libs/go/pkg/social"
 )
 
@@ -78,8 +79,10 @@ FROM distribution_jobs WHERE tenant_id = $1 ORDER BY created_at DESC`, tenantID)
 }
 
 func (s *DistStore) Transition(ctx context.Context, tenantID, id, from, to, errClass, errText string) error {
-	if err := social.Transition(social.JobStatus(from), social.JobStatus(to)); err != nil {
-		return err
+	socialOK := social.CanTransition(social.JobStatus(from), social.JobStatus(to))
+	publishOK := publish.CanTransition(publish.Status(from), publish.Status(to))
+	if !socialOK && !publishOK {
+		return social.ErrIllegalTransition
 	}
 	tag, err := s.db.Exec(ctx, `
 UPDATE distribution_jobs SET status = $4, last_error_class = $5, last_error = $6, updated_at = now()

@@ -46,10 +46,12 @@ func TestJWTRoundTripAndRejects(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	signer.now = func() time.Time { return at }
 	verifier, err := NewVerifier(cfg, at)
 	if err != nil {
 		t.Fatal(err)
 	}
+	verifier.now = func() time.Time { return at }
 	token, _, err := signer.Issue("user-1", "tenant-1", []string{"EDITOR"})
 	if err != nil {
 		t.Fatal(err)
@@ -117,5 +119,32 @@ func TestCSRFAndRefreshMaterial(t *testing.T) {
 	mat, err := NewRefreshMaterial("")
 	if err != nil || HashRefresh(mat.Raw) != mat.Hash {
 		t.Fatalf("refresh material: %+v %v", mat, err)
+	}
+}
+
+func TestVerifyAcceptsTokensIssuedAfterVerifierConstruction(t *testing.T) {
+	start := time.Date(2026, 8, 20, 19, 0, 0, 0, time.UTC)
+	cfg := testJWTConfig(t, start)
+	verifier, err := NewVerifier(cfg, start)
+	if err != nil {
+		t.Fatal(err)
+	}
+	signer, err := NewSigner(cfg, start)
+	if err != nil {
+		t.Fatal(err)
+	}
+	token, claims, err := signer.Issue("user-1", "tenant-1", []string{"TENANT_ADMIN"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if claims.NotBefore <= start.Unix() {
+		t.Fatalf("expected nbf after construction, nbf=%d start=%d", claims.NotBefore, start.Unix())
+	}
+	got, err := verifier.Verify(token)
+	if err != nil {
+		t.Fatalf("token issued after verifier construction must verify, got %v", err)
+	}
+	if got.Subject != "user-1" || got.TenantID != "tenant-1" {
+		t.Fatalf("claims %+v", got)
 	}
 }

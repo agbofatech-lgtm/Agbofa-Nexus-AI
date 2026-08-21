@@ -75,7 +75,7 @@ func NewSigner(cfg config.JWTConfig, at time.Time) (*Signer, error) {
 		kid: key.KID,
 		key: priv,
 		ttl: cfg.AccessTokenTTL,
-		now: func() time.Time { return time.Now() },
+		now: func() time.Time { return time.Now().UTC() },
 	}, nil
 }
 
@@ -91,7 +91,10 @@ func NewVerifier(cfg config.JWTConfig, at time.Time) (*Verifier, error) {
 	if len(keys) == 0 {
 		return nil, ErrUnknownKID
 	}
-	return &Verifier{iss: cfg.Issuer, aud: cfg.Audience, keys: keys, now: func() time.Time { return at }}, nil
+	// `at` selects which keys are in their rotation window at construction.
+	// nbf/exp MUST use wall clock. Freezing now at process start rejects every
+	// token issued after Compose (nbf > startup) with ErrTokenNotYetValid.
+	return &Verifier{iss: cfg.Issuer, aud: cfg.Audience, keys: keys, now: func() time.Time { return time.Now().UTC() }}, nil
 }
 
 func (s *Signer) Issue(subject, tenantID string, roles []string) (string, Claims, error) {

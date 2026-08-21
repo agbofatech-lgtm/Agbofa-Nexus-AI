@@ -24,6 +24,11 @@ storybook-static/
 !.env.example
 .git-credentials
 .netrc
+*.pem
+*.bak
+hash_demo.go
+hash_password.go
+temp.sql
 
 # Large temporary intake packages can be kept outside git if needed
 incoming/*.zip

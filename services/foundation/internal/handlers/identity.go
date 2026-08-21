@@ -44,7 +44,15 @@ func (h IdentityHTTP) ValidateToken(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h IdentityHTTP) GetTenant(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Query().Get("id")
+	id := strings.TrimSpace(r.URL.Query().Get("id"))
+	if id == "" {
+		var body struct {
+			ID string `json:"id"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err == nil {
+			id = strings.TrimSpace(body.ID)
+		}
+	}
 	if id == "" {
 		writeErr(w, http.StatusBadRequest, "invalid_argument")
 		return
