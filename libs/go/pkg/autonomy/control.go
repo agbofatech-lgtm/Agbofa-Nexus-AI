@@ -361,7 +361,24 @@ func (p *Plane) Execute(req ExecRequest) *Execution {
 			p.store(ex, req.IdempotencyKey)
 			return ex
 		}
-		dec := p.DecideAction(req.Actor.TenantID, req.Actor, step.ToolID, step.ToolID, tool.RiskLevel, req.Truth, req.Compliance, req.Brand, step.ApprovalID, level, kill)
+		text := contentText(step.Input)
+		truthOK, truthCode := p.evalTruth(text)
+		compOK, compCode := p.evalCompliance(text)
+		if tool.RiskLevel == "HIGH" || step.ToolID == "publish_content" || step.ToolID == "schedule_content" {
+			if !truthOK {
+				ex.Status, ex.Error = StatusBlocked, truthCode
+				ex.End = time.Now().UTC()
+				p.store(ex, req.IdempotencyKey)
+				return ex
+			}
+			if !compOK {
+				ex.Status, ex.Error = StatusBlocked, compCode
+				ex.End = time.Now().UTC()
+				p.store(ex, req.IdempotencyKey)
+				return ex
+			}
+		}
+		dec := p.DecideAction(req.Actor.TenantID, req.Actor, step.ToolID, step.ToolID, tool.RiskLevel, truthOK, compOK, req.Brand, step.ApprovalID, level, kill)
 		ex.Policy = append(ex.Policy, dec)
 		if dec.Verdict == VerdictApproval {
 			ap := &Approval{ID: newID(), TenantID: req.Actor.TenantID, ExecutionID: ex.ID, Action: step.ToolID, Target: fmt.Sprint(step.Input["content_id"]), Risk: tool.RiskLevel, Requester: req.Actor.SubjectID, AgentID: req.AgentID, Fingerprint: fp(step.ToolID, fmt.Sprint(step.Input["content_id"])), Decision: TicketAwait, Expires: time.Now().UTC().Add(24 * time.Hour)}
@@ -412,23 +429,17 @@ func (p *Plane) runTool(id string, actor authz.Principal, in map[string]any, bra
 		p.mu.Unlock()
 		return map[string]any{"text": "DRAFT", "cost_source": "ESTIMATED", "provider_called": false}, nil
 	case "validate_facts":
-		if p.Truth == nil {
-			return nil, fmt.Errorf("TRUTH_ENGINE_NOT_INITIALIZED")
+		ok, code := p.evalTruth(fmt.Sprint(in["text"]))
+		if !ok {
+			return nil, fmt.Errorf("%s", code)
 		}
-		ok, err := p.Truth(fmt.Sprint(in["text"]))
-		if err != nil || !ok {
-			return nil, fmt.Errorf("TRUTH_REQUIRED")
-		}
-		return map[string]any{"passed": true}, nil
+		return map[string]any{"passed": true, "engine": "DEVELOPMENT_RULE_ENGINE"}, nil
 	case "check_compliance":
-		if p.Compliance == nil {
-			return nil, fmt.Errorf("COMPLIANCE_ENGINE_NOT_INITIALIZED")
+		ok, code := p.evalCompliance(fmt.Sprint(in["text"]))
+		if !ok {
+			return nil, fmt.Errorf("%s", code)
 		}
-		ok, err := p.Compliance(fmt.Sprint(in["text"]))
-		if err != nil || !ok {
-			return nil, fmt.Errorf("COMPLIANCE_REQUIRED")
-		}
-		return map[string]any{"passed": true}, nil
+		return map[string]any{"passed": true, "engine": "DEVELOPMENT_POLICY_ENGINE"}, nil
 	case "check_brand":
 		if !brand && !truthy(in["brand_identity_applied"]) {
 			return nil, fmt.Errorf("BRAND_REQUIRED")

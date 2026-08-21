@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { ControlError, ControlPlane, admin, editor, reader } from "./plane.ts";
 import { canonicalAgents } from "./catalog.ts";
 import { FORBIDDEN_TOOLS } from "./types.ts";
+import { TRUTH_SAFE_FIXTURE } from "./truth.ts";
 
 function plane(opts: ConstructorParameters<typeof ControlPlane>[0] = {}) {
   return new ControlPlane({
@@ -356,7 +357,7 @@ test("5.12-5.13 workflow cannot skip gates or call provider; Phase 04 port only"
   });
   const a = ready(p);
   const otherAdmin = { subjectId: "admin-2", tenantId: "tenant-a", roles: ["TENANT_ADMIN"] };
-  const wf = await p.runWorkflow(editor(), { text: "hello world", contentId: "c9", connectionId: "conn", brandApplied: true });
+  const wf = await p.runWorkflow(editor(), { text: TRUTH_SAFE_FIXTURE, contentId: "c9", connectionId: "conn", brandApplied: true });
   assert.equal(wf.status, "WAITING_APPROVAL");
   const approvalId = String(wf.toolCalls[0]?.output?.approval_id);
   p.decideApproval(approvalId, otherAdmin, "APPROVED", "ship it");
@@ -368,7 +369,7 @@ test("5.12-5.13 workflow cannot skip gates or call provider; Phase 04 port only"
     tools: [{
       toolId: "publish_content",
       approvalId,
-      input: { tenant_id: "tenant-a", content_id: "c9", content_version: "v1", body: "hello world", brand_identity_applied: true, connection_id: "conn" },
+      input: { tenant_id: "tenant-a", content_id: "c9", content_version: "v1", body: TRUTH_SAFE_FIXTURE, brand_identity_applied: true, connection_id: "conn" },
     }],
   });
   assert.equal(published.status, "SUCCEEDED");
@@ -435,7 +436,7 @@ test("5.17 concurrency limit", async () => {
 test("5.18 controlled workflow without fabricating provider publication", async () => {
   const p = plane({ productionAutonomy: false });
   const a = ready(p);
-  const wf = await p.runWorkflow(a, { text: "event", contentId: "c", brandApplied: true, connectionId: "conn" });
+  const wf = await p.runWorkflow(a, { text: TRUTH_SAFE_FIXTURE, contentId: "c", brandApplied: true, connectionId: "conn" });
   assert.ok(wf.status === "BLOCKED" || wf.status === "FAILED" || wf.status === "WAITING_APPROVAL");
   assert.ok(["PRODUCTION_AUTONOMY_DISABLED", "APPROVAL_REQUIRED", "TRUTH_REQUIRED"].includes(String(wf.error || wf.toolCalls[0]?.policy.code)));
   assert.equal(p.productionAutonomy, false);

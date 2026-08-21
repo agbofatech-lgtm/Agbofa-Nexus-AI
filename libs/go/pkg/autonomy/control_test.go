@@ -79,7 +79,7 @@ func TestKillAndProductionDisabled(t *testing.T) {
 	_ = p.SetKill("tenant-a", admin(), false)
 	pub := p.Execute(ExecRequest{
 		AgentID: "AGT-014", Actor: admin(), Truth: true, Compliance: true, Brand: true,
-		Tools: []ToolStep{{ToolID: "publish_content", Input: map[string]any{"tenant_id": "tenant-a", "content_id": "c", "brand_identity_applied": true}}},
+		Tools: []ToolStep{{ToolID: "publish_content", Input: map[string]any{"tenant_id": "tenant-a", "content_id": "c", "body": TruthSafeFixture, "brand_identity_applied": true}}},
 	})
 	if pub.Error != "PRODUCTION_AUTONOMY_DISABLED" && pub.Status != StatusBlocked && pub.Status != StatusWaitingApproval {
 		t.Fatalf("production must remain disabled: %+v", pub)
@@ -103,7 +103,7 @@ func TestPublishUsesPhase04Only(t *testing.T) {
 	_ = p.Enable("tenant-a", "AGT-014", admin())
 	waiting := p.Execute(ExecRequest{
 		AgentID: "AGT-014", Actor: admin(), Truth: true, Compliance: true, Brand: true,
-		Tools: []ToolStep{{ToolID: "publish_content", Input: map[string]any{"content_id": "c1", "brand_identity_applied": true, "body": "x"}}},
+		Tools: []ToolStep{{ToolID: "publish_content", Input: map[string]any{"content_id": "c1", "brand_identity_applied": true, "body": TruthSafeFixture}}},
 	})
 	if waiting.Status != StatusWaitingApproval {
 		t.Fatalf("%+v", waiting)
@@ -117,6 +117,55 @@ func TestIdempotency(t *testing.T) {
 	b := p.Execute(ExecRequest{AgentID: "AGT-026", Actor: admin(), IdempotencyKey: "k"})
 	if a.ID != b.ID {
 		t.Fatal("idem")
+	}
+}
+
+func TestTruthFailBlocksPublish(t *testing.T) {
+	p := NewPlane()
+	p.Production = true
+	_ = p.Enable("tenant-a", "AGT-014", admin())
+	ex := p.Execute(ExecRequest{
+		AgentID: "AGT-014", Actor: admin(), Brand: true,
+		Tools: []ToolStep{{ToolID: "publish_content", Input: map[string]any{"content_id": "c", "body": "the earth is flat", "brand_identity_applied": true}}},
+	})
+	if ex.Status != StatusBlocked || ex.Error != "TRUTH_FAILED" {
+		t.Fatalf("%+v", ex)
+	}
+}
+
+func TestComplianceFailBlocksPublish(t *testing.T) {
+	p := NewPlane()
+	p.Production = true
+	_ = p.Enable("tenant-a", "AGT-014", admin())
+	ex := p.Execute(ExecRequest{
+		AgentID: "AGT-014", Actor: admin(), Brand: true,
+		Tools: []ToolStep{{ToolID: "publish_content", Input: map[string]any{"content_id": "c", "body": "contact person@example.com", "brand_identity_applied": true}}},
+	})
+	if ex.Status != StatusBlocked || ex.Error != "COMPLIANCE_FAILED" {
+		t.Fatalf("%+v", ex)
+	}
+}
+
+func TestTruthUnavailableBlocksPublish(t *testing.T) {
+	p := NewPlane()
+	p.Production = true
+	p.Truth = nil
+	_ = p.Enable("tenant-a", "AGT-014", admin())
+	ex := p.Execute(ExecRequest{
+		AgentID: "AGT-014", Actor: admin(), Brand: true,
+		Tools: []ToolStep{{ToolID: "publish_content", Input: map[string]any{"content_id": "c", "body": TruthSafeFixture, "brand_identity_applied": true}}},
+	})
+	if ex.Status != StatusBlocked || ex.Error != "TRUTH_UNAVAILABLE" {
+		t.Fatalf("%+v", ex)
+	}
+}
+
+func TestBypassTruthToolDenied(t *testing.T) {
+	p := NewPlane()
+	_ = p.Enable("tenant-a", "AGT-026", admin())
+	ex := p.Execute(ExecRequest{AgentID: "AGT-026", Actor: admin(), Tools: []ToolStep{{ToolID: "bypass_truth"}}})
+	if ex.Error != "FORBIDDEN_TOOL" {
+		t.Fatalf("%+v", ex)
 	}
 }
 

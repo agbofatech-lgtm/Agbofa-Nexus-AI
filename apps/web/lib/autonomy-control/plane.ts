@@ -1,5 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { canonicalAgents, canonicalTools } from "./catalog.ts";
+import { DevComplianceEngine } from "./compliance.ts";
+import { DevTruthEngine } from "./truth.ts";
 import { FORBIDDEN_TOOLS, type Actor, type AgentSpec, type ApprovalRecord, type AuditEvent, type ContentGates, type ExecutionRecord, type ExecutionStatus, type MemoryRecord, type PolicyDecision, type PolicyInput, type RiskLevel, type ToolCallRecord, type ToolSpec } from "./types.ts";
 
 export class ControlError extends Error {
@@ -120,7 +122,23 @@ export class ControlPlane {
     this.memoryLimit = opts.memoryLimitPerTenant ?? 32;
     this.budgetLimit = opts.budgetPerTenant ?? 100_000;
     this.ratePerMinute = opts.ratePerMinute ?? 20;
-    this.ports = opts.ports ?? {};
+    this.ports = {
+      truth: {
+        validate: async (text) => {
+          const r = new DevTruthEngine().verify(text);
+          if (r.error) throw new ControlError("TRUTH_UNAVAILABLE", r.error.message);
+          return r.ok;
+        },
+      },
+      compliance: {
+        check: async (text) => {
+          const r = new DevComplianceEngine().check(text);
+          if (r.error) throw new ControlError("COMPLIANCE_UNAVAILABLE", r.error.message);
+          return r.ok;
+        },
+      },
+      ...(opts.ports ?? {}),
+    };
     for (const a of canonicalAgents()) this.agents.set(a.id, { ...a });
     for (const t of canonicalTools()) this.tools.set(t.id, { ...t });
   }
