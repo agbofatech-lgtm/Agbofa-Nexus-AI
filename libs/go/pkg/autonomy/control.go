@@ -98,7 +98,7 @@ func NewPlane() *Plane {
 		rate:          map[string][]time.Time{},
 		running:       map[string]int{},
 		Truth:         DevelopmentTruth{}.Verify,
-		Compliance:    nil, // installed in compliance gate
+		Compliance:    DevelopmentCompliance{}.Check,
 	}
 }
 
