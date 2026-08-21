@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 
+import { csrfHeaders } from "@/lib/bff/csrf-client";
 import type {
   AuthContextValue,
   AuthSession,
@@ -95,7 +96,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
   }, []);
 
   const signOut = useCallback(() => {
-    void fetch("/api/v1/auth/logout", { method: "POST" });
+    void fetch("/api/v1/auth/logout", { method: "POST", headers: csrfHeaders() });
     setSession(null);
     setStatus("unauthenticated");
   }, []);

@@ -2,10 +2,10 @@ import type { NextRequest} from "next/server";
 import { NextResponse } from "next/server";
 
 import { backendRPC } from "@/lib/bff/backend";
-import { rateLimit } from "@/lib/bff/limits";
+import { rateLimitRequest } from "@/lib/bff/limits";
 
 export async function POST(request: NextRequest) {
-  if (!rateLimit(`pub:${request.headers.get("x-forwarded-for") ?? "local"}`, 20)) {
+  if (!rateLimitRequest(request, "pub", 20)) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
   const cookie = request.cookies.get("agbofa_session")?.value;

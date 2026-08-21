@@ -2,7 +2,8 @@ import type { NextRequest} from "next/server";
 import { NextResponse } from "next/server";
 
 import { backendRPC } from "@/lib/bff/backend";
-import { rateLimit } from "@/lib/bff/limits";
+import { CSRF_COOKIE, csrfCookieOptions, newCsrfToken } from "@/lib/bff/csrf";
+import { rateLimitRequest } from "@/lib/bff/limits";
 import { presentRole } from "@/lib/bff/roles";
 import { loginSchema } from "@/lib/validations/login.schema";
 
@@ -13,7 +14,7 @@ function decodeJwtPayload(token: string): Record<string, unknown> {
 }
 
 export async function POST(request: NextRequest) {
-  if (!rateLimit(request.headers.get("x-forwarded-for") ?? "local")) {
+  if (!rateLimitRequest(request, "login", 30)) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
   let payload: unknown;
@@ -78,5 +79,6 @@ export async function POST(request: NextRequest) {
       path: "/",
     });
   }
+  response.cookies.set(CSRF_COOKIE, newCsrfToken(), csrfCookieOptions());
   return response;
 }

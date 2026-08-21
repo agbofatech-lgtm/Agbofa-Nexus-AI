@@ -1,6 +1,7 @@
-import type { NextRequest} from "next/server";
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+import { JwtVerifyError, verifyAccessToken } from "@/lib/bff/jwt";
 import { presentRole } from "@/lib/bff/roles";
 
 export async function GET(request: NextRequest) {
@@ -8,34 +9,23 @@ export async function GET(request: NextRequest) {
   if (!token) {
     return NextResponse.json({ authenticated: false }, { status: 401 });
   }
-  const part = token.split(".")[1];
-  if (!part) {
-    return NextResponse.json({ authenticated: false }, { status: 401 });
-  }
-  let claims: Record<string, unknown>;
   try {
-    claims = JSON.parse(Buffer.from(part, "base64url").toString("utf8")) as Record<
-      string,
-      unknown
-    >;
-  } catch {
-    return NextResponse.json({ authenticated: false }, { status: 401 });
-  }
-  const exp = typeof claims.exp === "number" ? claims.exp : 0;
-  if (exp * 1000 <= Date.now()) {
-    return NextResponse.json({ authenticated: false, reason: "expired" }, { status: 401 });
-  }
-  return NextResponse.json({
-    authenticated: true,
-    session: {
-      tenant: String(claims.tenant_id ?? ""),
-      user: {
-        id: String(claims.sub ?? ""),
-        name: String(claims.sub ?? ""),
-        email: String(claims.sub ?? ""),
-        role: presentRole(Array.isArray(claims.roles) ? claims.roles.map(String) : []),
+    const claims = verifyAccessToken(token);
+    return NextResponse.json({
+      authenticated: true,
+      session: {
+        tenant: claims.tenant_id,
+        user: {
+          id: claims.sub,
+          name: claims.sub,
+          email: claims.sub,
+          role: presentRole(claims.roles),
+        },
+        expiresAt: new Date(claims.exp * 1000).toISOString(),
       },
-      expiresAt: new Date(exp * 1000).toISOString(),
-    },
-  });
+    });
+  } catch (error) {
+    const code = error instanceof JwtVerifyError ? error.code : "unauthenticated";
+    return NextResponse.json({ authenticated: false, reason: code }, { status: 401 });
+  }
 }

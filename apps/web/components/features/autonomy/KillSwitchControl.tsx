@@ -2,6 +2,7 @@
 
 import { AlertOctagon, CheckCircle2, ShieldAlert, X } from "lucide-react";
 import { useRef, useState } from "react";
+import { csrfHeaders } from "@/lib/bff/csrf-client";
 import { ExecutionRealityBadge } from "@/components/shared/states/ExecutionRealityBadge";
 import type {
   AutonomyAuditRecord,
@@ -52,7 +53,7 @@ export function KillSwitchControl({
   const confirm = () => {
     void fetch("/api/v1/autonomy/kill-switch", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", ...csrfHeaders() },
       body: JSON.stringify({ engage: true }),
     })
       .then(async (response) => {

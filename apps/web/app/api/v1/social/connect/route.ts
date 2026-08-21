@@ -2,7 +2,7 @@ import type { NextRequest} from "next/server";
 import { NextResponse } from "next/server";
 
 import { backendRPC } from "@/lib/bff/backend";
-import { rateLimit } from "@/lib/bff/limits";
+import { rateLimitRequest } from "@/lib/bff/limits";
 
 function redirectURI(request: NextRequest, platform: string): string {
   const key = `AGBOFA_SOCIAL_${platform.toUpperCase()}_REDIRECT_URI`;
@@ -12,7 +12,7 @@ function redirectURI(request: NextRequest, platform: string): string {
 }
 
 async function startConnect(request: NextRequest, platform: string, redirect: string) {
-  if (!rateLimit(`social:${request.headers.get("x-forwarded-for") ?? "local"}`, 20)) {
+  if (!rateLimitRequest(request, "social", 20)) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
   const cookie = request.cookies.get("agbofa_session")?.value;

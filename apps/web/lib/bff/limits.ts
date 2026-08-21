@@ -1,17 +1,24 @@
-const hits = new Map<string, { count: number; reset: number }>();
+import type { NextRequest } from "next/server";
+import { verifyAccessToken } from "./jwt";
+import { clientLimitKey, rateLimit } from "./limits-core";
 
-export function rateLimit(key: string, limit = 30, windowMs = 60_000): boolean {
-  const now = Date.now();
-  const current = hits.get(key);
-  if (!current || current.reset < now) {
-    hits.set(key, { count: 1, reset: now + windowMs });
-    return true;
+export { clientLimitKey, isAllowedOrigin, rateLimit, resetRateLimitForTests } from "./limits-core";
+
+/**
+ * Process-local limiter. Multi-instance / serverless horizontal scale is NOT
+ * covered — that remains BLOCKED without a shared store.
+ * Identity must not be solely a client-controlled X-Forwarded-For value.
+ */
+export function rateLimitRequest(request: NextRequest, prefix: string, limit = 30): boolean {
+  let subject = "";
+  const token = request.cookies.get("agbofa_session")?.value;
+  if (token) {
+    try {
+      subject = verifyAccessToken(token).sub;
+    } catch {
+      /* unauthenticated callers remain anonymous-UA keyed */
+    }
   }
-  current.count += 1;
-  return current.count <= limit;
-}
-
-export function isAllowedOrigin(origin: string | null, allow: string[]): boolean {
-  if (!origin) return true;
-  return allow.includes(origin);
+  const key = `${prefix}:${clientLimitKey({ subject, userAgent: request.headers.get("user-agent") })}`;
+  return rateLimit(key, limit);
 }
