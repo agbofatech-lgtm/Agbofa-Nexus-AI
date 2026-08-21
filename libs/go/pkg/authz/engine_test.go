@@ -20,4 +20,7 @@ func TestCanonicalRolesAndIsolation(t *testing.T) {
 	if Decide(Request{SubjectID: "u", TenantID: "A", Roles: []string{"READER"}, Resource: "content", Action: "create"}).Allowed {
 		t.Fatal("reader create must deny")
 	}
+	if Decide(Request{SubjectID: "u", TenantID: "A", Roles: []string{"EDITOR"}, Resource: "autonomy", Action: "control"}).Allowed {
+		t.Fatal("editor must not control autonomy")
+	}
 }

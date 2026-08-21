@@ -57,9 +57,15 @@ func allows(role, resource, action, scope string) bool {
 	case RoleTenantAdmin:
 		return !strings.EqualFold(resource, "billing")
 	case RoleEditor:
-		return strings.EqualFold(resource, "content") || strings.EqualFold(resource, "newsroom")
+		if strings.EqualFold(resource, "autonomy") && strings.EqualFold(action, "control") {
+			return false
+		}
+		return strings.EqualFold(resource, "content") || strings.EqualFold(resource, "newsroom") ||
+			strings.EqualFold(resource, "memory") || strings.EqualFold(resource, "scenario") ||
+			strings.EqualFold(resource, "autonomy") || strings.EqualFold(resource, "cost")
 	case RoleAnalyst:
-		return strings.EqualFold(resource, "analytics") || strings.EqualFold(action, "read")
+		return strings.EqualFold(resource, "analytics") || strings.EqualFold(resource, "cost") ||
+			strings.EqualFold(action, "read")
 	case RoleReader:
 		return strings.EqualFold(action, "read")
 	default:

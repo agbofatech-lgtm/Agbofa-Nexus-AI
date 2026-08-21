@@ -50,15 +50,28 @@ export function KillSwitchControl({
     setMessage("Simulated stop requested locally. Confirm to demonstrate the final UI transition; no backend is affected.");
   };
   const confirm = () => {
-    addAudit(
-      "APPLY_SIMULATED_STOP",
-      state,
-      "SIMULATED_STOP_APPLIED",
-      "User confirmed a local display-state change with no backend effect.",
-    );
-    setState("SIMULATED_STOP_APPLIED");
-    setConfirming(false);
-    setMessage("Simulated stop applied to local presentation state. No agents, jobs, providers, publishing, or spending were interrupted.");
+    void fetch("/api/v1/autonomy/kill-switch", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ engage: true }),
+    })
+      .then(async (response) => {
+        const payload = (await response.json().catch(() => ({}))) as { kill_switch?: string; error?: string };
+        if (!response.ok) {
+          setMessage(`Kill-switch persist failed (${payload.error ?? response.status}). Local UI unchanged as authority.`);
+          return;
+        }
+        addAudit(
+          "APPLY_KILL_SWITCH",
+          state,
+          payload.kill_switch === "ENGAGED" ? "SIMULATED_STOP_APPLIED" : state,
+          "Persisted tenant kill-switch ENGAGED. Blocks autonomy dispatch and Phase 04 schedule for this tenant.",
+        );
+        setState("SIMULATED_STOP_APPLIED");
+        setConfirming(false);
+        setMessage("Kill-switch ENGAGED in backend for this tenant. Publishing schedule and autonomy dispatch are blocked. Not a process SIGKILL.");
+      })
+      .catch(() => setMessage("Kill-switch request failed. Backend not reached."));
   };
   const cancel = () => {
     addAudit(

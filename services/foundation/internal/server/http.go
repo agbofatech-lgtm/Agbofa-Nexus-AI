@@ -17,7 +17,7 @@ type HTTP struct {
 	Handler http.Handler
 }
 
-func NewHTTP(identity handlers.IdentityHTTP, ai handlers.AIHTTP, social handlers.SocialHTTP, pub handlers.PublishingHTTP, verifier *auth.Verifier, pool *database.Pool) *HTTP {
+func NewHTTP(identity handlers.IdentityHTTP, ai handlers.AIHTTP, social handlers.SocialHTTP, pub handlers.PublishingHTTP, auto handlers.AutonomyHTTP, verifier *auth.Verifier, pool *database.Pool) *HTTP {
 	mux := http.NewServeMux()
 	s := &HTTP{Mux: mux, Ready: func() bool { return pool.Ping(context.Background()) == nil }}
 	public := map[string]struct{}{
@@ -53,6 +53,22 @@ func NewHTTP(identity handlers.IdentityHTTP, ai handlers.AIHTTP, social handlers
 	mux.Handle("/rpc/publish.v1.PublishingService/Cancel", authorize("content", "create")(http.HandlerFunc(pub.Cancel)))
 	mux.Handle("/rpc/publish.v1.PublishingService/Get", authorize("content", "read")(http.HandlerFunc(pub.Get)))
 	mux.Handle("/rpc/publish.v1.PublishingService/Tick", authorize("content", "create")(http.HandlerFunc(pub.Tick)))
+	mux.Handle("/rpc/autonomy.v1.AutonomyService/GetControl", authorize("autonomy", "read")(http.HandlerFunc(auto.GetControl)))
+	mux.Handle("/rpc/autonomy.v1.AutonomyService/SetLevel", authorize("autonomy", "control")(http.HandlerFunc(auto.SetLevel)))
+	mux.Handle("/rpc/autonomy.v1.AutonomyService/KillSwitch", authorize("autonomy", "control")(http.HandlerFunc(auto.KillSwitch)))
+	mux.Handle("/rpc/autonomy.v1.AutonomyService/CreatePolicy", authorize("autonomy", "control")(http.HandlerFunc(auto.CreatePolicy)))
+	mux.Handle("/rpc/autonomy.v1.AutonomyService/RequestApproval", authorize("content", "create")(http.HandlerFunc(auto.RequestApproval)))
+	mux.Handle("/rpc/autonomy.v1.AutonomyService/DecideApproval", authorize("autonomy", "control")(http.HandlerFunc(auto.DecideApproval)))
+	mux.Handle("/rpc/autonomy.v1.AutonomyService/SimulateRun", authorize("autonomy", "read")(http.HandlerFunc(auto.SimulateRun)))
+	mux.Handle("/rpc/autonomy.v1.AutonomyService/ListRuns", authorize("autonomy", "read")(http.HandlerFunc(auto.ListRuns)))
+	mux.Handle("/rpc/autonomy.v1.AutonomyService/CreateMemory", authorize("memory", "create")(http.HandlerFunc(auto.CreateMemory)))
+	mux.Handle("/rpc/autonomy.v1.AutonomyService/ListMemories", authorize("memory", "read")(http.HandlerFunc(auto.ListMemories)))
+	mux.Handle("/rpc/autonomy.v1.AutonomyService/ApplyMemoryAsPrivilege", authorize("memory", "create")(http.HandlerFunc(auto.ApplyMemoryAsPrivilege)))
+	mux.Handle("/rpc/autonomy.v1.AutonomyService/CreateScenario", authorize("scenario", "create")(http.HandlerFunc(auto.CreateScenario)))
+	mux.Handle("/rpc/autonomy.v1.AutonomyService/ListScenarios", authorize("scenario", "read")(http.HandlerFunc(auto.ListScenarios)))
+	mux.Handle("/rpc/autonomy.v1.AutonomyService/Usage", authorize("cost", "read")(http.HandlerFunc(auto.Usage)))
+	mux.Handle("/rpc/autonomy.v1.AutonomyService/Routing", authorize("cost", "read")(http.HandlerFunc(auto.Routing)))
+	mux.Handle("/rpc/autonomy.v1.AutonomyService/Strategies", authorize("cost", "read")(http.HandlerFunc(auto.Strategies)))
 
 	var h http.Handler = mux
 	h = authenticate(verifier, public)(h)

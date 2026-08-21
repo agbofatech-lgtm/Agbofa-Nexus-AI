@@ -47,13 +47,14 @@ func Compose(ctx context.Context, cfg config.RuntimeConfig) (*Runtime, error) {
 		pool.Close()
 		return nil, err
 	}
+	autoStore := repositories.NewAutonomyStore(pool)
 	aiSettings := llm.LoadSettings(ctx, nil)
 	gateway := llm.NewGateway(
 		llm.DefaultRegistry(),
 		aiSettings.Providers(),
 		llm.WithTimeout(aiSettings.Timeout),
 		llm.WithRetries(aiSettings.Retries),
-		llm.WithUsageSink(llm.NewMemoryUsage()),
+		llm.WithUsageSink(&ledgerSink{mem: llm.NewMemoryUsage(), store: autoStore}),
 	)
 	tokenKey := os.Getenv("AGBOFA_SECRET_SOCIAL_TOKEN_KEY")
 	box, err := social.NewTokenBox(tokenKey)
@@ -69,12 +70,14 @@ func Compose(ctx context.Context, cfg config.RuntimeConfig) (*Runtime, error) {
 		Store: jobs, Adapter: adapters, WorkerID: "foundation-1", MaxTries: 5,
 		Tokens: loadConnectionTokens(socialStore, box, adapters),
 	}
-	pubHTTP := handlers.PublishingHTTP{Jobs: jobs, Social: socialStore, Worker: worker}
+	pubHTTP := handlers.PublishingHTTP{Jobs: jobs, Social: socialStore, Worker: worker, Autonomy: autoStore}
+	autoHTTP := handlers.AutonomyHTTP{Store: autoStore, Registry: llm.DefaultRegistry()}
 	httpSrv := server.NewHTTP(
 		handlers.IdentityHTTP{Svc: svc, Tenants: tenants},
 		handlers.AIHTTP{Gateway: gateway},
 		socialHTTP,
 		pubHTTP,
+		autoHTTP,
 		verifier,
 		pool,
 	)
@@ -93,6 +96,21 @@ func (noopEvents) PublishTenantProvisioned(context.Context, domain.Tenant) error
 func (noopEvents) PublishUserCreated(context.Context, domain.User) error         { return nil }
 func (noopEvents) PublishUserAuthenticated(context.Context, domain.User, time.Time) error {
 	return nil
+}
+
+type ledgerSink struct {
+	mem   *llm.MemoryUsage
+	store *repositories.AutonomyStore
+}
+
+func (s *ledgerSink) Record(ctx context.Context, req llm.Request, res llm.Response, err error) {
+	if s.mem != nil {
+		s.mem.Record(ctx, req, res, err)
+	}
+	if s.store == nil || req.TenantID == "" {
+		return
+	}
+	_ = s.store.RecordUsage(ctx, req.TenantID, req.SubjectID, res.Provider, req.Model, "complete", req.CorrelationID, res.Usage.PromptTokens, res.Usage.CompletionTokens, res.Cost.EstimatedMicros, "ESTIMATED")
 }
 
 func loadConnectionTokens(store *repositories.SocialStore, box *social.TokenBox, adapters *social.Router) func(context.Context, publish.Job) (social.TokenSet, error) {

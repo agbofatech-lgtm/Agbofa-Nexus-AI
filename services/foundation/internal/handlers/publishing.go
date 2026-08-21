@@ -6,15 +6,17 @@ import (
 	"time"
 
 	"github.com/agbofa/nexus/libs/go/pkg/authz"
+	"github.com/agbofa/nexus/libs/go/pkg/autonomy"
 	"github.com/agbofa/nexus/libs/go/pkg/publish"
 	"github.com/agbofa/nexus/libs/go/pkg/social"
 	"github.com/agbofa/nexus/services/foundation/internal/repositories"
 )
 
 type PublishingHTTP struct {
-	Jobs    *repositories.DistStore
-	Social  *repositories.SocialStore
-	Worker  *publish.Worker
+	Jobs     *repositories.DistStore
+	Social   *repositories.SocialStore
+	Worker   *publish.Worker
+	Autonomy *repositories.AutonomyStore
 }
 
 func (h PublishingHTTP) Schedule(w http.ResponseWriter, r *http.Request) {
@@ -41,6 +43,18 @@ func (h PublishingHTTP) Schedule(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeErr(w, http.StatusForbidden, "CONNECTION_NOT_FOUND")
 		return
+	}
+	if h.Autonomy != nil {
+		level, kill, _ := h.Autonomy.DomainLevel(r.Context(), principal.TenantID, autonomy.DomainPublishing)
+		dec := autonomy.Evaluate(kill, level, autonomy.DomainPublishing, "publish")
+		if dec.KillSwitch {
+			writeErr(w, http.StatusLocked, "KILL_SWITCH_ENGAGED")
+			return
+		}
+		if dec.Awaiting && !req.Approve {
+			writeErr(w, http.StatusConflict, "AWAITING_APPROVAL")
+			return
+		}
 	}
 	var when *time.Time
 	if req.ScheduledAt != "" {

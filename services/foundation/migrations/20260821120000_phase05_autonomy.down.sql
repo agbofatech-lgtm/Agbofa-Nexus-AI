@@ -1,0 +1,9 @@
+DROP TABLE IF EXISTS autonomy_audit;
+DROP TABLE IF EXISTS ai_usage_ledger;
+DROP TABLE IF EXISTS scenario_records;
+DROP TABLE IF EXISTS governed_memories;
+DROP TABLE IF EXISTS autonomy_runs;
+DROP TABLE IF EXISTS approval_tickets;
+DROP TABLE IF EXISTS approval_policies;
+DROP TABLE IF EXISTS autonomy_domains;
+DROP TABLE IF EXISTS autonomy_configs;
