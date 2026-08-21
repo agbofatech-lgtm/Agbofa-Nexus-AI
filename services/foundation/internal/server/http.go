@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/agbofa/nexus/libs/go/pkg/auth"
+	"github.com/agbofa/nexus/libs/go/pkg/config"
 	"github.com/agbofa/nexus/libs/go/pkg/database"
 	"github.com/agbofa/nexus/services/foundation/internal/handlers"
 )
@@ -17,7 +18,7 @@ type HTTP struct {
 	Handler http.Handler
 }
 
-func NewHTTP(identity handlers.IdentityHTTP, ai handlers.AIHTTP, social handlers.SocialHTTP, pub handlers.PublishingHTTP, auto handlers.AutonomyHTTP, verifier *auth.Verifier, pool *database.Pool) *HTTP {
+func NewHTTP(identity handlers.IdentityHTTP, ai handlers.AIHTTP, social handlers.SocialHTTP, pub handlers.PublishingHTTP, auto handlers.AutonomyHTTP, verifier *auth.Verifier, pool *database.Pool, env config.Environment, planeTestAuth bool) *HTTP {
 	mux := http.NewServeMux()
 	s := &HTTP{Mux: mux, Ready: func() bool { return pool.Ping(context.Background()) == nil }}
 	public := map[string]struct{}{
@@ -73,9 +74,10 @@ func NewHTTP(identity handlers.IdentityHTTP, ai handlers.AIHTTP, social handlers
 	mux.Handle("/rpc/autonomy.v1.AutonomyService/EnableAgent", authorize("autonomy", "control")(http.HandlerFunc(auto.EnableAgent)))
 	mux.Handle("/rpc/autonomy.v1.AutonomyService/Execute", authorize("content", "create")(http.HandlerFunc(auto.Execute)))
 	mux.Handle("/rpc/autonomy.v1.AutonomyService/GetExecution", authorize("autonomy", "read")(http.HandlerFunc(auto.GetExecution)))
+	mux.Handle("/v1/autonomy/execute", authorize("content", "create")(http.HandlerFunc(auto.Execute)))
 
 	var h http.Handler = mux
-	h = authenticate(verifier, public)(h)
+	h = authenticate(verifier, public, env, planeTestAuth)(h)
 	h = withCorrelation(h)
 	h = recoverMW(h)
 	s.Handler = h

@@ -74,6 +74,7 @@ func Compose(ctx context.Context, cfg config.RuntimeConfig) (*Runtime, error) {
 	pubHTTP := handlers.PublishingHTTP{Jobs: jobs, Social: socialStore, Worker: worker, Autonomy: autoStore}
 	plane := autonomy.NewPlane()
 	autoHTTP := handlers.AutonomyHTTP{Store: autoStore, Registry: llm.DefaultRegistry(), Plane: plane}
+	planeTestAuth := strings.EqualFold(os.Getenv("PLANE_TEST_AUTH"), "true")
 	httpSrv := server.NewHTTP(
 		handlers.IdentityHTTP{Svc: svc, Tenants: tenants},
 		handlers.AIHTTP{Gateway: gateway},
@@ -82,6 +83,8 @@ func Compose(ctx context.Context, cfg config.RuntimeConfig) (*Runtime, error) {
 		autoHTTP,
 		verifier,
 		pool,
+		cfg.Environment,
+		planeTestAuth,
 	)
 	return &Runtime{Config: cfg, Pool: pool, HTTP: httpSrv, Verifier: verifier}, nil
 }

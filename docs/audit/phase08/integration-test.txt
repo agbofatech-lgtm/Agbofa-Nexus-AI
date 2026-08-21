@@ -1,0 +1,5 @@
+command: go run ./services/foundation/cmd/server
+environment: Arena Debian, no Go, no PostgreSQL
+result: BLOCKED
+
+go: NOT AVAILABLE

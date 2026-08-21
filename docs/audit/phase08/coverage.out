@@ -1,0 +1,4 @@
+go test -coverprofile=docs/audit/phase08/coverage.out ./libs/go/pkg/autonomy
+result: BLOCKED — go not available
+target >80% for new Phase 08 code: NOT MEASURED
+

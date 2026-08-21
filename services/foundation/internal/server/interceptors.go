@@ -12,6 +12,8 @@ import (
 
 	"github.com/agbofa/nexus/libs/go/pkg/auth"
 	"github.com/agbofa/nexus/libs/go/pkg/authz"
+	"github.com/agbofa/nexus/libs/go/pkg/autonomy"
+	"github.com/agbofa/nexus/libs/go/pkg/config"
 	"github.com/agbofa/nexus/libs/go/pkg/database"
 )
 
@@ -50,14 +52,14 @@ func recoverMW(next http.Handler) http.Handler {
 	})
 }
 
-func authenticate(verifier *auth.Verifier, public map[string]struct{}) func(http.Handler) http.Handler {
+func authenticate(verifier *auth.Verifier, public map[string]struct{}, env config.Environment, planeTestAuth bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("rpc inbound method=%s path=%s", r.Method, r.URL.Path)
-		if _, ok := public[r.URL.Path]; ok {
-			next.ServeHTTP(w, r)
-			return
-		}
+			log.Printf("rpc inbound method=%s path=%s", r.Method, r.URL.Path)
+			if _, ok := public[r.URL.Path]; ok {
+				next.ServeHTTP(w, r)
+				return
+			}
 			raw := bearer(r)
 			if raw == "" {
 				if c, err := r.Cookie(auth.AccessCookieName); err == nil {
@@ -65,6 +67,21 @@ func authenticate(verifier *auth.Verifier, public map[string]struct{}) func(http
 				}
 			}
 			if raw == "" {
+				writeError(w, http.StatusUnauthorized, "unauthenticated")
+				return
+			}
+			if raw == autonomy.TestBearerToken {
+				if !autonomy.AllowPlaneTestAuth(env, planeTestAuth, raw) {
+					writeError(w, http.StatusUnauthorized, "unauthenticated")
+					return
+				}
+				sub, tenant, roles := autonomy.TestAuthPrincipal()
+				ctx := authz.WithPrincipal(r.Context(), authz.Principal{SubjectID: sub, TenantID: tenant, Roles: roles})
+				ctx = database.WithTenant(ctx, tenant)
+				next.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
+			if verifier == nil {
 				writeError(w, http.StatusUnauthorized, "unauthenticated")
 				return
 			}
