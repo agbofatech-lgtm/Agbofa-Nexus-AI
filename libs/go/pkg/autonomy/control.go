@@ -97,8 +97,8 @@ func NewPlane() *Plane {
 		spend:         map[string]int{},
 		rate:          map[string][]time.Time{},
 		running:       map[string]int{},
-		Truth:         nil, // Will be set in Phase 08
-		Compliance:    nil, // Will be set in Phase 08
+		Truth:         DevelopmentTruth{}.Verify,
+		Compliance:    nil, // installed in compliance gate
 	}
 }
 
