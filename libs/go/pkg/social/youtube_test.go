@@ -56,9 +56,27 @@ func TestYouTubePublishRequiresMediaAndBrand(t *testing.T) {
 
 func TestYouTubeIdentifyRequiresChannel(t *testing.T) {
 	y := YouTubeAdapter{OAuthClient: OAuthClient{HTTP: roundTripFunc(func(r *http.Request) (*http.Response, error) {
-		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"items":[]}`)), Header: http.Header{}, Request: r}, nil
+		body := `{"items":[]}`
+		if strings.Contains(r.URL.Path, "userinfo") {
+			body = `{}`
+		}
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(body)), Header: http.Header{}, Request: r}, nil
 	})}}
 	if _, _, err := y.Identify(context.Background(), TokenSet{AccessToken: "t"}); err != ErrProviderIdentity {
 		t.Fatalf("identify: %v", err)
+	}
+}
+
+func TestYouTubeIdentifyFallsBackToUserInfo(t *testing.T) {
+	y := YouTubeAdapter{OAuthClient: OAuthClient{HTTP: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		body := `{"items":[]}`
+		if strings.Contains(r.URL.Path, "userinfo") {
+			body = `{"sub":"google-sub-1","name":"Test User"}`
+		}
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(body)), Header: http.Header{}, Request: r}, nil
+	})}}
+	id, name, err := y.Identify(context.Background(), TokenSet{AccessToken: "t"})
+	if err != nil || id != "google-sub-1" || name != "Test User" {
+		t.Fatalf("fallback: %s %s %v", id, name, err)
 	}
 }
