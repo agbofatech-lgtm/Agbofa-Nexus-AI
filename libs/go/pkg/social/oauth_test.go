@@ -1,6 +1,8 @@
 package social
 
 import (
+	"encoding/hex"
+	"strings"
 	"testing"
 	"time"
 )
@@ -65,7 +67,8 @@ func TestYouTubeCatalogAndGoogleAuthURL(t *testing.T) {
 }
 
 func TestTokenBoxRoundTrip(t *testing.T) {
-	box, err := NewTokenBox("0123456789abcdef0123456789abcdef")
+	// Use a 32-byte (64 hex characters) key for AES-256
+	box, err := NewTokenBox("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
 	if err != nil {
 		t.Fatal(err)
 	}
