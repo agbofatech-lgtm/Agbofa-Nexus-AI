@@ -1,0 +1,190 @@
+TAP version 13
+# (node:1473) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Agbofa-Nexus-AI/apps/web/lib/autonomy-control/plane.test.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /home/user/Agbofa-Nexus-AI/apps/web/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: 5.1 catalog has 28 unique ids and does not claim certified or default-executable
+ok 1 - 5.1 catalog has 28 unique ids and does not claim certified or default-executable
+  ---
+  duration_ms: 1.764211
+  type: 'test'
+  ...
+# Subtest: 5.1 lookup, invalid, disabled, unauthorized, tenant-aware
+ok 2 - 5.1 lookup, invalid, disabled, unauthorized, tenant-aware
+  ---
+  duration_ms: 1.796442
+  type: 'test'
+  ...
+# Subtest: 5.2 successful, failed, timeout, cancel, duplicate, concurrent, unauthorized, invalid, tenant mismatch, runaway
+ok 3 - 5.2 successful, failed, timeout, cancel, duplicate, concurrent, unauthorized, invalid, tenant mismatch, runaway
+  ---
+  duration_ms: 3.220537
+  type: 'test'
+  ...
+# Subtest: 5.3 tools: valid, unknown, unauthorized, invalid input, wrong tenant, high-risk without approval
+ok 4 - 5.3 tools: valid, unknown, unauthorized, invalid input, wrong tenant, high-risk without approval
+  ---
+  duration_ms: 0.92498
+  type: 'test'
+  ...
+# Subtest: 5.4 permissions: forbidden tools, oauth, db, social, wrong tenant
+ok 5 - 5.4 permissions: forbidden tools, oauth, db, social, wrong tenant
+  ---
+  duration_ms: 0.810356
+  type: 'test'
+  ...
+# Subtest: 5.5 policy: allow, deny, approval, truth, compliance, brand, autonomy disabled, kill, budget
+ok 6 - 5.5 policy: allow, deny, approval, truth, compliance, brand, autonomy disabled, kill, budget
+  ---
+  duration_ms: 0.471844
+  type: 'test'
+  ...
+# Subtest: 5.6 approval: block execute, unauthorized approver, mutate, expire, bypass
+ok 7 - 5.6 approval: block execute, unauthorized approver, mutate, expire, bypass
+  ---
+  duration_ms: 1.588884
+  type: 'test'
+  ...
+# Subtest: 5.7 execution state transitions and tenant isolation
+ok 8 - 5.7 execution state transitions and tenant isolation
+  ---
+  duration_ms: 0.483532
+  type: 'test'
+  ...
+# Subtest: 5.8 memory tenant isolation, unauthorized, delete, limit
+ok 9 - 5.8 memory tenant isolation, unauthorized, delete, limit
+  ---
+  duration_ms: 0.925348
+  type: 'test'
+  ...
+# Subtest: 5.9 budget exhausted and bypass denied
+ok 10 - 5.9 budget exhausted and bypass denied
+  ---
+  duration_ms: 0.709089
+  type: 'test'
+  ...
+# Subtest: 5.10 rate limit throttles repeated tool calls
+ok 11 - 5.10 rate limit throttles repeated tool calls
+  ---
+  duration_ms: 0.666062
+  type: 'test'
+  ...
+# Subtest: 5.11 kill switch blocks new execution and tools
+ok 12 - 5.11 kill switch blocks new execution and tools
+  ---
+  duration_ms: 0.31136
+  type: 'test'
+  ...
+# Subtest: 5.12-5.13 workflow cannot skip gates or call provider; Phase 04 port only
+ok 13 - 5.12-5.13 workflow cannot skip gates or call provider; Phase 04 port only
+  ---
+  duration_ms: 1.386691
+  type: 'test'
+  ...
+# Subtest: 5.14 classify duplicate publish via idempotency of executions
+ok 14 - 5.14 classify duplicate publish via idempotency of executions
+  ---
+  duration_ms: 0.214375
+  type: 'test'
+  ...
+# Subtest: 5.15 adversarial denials
+ok 15 - 5.15 adversarial denials
+  ---
+  duration_ms: 0.333969
+  type: 'test'
+  ...
+# Subtest: 5.16 audit reconstructs who/what/when and redacts secrets
+ok 16 - 5.16 audit reconstructs who/what/when and redacts secrets
+  ---
+  duration_ms: 0.403435
+  type: 'test'
+  ...
+# Subtest: 5.17 concurrency limit
+ok 17 - 5.17 concurrency limit
+  ---
+  duration_ms: 0.219492
+  type: 'test'
+  ...
+# Subtest: 5.18 controlled workflow without fabricating provider publication
+ok 18 - 5.18 controlled workflow without fabricating provider publication
+  ---
+  duration_ms: 0.599101
+  type: 'test'
+  ...
+# Subtest: production autonomy remains disabled on the default plane
+ok 19 - production autonomy remains disabled on the default plane
+  ---
+  duration_ms: 0.139198
+  type: 'test'
+  ...
+# (node:1480) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Agbofa-Nexus-AI/apps/web/lib/bff/csrf.test.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /home/user/Agbofa-Nexus-AI/apps/web/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: CSRF tokens must match constantly
+ok 20 - CSRF tokens must match constantly
+  ---
+  duration_ms: 0.823319
+  type: 'test'
+  ...
+# Subtest: rate limit identity is not X-Forwarded-For
+ok 21 - rate limit identity is not X-Forwarded-For
+  ---
+  duration_ms: 0.240746
+  type: 'test'
+  ...
+# Subtest: rate limit rejects after window count
+ok 22 - rate limit rejects after window count
+  ---
+  duration_ms: 0.18988
+  type: 'test'
+  ...
+# (node:1487) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Agbofa-Nexus-AI/apps/web/lib/bff/jwt.test.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /home/user/Agbofa-Nexus-AI/apps/web/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: verifyAccessToken accepts a valid RS256 token
+ok 23 - verifyAccessToken accepts a valid RS256 token
+  ---
+  duration_ms: 4.367841
+  type: 'test'
+  ...
+# Subtest: rejects alg=none
+ok 24 - rejects alg=none
+  ---
+  duration_ms: 3.02631
+  type: 'test'
+  ...
+# Subtest: rejects invalid signature
+ok 25 - rejects invalid signature
+  ---
+  duration_ms: 3.817126
+  type: 'test'
+  ...
+# Subtest: rejects wrong issuer and audience
+ok 26 - rejects wrong issuer and audience
+  ---
+  duration_ms: 2.902435
+  type: 'test'
+  ...
+# Subtest: rejects expired and nbf-future tokens
+ok 27 - rejects expired and nbf-future tokens
+  ---
+  duration_ms: 3.968915
+  type: 'test'
+  ...
+# Subtest: fails closed without PEM
+ok 28 - fails closed without PEM
+  ---
+  duration_ms: 0.204395
+  type: 'test'
+  ...
+1..28
+# tests 28
+# suites 0
+# pass 28
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 470.416486
