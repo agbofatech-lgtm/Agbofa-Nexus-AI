@@ -15,6 +15,7 @@ import (
 type AutonomyHTTP struct {
 	Store    *repositories.AutonomyStore
 	Registry *llm.Registry
+	Plane    *autonomy.Plane
 }
 
 func (h AutonomyHTTP) GetControl(w http.ResponseWriter, r *http.Request) {
@@ -103,6 +104,9 @@ func (h AutonomyHTTP) KillSwitch(w http.ResponseWriter, r *http.Request) {
 	if err := h.Store.SetKill(r.Context(), p.TenantID, p.SubjectID, state); err != nil {
 		writeErr(w, http.StatusInternalServerError, "persist_failed")
 		return
+	}
+	if h.Plane != nil {
+		_ = h.Plane.SetKill(p.TenantID, p, req.Engage)
 	}
 	_ = h.Store.Audit(r.Context(), p.TenantID, p.SubjectID, "KILL_SWITCH", state, "OK", "", r.Header.Get("X-Correlation-ID"))
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -416,4 +420,107 @@ func (h AutonomyHTTP) Strategies(w http.ResponseWriter, r *http.Request) {
 		},
 		"execution_reality": "ESTIMATED",
 	})
+}
+
+func (h AutonomyHTTP) ListAgents(w http.ResponseWriter, r *http.Request) {
+	if _, ok := authz.PrincipalFrom(r.Context()); !ok {
+		writeErr(w, http.StatusUnauthorized, "unauthenticated")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"agents":              autonomy.CanonicalAgents(),
+		"certified_count":     0,
+		"executable_default":  0,
+		"note":                "DECLARED is not EXECUTABLE. CERTIFIED is never auto-assigned. Production autonomy is disabled.",
+		"production_autonomy": false,
+	})
+}
+
+func (h AutonomyHTTP) EnableAgent(w http.ResponseWriter, r *http.Request) {
+	p, ok := authz.PrincipalFrom(r.Context())
+	if !ok {
+		writeErr(w, http.StatusUnauthorized, "unauthenticated")
+		return
+	}
+	if h.Plane == nil {
+		writeErr(w, http.StatusServiceUnavailable, "AUTONOMY_RUNTIME_UNAVAILABLE")
+		return
+	}
+	var req struct {
+		AgentID string `json:"agent_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.AgentID) == "" {
+		writeErr(w, http.StatusBadRequest, "invalid_argument")
+		return
+	}
+	if err := h.Plane.Enable(p.TenantID, req.AgentID, p); err != nil {
+		writeErr(w, http.StatusForbidden, err.Error())
+		return
+	}
+	_ = h.Store.Audit(r.Context(), p.TenantID, p.SubjectID, "ENABLE_AGENT", req.AgentID, "OK", "tenant enable only; not certification", r.Header.Get("X-Correlation-ID"))
+	writeJSON(w, http.StatusOK, map[string]any{"agent_id": req.AgentID, "enabled": true, "certified": false, "production_autonomy": false})
+}
+
+func (h AutonomyHTTP) Execute(w http.ResponseWriter, r *http.Request) {
+	p, ok := authz.PrincipalFrom(r.Context())
+	if !ok {
+		writeErr(w, http.StatusUnauthorized, "unauthenticated")
+		return
+	}
+	if h.Plane == nil {
+		writeErr(w, http.StatusServiceUnavailable, "AUTONOMY_RUNTIME_UNAVAILABLE")
+		return
+	}
+	var req struct {
+		AgentID        string              `json:"agent_id"`
+		IdempotencyKey string              `json:"idempotency_key"`
+		WorkflowID     string              `json:"workflow_id"`
+		Tools          []autonomy.ToolStep `json:"tools"`
+		Truth          bool                `json:"truth_passed"`
+		Compliance     bool                `json:"compliance_passed"`
+		Brand          bool                `json:"brand_passed"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.AgentID) == "" {
+		writeErr(w, http.StatusBadRequest, "invalid_argument")
+		return
+	}
+	ex := h.Plane.Execute(autonomy.ExecRequest{
+		AgentID: req.AgentID, Actor: p, Tools: req.Tools, WorkflowID: req.WorkflowID,
+		IdempotencyKey: req.IdempotencyKey, CorrelationID: r.Header.Get("X-Correlation-ID"),
+		Truth: req.Truth, Compliance: req.Compliance, Brand: req.Brand,
+	})
+	_ = h.Store.Audit(r.Context(), p.TenantID, p.SubjectID, "EXECUTE_AGENT", req.AgentID, ex.Status, ex.Error, r.Header.Get("X-Correlation-ID"))
+	writeJSON(w, http.StatusOK, map[string]any{
+		"execution":           ex,
+		"production_autonomy": false,
+		"provider_called":     false,
+		"execution_reality":   "CONTROLLED",
+		"note":                "A succeeded observe/tool run is not a YouTube publication and is not production autonomy.",
+	})
+}
+
+func (h AutonomyHTTP) GetExecution(w http.ResponseWriter, r *http.Request) {
+	p, ok := authz.PrincipalFrom(r.Context())
+	if !ok {
+		writeErr(w, http.StatusUnauthorized, "unauthenticated")
+		return
+	}
+	if h.Plane == nil {
+		writeErr(w, http.StatusServiceUnavailable, "AUTONOMY_RUNTIME_UNAVAILABLE")
+		return
+	}
+	id := r.URL.Query().Get("id")
+	if id == "" {
+		var body struct {
+			ID string `json:"id"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		id = body.ID
+	}
+	ex, err := h.Plane.Get(id, p)
+	if err != nil {
+		writeErr(w, http.StatusForbidden, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, ex)
 }

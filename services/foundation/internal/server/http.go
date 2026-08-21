@@ -69,6 +69,10 @@ func NewHTTP(identity handlers.IdentityHTTP, ai handlers.AIHTTP, social handlers
 	mux.Handle("/rpc/autonomy.v1.AutonomyService/Usage", authorize("cost", "read")(http.HandlerFunc(auto.Usage)))
 	mux.Handle("/rpc/autonomy.v1.AutonomyService/Routing", authorize("cost", "read")(http.HandlerFunc(auto.Routing)))
 	mux.Handle("/rpc/autonomy.v1.AutonomyService/Strategies", authorize("cost", "read")(http.HandlerFunc(auto.Strategies)))
+	mux.Handle("/rpc/autonomy.v1.AutonomyService/ListAgents", authorize("autonomy", "read")(http.HandlerFunc(auto.ListAgents)))
+	mux.Handle("/rpc/autonomy.v1.AutonomyService/EnableAgent", authorize("autonomy", "control")(http.HandlerFunc(auto.EnableAgent)))
+	mux.Handle("/rpc/autonomy.v1.AutonomyService/Execute", authorize("content", "create")(http.HandlerFunc(auto.Execute)))
+	mux.Handle("/rpc/autonomy.v1.AutonomyService/GetExecution", authorize("autonomy", "read")(http.HandlerFunc(auto.GetExecution)))
 
 	var h http.Handler = mux
 	h = authenticate(verifier, public)(h)

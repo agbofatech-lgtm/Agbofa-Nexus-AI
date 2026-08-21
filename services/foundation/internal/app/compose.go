@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/agbofa/nexus/libs/go/pkg/auth"
+	"github.com/agbofa/nexus/libs/go/pkg/autonomy"
 	"github.com/agbofa/nexus/libs/go/pkg/config"
 	"github.com/agbofa/nexus/libs/go/pkg/database"
 	"github.com/agbofa/nexus/libs/go/pkg/llm"
@@ -71,7 +72,8 @@ func Compose(ctx context.Context, cfg config.RuntimeConfig) (*Runtime, error) {
 		Tokens: loadConnectionTokens(socialStore, box, adapters),
 	}
 	pubHTTP := handlers.PublishingHTTP{Jobs: jobs, Social: socialStore, Worker: worker, Autonomy: autoStore}
-	autoHTTP := handlers.AutonomyHTTP{Store: autoStore, Registry: llm.DefaultRegistry()}
+	plane := autonomy.NewPlane()
+	autoHTTP := handlers.AutonomyHTTP{Store: autoStore, Registry: llm.DefaultRegistry(), Plane: plane}
 	httpSrv := server.NewHTTP(
 		handlers.IdentityHTTP{Svc: svc, Tenants: tenants},
 		handlers.AIHTTP{Gateway: gateway},
