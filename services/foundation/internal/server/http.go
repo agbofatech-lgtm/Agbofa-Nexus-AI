@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"time"
 
@@ -25,7 +26,10 @@ func NewHTTP(identity handlers.IdentityHTTP, ai handlers.AIHTTP, social handlers
 		"/rpc/foundation.tenant_identity.v1.TenantIdentityService/AuthenticateUser": {},
 		"/rpc/ai.v1.AIGateway/Health": {},
 	}
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("X-Agbofa-Build", "rpc-diag-5e8ad11")
+		w.WriteHeader(http.StatusOK)
+	})
 	mux.HandleFunc("/readyz", func(w http.ResponseWriter, _ *http.Request) {
 		if !s.Ready() {
 			w.WriteHeader(http.StatusServiceUnavailable)
@@ -37,8 +41,8 @@ func NewHTTP(identity handlers.IdentityHTTP, ai handlers.AIHTTP, social handlers
 	mux.Handle("/rpc/foundation.tenant_identity.v1.TenantIdentityService/GetTenant", authorize("tenant", "read")(http.HandlerFunc(identity.GetTenant)))
 	mux.HandleFunc("/rpc/ai.v1.AIGateway/Health", ai.Health)
 	mux.Handle("/rpc/ai.v1.AIGateway/Complete", authorize("content", "create")(http.HandlerFunc(ai.Complete)))
-	mux.Handle("/rpc/social.v1.SocialService/Connect", authorize("content", "create")(http.HandlerFunc(social.Connect)))
-	mux.Handle("/rpc/social.v1.SocialService/Callback", authorize("content", "create")(http.HandlerFunc(social.Callback)))
+	mux.Handle("/rpc/social.v1.SocialService/Connect", rpcNamed("social.v1.SocialService/Connect", authorize("content", "create")(http.HandlerFunc(social.Connect))))
+	mux.Handle("/rpc/social.v1.SocialService/Callback", rpcNamed("social.v1.SocialService/Callback", authorize("content", "create")(http.HandlerFunc(social.Callback))))
 	mux.Handle("/rpc/social.v1.SocialService/Accounts", authorize("content", "read")(http.HandlerFunc(social.Accounts)))
 	mux.Handle("/rpc/social.v1.SocialService/Disconnect", authorize("content", "create")(http.HandlerFunc(social.Disconnect)))
 	mux.Handle("/rpc/social.v1.SocialService/CreateDistribution", authorize("content", "create")(http.HandlerFunc(social.CreateDistribution)))
@@ -56,6 +60,14 @@ func NewHTTP(identity handlers.IdentityHTTP, ai handlers.AIHTTP, social handlers
 	h = recoverMW(h)
 	s.Handler = h
 	return s
+}
+
+func rpcNamed(name string, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Agbofa-RPC", name)
+		log.Printf("rpc reached name=%s method=%s path=%s", name, r.Method, r.URL.Path)
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (s *HTTP) Shutdown(ctx context.Context, srv *http.Server) error {

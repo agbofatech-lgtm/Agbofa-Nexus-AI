@@ -52,10 +52,11 @@ func recoverMW(next http.Handler) http.Handler {
 func authenticate(verifier *auth.Verifier, public map[string]struct{}) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if _, ok := public[r.URL.Path]; ok {
-				next.ServeHTTP(w, r)
-				return
-			}
+		log.Printf("rpc inbound method=%s path=%s", r.Method, r.URL.Path)
+		if _, ok := public[r.URL.Path]; ok {
+			next.ServeHTTP(w, r)
+			return
+		}
 			raw := bearer(r)
 			if raw == "" {
 				if c, err := r.Cookie(auth.AccessCookieName); err == nil {
