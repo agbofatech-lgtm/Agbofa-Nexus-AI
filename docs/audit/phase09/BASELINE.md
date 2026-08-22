@@ -1,44 +1,50 @@
-# Phase 09 Gate 0 — inspect db2b885 / claimed 3b0435b
+# Phase 09 Gate 0 — inspect e85dab2
 
-- timestamp: 2026-08-22T11:25:00Z
+- timestamp: 2026-08-22T12:05:00Z
 - verifier: Arena Linux Debian 12 — **not Windows 11**
-- claimed product SHA: `2281f7f13b40a35dcc86d00fddef24effc18317c`
-- claimed final docs SHA in prompt: `3b0435bbf52829d9f48b50d87335a39faef99975`
-- actual HEAD / remote: `db2b885f1635a7e8917852cf31c05fe7cfc0e4f1`
-- `3b0435b` meaning: **this agent’s Gate 0 commit** (`docs(phase09): Gate 0 … remains BLOCKED`) — not a Phase 08 product certification
-- working tree: clean
+- claimed product SHA in prompt: `3b0435bbf52829d9f48b50d87335a39faef99975`
+- claimed final/remote SHA in prompt: `e85dab215adc54cc519ca8516f1bf728990db1fd`
+- HEAD / remote at inspect: `e85dab215adc54cc519ca8516f1bf728990db1fd`
+- SHA named **inside** ENVIRONMENT.txt and INTEGRATION-WINDOWS.txt: `3c2897d59631b524d0cd3cb8698d8dfc64cad842`
+- `3b0435b` is still the Gate 0 commit `docs(phase09): Gate 0 … remains BLOCKED` — **not** a product test SHA
 - Phase 09 implementation: **NOT STARTED**
 - production autonomy: DISABLED
 
-## Prompt claim vs repository
+## What improved
 
-The prompt lists WINDOWS/GO/VET/POSTGRES/INTEGRATION/LIVE as PASS and FINAL SHA `3b0435b`.
+`INTEGRATION-WINDOWS.txt` now follows the required order:
 
-`3b0435b` is a **BLOCKED** Gate 0 note. Using it as “FINAL DOCUMENTATION SHA” does not certify Phase 08.
+1. Kill **ARMED** (disengaged)
+2. Enable AGT-003 / AGT-014
+3. analyze_story → `SUCCEEDED`
+4. Truth case → `TRUTH_FAILED`
+5. Email/PII case → `TRUTH_UNAVAILABLE` (correctly not `COMPLIANCE_FAILED`)
+6. Forbidden tool → `FORBIDDEN_TOOL`
+7. Kill ENGAGED
+8. Execute after kill → `KILL_SWITCH_ENGAGED`
 
-Cert table in `PHASE-08-CERTIFICATION.md` still names FINAL/REMOTE `30a9802` (stale). Remote is `db2b885`.
+That is a real fix versus the kill-switch-only log.
 
-## What improved at db2b885
+`GO-TEST.txt` lists 12 packages `ok`, no `--- FAIL` (all `(cached)`).
+`NODE-TEST.txt` is a Windows 49/49 run.
+`RUNTIME-TEST.txt` contains two `200` lines (health/ready only).
 
-- `GO-TEST.txt` now lists 12 packages `ok` (including repositories). No `--- FAIL` in this file. Many lines are `(cached)`; timestamps mix 10:02:35 cached server tests with later repositories.
-- `NODE-TEST.txt` is a Windows path run, 49 pass / 0 fail.
-- `DATABASE-TEST.txt` is a Windows `psql` listing (`nexus`, `nexus_test` exist).
-
-## What still fails independent certification
+## What still fails independent CERTIFIED
 
 | Claim | Actual |
 |---|---|
-| INTEGRATION 6/6 PASS | New log SHA `3b0435b`. After enable, **every** execute is `KILL_SWITCH_ENGAGED` (safe analyze_story, “Truth”, “Compliance”, “Forbidden tool”, post-kill). Does **not** show SUCCEEDED, TRUTH_FAILED, FORBIDDEN_TOOL, or Compliance. Previous better 2281f7f log was **replaced**. |
+| Product SHA `3b0435b` | Contradicted by logs naming `3c2897d`. `3b0435b` is a BLOCKED Gate 0 note. |
+| FINAL/REMOTE in cert file | Still placeholders `<new commit>` — not `e85dab2` |
 | RACE SKIPPED (CGO captured) | `RACE-TEST.txt` **0 bytes** |
 | VET PASS | `VET.txt` **0 bytes** |
-| COVERAGE workspace issue | `COVERAGE.txt` **empty** (content deleted) |
-| LIVE FOUNDATION / EXECUTE | no startup/healthz/status-code transcript |
+| COVERAGE documented workspace error | `COVERAGE.txt` **0 bytes** |
+| COMPLIANCE PASS | Live case is `TRUTH_UNAVAILABLE` = **not** Compliance PASS |
 | This host Windows | FAIL |
-
-`TRUTH_UNAVAILABLE` is not Compliance PASS. Race is not PASS. Coverage is not PASS.
 
 ## Gate 0
 
 **BLOCKED**
 
-Do not implement Phase 09. Do not begin Gate 1 coding.
+Do not implement Phase 09. Do not treat this report as CERTIFIED.
+
+Next required fix: set PRODUCT TEST SHA to the SHA **in the logs** (`3c2897d` or a new freeze), put real `go test -race` / `go vet` output (or a real CGO error) in those files, stop calling Compliance PASS, fill FINAL/REMOTE with the actual docs SHA after commit.
