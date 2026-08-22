@@ -1,36 +1,43 @@
+timestamp: 2026-08-22T04:30:00Z
+sha: 63fa309d547909e70c86d4b4380207b3b3ead363 (pre-fix HEAD; helpers restored in working tree)
+command: node --experimental-strip-types --test apps/web/lib/autonomy-control/truth.test.ts
+environment: Arena Node v22.22.3
+level: UNIT
+result: 5 pass / 0 fail
+
 TAP version 13
-# (node:1575) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Agbofa-Nexus-AI/apps/web/lib/autonomy-control/truth.test.ts is not specified and it doesn't parse as CommonJS.
+# (node:1523) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Agbofa-Nexus-AI/apps/web/lib/autonomy-control/truth.test.ts is not specified and it doesn't parse as CommonJS.
 # Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
 # To eliminate this warning, add "type": "module" to /home/user/Agbofa-Nexus-AI/apps/web/package.json.
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: safe fixture verifies
 ok 1 - safe fixture verifies
   ---
-  duration_ms: 0.913446
+  duration_ms: 0.820357
   type: 'test'
   ...
 # Subtest: known-false claim fails without treating as unknown
 ok 2 - known-false claim fails without treating as unknown
   ---
-  duration_ms: 0.15405
+  duration_ms: 0.218264
   type: 'test'
   ...
 # Subtest: empty and whitespace are unavailable, not true
 ok 3 - empty and whitespace are unavailable, not true
   ---
-  duration_ms: 0.235726
+  duration_ms: 0.224159
   type: 'test'
   ...
 # Subtest: unknown claim is not verified
 ok 4 - unknown claim is not verified
   ---
-  duration_ms: 0.127889
+  duration_ms: 0.126277
   type: 'test'
   ...
 # Subtest: deterministic repeats
 ok 5 - deterministic repeats
   ---
-  duration_ms: 0.778319
+  duration_ms: 0.737316
   type: 'test'
   ...
 1..5
@@ -41,4 +48,4 @@ ok 5 - deterministic repeats
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 110.836234
+# duration_ms 103.87333

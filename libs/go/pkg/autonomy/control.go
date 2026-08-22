@@ -510,3 +510,41 @@ func UniqueAgentIDs() bool {
 	}
 	return len(seen) == 28
 }
+
+func contentText(in map[string]any) string {
+	if in == nil {
+		return ""
+	}
+	if v, ok := in["body"]; ok && fmt.Sprint(v) != "" && fmt.Sprint(v) != "<nil>" {
+		return fmt.Sprint(v)
+	}
+	return fmt.Sprint(in["text"])
+}
+
+func (p *Plane) evalTruth(text string) (bool, string) {
+	if p.Truth == nil {
+		return false, "TRUTH_UNAVAILABLE"
+	}
+	ok, err := p.Truth(text)
+	if err != nil {
+		return false, "TRUTH_UNAVAILABLE"
+	}
+	if !ok {
+		return false, "TRUTH_FAILED"
+	}
+	return true, ""
+}
+
+func (p *Plane) evalCompliance(text string) (bool, string) {
+	if p.Compliance == nil {
+		return false, "COMPLIANCE_UNAVAILABLE"
+	}
+	ok, err := p.Compliance(text)
+	if err != nil {
+		return false, "COMPLIANCE_UNAVAILABLE"
+	}
+	if !ok {
+		return false, "COMPLIANCE_FAILED"
+	}
+	return true, ""
+}

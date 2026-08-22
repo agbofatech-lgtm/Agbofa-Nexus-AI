@@ -1,4 +1,5 @@
-go test -coverprofile=docs/audit/phase08/coverage.out ./libs/go/pkg/autonomy
+timestamp: 2026-08-22T04:29:35Z
+sha: 63fa309d547909e70c86d4b4380207b3b3ead363
+command: go test -coverprofile=docs/audit/phase08/coverage.out ./libs/go/pkg/autonomy
 result: BLOCKED — go not available
-target >80% for new Phase 08 code: NOT MEASURED
-
+percentage: NOT MEASURED

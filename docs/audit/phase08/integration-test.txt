@@ -1,5 +1,7 @@
-command: go run ./services/foundation/cmd/server
-environment: Arena Debian, no Go, no PostgreSQL
+timestamp: 2026-08-22T04:29:35Z
+sha: 63fa309d547909e70c86d4b4380207b3b3ead363
+command: go run ./services/foundation/cmd/server && curl POST /v1/autonomy/execute
+environment: Arena Linux, no Go, no PostgreSQL
 result: BLOCKED
-
 go: NOT AVAILABLE
+psql: NOT AVAILABLE

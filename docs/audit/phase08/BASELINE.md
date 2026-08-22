@@ -1,32 +1,32 @@
-# Phase 08 Gate 0 — Baseline
+# Phase 08 Gate 0 — Baseline (verification session)
 
-- timestamp: 2026-08-21T21:44:11Z
+- timestamp: 2026-08-22T04:29:00Z
+- host: Arena Linux e2b.local (NOT a Windows workstation)
 - branch: arena/01a01a0f-agbofa-nexus-ai
-- current SHA: 01156dac59c37cc9defa00050fbdbc54b8ec0d1f
-- Phase 07 commit 01156da present in ancestry: YES
-- working tree: clean after ff-only merge from origin
+- inspect SHA: 63fa309d547909e70c86d4b4380207b3b3ead363
+- Phase 07 01156da in ancestry: YES (after ff-only from grafted 9ee0483)
+- working tree: clean after ff-only
 - Node: v22.22.3
-- Go: NOT AVAILABLE in this Arena environment
-- production autonomy: DISABLED (NewPlane().Production == false; ControlPlane default false)
+- npm: 10.9.8
+- git: 2.39.5
+- Go: NOT AVAILABLE (`go: command not found`)
+- psql: NOT AVAILABLE
+- PostgreSQL service: not present
+- production autonomy: DISABLED in source (`NewPlane().Production = false`)
 
-## Baseline commands
-
-```text
-node --experimental-strip-types --test \
-  apps/web/lib/autonomy-control/plane.test.ts \
-  apps/web/lib/bff/jwt.test.ts \
-  apps/web/lib/bff/csrf.test.ts
-```
-
-Result: **28 pass / 0 fail** (19 plane + 6 jwt + 3 csrf). See GATE0-NODE-REGRESSION.txt.
+## Commands
 
 ```text
-go test ./libs/go/pkg/autonomy/...
-go test ./...
+git rev-parse HEAD
+git merge-base --is-ancestor 01156da HEAD
+go version          # FAIL: not found
+node --version      # v22.22.3
+psql --version      # FAIL: not found
 ```
 
-Result: **BLOCKED** — `go` binary not present. Historical claim of 15 Go tests is not re-runnable here.
+## Source inspection notes
 
-## Production autonomy state
-
-Source default `Plane.Production = false`. Not flipped during Gate 0.
+- TruthEngine / ComplianceEngine interfaces exist.
+- Plane.Truth and Plane.Compliance are function fields, not interface fields.
+- control.go references undefined `contentText`, `evalTruth`, `evalCompliance` (compile defect).
+- Execute HTTP path exists; persistence of executions is not wired.

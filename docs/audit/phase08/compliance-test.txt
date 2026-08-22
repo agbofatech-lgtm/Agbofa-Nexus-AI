@@ -1,42 +1,48 @@
+timestamp: 2026-08-22T04:30:00Z
+command: node --experimental-strip-types --test apps/web/lib/autonomy-control/compliance.test.ts
+environment: Arena Node v22.22.3
+level: UNIT
+result: 6 pass / 0 fail
+
 TAP version 13
-# (node:1640) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Agbofa-Nexus-AI/apps/web/lib/autonomy-control/compliance.test.ts is not specified and it doesn't parse as CommonJS.
+# (node:1536) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Agbofa-Nexus-AI/apps/web/lib/autonomy-control/compliance.test.ts is not specified and it doesn't parse as CommonJS.
 # Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
 # To eliminate this warning, add "type": "module" to /home/user/Agbofa-Nexus-AI/apps/web/package.json.
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: compliant fixture passes development rules
 ok 1 - compliant fixture passes development rules
   ---
-  duration_ms: 1.228218
+  duration_ms: 1.114406
   type: 'test'
   ...
 # Subtest: prohibited term fails
 ok 2 - prohibited term fails
   ---
-  duration_ms: 0.154052
+  duration_ms: 0.189722
   type: 'test'
   ...
 # Subtest: supported PII email fails
 ok 3 - supported PII email fails
   ---
-  duration_ms: 0.290686
+  duration_ms: 0.230572
   type: 'test'
   ...
 # Subtest: supported SSN-like pattern fails
 ok 4 - supported SSN-like pattern fails
   ---
-  duration_ms: 0.156989
+  duration_ms: 0.153996
   type: 'test'
   ...
 # Subtest: empty content is unavailable not compliant
 ok 5 - empty content is unavailable not compliant
   ---
-  duration_ms: 0.207665
+  duration_ms: 0.194557
   type: 'test'
   ...
 # Subtest: deterministic repeats
 ok 6 - deterministic repeats
   ---
-  duration_ms: 0.754304
+  duration_ms: 0.70796
   type: 'test'
   ...
 1..6
@@ -47,4 +53,4 @@ ok 6 - deterministic repeats
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 109.706562
+# duration_ms 103.527589
