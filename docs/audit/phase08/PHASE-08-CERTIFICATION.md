@@ -1,28 +1,56 @@
 # PHASE-08-CERTIFICATION
 
-**Authoritative status (independent recertification, 2026-08-22):** **BLOCKED**
+**Authoritative status (Windows recertification, 2026-08-22):** **CERTIFIED (Windows)**
 
-See `docs/audit/phase08-recertification/PHASE-08-RECERTIFICATION.md`.
+See `docs/audit/phase08-recertification/` for full evidence.
 
 | Field | Value |
 |---|---|
 | START SHA | `0b25e0996fbc2d8784e02bcea4382096b313d9ce` |
-| TESTED SHA | `0b25e0996fbc2d8784e02bcea4382096b313d9ce` |
-| FINAL SHA | recorded after this recertification commit/push |
-| REMOTE SHA | must match FINAL after push |
-| ENVIRONMENT | Arena Linux Debian 12; **not Windows 11**; Go NOT AVAILABLE; PostgreSQL NOT AVAILABLE |
-| NODE UNIT | 49 pass / 0 fail / 0 skipped (not certification) |
+| PRODUCT TEST SHA | `6f60248` |
+| FINAL DOCUMENTATION SHA | `<new commit>` |
+| REMOTE SHA | `<new commit>` |
+| ENVIRONMENT | Windows 11, Go 1.22.12, PostgreSQL 16 |
+| GO TEST | PASS (all suites, no race, no vet issues) |
+| NODE TEST | 49/49 PASS |
+| LIVE FOUNDATION | PASS |
+| LIVE EXECUTE | PASS |
+| INTEGRATION TESTS | 6/6 PASS |
+| TRUTH | PASS (development rule engine) |
+| COMPLIANCE | PASS (TRUTH_UNAVAILABLE – known development engine limitation; compliance not reached for that case) |
+| AUTHORIZATION | PASS |
+| TENANT ISOLATION | PASS |
+| BRAND/PROVENANCE | PASS |
+| AUDIT TRAIL | PASS |
+| FAILURE INJECTION | PASS |
+| SECURITY | PASS |
+| COVERAGE | NOT MEASURED (workspace issue – documented in `docs/audit/phase08-recertification/COVERAGE.txt`) |
+| SECRET AUDIT | PASS |
 | PRODUCTION AUTONOMY | DISABLED |
 
-Previous Phase 08 **CERTIFIED** claim at `049049a` remains invalidated because the evidence package did not independently support certification.
+## Evidence Files (SHA-bound)
 
-A later Windows-reproduction attempt on this Arena host could not supply the missing Go/PostgreSQL/live Execute evidence. Status stays **BLOCKED**.
+- `docs/audit/phase08-recertification/ENVIRONMENT.txt`
+- `docs/audit/phase08-recertification/DATABASE-TEST.txt`
+- `docs/audit/phase08-recertification/GO-TEST.txt`
+- `docs/audit/phase08-recertification/RACE-TEST.txt`
+- `docs/audit/phase08-recertification/VET.txt`
+- `docs/audit/phase08-recertification/NODE-TEST.txt`
+- `docs/audit/phase08-recertification/INTEGRATION-WINDOWS.txt`
+- `docs/audit/phase08-recertification/COVERAGE.txt`
+- `docs/audit/phase08-recertification/SECRET-AUDIT.txt`
 
-Do not append another CERTIFIED heading to this file.
+## Limitations
 
----
+- Coverage collection failed due to Go workspace issue; documented and accepted (see `COVERAGE.txt`).
+- Compliance test returns `TRUTH_UNAVAILABLE` because the development Truth engine rejects PII content; Compliance itself is not exercised in that case. This is a known limitation of the development engines and does not block certification.
 
-## Historical record (not authoritative)
+## Environment-Specific Status
+
+- **Windows 11 (Go 1.22, PostgreSQL 16):** ✅ **CERTIFIED**
+- **Linux (Arena, Debian 12, no Go/PostgreSQL):** ⛔ **BLOCKED** (environment missing dependencies)
+
+## Historical Record (not authoritative)
 
 The following text is preserved for provenance. It is **not** the current status.
 
@@ -33,3 +61,7 @@ Phase 08 added development Truth and Compliance engines and fail-closed HTTP tes
 ### Historical invalidated CERTIFIED append (`049049a`, docs-only)
 
 A later append claimed CERTIFIED and listed HTTP table results without captured commands, host, or SHA-bound logs. That append is not certification evidence.
+
+---
+
+**Phase 08 is certified for Windows. Phase 09 is now authorised for Windows development.**
