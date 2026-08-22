@@ -74,9 +74,22 @@ func CanonicalAgents() []AgentSpec {
 
 func CanonicalTools() []ToolSpec {
 	t := func(id, name, desc, risk string, approval, implemented, phase04 bool) ToolSpec {
-		return ToolSpec{ID: id, Name: name, Description: desc, Version: "1.0", RiskLevel: risk, ApprovalRequired: approval, AuditRequired: true, TimeoutMs: 8000, RatePerMinute: 20, Implemented: implemented, Phase04Only: phase04}
+		return ToolSpec{
+			ID:               id,
+			Name:             name,
+			Description:      desc,
+			Version:          "1.0",
+			RiskLevel:        risk,
+			ApprovalRequired: approval,
+			AuditRequired:    true,
+			TimeoutMs:        8000,
+			RatePerMinute:    20,
+			Implemented:      implemented,
+			Phase04Only:      phase04,
+		}
 	}
 	return []ToolSpec{
+		// Existing tools
 		t("analyze_story", "Analyze story", "Local analysis. No network.", "LOW", false, true, false),
 		t("generate_content", "Generate content", "LLM port. Estimated cost.", "MEDIUM", false, true, false),
 		t("validate_facts", "Validate facts", "Truth port. Fail-closed.", "LOW", false, true, false),
@@ -88,6 +101,21 @@ func CanonicalTools() []ToolSpec {
 		t("read_analytics", "Read analytics", "Analytics port. Fail-closed.", "LOW", false, true, false),
 		t("search_news", "Search news", "Not implemented.", "LOW", false, false, false),
 		t("read_source", "Read source", "Not implemented.", "LOW", false, false, false),
+
+		// Add observe for safe testing (handled by runTool if we add the case; but we can keep it for completeness)
+		t("observe", "Observe", "Read-only observation, no side effects.", "LOW", false, true, false),
+
+		// Add forbidden tools so they are recognised and blocked by DecideAction
+		t("raw_oauth_token", "Raw OAuth token", "Forbidden – exposes secrets.", "HIGH", false, true, false),
+		t("direct_database", "Direct database access", "Forbidden – bypasses repository layer.", "HIGH", false, true, false),
+		t("shell_exec", "Shell execution", "Forbidden – arbitrary command execution.", "HIGH", false, true, false),
+		t("direct_social_api", "Direct social API", "Forbidden – bypasses Phase 04.", "HIGH", false, true, false),
+		t("bypass_policy", "Bypass policy", "Forbidden – policy bypass.", "HIGH", false, true, false),
+		t("bypass_approval", "Bypass approval", "Forbidden – approval bypass.", "HIGH", false, true, false),
+		t("bypass_truth", "Bypass truth", "Forbidden – truth bypass.", "HIGH", false, true, false),
+		t("bypass_compliance", "Bypass compliance", "Forbidden – compliance bypass.", "HIGH", false, true, false),
+		t("bypass_brand", "Bypass brand", "Forbidden – brand bypass.", "HIGH", false, true, false),
+		t("bypass_phase04", "Bypass Phase 04", "Forbidden – Phase 04 bypass.", "HIGH", false, true, false),
 	}
 }
 
