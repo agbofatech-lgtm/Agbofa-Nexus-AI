@@ -1,5 +1,9 @@
-timestamp: 2026-08-22T08:42:54Z
-sha: bc744a118cca3f041eb9067e0b0facd12233ac18
-command: two-tenant HTTP + RLS
-result: BLOCKED — no Postgres / no live server
-unit: Node plane cross-tenant denials exist (not a substitute for RLS)
+timestamp: 2026-08-22T08:48:23Z
+sha: 0b25e0996fbc2d8784e02bcea4382096b313d9ce
+branch: arena/01a01a0f-agbofa-nexus-ai
+environment: Arena Linux e2b.local
+command: two-tenant live HTTP + PostgreSQL RLS
+actual: no Postgres, no live Foundation
+result: BLOCKED
+limitation: Node plane cross-tenant denials exist at UNIT level only; they are not database/RLS proof
+unit_note: plane.test.ts tenant mismatch / memory isolation PASS in NODE-TEST.txt (49/49)

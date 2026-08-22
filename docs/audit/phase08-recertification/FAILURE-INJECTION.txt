@@ -1,5 +1,9 @@
-timestamp: 2026-08-22T08:42:54Z
-sha: bc744a118cca3f041eb9067e0b0facd12233ac18
-command: inject DB down / live Truth fail HTTP
+timestamp: 2026-08-22T08:48:23Z
+sha: 0b25e0996fbc2d8784e02bcea4382096b313d9ce
+branch: arena/01a01a0f-agbofa-nexus-ai
+environment: Arena Linux e2b.local
+command: live inject invalid request / invalid auth / authz fail / Truth fail / Compliance fail / DB down / timeout
+actual: live injection not possible (no Foundation, no Postgres)
 result: BLOCKED for live injection
-unit: Truth/Compliance fail paths PASS in Node suite
+unit: Truth/Compliance fail-closed paths PASS in Node suite (failure remains failure in UNIT tests only)
+limitation: unit FAIL paths are not live HTTP proof that failure ≠ authorized/verified/compliant/published

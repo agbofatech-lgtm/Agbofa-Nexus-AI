@@ -1,8 +1,19 @@
 # Phase 08 forensic certification audit
 
-- timestamp: 2026-08-22T08:42:00Z
-- inspect SHA: `bc744a118cca3f041eb9067e0b0facd12233ac18`
+- timestamp: 2026-08-22T08:48:23Z
+- inspect SHA (this attempt): `0b25e0996fbc2d8784e02bcea4382096b313d9ce`
+- prior recert package SHA: `0b25e0996fbc2d8784e02bcea4382096b313d9ce`
+- prior code inspect SHA: `bc744a118cca3f041eb9067e0b0facd12233ac18`
 - branch: arena/01a01a0f-agbofa-nexus-ai
+
+## Windows reproduction addendum (2026-08-22T08:48:23Z)
+
+Requested environment: Windows 11 + Go 1.22 + PostgreSQL 16.
+Actual environment: Arena Linux Debian 12; `go`/`psql`/`docker` absent.
+Node unit re-run at `0b25e09`: 49 pass / 0 fail / 0 skipped.
+Live Execute / RLS / coverage / race / vet: still **BLOCKED**.
+Historical CERTIFIED at `049049a` remains **INVALIDATED**.
+Authoritative status remains **BLOCKED**.
 
 ## What Phase 08 actually implemented
 

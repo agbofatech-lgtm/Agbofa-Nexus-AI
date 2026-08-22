@@ -1,5 +1,9 @@
-timestamp: 2026-08-22T08:42:54Z
-sha: bc744a118cca3f041eb9067e0b0facd12233ac18
-command: go test -coverprofile=... ./libs/go/pkg/autonomy
-result: BLOCKED — go not available
+timestamp: 2026-08-22T08:48:23Z
+sha: 0b25e0996fbc2d8784e02bcea4382096b313d9ce
+branch: arena/01a01a0f-agbofa-nexus-ai
+environment: Arena Linux e2b.local
+command: go test -coverprofile=coverage.out ./...
+actual: go: command not found
 percentage: NOT MEASURED
+result: BLOCKED / NOT VERIFIED
+limitation: do not fabricate coverage

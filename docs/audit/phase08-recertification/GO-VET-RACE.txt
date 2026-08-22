@@ -1,4 +1,8 @@
-timestamp: 2026-08-22T08:42:54Z
-sha: bc744a118cca3f041eb9067e0b0facd12233ac18
+timestamp: 2026-08-22T08:48:23Z
+sha: 0b25e0996fbc2d8784e02bcea4382096b313d9ce
+branch: arena/01a01a0f-agbofa-nexus-ai
+environment: Arena Linux e2b.local
 command: go test -race ./... ; go vet ./...
-result: BLOCKED — go not available
+actual: go: command not found
+result: BLOCKED
+limitation: race and vet not executed
