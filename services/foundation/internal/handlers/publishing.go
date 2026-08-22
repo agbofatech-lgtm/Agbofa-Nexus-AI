@@ -1,22 +1,25 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"time"
 
 	"github.com/agbofa/nexus/libs/go/pkg/authz"
 	"github.com/agbofa/nexus/libs/go/pkg/autonomy"
+	"github.com/agbofa/nexus/libs/go/pkg/database"
 	"github.com/agbofa/nexus/libs/go/pkg/publish"
 	"github.com/agbofa/nexus/libs/go/pkg/social"
 	"github.com/agbofa/nexus/services/foundation/internal/repositories"
 )
 
 type PublishingHTTP struct {
-	Jobs     *repositories.DistStore
-	Social   *repositories.SocialStore
-	Worker   *publish.Worker
-	Autonomy *repositories.AutonomyStore
+	Jobs        *repositories.DistStore
+	Social      *repositories.SocialStore
+	Worker      *publish.Worker
+	Autonomy    publishingAutonomyStore
+	TickTimeout time.Duration
 }
 
 func (h PublishingHTTP) Schedule(w http.ResponseWriter, r *http.Request) {
@@ -39,23 +42,6 @@ func (h PublishingHTTP) Schedule(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "invalid_argument")
 		return
 	}
-	acct, err := h.Social.GetConnection(r.Context(), principal.TenantID, req.ConnectionID)
-	if err != nil {
-		writeErr(w, http.StatusForbidden, "CONNECTION_NOT_FOUND")
-		return
-	}
-	if h.Autonomy != nil {
-		level, kill, _ := h.Autonomy.DomainLevel(r.Context(), principal.TenantID, autonomy.DomainPublishing)
-		dec := autonomy.Evaluate(kill, level, autonomy.DomainPublishing, "publish")
-		if dec.KillSwitch {
-			writeErr(w, http.StatusLocked, "KILL_SWITCH_ENGAGED")
-			return
-		}
-		if dec.Awaiting && !req.Approve {
-			writeErr(w, http.StatusConflict, "AWAITING_APPROVAL")
-			return
-		}
-	}
 	var when *time.Time
 	if req.ScheduledAt != "" {
 		t, err := time.Parse(time.RFC3339, req.ScheduledAt)
@@ -65,52 +51,31 @@ func (h PublishingHTTP) Schedule(w http.ResponseWriter, r *http.Request) {
 		}
 		when = &t
 	}
-	gate := publish.Validate(publish.GateInput{
-		Principal: principal, ContentID: req.ContentID, ContentVersion: firstNV(req.ContentVersion, "v1"),
-		Body: req.Body, BrandApplied: req.BrandApplied, ConnectionID: acct.ID,
-		ConnectionTenant: acct.TenantID, ConnectionStatus: acct.Status, Platform: acct.Platform,
-		ScheduledAt: when, Now: time.Now().UTC(),
-	})
-	if !gate.OK {
-		writeErr(w, http.StatusUnprocessableEntity, gate.Code)
-		return
-	}
-	spec, _ := social.Lookup(acct.Platform)
-	pkg, err := social.Adapt(social.CanonicalContent{
-		ID: req.ContentID, Version: firstNV(req.ContentVersion, "v1"), TenantID: principal.TenantID,
-		Body: req.Body, MediaURL: req.MediaURL, BrandApplied: true, AuthorID: principal.SubjectID,
-	}, spec)
-	if err != nil {
-		writeErr(w, http.StatusUnprocessableEntity, "INVALID_CONTENT")
-		return
-	}
-	status := string(publish.StatusQueued)
-	if when != nil {
-		status = string(publish.StatusScheduled)
-	}
-	if !req.Approve {
-		status = string(publish.StatusPendingApproval)
-	}
-	schedKey := ""
-	if when != nil {
-		schedKey = when.UTC().Format(time.RFC3339)
-	}
-	key := social.IdempotencyKey(principal.TenantID, req.ContentID, firstNV(req.ContentVersion, "v1"), acct.ID, spec.ID, schedKey)
-	job, err := h.Jobs.CreateJob(r.Context(), repositories.DistJob{
-		TenantID: principal.TenantID, ActorID: principal.SubjectID, AccountID: acct.ID,
-		Platform: string(spec.ID), ContentID: req.ContentID, ContentVersion: firstNV(req.ContentVersion, "v1"),
-		IdempotencyKey: key, Status: status, ScheduledAt: when, Snapshot: social.EncodeSnapshot(pkg.Text, pkg.MediaURL), BrandApplied: true,
+	out, err := publishingBoundary{Connections: h.Social, Jobs: h.Jobs, Autonomy: h.Autonomy}.Submit(r.Context(), publishCommand{
+		Principal:      principal,
+		ConnectionID:   req.ConnectionID,
+		ContentID:      req.ContentID,
+		ContentVersion: req.ContentVersion,
+		Body:           req.Body,
+		MediaURL:       req.MediaURL,
+		BrandApplied:   req.BrandApplied,
+		ScheduledAt:    when,
+		Approved:       req.Approve,
+		CorrelationID:  r.Header.Get("X-Correlation-ID"),
+		AuditAction:    "PUBLICATION_SCHEDULED",
 	})
 	if err == social.ErrDuplicateJob {
-		writeJSON(w, http.StatusOK, map[string]any{"idempotent": true, "idempotency_key": key})
+		writeJSON(w, http.StatusOK, map[string]any{"idempotent": true, "idempotency_key": out.IdempotencyKey})
+		return
+	}
+	if writePublishBoundaryError(w, err) {
 		return
 	}
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, "job_create")
 		return
 	}
-	_ = h.Jobs.Audit(r.Context(), principal.TenantID, principal.SubjectID, "PUBLICATION_SCHEDULED", acct.Platform, acct.ID, req.ContentID, job.ID, r.Header.Get("X-Correlation-ID"))
-	writeJSON(w, http.StatusOK, map[string]any{"jobId": job.ID, "status": job.Status, "scheduledAt": req.ScheduledAt})
+	writeJSON(w, http.StatusOK, map[string]any{"jobId": out.Job.ID, "status": out.Job.Status, "scheduledAt": req.ScheduledAt})
 }
 
 func (h PublishingHTTP) Approve(w http.ResponseWriter, r *http.Request) {
@@ -161,7 +126,30 @@ func (h PublishingHTTP) Tick(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusServiceUnavailable, "WORKER_UNAVAILABLE")
 		return
 	}
-	if err := h.Worker.Tick(r.Context()); err != nil {
+	principal, ok := authz.PrincipalFrom(r.Context())
+	if !ok {
+		writeErr(w, http.StatusUnauthorized, "unauthenticated")
+		return
+	}
+	if h.Autonomy != nil {
+		_, kill, err := h.Autonomy.DomainLevel(r.Context(), principal.TenantID, autonomy.DomainPublishing)
+		if err != nil {
+			writeErr(w, http.StatusServiceUnavailable, "PUBLISH_POLICY_UNAVAILABLE")
+			return
+		}
+		if kill == autonomy.KillEngaged {
+			writeErr(w, http.StatusLocked, "KILL_SWITCH_ENGAGED")
+			return
+		}
+	}
+	runCtx := database.WithTenant(context.Background(), principal.TenantID)
+	timeout := h.TickTimeout
+	if timeout <= 0 {
+		timeout = 110 * time.Second
+	}
+	runCtx, cancel := context.WithTimeout(runCtx, timeout)
+	defer cancel()
+	if err := h.Worker.Tick(runCtx); err != nil {
 		writeErr(w, http.StatusInternalServerError, "WORKER_ERROR")
 		return
 	}

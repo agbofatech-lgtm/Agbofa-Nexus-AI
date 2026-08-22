@@ -2,5 +2,5 @@ import type { NextRequest } from "next/server";
 import { sessionRPC } from "@/lib/bff/session";
 
 export async function GET(request: NextRequest) {
-  return sessionRPC(request, "/rpc/autonomy.v1.AutonomyService/GetControl", {});
+  return sessionRPC(request, "/rpc/autonomy.v1.AutonomyService/GetControl", {}, 8000, { prefix: "autonomy-read", limit: 60 });
 }

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 import { backendRPC } from "@/lib/bff/backend";
 import { CSRF_COOKIE, csrfCookieOptions, newCsrfToken } from "@/lib/bff/csrf";
-import { rateLimitRequest } from "@/lib/bff/limits";
+import { rateLimitDecisionForRequest, rateLimitedResponse } from "@/lib/bff/limits";
 import { presentRole } from "@/lib/bff/roles";
 import { loginSchema } from "@/lib/validations/login.schema";
 
@@ -14,8 +14,9 @@ function decodeJwtPayload(token: string): Record<string, unknown> {
 }
 
 export async function POST(request: NextRequest) {
-  if (!rateLimitRequest(request, "login", 30)) {
-    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+  const decision = rateLimitDecisionForRequest(request, "login", 30);
+  if (!decision.allowed) {
+    return rateLimitedResponse(decision);
   }
   let payload: unknown;
   try {

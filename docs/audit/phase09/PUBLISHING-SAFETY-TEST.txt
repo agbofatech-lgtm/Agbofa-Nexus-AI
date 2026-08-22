@@ -1,0 +1,208 @@
+TIMESTAMP:
+2026-08-22T17:44:29Z
+
+SHA:
+eb0fa65ac566487e703ff7c3b8d59daa33ec9152
+
+ENVIRONMENT:
+Arena Linux sandbox
+Node: v22.22.3
+npm: 10.9.8
+Go: unavailable on this host
+PostgreSQL client: unavailable on this host
+Windows runtime: unavailable on this host
+
+SCOPE:
+Focused remediation evidence for the two Gate 14 critical findings:
+1. Alternate SocialHTTP publishing path bypassed the authoritative safety boundary.
+2. Queued/retry jobs could bypass the kill switch during Tick/worker execution.
+
+SOURCE TEST / AUDIT COMMANDS:
+1. Inspect shared publishing boundary and both HTTP call sites
+   command:
+   nl -ba services/foundation/internal/handlers/social.go | sed -n '257,310p'
+   nl -ba services/foundation/internal/handlers/publishing.go | sed -n '25,78p'
+   nl -ba services/foundation/internal/handlers/publishing_boundary.go | sed -n '61,166p'
+   exit code: 0
+
+2. Inspect final worker safety check and deferred durable behavior
+   command:
+   nl -ba libs/go/pkg/publish/worker.go | sed -n '86,197p'
+   nl -ba services/foundation/internal/repositories/queue.go | sed -n '103,123p'
+   nl -ba services/foundation/internal/app/compose.go | sed -n '69,93p'
+   exit code: 0
+
+3. Inspect direct tick kill-switch rejection
+   command:
+   nl -ba services/foundation/internal/handlers/publishing.go | sed -n '124,156p'
+   exit code: 0
+
+4. Patch sanity
+   command:
+   git diff --check
+   exit code: 0
+
+AVAILABLE UNIT TEST COMMANDS EXECUTED:
+1.
+command:
+node --test apps/web/lib/bff/csrf.test.ts
+expected:
+PASS
+actual:
+PASS (3/3)
+exit code:
+0
+classification:
+UNIT (Node)
+
+2.
+command:
+node --test apps/web/lib/bff/jwt.test.ts
+expected:
+PASS
+actual:
+PASS (6/6)
+exit code:
+0
+classification:
+UNIT (Node)
+
+3.
+command:
+node --test apps/web/lib/autonomy-control/plane.test.ts apps/web/lib/autonomy-control/policy-integration.test.ts apps/web/lib/autonomy-control/compliance.test.ts apps/web/lib/autonomy-control/testauth.test.ts apps/web/lib/autonomy-control/truth.test.ts
+expected:
+PASS
+actual:
+PASS (40/40)
+exit code:
+0
+classification:
+UNIT (Node)
+
+GO UNIT TESTS ADDED BUT NOT EXECUTED ON THIS HOST:
+- services/foundation/internal/handlers/publishing_boundary_test.go
+- libs/go/pkg/publish/worker_test.go
+
+EXPECTED RESULT MATRIX:
+TEST 1 — Kill switch OFF + approved publish
+expected:
+ALLOWED to create a queued/scheduled job through the shared boundary
+actual:
+SOURCE AUDIT PASS
+- publishing_boundary.Submit(...) allows approved requests after shared checks.
+
+TEST 2 — Kill switch ON + new Schedule request
+expected:
+BLOCKED
+actual:
+SOURCE AUDIT PASS
+- publishing_boundary.Submit(...) returns KILL_SWITCH_ENGAGED.
+- PublishingHTTP.Schedule(...) uses the shared boundary.
+
+TEST 3 — Kill switch ON + CreateDistribution request
+expected:
+BLOCKED OR SAFE NON-PUBLISHING STATE
+actual:
+SOURCE AUDIT PASS
+- SocialHTTP.CreateDistribution(...) now uses the same shared boundary.
+- kill switch returns KILL_SWITCH_ENGAGED before any job is created.
+
+TEST 4 — Job queued while kill switch OFF, then kill switch ON, then worker/tick
+expected:
+MUST NOT PUBLISH
+actual:
+SOURCE AUDIT PASS
+- PublishingHTTP.Tick(...) rejects kill-switch-engaged publishing at handler level.
+- Worker.BeforePublish(...) re-checks kill switch immediately before external publish and defers with RETRY_WAITING.
+
+TEST 5 — Job queued while kill switch ON, then worker/tick
+expected:
+MUST NOT PUBLISH
+actual:
+SOURCE AUDIT PASS
+- shared boundary blocks new job creation while kill switch is engaged.
+- if a job is somehow already queued, worker final safety check still defers and does not publish.
+
+TEST 6 — Retry job exists, kill switch becomes ON, retry executes
+expected:
+MUST NOT PUBLISH
+actual:
+SOURCE AUDIT PASS
+- final worker safety check runs on each publish attempt, including retries.
+- kill-switch deferral writes RETRY_WAITING + KILL_SWITCH_ENGAGED.
+
+TEST 7 — Kill switch becomes OFF again, deferred job may resume if current checks pass
+expected:
+Only proceeds when current checks pass
+actual:
+SOURCE AUDIT PASS
+- deferred jobs remain non-published and retry later.
+- when the kill switch is no longer engaged, the final worker check allows the attempt to continue.
+
+TEST 8 — Direct worker invocation, kill switch ON
+expected:
+MUST NOT PUBLISH
+actual:
+SOURCE AUDIT PASS
+- direct worker path is guarded by Worker.BeforePublish(...).
+- Go test coverage added in libs/go/pkg/publish/worker_test.go (not executable here).
+
+TEST 9 — Direct tick invocation, kill switch ON
+expected:
+MUST NOT PUBLISH
+actual:
+SOURCE AUDIT PASS
+- PublishingHTTP.Tick(...) now returns KILL_SWITCH_ENGAGED before worker execution.
+- Go test coverage added in services/foundation/internal/handlers/publishing_boundary_test.go (not executable here).
+
+TEST 10 — Alternate SocialHTTP path, kill switch ON
+expected:
+MUST NOT PUBLISH
+actual:
+SOURCE AUDIT PASS
+- SocialHTTP.CreateDistribution(...) now routes through publishingBoundary.Submit(...).
+
+QUEUED-JOB BEHAVIOR:
+When final worker safety detects KILL_SWITCH_ENGAGED:
+- external publish does NOT occur
+- job moves to RETRY_WAITING
+- error code is KILL_SWITCH_ENGAGED
+- next_attempt_at is set (safe defer)
+- attempt_count is decremented back in persistence for kill-switch/policy-unavailable deferrals so safety pauses do not exhaust attempts
+- job is NOT marked SUCCESS / PUBLISHED / VERIFIED
+
+APPROVAL:
+SOURCE AUDIT PASS
+- both Schedule and CreateDistribution now share the same approval-gated boundary.
+- unapproved high-risk publishing no longer has an alternate bypass route.
+
+TRUTH:
+SOURCE AUDIT PASS
+- remediation did not weaken existing Truth semantics.
+- no new path falsely marks publication as VERIFIED or Truth PASS.
+
+COMPLIANCE:
+SOURCE AUDIT PASS
+- remediation did not relabel Compliance as PASS.
+- Compliance remains not demonstrated; no false COMPLIANT state is introduced.
+
+BRAND / PROVENANCE:
+SOURCE AUDIT PASS
+- shared boundary still applies publish.Validate(...).
+- worker still rejects jobs lacking brand application.
+
+IDEMPOTENCY:
+SOURCE AUDIT PASS
+- shared boundary preserves deterministic job key generation.
+- duplicate job path still returns idempotent duplicate handling.
+- duplicate publication remains guarded by platform_publication_id check in worker.
+
+LIMITATIONS:
+- SOURCE AUDIT: executed
+- UNIT (Node): executed
+- GO UNIT: added but NOT executable on this host
+- INTEGRATION (Go/PostgreSQL): not executable on this host
+- WINDOWS RUNTIME: not executable on this host
+
+CLASSIFICATION:
+PASS

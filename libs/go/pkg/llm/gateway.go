@@ -57,7 +57,7 @@ func (g *Gateway) Complete(ctx context.Context, req Request) (Response, error) {
 	}
 	forward := req
 	forward.Model = spec.RemoteModel
-	if forward.MaxTokens <= 0 {
+	if forward.MaxTokens <= 0 || (spec.MaxTokens > 0 && forward.MaxTokens > spec.MaxTokens) {
 		forward.MaxTokens = spec.MaxTokens
 	}
 	timeout := g.timeout

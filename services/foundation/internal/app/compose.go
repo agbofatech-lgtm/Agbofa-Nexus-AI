@@ -66,12 +66,31 @@ func Compose(ctx context.Context, cfg config.RuntimeConfig) (*Runtime, error) {
 	jobs := repositories.NewDistStore(pool)
 	socialStore := repositories.NewSocialStore(pool)
 	adapters := social.NewDefaultRouter(&http.Client{Timeout: 90 * time.Second})
-	socialHTTP := handlers.SocialHTTP{Store: socialStore, Jobs: jobs, Box: box, Adapters: adapters}
+	socialHTTP := handlers.SocialHTTP{Store: socialStore, Jobs: jobs, Box: box, Adapters: adapters, Autonomy: autoStore}
 	worker := &publish.Worker{
 		Store: jobs, Adapter: adapters, WorkerID: "foundation-1", MaxTries: 5,
 		Tokens: loadConnectionTokens(socialStore, box, adapters),
+		BeforePublish: func(ctx context.Context, job publish.Job) (publish.FinalSafetyDecision, error) {
+			if autoStore == nil {
+				return publish.FinalSafetyDecision{Allowed: true}, nil
+			}
+			_, kill, err := autoStore.DomainLevel(ctx, job.TenantID, autonomy.DomainPublishing)
+			if err != nil {
+				return publish.FinalSafetyDecision{}, err
+			}
+			if kill == autonomy.KillEngaged {
+				return publish.FinalSafetyDecision{
+					Allowed: false,
+					Deferred: true,
+					Code: "KILL_SWITCH_ENGAGED",
+					Reason: "kill switch engaged",
+					RetryAfter: 5 * time.Minute,
+				}, nil
+			}
+			return publish.FinalSafetyDecision{Allowed: true}, nil
+		},
 	}
-	pubHTTP := handlers.PublishingHTTP{Jobs: jobs, Social: socialStore, Worker: worker, Autonomy: autoStore}
+	pubHTTP := handlers.PublishingHTTP{Jobs: jobs, Social: socialStore, Worker: worker, Autonomy: autoStore, TickTimeout: cfg.Operations.PublishTickTimeout}
 	plane := autonomy.NewPlane()
 	autoHTTP := handlers.AutonomyHTTP{Store: autoStore, Registry: llm.DefaultRegistry(), Plane: plane}
 	planeTestAuth := strings.EqualFold(os.Getenv("PLANE_TEST_AUTH"), "true")
@@ -84,6 +103,7 @@ func Compose(ctx context.Context, cfg config.RuntimeConfig) (*Runtime, error) {
 		verifier,
 		pool,
 		cfg.Environment,
+		cfg.RateLimit,
 		planeTestAuth,
 	)
 	return &Runtime{Config: cfg, Pool: pool, HTTP: httpSrv, Verifier: verifier}, nil

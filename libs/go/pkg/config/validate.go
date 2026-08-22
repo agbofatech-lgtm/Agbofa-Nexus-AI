@@ -17,6 +17,12 @@ func validateRuntime(cfg RuntimeConfig, at time.Time) error {
 	if strings.TrimSpace(cfg.HTTP.Addr) == "" {
 		return missing("AGBOFA_HTTP_ADDR", cfg.Environment)
 	}
+	if cfg.HTTP.ReadHeaderTimeout <= 0 {
+		return malformed("AGBOFA_HTTP_READ_HEADER_TIMEOUT", "must be a positive duration", cfg.Environment)
+	}
+	if cfg.HTTP.ShutdownTimeout <= 0 {
+		return malformed("AGBOFA_HTTP_SHUTDOWN_TIMEOUT", "must be a positive duration", cfg.Environment)
+	}
 	if strings.TrimSpace(cfg.GRPC.Addr) == "" {
 		return missing("AGBOFA_GRPC_ADDR", cfg.Environment)
 	}
@@ -47,6 +53,15 @@ func validateRuntime(cfg RuntimeConfig, at time.Time) error {
 	}
 	if strings.TrimSpace(cfg.CSRF.HeaderName) == "" {
 		return missing("AGBOFA_CSRF_HEADER_NAME", cfg.Environment)
+	}
+	if cfg.Operations.PublishTickTimeout <= 0 {
+		return malformed("AGBOFA_PUBLISH_TICK_TIMEOUT", "must be a positive duration", cfg.Environment)
+	}
+	if cfg.Environment.Strict() && !cfg.RateLimit.Enabled {
+		return unsafe("AGBOFA_RATE_LIMIT_ENABLED", "strict environments require backend rate limiting", cfg.Environment)
+	}
+	if cfg.Environment.Strict() && !cfg.RateLimit.FailClosed {
+		return unsafe("AGBOFA_RATE_LIMIT_FAIL_CLOSED", "strict environments require fail-closed rate limiting", cfg.Environment)
 	}
 	return nil
 }

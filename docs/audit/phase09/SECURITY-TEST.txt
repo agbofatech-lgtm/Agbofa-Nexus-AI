@@ -1,0 +1,151 @@
+TIMESTAMP:
+2026-08-22T17:44:29Z
+
+START SHA:
+eb0fa65ac566487e703ff7c3b8d59daa33ec9152
+
+FINAL SHA:
+eb0fa65ac566487e703ff7c3b8d59daa33ec9152
+
+ENVIRONMENT:
+Arena Linux sandbox
+Kernel: Linux e2b.local 6.1.158+ x86_64
+Node: v22.22.3
+npm: 10.9.8
+Go: unavailable on this host
+PostgreSQL client: unavailable on this host
+Windows runtime: unavailable on this host
+
+TESTS:
+SOURCE AUDIT
+- Reviewed Phase 09 middleware/order in services/foundation/internal/server/http.go, ratelimit.go, interceptors.go.
+- Reviewed authentication/JWT enforcement in services/foundation/internal/server/interceptors.go, libs/go/pkg/auth/jwt.go, apps/web/lib/bff/jwt.ts.
+- Reviewed publishing boundary remediation in services/foundation/internal/handlers/publishing_boundary.go, social.go, publishing.go.
+- Reviewed final worker safety check in libs/go/pkg/publish/worker.go and runtime wiring in services/foundation/internal/app/compose.go.
+- Reviewed deferred persistence semantics in services/foundation/internal/repositories/queue.go.
+- Reviewed configuration safety in libs/go/pkg/config/runtime.go, load.go, validate.go.
+- Reviewed observability/logging additions in services/foundation/internal/server/metrics.go and ratelimit.go.
+- Searched for client-supplied identity headers becoming authoritative:
+  X-User-ID, X-Tenant-ID, X-Subject, X-Agent-ID.
+
+UNIT TEST / NODE TEST
+- node --test apps/web/lib/bff/csrf.test.ts
+- node --test apps/web/lib/bff/jwt.test.ts
+- node --test apps/web/lib/autonomy-control/plane.test.ts apps/web/lib/autonomy-control/policy-integration.test.ts apps/web/lib/autonomy-control/compliance.test.ts apps/web/lib/autonomy-control/testauth.test.ts apps/web/lib/autonomy-control/truth.test.ts
+
+GO UNIT TESTS ADDED (NOT EXECUTED ON THIS HOST)
+- services/foundation/internal/handlers/publishing_boundary_test.go
+- libs/go/pkg/publish/worker_test.go
+
+INTEGRATION TEST
+- Not executable on this host for authoritative Go/PostgreSQL backend runtime.
+
+WINDOWS RUNTIME TEST
+- Not executable on this host.
+
+RESULTS:
+Authentication:
+PASS
+- Protected backend routes still require authenticate(...) before handler execution.
+- No evidence that X-User-ID / X-Tenant-ID / X-Subject / X-Agent-ID become authoritative identity.
+- Backend rate-limit keys for authenticated traffic are still derived from verified server-side principal context.
+- Rate limiting does not bypass authentication.
+
+JWT / session security:
+PASS
+- Go verifier source still enforces RS256, issuer, audience, exp, nbf, signature, and rejects alg=none.
+- BFF verifier source still enforces RS256, issuer, audience, exp, nbf, signature, and rejects alg=none.
+- Node JWT tests passed 6/6.
+
+Authorization / RBAC:
+PASS with host limitation
+- Backend RPC routes remain wrapped in authorize(...).
+- Shared publishing boundary also re-checks content/create authorization.
+- Available Node control-plane tests still demonstrate unauthorized/low-privilege denials.
+- Go runtime authorization execution is not available on this host.
+
+Tenant isolation:
+PASS with host limitation
+- Authenticated backend limiter keys are derived from verified tenant + subject.
+- Shared publishing boundary resolves tenant-scoped connection ownership.
+- Queue/distribution methods remain tenant-scoped through RLS-oriented DB transactions.
+- PostgreSQL runtime multi-tenant concurrency verification could not be executed here.
+
+Rate-limit bypass:
+PASS
+- Foundation remains the authoritative limiter for protected RPCs.
+- Direct backend access is not dependent on BFF-only enforcement.
+- Alternate path `/v1/autonomy/execute` remains covered.
+- No spoofed client identity header becomes authoritative limiter identity.
+
+Distributed limiter:
+PASS with host limitation
+- Enforcement path reaches PostgreSQL through RateLimitStore.Allow(...).
+- Atomic counter increment still uses INSERT ... ON CONFLICT ... DO UPDATE RETURNING hit_count.
+- No user-controlled SQL identifiers or dynamic SQL construction were found.
+- Runtime concurrency/rollback tests remain unavailable on this host.
+
+Budget / resource protection:
+PASS with host limitation
+- Backend rate-limit exceeded path returns real 429.
+- LLM gateway still clamps max_tokens to registry maximums.
+- Admission failures do not map to SUCCESS / PUBLISHED / VERIFIED / COMPLIANT in source.
+- Full backend provider-call runtime verification is unavailable on this host.
+
+Publishing safety:
+PASS
+- SocialHTTP.CreateDistribution(...) and PublishingHTTP.Schedule(...) now share one authoritative publishing boundary.
+- Shared boundary enforces authorization, tenant-scoped connection ownership, kill-switch state, approval gating, schedule validation, brand gate, idempotency, and audit creation consistently.
+- No alternate publish-capable HTTP path remains outside that shared boundary in the inspected Phase 09 change set.
+
+Kill switch:
+PASS
+- PublishingHTTP.Tick(...) now blocks immediately when kill switch is engaged.
+- Worker runtime also re-checks kill switch immediately before external publication through Worker.BeforePublish(...).
+- Queued/retry jobs are deferred safely as RETRY_WAITING with KILL_SWITCH_ENGAGED and are not published while the kill switch is engaged.
+
+Agent / tool permissions:
+PASS with host limitation
+- Forbidden tools remain forbidden in available Node tests.
+- No Phase 09 limiter/boundary change was found to bypass tool permissions.
+- Go runtime agent/tool execution verification is unavailable on this host.
+
+OAuth / external token isolation:
+PASS
+- Phase 09 did not weaken token storage/encryption/isolation paths.
+- New logs/metrics/middleware do not log access tokens, refresh tokens, private keys, or Authorization headers.
+- Existing sanitizers in worker/social code remain present.
+
+Observability security:
+PASS
+- New metrics endpoint emits bounded JSON counters/uptime only.
+- New metrics labels use sanitized path/status values, not raw user/tenant/content/request identifiers.
+- New logs include tenant/subject identifiers but do not include tokens/credentials/headers/payload secrets.
+
+Configuration security:
+PASS
+- Strict environments still reject disabled backend rate limiting.
+- Strict environments still reject fail-open backend rate limiting.
+- Invalid HTTP timeout and publish tick timeout values are rejected by config validation.
+- Go runtime startup verification remains unavailable on this host.
+
+Failure safety:
+PASS with host limitation
+- Shared boundary and final worker kill-switch check prevent the previously identified publishing success bypasses.
+- Safety failures in source now resolve to BLOCKED / RETRY_WAITING / FAILED states instead of publish success.
+- Full backend runtime failure-injection execution is unavailable on this host.
+
+FINDINGS:
+- No remaining HIGH/CRITICAL authentication bypass, authorization bypass, tenant isolation bypass, kill-switch bypass, alternate publishing-path bypass, secret leakage, or SQL injection path was found in the Phase 09 source after remediation.
+- Detailed publishing remediation evidence: docs/audit/phase09/PUBLISHING-SAFETY-TEST.txt
+
+LIMITATIONS:
+- SOURCE AUDIT: executed
+- UNIT TEST (Node): executed
+- GO UNIT TEST: added but NOT executable on this host
+- INTEGRATION TEST: unavailable for Go/PostgreSQL runtime on this host
+- WINDOWS RUNTIME TEST: unavailable on this host
+- TypeScript typecheck remains blocked by the pre-existing TS5097 import-extension errors in apps/web/lib/autonomy-control/*
+
+CLASSIFICATION:
+PASS

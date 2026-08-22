@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/agbofa/nexus/libs/go/pkg/config"
 	"github.com/agbofa/nexus/services/foundation/internal/app"
@@ -27,7 +26,7 @@ func main() {
 	}
 	defer rt.Close()
 
-	srv := &http.Server{Addr: cfg.HTTP.Addr, Handler: rt.HTTP.Handler, ReadHeaderTimeout: 5 * time.Second}
+	srv := &http.Server{Addr: cfg.HTTP.Addr, Handler: rt.HTTP.Handler, ReadHeaderTimeout: cfg.HTTP.ReadHeaderTimeout}
 	go func() {
 		log.Printf("foundation listening on %s", cfg.HTTP.Addr)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -35,7 +34,7 @@ func main() {
 		}
 	}()
 	<-ctx.Done()
-	shutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	shutdown, cancel := context.WithTimeout(context.Background(), cfg.HTTP.ShutdownTimeout)
 	defer cancel()
 	_ = srv.Shutdown(shutdown)
 }

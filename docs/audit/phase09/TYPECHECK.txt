@@ -1,0 +1,9 @@
+lib/autonomy-control/index.ts(1,67): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+lib/autonomy-control/index.ts(2,49): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+lib/autonomy-control/plane.ts(2,49): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+lib/autonomy-control/plane.ts(3,37): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+lib/autonomy-control/plane.ts(4,32): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+lib/autonomy-control/plane.ts(5,272): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+undefined
+/home/user/Agbofa-Nexus-AI/apps/web:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: tsc --noEmit
