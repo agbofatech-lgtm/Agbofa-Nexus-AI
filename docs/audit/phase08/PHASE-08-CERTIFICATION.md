@@ -4,7 +4,9 @@
 
 Phase 08 added development Truth and Compliance engines, wired them into NewPlane and high-risk execution, and added a fail-closed HTTP test-auth path. Node tests pass (49). Go compile, coverage, and live foundation HTTP were not runnable in Arena.
 
-**Final status: PARTIAL** (implementation exists; required Go/HTTP runtime evidence BLOCKED). Not CERTIFIED.
+**Final status: PARTIAL** (Node unit evidence exists; Go compile/runtime and live HTTP remain BLOCKED). Not CERTIFIED.
+
+Verification session 2026-08-22 restored missing `contentText` / `evalTruth` / `evalCompliance` after inspection found them referenced but undefined. That does not convert compile to PASS because `go` is still unavailable here.
 
 ## 2. Starting SHA
 
