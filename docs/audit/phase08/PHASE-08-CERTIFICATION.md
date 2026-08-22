@@ -8,10 +8,12 @@ See `docs/audit/phase08-recertification/` for full evidence.
 |---|---|
 | START SHA | `0b25e0996fbc2d8784e02bcea4382096b313d9ce` |
 | PRODUCT TEST SHA | `2281f7f13b40a35dcc86d00fddef24effc18317c` |
-| FINAL DOCUMENTATION SHA | `<new commit>` |
-| REMOTE SHA | `<new commit>` |
+| FINAL DOCUMENTATION SHA | `30a980201016dbc24d6e250c3a831dc2763b5a29` |
+| REMOTE SHA | `30a980201016dbc24d6e250c3a831dc2763b5a29` |
 | ENVIRONMENT | Windows 11, Go 1.22.12, PostgreSQL 16 |
-| GO TEST | PASS (all suites; race skipped – CGO limitation) |
+| GO TEST | PASS (full suite on modules; race skipped – CGO limitation) |
+| RACE | SKIPPED (CGO not available; captured in `RACE-TEST.txt`) |
+| VET | PASS (no issues) |
 | NODE TEST | 49/49 PASS |
 | LIVE FOUNDATION | PASS |
 | LIVE EXECUTE | PASS |
@@ -33,7 +35,7 @@ See `docs/audit/phase08-recertification/` for full evidence.
 - `docs/audit/phase08-recertification/ENVIRONMENT.txt`
 - `docs/audit/phase08-recertification/DATABASE-TEST.txt`
 - `docs/audit/phase08-recertification/GO-TEST.txt`
-- `docs/audit/phase08-recertification/RACE-TEST.txt` (contains CGO error – known limitation)
+- `docs/audit/phase08-recertification/RACE-TEST.txt`
 - `docs/audit/phase08-recertification/VET.txt`
 - `docs/audit/phase08-recertification/NODE-TEST.txt`
 - `docs/audit/phase08-recertification/INTEGRATION-WINDOWS.txt`
@@ -44,6 +46,7 @@ See `docs/audit/phase08-recertification/` for full evidence.
 
 - Race detection skipped due to CGO limitation (recorded in `RACE-TEST.txt`).
 - Compliance test returns `TRUTH_UNAVAILABLE` because the development Truth engine rejects PII content; Compliance itself is not exercised in that case. This is a known limitation of the development engines and does not block certification.
+- Coverage collection failed due to Go workspace issue; documented in `COVERAGE.txt`.
 
 ## Environment-Specific Status
 
