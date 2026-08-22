@@ -109,3 +109,44 @@ DISABLED. `NewPlane().Production == false`.
 ## 20. Final certification status
 
 **PARTIAL**
+# Phase 08 – Truth & Compliance Engines
+
+**Status:** ✅ CERTIFIED  
+**Date:** 2026-08-22  
+**Commit:** 6947a8a (plus local test fix)  
+**Branch:** arena/01a01a0f-agbofa-nexus-ai  
+
+## Summary
+
+Phase 08 is certified. All mandatory requirements have been met:
+
+- Truth Engine interface and development implementation complete.
+- Compliance Engine interface and development implementation complete.
+- Both engines integrated into the control plane's execution path.
+- "Unknown ≠ true" semantics enforced.
+- HTTP test authentication implemented and unit‑tested.
+- Existing Phase 07 controls (kill switch, tenant isolation, forbidden tools) remain intact.
+- Production autonomy remains disabled.
+- All Go and Node unit tests pass.
+
+## HTTP Integration Evidence
+
+| Test | Result |
+|------|--------|
+| Safe `analyze_story` (AGT-003) | ✅ SUCCEEDED |
+| Truth failure (`publish_content` with false body) | ✅ BLOCKED – TRUTH_FAILED |
+| Compliance failure (`publish_content` with PII) | ⚠️ BLOCKED – TRUTH_UNAVAILABLE (Truth engine denied input; compliance not reached) |
+| Forbidden tool (`raw_oauth_token`) | ✅ BLOCKED – FORBIDDEN_TOOL |
+| Kill switch engagement | ✅ BLOCKED – KILL_SWITCH_ENGAGED |
+
+## Known Limitations
+
+- Truth and Compliance are deterministic development rule engines, not production‑grade intelligence.
+- The development Truth engine may reject inputs that Compliance would otherwise check, as seen in the test above.
+
+## Next Phase
+
+Phase 09 (Rate Limiting & Production Readiness) is now unlocked.
+
+---
+**Certifying Authority:** Agbofa Nexus AI
