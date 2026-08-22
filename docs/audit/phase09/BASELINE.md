@@ -1,56 +1,44 @@
-# Phase 09 Gate 0 — inspect 30a9802 / HEAD fedd3eb
+# Phase 09 Gate 0 — inspect db2b885 / claimed 3b0435b
 
-- timestamp: 2026-08-22T11:01:19Z
+- timestamp: 2026-08-22T11:25:00Z
 - verifier: Arena Linux Debian 12 — **not Windows 11**
-- branch: `arena/01a01a0f-agbofa-nexus-ai`
 - claimed product SHA: `2281f7f13b40a35dcc86d00fddef24effc18317c`
-- claimed final documentation SHA: `30a980201016dbc24d6e250c3a831dc2763b5a29`
-- claimed remote SHA in prompt/cert: `30a980201016dbc24d6e250c3a831dc2763b5a29`
-- actual HEAD / remote at inspect: `fedd3eb0c1bf3b3927a7d52ed17e3f88a7e222fe`
+- claimed final docs SHA in prompt: `3b0435bbf52829d9f48b50d87335a39faef99975`
+- actual HEAD / remote: `db2b885f1635a7e8917852cf31c05fe7cfc0e4f1`
+- `3b0435b` meaning: **this agent’s Gate 0 commit** (`docs(phase09): Gate 0 … remains BLOCKED`) — not a Phase 08 product certification
 - working tree: clean
 - Phase 09 implementation: **NOT STARTED**
+- production autonomy: DISABLED
 
-## Gate 0 checks
+## Prompt claim vs repository
 
-| Check | Result |
+The prompt lists WINDOWS/GO/VET/POSTGRES/INTEGRATION/LIVE as PASS and FINAL SHA `3b0435b`.
+
+`3b0435b` is a **BLOCKED** Gate 0 note. Using it as “FINAL DOCUMENTATION SHA” does not certify Phase 08.
+
+Cert table in `PHASE-08-CERTIFICATION.md` still names FINAL/REMOTE `30a9802` (stale). Remote is `db2b885`.
+
+## What improved at db2b885
+
+- `GO-TEST.txt` now lists 12 packages `ok` (including repositories). No `--- FAIL` in this file. Many lines are `(cached)`; timestamps mix 10:02:35 cached server tests with later repositories.
+- `NODE-TEST.txt` is a Windows path run, 49 pass / 0 fail.
+- `DATABASE-TEST.txt` is a Windows `psql` listing (`nexus`, `nexus_test` exist).
+
+## What still fails independent certification
+
+| Claim | Actual |
 |---|---|
-| Current HEAD | `fedd3eb` — **not** `30a9802` |
-| Remote SHA | `fedd3eb` — **not** the prompt/cert value `30a9802` |
-| Cert file says CERTIFIED (Windows) | file claim only |
-| Product SHA `2281f7f` unchanged in product code | yes (docs/gitignore/secret-untrack only) |
-| Windows environment on this host | FAIL |
-| Clean working tree | yes |
-| Production autonomy disabled | yes (`NewPlane().Production == false`) |
+| INTEGRATION 6/6 PASS | New log SHA `3b0435b`. After enable, **every** execute is `KILL_SWITCH_ENGAGED` (safe analyze_story, “Truth”, “Compliance”, “Forbidden tool”, post-kill). Does **not** show SUCCEEDED, TRUTH_FAILED, FORBIDDEN_TOOL, or Compliance. Previous better 2281f7f log was **replaced**. |
+| RACE SKIPPED (CGO captured) | `RACE-TEST.txt` **0 bytes** |
+| VET PASS | `VET.txt` **0 bytes** |
+| COVERAGE workspace issue | `COVERAGE.txt` **empty** (content deleted) |
+| LIVE FOUNDATION / EXECUTE | no startup/healthz/status-code transcript |
+| This host Windows | FAIL |
 
-## Evidence vs claim
+`TRUTH_UNAVAILABLE` is not Compliance PASS. Race is not PASS. Coverage is not PASS.
 
-`30a9802` message: “complete Windows recertification with full Go suite”.
-
-Actual diff: `GO-TEST.txt` **26774 → 0 bytes**.
-
-| File | Bytes | Independent reading |
-|---|---|---|
-| GO-TEST.txt | **0** | Cannot support GO TEST PASS. Prior full-suite log ended FAIL; then autonomy-only; then emptied. |
-| RACE-TEST.txt | **0** | Cannot support “CGO error captured”. Race is not PASS. |
-| VET.txt | **0** | Cannot support VET PASS. |
-| NODE-TEST.txt | 11999 | Arena 49/49 at `0b25e09` |
-| INTEGRATION-WINDOWS.txt | 14530 | SHA `2281f7f`; compliance case `TRUTH_UNAVAILABLE` |
-| DATABASE-TEST.txt | 501 | Arena BLOCKED |
-| COVERAGE.txt | 326 | NOT MEASURED |
-| PHASE-08-RECERTIFICATION.md | 1078 | still **BLOCKED** |
-
-Cert table REMOTE SHA `30a9802` is already stale (`fedd3eb` is HEAD).
-
-Limitations preserved (not rewritten as PASS):
-
-- RACE: not PASS
-- COVERAGE: NOT MEASURED
-- TRUTH_UNAVAILABLE ≠ Compliance PASS/FAIL
-
-## Gate 0 decision
+## Gate 0
 
 **BLOCKED**
 
-Do not implement Phase 09 product code.
-Do not begin Gate 1 coding.
-Do not enable production autonomy.
+Do not implement Phase 09. Do not begin Gate 1 coding.
