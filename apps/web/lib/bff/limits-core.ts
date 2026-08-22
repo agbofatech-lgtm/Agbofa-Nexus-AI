@@ -1,14 +1,35 @@
 const hits = new Map<string, { count: number; reset: number }>();
 
-export function rateLimit(key: string, limit = 30, windowMs = 60_000): boolean {
+export interface RateLimitDecision {
+  allowed: boolean;
+  limit: number;
+  remaining: number;
+  reset: number;
+  retryAfter: number;
+}
+
+export function rateLimitDecision(key: string, limit = 30, windowMs = 60_000): RateLimitDecision {
   const now = Date.now();
   const current = hits.get(key);
   if (!current || current.reset < now) {
-    hits.set(key, { count: 1, reset: now + windowMs });
-    return true;
+    const reset = now + windowMs;
+    hits.set(key, { count: 1, reset });
+    return { allowed: true, limit, remaining: Math.max(0, limit - 1), reset, retryAfter: 0 };
   }
   current.count += 1;
-  return current.count <= limit;
+  const allowed = current.count <= limit;
+  const retryAfter = allowed ? 0 : Math.max(1, Math.ceil((current.reset - now) / 1000));
+  return {
+    allowed,
+    limit,
+    remaining: Math.max(0, limit - current.count),
+    reset: current.reset,
+    retryAfter,
+  };
+}
+
+export function rateLimit(key: string, limit = 30, windowMs = 60_000): boolean {
+  return rateLimitDecision(key, limit, windowMs).allowed;
 }
 
 export function resetRateLimitForTests(): void {

@@ -1,50 +1,69 @@
-# Phase 09 Gate 0 — inspect e85dab2
+# Phase 09 — Gate 0 Baseline
 
-- timestamp: 2026-08-22T12:05:00Z
-- verifier: Arena Linux Debian 12 — **not Windows 11**
-- claimed product SHA in prompt: `3b0435bbf52829d9f48b50d87335a39faef99975`
-- claimed final/remote SHA in prompt: `e85dab215adc54cc519ca8516f1bf728990db1fd`
-- HEAD / remote at inspect: `e85dab215adc54cc519ca8516f1bf728990db1fd`
-- SHA named **inside** ENVIRONMENT.txt and INTEGRATION-WINDOWS.txt: `3c2897d59631b524d0cd3cb8698d8dfc64cad842`
-- `3b0435b` is still the Gate 0 commit `docs(phase09): Gate 0 … remains BLOCKED` — **not** a product test SHA
-- Phase 09 implementation: **NOT STARTED**
-- production autonomy: DISABLED
+- Timestamp: `2026-08-22T16:56:42Z`
+- Workspace branch: `arena/01a02a63-agbofa-nexus-ai`
+- Local HEAD: `eb0fa65ac566487e703ff7c3b8d59daa33ec9152`
+- Authoritative Phase 08 remote branch checked: `origin/arena/01a01a0f-agbofa-nexus-ai`
+- Remote SHA for authoritative Phase 08 branch: `eb0fa65ac566487e703ff7c3b8d59daa33ec9152`
+- Remote SHA for current Arena session branch: **not present on origin** at time of inspection
+- Git status: clean (`git status --short` returned no modified files before Phase 09 work)
+- Go toolchain in this Arena sandbox: unavailable (`go: command not found`)
+- PostgreSQL client in this Arena sandbox: unavailable (`psql: command not found`)
+- Node.js: `v22.22.3`
+- npm: `10.9.8`
+- Runtime host for this inspection: Arena Linux sandbox, **not Windows 11**
 
-## What improved
+## Commands executed
 
-`INTEGRATION-WINDOWS.txt` now follows the required order:
+```bash
+git rev-parse HEAD
+git ls-remote origin arena/01a02a63-agbofa-nexus-ai
+git ls-remote origin arena/01a01a0f-agbofa-nexus-ai
+git status --short
+git branch --show-current
+go version
+psql --version
+node --version
+npm --version
+```
 
-1. Kill **ARMED** (disengaged)
-2. Enable AGT-003 / AGT-014
-3. analyze_story → `SUCCEEDED`
-4. Truth case → `TRUTH_FAILED`
-5. Email/PII case → `TRUTH_UNAVAILABLE` (correctly not `COMPLIANCE_FAILED`)
-6. Forbidden tool → `FORBIDDEN_TOOL`
-7. Kill ENGAGED
-8. Execute after kill → `KILL_SWITCH_ENGAGED`
+## Findings
 
-That is a real fix versus the kill-switch-only log.
+### Source baseline
 
-`GO-TEST.txt` lists 12 packages `ok`, no `--- FAIL` (all `(cached)`).
-`NODE-TEST.txt` is a Windows 49/49 run.
-`RUNTIME-TEST.txt` contains two `200` lines (health/ready only).
+PASS.
 
-## What still fails independent CERTIFIED
+The local checkout matches the authoritative Phase 08 documentation SHA and the authoritative remote branch named in the handoff:
 
-| Claim | Actual |
-|---|---|
-| Product SHA `3b0435b` | Contradicted by logs naming `3c2897d`. `3b0435b` is a BLOCKED Gate 0 note. |
-| FINAL/REMOTE in cert file | Still placeholders `<new commit>` — not `e85dab2` |
-| RACE SKIPPED (CGO captured) | `RACE-TEST.txt` **0 bytes** |
-| VET PASS | `VET.txt` **0 bytes** |
-| COVERAGE documented workspace error | `COVERAGE.txt` **0 bytes** |
-| COMPLIANCE PASS | Live case is `TRUTH_UNAVAILABLE` = **not** Compliance PASS |
-| This host Windows | FAIL |
+- local HEAD = `eb0fa65ac566487e703ff7c3b8d59daa33ec9152`
+- `origin/arena/01a01a0f-agbofa-nexus-ai` = `eb0fa65ac566487e703ff7c3b8d59daa33ec9152`
 
-## Gate 0
+### Session branch parity
 
-**BLOCKED**
+CONSTRAINED.
 
-Do not implement Phase 09. Do not treat this report as CERTIFIED.
+Arena requires work to remain on `arena/01a02a63-agbofa-nexus-ai`, but that session branch was not published on `origin` during this inspection. Source parity is therefore verified against the authoritative parent Phase 08 branch/commit, not against a published remote copy of the Arena session branch.
 
-Next required fix: set PRODUCT TEST SHA to the SHA **in the logs** (`3c2897d` or a new freeze), put real `go test -race` / `go vet` output (or a real CGO error) in those files, stop calling Compliance PASS, fill FINAL/REMOTE with the actual docs SHA after commit.
+### Environment parity
+
+BLOCKED for live Windows certification in this sandbox.
+
+The handoff authorizes Windows 11 + Go 1.22.12 + PostgreSQL 16. This Arena sandbox is Linux-based and currently lacks both `go` and `psql`, so runtime recertification work cannot be honestly claimed from this host.
+
+### Production autonomy
+
+PASS — remains disabled.
+
+Evidence:
+
+- `libs/go/pkg/autonomy/control.go` constructs the runtime plane with `Production: false`.
+- `services/foundation/internal/handlers/autonomy.go` returns `"production_autonomy": false` in agent listing, enable-agent, and execute responses.
+- `apps/web/lib/autonomy-control/plane.ts` defaults `productionAutonomy` to `false` unless explicitly overridden for test harness use.
+
+## Gate 0 disposition
+
+**PASS for source baseline and read-only audit/design continuation.**
+
+**NOT a Windows runtime certification result.**
+
+Proceed to Gate 1 forensic audit using the authoritative Phase 08 baseline above, without reopening Phase 08 certification.

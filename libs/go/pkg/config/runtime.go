@@ -23,10 +23,14 @@ type RuntimeConfig struct {
 	Cookie         CookieConfig
 	CSRF           CSRFConfig
 	CORS           CORSConfig
+	RateLimit      RateLimitConfig
+	Operations     OperationsConfig
 }
 
 type HTTPConfig struct {
-	Addr string
+	Addr              string
+	ReadHeaderTimeout time.Duration
+	ShutdownTimeout   time.Duration
 }
 
 type GRPCConfig struct {
@@ -79,6 +83,15 @@ type CORSConfig struct {
 	AllowedOrigins []string
 }
 
+type RateLimitConfig struct {
+	Enabled    bool
+	FailClosed bool
+}
+
+type OperationsConfig struct {
+	PublishTickTimeout time.Duration
+}
+
 // PublicSnapshot is safe for structured startup logs. It contains no secrets.
 func (c RuntimeConfig) PublicSnapshot() map[string]any {
 	kids := make([]string, 0, len(c.JWT.Keys))
@@ -92,6 +105,8 @@ func (c RuntimeConfig) PublicSnapshot() map[string]any {
 		"service_name":           c.ServiceName,
 		"secret_provider":        c.SecretProvider,
 		"http_addr":              c.HTTP.Addr,
+		"http_read_header_timeout": c.HTTP.ReadHeaderTimeout.String(),
+		"http_shutdown_timeout":  c.HTTP.ShutdownTimeout.String(),
 		"grpc_addr":              c.GRPC.Addr,
 		"database_url_present":   !c.Database.URL.Empty(),
 		"database_max_conns":     c.Database.MaxConns,
@@ -112,5 +127,8 @@ func (c RuntimeConfig) PublicSnapshot() map[string]any {
 		"csrf_cookie_name":      c.CSRF.CookieName,
 		"csrf_header_name":      c.CSRF.HeaderName,
 		"cors_allowed_origins":  append([]string(nil), c.CORS.AllowedOrigins...),
+		"rate_limit_enabled":    c.RateLimit.Enabled,
+		"rate_limit_fail_closed": c.RateLimit.FailClosed,
+		"publish_tick_timeout":  c.Operations.PublishTickTimeout.String(),
 	}
 }

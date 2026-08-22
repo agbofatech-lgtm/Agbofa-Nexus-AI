@@ -37,6 +37,7 @@ func withCorrelation(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := CorrelationID(r)
 		w.Header().Set("X-Correlation-ID", id)
+		r.Header.Set("X-Correlation-ID", id)
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), ctxCorrelation, id)))
 	})
 }

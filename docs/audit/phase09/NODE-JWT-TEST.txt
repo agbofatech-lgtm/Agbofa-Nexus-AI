@@ -1,0 +1,50 @@
+TAP version 13
+# (node:2523) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Agbofa-Nexus-AI/apps/web/lib/bff/jwt.test.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /home/user/Agbofa-Nexus-AI/apps/web/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: verifyAccessToken accepts a valid RS256 token
+ok 1 - verifyAccessToken accepts a valid RS256 token
+  ---
+  duration_ms: 3.988378
+  type: 'test'
+  ...
+# Subtest: rejects alg=none
+ok 2 - rejects alg=none
+  ---
+  duration_ms: 1.585505
+  type: 'test'
+  ...
+# Subtest: rejects invalid signature
+ok 3 - rejects invalid signature
+  ---
+  duration_ms: 1.408107
+  type: 'test'
+  ...
+# Subtest: rejects wrong issuer and audience
+ok 4 - rejects wrong issuer and audience
+  ---
+  duration_ms: 2.613091
+  type: 'test'
+  ...
+# Subtest: rejects expired and nbf-future tokens
+ok 5 - rejects expired and nbf-future tokens
+  ---
+  duration_ms: 3.762216
+  type: 'test'
+  ...
+# Subtest: fails closed without PEM
+ok 6 - fails closed without PEM
+  ---
+  duration_ms: 0.166439
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 301.622676

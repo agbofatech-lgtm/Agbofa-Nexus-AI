@@ -27,12 +27,21 @@ type Job struct {
 }
 
 type Attempt struct {
-	Number     int
-	Status     Status
-	HTTPStatus int
-	ExternalID string
-	ErrorCode  string
-	ErrorText  string
+	Number        int
+	Status        Status
+	HTTPStatus    int
+	ExternalID    string
+	ErrorCode     string
+	ErrorText     string
+	NextAttemptAt *time.Time
+}
+
+type FinalSafetyDecision struct {
+	Allowed    bool
+	Deferred   bool
+	Code       string
+	Reason     string
+	RetryAfter time.Duration
 }
 
 type Store interface {
@@ -44,13 +53,14 @@ type Store interface {
 }
 
 type Worker struct {
-	Store     Store
-	Adapter   social.Adapter
-	Tokens    func(ctx context.Context, job Job) (social.TokenSet, error)
-	MaxTries  int
-	Lease     time.Duration
-	WorkerID  string
-	Now       func() time.Time
+	Store         Store
+	Adapter       social.Adapter
+	Tokens        func(ctx context.Context, job Job) (social.TokenSet, error)
+	BeforePublish func(ctx context.Context, job Job) (FinalSafetyDecision, error)
+	MaxTries      int
+	Lease         time.Duration
+	WorkerID      string
+	Now           func() time.Time
 }
 
 func (w Worker) Tick(ctx context.Context) error {
@@ -76,12 +86,32 @@ func (w Worker) Tick(ctx context.Context) error {
 func (w Worker) execute(ctx context.Context, job Job) error {
 	fail := func(status Status, code, stageName string, err error, httpStatus int) error {
 		attempt := Attempt{
-			Number: job.AttemptCount + 1, Status: status, ErrorCode: code,
-			ErrorText: sanitizeWorkerError(err), HTTPStatus: httpStatus,
+			Number: job.AttemptCount + 1,
+			Status: status,
+			ErrorCode: code,
+			ErrorText: sanitizeWorkerError(err),
+			HTTPStatus: httpStatus,
 		}
 		job.Status = status
 		log.Printf("distribution worker failed job_id=%s tenant_id=%s stage=%s platform=%s error_code=%s error=%s attempt=%d http=%d",
 			job.ID, job.TenantID, stageName, job.Platform, code, attempt.ErrorText, attempt.Number, httpStatus)
+		return w.Store.Complete(ctx, job, attempt)
+	}
+	deferBlocked := func(code, reason string, retryAfter time.Duration) error {
+		if retryAfter <= 0 {
+			retryAfter = 5 * time.Minute
+		}
+		next := w.now().Add(retryAfter)
+		attempt := Attempt{
+			Number:        job.AttemptCount + 1,
+			Status:        StatusRetryWaiting,
+			ErrorCode:     firstWorkerText(code, "PUBLISH_BLOCKED"),
+			ErrorText:     sanitizeWorkerError(errors.New(firstWorkerText(reason, code, "publish blocked"))),
+			NextAttemptAt: &next,
+		}
+		job.Status = StatusRetryWaiting
+		log.Printf("distribution worker blocked job_id=%s tenant_id=%s stage=final_policy platform=%s error_code=%s error=%s retry_at=%s",
+			job.ID, job.TenantID, job.Platform, attempt.ErrorCode, attempt.ErrorText, next.UTC().Format(time.RFC3339))
 		return w.Store.Complete(ctx, job, attempt)
 	}
 	if job.PlatformPublicationID != "" {
@@ -110,6 +140,18 @@ func (w Worker) execute(ctx context.Context, job Job) error {
 	if err != nil {
 		return fail(StatusReauthRequired, "REAUTH_REQUIRED", "oauth", err, 0)
 	}
+	if w.BeforePublish != nil {
+		decision, derr := w.BeforePublish(ctx, job)
+		if derr != nil {
+			return deferBlocked("PUBLISH_POLICY_UNAVAILABLE", derr.Error(), Backoff(job.AttemptCount+1, 0))
+		}
+		if !decision.Allowed {
+			if decision.Deferred {
+				return deferBlocked(decision.Code, decision.Reason, decision.RetryAfter)
+			}
+			return fail(StatusFailed, firstWorkerText(decision.Code, "PUBLISH_BLOCKED"), "final_policy", errors.New(firstWorkerText(decision.Reason, decision.Code, "publish blocked")), 0)
+		}
+	}
 	res, err := w.Adapter.Publish(ctx, tokens, pkg)
 	attempt := Attempt{Number: job.AttemptCount + 1, HTTPStatus: res.RawStatus, ExternalID: res.ExternalID, ErrorText: sanitizeWorkerError(err)}
 	if err != nil {
@@ -125,9 +167,11 @@ func (w Worker) execute(ctx context.Context, job Job) error {
 				attempt.Status = StatusDeadLetter
 				attempt.ErrorCode = "DEAD_LETTER"
 			} else {
+				next := w.now().Add(Backoff(attempt.Number, 0))
 				job.Status = StatusRetryWaiting
 				attempt.Status = StatusRetryWaiting
 				attempt.ErrorCode = "TEMPORARY_PLATFORM_FAILURE"
+				attempt.NextAttemptAt = &next
 			}
 		default:
 			job.Status = StatusFailed
@@ -190,4 +234,13 @@ func sanitizeWorkerError(err error) string {
 		s = s[:400]
 	}
 	return s
+}
+
+func firstWorkerText(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
 }

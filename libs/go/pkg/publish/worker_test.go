@@ -10,12 +10,13 @@ import (
 )
 
 type memStore struct {
-	mu    sync.Mutex
-	jobs  map[string]Job
-	order []string
+	mu       sync.Mutex
+	jobs     map[string]Job
+	order    []string
+	attempts map[string]Attempt
 }
 
-func newMem() *memStore { return &memStore{jobs: map[string]Job{}} }
+func newMem() *memStore { return &memStore{jobs: map[string]Job{}, attempts: map[string]Attempt{}} }
 
 func (m *memStore) Claim(_ context.Context, _ string, _ time.Time, _ time.Duration) (Job, bool, error) {
 	m.mu.Lock()
@@ -50,10 +51,11 @@ func (m *memStore) EnqueueDue(_ context.Context, job Job) error {
 	return nil
 }
 
-func (m *memStore) Complete(_ context.Context, job Job, _ Attempt) error {
+func (m *memStore) Complete(_ context.Context, job Job, attempt Attempt) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.jobs[job.ID] = job
+	m.attempts[job.ID] = attempt
 	return nil
 }
 
@@ -69,8 +71,9 @@ func (m *memStore) GetByIdempotency(_ context.Context, _, key string) (Job, erro
 }
 
 type stubAdapter struct {
-	res social.PublishResult
-	err error
+	res    social.PublishResult
+	err    error
+	called *int
 }
 
 func (s stubAdapter) Platform() social.Platform { return social.PlatformX }
@@ -81,6 +84,9 @@ func (s stubAdapter) Refresh(context.Context, string) (social.TokenSet, error) {
 	return social.TokenSet{}, nil
 }
 func (s stubAdapter) Publish(context.Context, social.TokenSet, social.PublicationPackage) (social.PublishResult, error) {
+	if s.called != nil {
+		(*s.called)++
+	}
 	return s.res, s.err
 }
 
@@ -106,7 +112,6 @@ func TestWorkerPublishesOnceAndSkipsDuplicate(t *testing.T) {
 	if store.jobs[job.ID].Status != StatusPublished || store.jobs[job.ID].PlatformPublicationID != "tw-1" {
 		t.Fatalf("got %+v", store.jobs[job.ID])
 	}
-	// second tick must not republish
 	if err := w.Tick(context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -156,8 +161,6 @@ func TestWorkerReauthWhenTokensMissing(t *testing.T) {
 		},
 	}
 	_ = w.Tick(context.Background())
-	// Worker now returns FAILED with INVALID_CONTENT because the job lacks media_url
-	// This is expected behavior for the current implementation
 	if store.jobs[job.ID].Status != StatusFailed {
 		t.Fatalf("expected FAILED, got %s", store.jobs[job.ID].Status)
 	}
@@ -172,5 +175,36 @@ func TestWorkerBrandFailure(t *testing.T) {
 	_ = w.Tick(context.Background())
 	if store.jobs[job.ID].Status != StatusFailed {
 		t.Fatalf("status %s", store.jobs[job.ID].Status)
+	}
+}
+
+func TestWorkerFinalSafetyDecisionBlocksPublish(t *testing.T) {
+	store := newMem()
+	job := Job{ID: "j5", TenantID: "t1", AccountID: "a1", Platform: "x", ContentID: "c1", ContentVersion: "v1", Status: StatusQueued, Snapshot: "hello", BrandApplied: true}
+	store.jobs[job.ID] = job
+	store.order = []string{job.ID}
+	called := 0
+	w := Worker{
+		Store:   store,
+		Adapter: stubAdapter{res: social.PublishResult{ExternalID: "tw-2", RawStatus: 200}, called: &called},
+		Tokens:  func(context.Context, Job) (social.TokenSet, error) { return social.TokenSet{AccessToken: "tok"}, nil },
+		BeforePublish: func(context.Context, Job) (FinalSafetyDecision, error) {
+			return FinalSafetyDecision{Allowed: false, Deferred: true, Code: "KILL_SWITCH_ENGAGED", Reason: "kill switch engaged", RetryAfter: time.Minute}, nil
+		},
+	}
+	if err := w.Tick(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if called != 0 {
+		t.Fatalf("publish called %d times", called)
+	}
+	if store.jobs[job.ID].Status != StatusRetryWaiting {
+		t.Fatalf("status %s", store.jobs[job.ID].Status)
+	}
+	if store.attempts[job.ID].ErrorCode != "KILL_SWITCH_ENGAGED" {
+		t.Fatalf("attempt=%+v", store.attempts[job.ID])
+	}
+	if store.attempts[job.ID].NextAttemptAt == nil {
+		t.Fatal("expected deferred retry time")
 	}
 }

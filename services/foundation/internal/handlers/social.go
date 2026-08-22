@@ -18,6 +18,7 @@ type SocialHTTP struct {
 	Jobs     *repositories.DistStore
 	Box      *social.TokenBox
 	Adapters *social.Router
+	Autonomy publishingAutonomyStore
 }
 
 func (h SocialHTTP) Connect(w http.ResponseWriter, r *http.Request) {
@@ -259,14 +260,6 @@ func (h SocialHTTP) CreateDistribution(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusUnauthorized, "unauthenticated")
 		return
 	}
-	dec := authz.Decide(authz.Request{
-		SubjectID: principal.SubjectID, TenantID: principal.TenantID, ResourceTenant: principal.TenantID,
-		Roles: principal.Roles, Resource: "content", Action: "create",
-	})
-	if !dec.Allowed {
-		writeErr(w, http.StatusForbidden, "unauthorized_publish")
-		return
-	}
 	var req struct {
 		AccountID      string `json:"account_id"`
 		ContentID      string `json:"content_id"`
@@ -275,34 +268,12 @@ func (h SocialHTTP) CreateDistribution(w http.ResponseWriter, r *http.Request) {
 		BrandApplied   bool   `json:"brand_identity_applied"`
 		ScheduledAt    string `json:"scheduled_at"`
 		MediaURL       string `json:"media_url"`
+		Approve        bool   `json:"approved"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeErr(w, http.StatusBadRequest, "invalid_argument")
 		return
 	}
-	acct, err := h.Store.GetConnection(r.Context(), principal.TenantID, req.AccountID)
-	if err != nil {
-		writeErr(w, http.StatusForbidden, "account_denied")
-		return
-	}
-	spec, ok := social.Lookup(acct.Platform)
-	if !ok {
-		writeErr(w, http.StatusBadRequest, "unknown_platform")
-		return
-	}
-	pkg, err := social.Adapt(social.CanonicalContent{
-		ID: req.ContentID, Version: req.ContentVersion, TenantID: principal.TenantID,
-		Body: req.Body, MediaURL: req.MediaURL, BrandApplied: req.BrandApplied, AuthorID: principal.SubjectID,
-	}, spec)
-	if err != nil {
-		if err == social.ErrBrandingRequired {
-			writeErr(w, http.StatusUnprocessableEntity, "BRANDING_REQUIRED")
-			return
-		}
-		writeErr(w, http.StatusBadRequest, "invalid_content")
-		return
-	}
-	status := string(social.StatusQueued)
 	var scheduled *time.Time
 	if req.ScheduledAt != "" {
 		parsed, err := time.Parse(time.RFC3339, req.ScheduledAt)
@@ -311,24 +282,32 @@ func (h SocialHTTP) CreateDistribution(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		scheduled = &parsed
-		status = string(social.StatusScheduled)
 	}
-	key := social.IdempotencyKey(principal.TenantID, req.ContentID, req.ContentVersion, acct.ID, spec.ID, req.ScheduledAt)
-	job, err := h.Jobs.CreateJob(r.Context(), repositories.DistJob{
-		TenantID: principal.TenantID, ActorID: principal.SubjectID, AccountID: acct.ID,
-		Platform: string(spec.ID), ContentID: req.ContentID, ContentVersion: req.ContentVersion,
-		IdempotencyKey: key, Status: status, ScheduledAt: scheduled, Snapshot: social.EncodeSnapshot(pkg.Text, pkg.MediaURL), BrandApplied: true,
+	out, err := publishingBoundary{Connections: h.Store, Jobs: h.Jobs, Autonomy: h.Autonomy}.Submit(r.Context(), publishCommand{
+		Principal:      principal,
+		ConnectionID:   req.AccountID,
+		ContentID:      req.ContentID,
+		ContentVersion: req.ContentVersion,
+		Body:           req.Body,
+		MediaURL:       req.MediaURL,
+		BrandApplied:   req.BrandApplied,
+		ScheduledAt:    scheduled,
+		Approved:       req.Approve,
+		CorrelationID:  r.Header.Get("X-Correlation-ID"),
+		AuditAction:    "DISTRIBUTION_CREATED",
 	})
 	if err == social.ErrDuplicateJob {
-		writeJSON(w, http.StatusOK, map[string]any{"idempotent": true, "idempotency_key": key})
+		writeJSON(w, http.StatusOK, map[string]any{"idempotent": true, "idempotency_key": out.IdempotencyKey})
+		return
+	}
+	if writePublishBoundaryError(w, err) {
 		return
 	}
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, "job_create")
 		return
 	}
-	_ = h.Jobs.Audit(r.Context(), principal.TenantID, principal.SubjectID, "DISTRIBUTION_CREATED", string(spec.ID), acct.ID, req.ContentID, job.ID, r.Header.Get("X-Correlation-ID"))
-	writeJSON(w, http.StatusOK, map[string]any{"job_id": job.ID, "status": job.Status, "brand_applied": true, "published": false})
+	writeJSON(w, http.StatusOK, map[string]any{"job_id": out.Job.ID, "status": out.Job.Status, "brand_applied": true, "published": false})
 }
 
 func (h SocialHTTP) ListDistributions(w http.ResponseWriter, r *http.Request) {

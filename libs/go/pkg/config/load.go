@@ -45,16 +45,43 @@ func Load(ctx context.Context, opts LoadOptions) (RuntimeConfig, error) {
 		return RuntimeConfig{}, err
 	}
 
+	readHeaderTimeout, err := getDuration(lookup, "HTTP_READ_HEADER_TIMEOUT", 5*time.Second)
+	if err != nil {
+		return RuntimeConfig{}, malformed("AGBOFA_HTTP_READ_HEADER_TIMEOUT", "must be a duration such as 5s", env)
+	}
+	shutdownTimeout, err := getDuration(lookup, "HTTP_SHUTDOWN_TIMEOUT", 10*time.Second)
+	if err != nil {
+		return RuntimeConfig{}, malformed("AGBOFA_HTTP_SHUTDOWN_TIMEOUT", "must be a duration such as 10s", env)
+	}
+	rateLimitEnabled, err := getBool(lookup, "RATE_LIMIT_ENABLED", true)
+	if err != nil {
+		return RuntimeConfig{}, malformed("AGBOFA_RATE_LIMIT_ENABLED", "must be true or false", env)
+	}
+	rateLimitFailClosed, err := getBool(lookup, "RATE_LIMIT_FAIL_CLOSED", env.Strict())
+	if err != nil {
+		return RuntimeConfig{}, malformed("AGBOFA_RATE_LIMIT_FAIL_CLOSED", "must be true or false", env)
+	}
+	publishTickTimeout, err := getDuration(lookup, "PUBLISH_TICK_TIMEOUT", 110*time.Second)
+	if err != nil {
+		return RuntimeConfig{}, malformed("AGBOFA_PUBLISH_TICK_TIMEOUT", "must be a duration such as 110s", env)
+	}
+
 	cfg := RuntimeConfig{
 		Environment:    env,
 		ServiceName:    getDefault(lookup, "SERVICE_NAME", "foundation"),
 		SecretProvider: provider.Name(),
-		HTTP:           HTTPConfig{Addr: getDefault(lookup, "HTTP_ADDR", ":8080")},
-		GRPC:           GRPCConfig{Addr: getDefault(lookup, "GRPC_ADDR", ":9090")},
+		HTTP: HTTPConfig{
+			Addr:              getDefault(lookup, "HTTP_ADDR", ":8080"),
+			ReadHeaderTimeout: readHeaderTimeout,
+			ShutdownTimeout:   shutdownTimeout,
+		},
+		GRPC: GRPCConfig{Addr: getDefault(lookup, "GRPC_ADDR", ":9090")},
 		CSRF: CSRFConfig{
 			CookieName: getDefault(lookup, "CSRF_COOKIE_NAME", "agbofa_csrf"),
 			HeaderName: getDefault(lookup, "CSRF_HEADER_NAME", "X-CSRF-Token"),
 		},
+		RateLimit: RateLimitConfig{Enabled: rateLimitEnabled, FailClosed: rateLimitFailClosed},
+		Operations: OperationsConfig{PublishTickTimeout: publishTickTimeout},
 	}
 
 	if err := loadDatabase(ctx, &cfg, lookup, provider); err != nil {

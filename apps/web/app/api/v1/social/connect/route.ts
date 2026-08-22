@@ -2,7 +2,7 @@ import type { NextRequest} from "next/server";
 import { NextResponse } from "next/server";
 
 import { backendRPC } from "@/lib/bff/backend";
-import { rateLimitRequest } from "@/lib/bff/limits";
+import { rateLimitDecisionForRequest, rateLimitedResponse } from "@/lib/bff/limits";
 
 function redirectURI(request: NextRequest, platform: string): string {
   const key = `AGBOFA_SOCIAL_${platform.toUpperCase()}_REDIRECT_URI`;
@@ -12,8 +12,9 @@ function redirectURI(request: NextRequest, platform: string): string {
 }
 
 async function startConnect(request: NextRequest, platform: string, redirect: string) {
-  if (!rateLimitRequest(request, "social", 20)) {
-    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+  const decision = rateLimitDecisionForRequest(request, "social", 20);
+  if (!decision.allowed) {
+    return rateLimitedResponse(decision);
   }
   const cookie = request.cookies.get("agbofa_session")?.value;
   if (!cookie) {
@@ -29,11 +30,8 @@ async function startConnect(request: NextRequest, platform: string, redirect: st
   );
   const url = result.data?.authorization_url;
   if (!result.ok || !url) {
-    return NextResponse.json(result.data ?? { error: "upstream" }, { status: result.status || 502 });
+    return NextResponse.json(result.data ?? { error: result.error ?? "upstream" }, { status: result.status || 502 });
   }
-  // Never NextResponse.redirect() a Google authorize URL from a Route Handler
-  // that was itself reached via next/navigation redirect(): the query string
-  // (including response_type) is dropped and Google reports it missing.
   try {
     const dest = new URL(url);
     if (dest.searchParams.get("response_type") !== "code") {
@@ -51,6 +49,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const decision = rateLimitDecisionForRequest(request, "social", 20);
+  if (!decision.allowed) {
+    return rateLimitedResponse(decision);
+  }
   const cookie = request.cookies.get("agbofa_session")?.value;
   if (!cookie) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
   const payload = (await request.json().catch(() => null)) as
@@ -62,5 +64,5 @@ export async function POST(request: NextRequest) {
     platform,
     redirect_uri: redirect,
   }, { headers: { authorization: `Bearer ${cookie}` } });
-  return NextResponse.json(result.data ?? { error: "upstream" }, { status: result.status });
+  return NextResponse.json(result.data ?? { error: result.error ?? "upstream" }, { status: result.status });
 }

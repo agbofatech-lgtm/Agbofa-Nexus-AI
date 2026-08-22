@@ -10,33 +10,69 @@ import (
 	"github.com/agbofa/nexus/libs/go/pkg/config"
 	"github.com/agbofa/nexus/libs/go/pkg/database"
 	"github.com/agbofa/nexus/services/foundation/internal/handlers"
+	"github.com/agbofa/nexus/services/foundation/internal/repositories"
 )
 
 type HTTP struct {
 	Mux     *http.ServeMux
 	Ready   func() bool
 	Handler http.Handler
+	Metrics *Metrics
 }
 
-func NewHTTP(identity handlers.IdentityHTTP, ai handlers.AIHTTP, social handlers.SocialHTTP, pub handlers.PublishingHTTP, auto handlers.AutonomyHTTP, verifier *auth.Verifier, pool *database.Pool, env config.Environment, planeTestAuth bool) *HTTP {
+func NewHTTP(identity handlers.IdentityHTTP, ai handlers.AIHTTP, social handlers.SocialHTTP, pub handlers.PublishingHTTP, auto handlers.AutonomyHTTP, verifier *auth.Verifier, pool *database.Pool, env config.Environment, rateCfg config.RateLimitConfig, planeTestAuth bool) *HTTP {
 	mux := http.NewServeMux()
-	s := &HTTP{Mux: mux, Ready: func() bool { return pool.Ping(context.Background()) == nil }}
+	metrics := NewMetrics()
+	rateStore := repositories.NewRateLimitStore(pool)
+	s := &HTTP{Mux: mux, Metrics: metrics}
+	readiness := func(ctx context.Context) (int, map[string]any) {
+		dbReady := pool.Ping(ctx) == nil
+		rateReady := true
+		if rateCfg.Enabled {
+			rateReady = rateStore.Healthy(ctx) == nil
+		}
+		status := http.StatusOK
+		if !(dbReady && rateReady) {
+			status = http.StatusServiceUnavailable
+		}
+		return status, map[string]any{
+			"status":                        map[bool]string{true: "ready", false: "not_ready"}[status == http.StatusOK],
+			"database":                      dbReady,
+			"rate_limit_enabled":            rateCfg.Enabled,
+			"rate_limit_store":              rateReady,
+			"production_autonomy_disabled":  true,
+			"ts":                           time.Now().UTC().Format(time.RFC3339),
+		}
+	}
+	s.Ready = func() bool {
+		status, _ := readiness(context.Background())
+		return status == http.StatusOK
+	}
 	public := map[string]struct{}{
 		"/healthz": {},
 		"/readyz": {},
+		"/metrics": {},
 		"/rpc/foundation.tenant_identity.v1.TenantIdentityService/AuthenticateUser": {},
 		"/rpc/ai.v1.AIGateway/Health": {},
 	}
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("X-Agbofa-Build", "rpc-diag-5e8ad11")
-		w.WriteHeader(http.StatusOK)
+		writeJSON(w, http.StatusOK, map[string]any{
+			"status":                        "ok",
+			"build":                         "rpc-diag-5e8ad11",
+			"environment":                   string(env),
+			"uptime_seconds":                int64(time.Since(metrics.start).Seconds()),
+			"production_autonomy_disabled":  true,
+			"rate_limit_enabled":            rateCfg.Enabled,
+			"ts":                            time.Now().UTC().Format(time.RFC3339),
+		})
 	})
 	mux.HandleFunc("/readyz", func(w http.ResponseWriter, _ *http.Request) {
-		if !s.Ready() {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
+		status, body := readiness(context.Background())
+		writeJSON(w, status, body)
+	})
+	mux.HandleFunc("/metrics", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, metrics.Snapshot())
 	})
 	mux.HandleFunc("/rpc/foundation.tenant_identity.v1.TenantIdentityService/AuthenticateUser", identity.AuthenticateUser)
 	mux.Handle("/rpc/foundation.tenant_identity.v1.TenantIdentityService/GetTenant", authorize("tenant", "read")(http.HandlerFunc(identity.GetTenant)))
@@ -77,6 +113,8 @@ func NewHTTP(identity handlers.IdentityHTTP, ai handlers.AIHTTP, social handlers
 	mux.Handle("/v1/autonomy/execute", authorize("content", "create")(http.HandlerFunc(auto.Execute)))
 
 	var h http.Handler = mux
+	h = withRateLimit(rateStore, env, rateCfg, metrics)(h)
+	h = withObservability(metrics)(h)
 	h = authenticate(verifier, public, env, planeTestAuth)(h)
 	h = withCorrelation(h)
 	h = recoverMW(h)
@@ -93,7 +131,5 @@ func rpcNamed(name string, next http.Handler) http.Handler {
 }
 
 func (s *HTTP) Shutdown(ctx context.Context, srv *http.Server) error {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
 	return srv.Shutdown(ctx)
 }
