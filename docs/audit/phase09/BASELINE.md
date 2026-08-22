@@ -1,166 +1,106 @@
-# Phase 09 Gate 0 — re-entry against claimed SHA 2281f7f
+# Phase 09 Gate 0 — inspect 680eab2 / product 2281f7f
 
-- timestamp: 2026-08-22T09:53:51Z
-- verifier host: Arena Linux e2b.local (Debian 12) — **not Windows 11**
+- timestamp: 2026-08-22T10:12:39Z
+- verifier: Arena Linux e2b.local Debian 12 — **not Windows 11**
 - branch: `arena/01a01a0f-agbofa-nexus-ai`
-- inspect / claimed Phase 08 final SHA: `2281f7f13b40a35dcc86d00fddef24effc18317c`
-- remote at inspect: `2281f7f13b40a35dcc86d00fddef24effc18317c`
+- claimed Phase 08 product SHA: `2281f7f13b40a35dcc86d00fddef24effc18317c`
+- claimed Phase 08 documentation SHA: `680eab2c2c4540303d7d2e061138101ebb3e8b50`
+- HEAD at inspect (after ff-only): `680eab2c2c4540303d7d2e061138101ebb3e8b50`
+- remote at inspect: `680eab2c2c4540303d7d2e061138101ebb3e8b50`
 - working tree at inspect: clean
-- product code in this Gate 0: **not modified**
-- Phase 09 implementation: **NOT STARTED**
+- product diff `2281f7f..680eab2`: **none** (docs only)
+- Phase 09 product implementation: **NOT STARTED**
 
-## Required vs actual environment (this verifier)
+## Gate 0A — environment (this verifier)
 
 | Field | Required | Actual |
 |---|---|---|
 | OS | Windows 11 | Linux Debian 12 — FAIL |
-| GO | Go 1.22 | `go: command not found` — FAIL |
+| GO | Go 1.22.x | `go: command not found` — FAIL |
 | POSTGRESQL | PostgreSQL 16 | `psql: command not found` — FAIL |
 | NODE | — | v22.22.3 |
+| npm | — | 10.9.8 |
+| git | — | 2.39.5 |
 
-Gate 0A: required Windows runtime is **unavailable**. Hard stop.
+Quoted Windows evidence (not re-measured here): `docs/audit/phase08-recertification/ENVIRONMENT.txt` names Windows 11, go1.22.12, PostgreSQL 16.14, SHA `2281f7f`.
 
-## Gate 0 — SHA / parity
+## Gate 0 — certification file claim
 
-```text
-git rev-parse 2281f7f
-2281f7f13b40a35dcc86d00fddef24effc18317c
+`docs/audit/phase08/PHASE-08-CERTIFICATION.md` says **CERTIFIED (Windows)**.
 
-git rev-parse HEAD          # after ff-only
-2281f7f13b40a35dcc86d00fddef24effc18317c
-
-git ls-remote origin arena/01a01a0f-agbofa-nexus-ai
-2281f7f13b40a35dcc86d00fddef24effc18317c
-```
-
-`2281f7f` is **not** a docs-only pointer at `6f60248`. It changes product code after the docs cert:
-
-- `libs/go/pkg/autonomy/control.go` — `debugAutonomy()`, ToolStep JSON tags
-- `libs/go/pkg/autonomy/control_test.go` — stubs Truth/Compliance in one test
-- `libs/go/pkg/autonomy/registry.go` — unconditional LookupTool logs; catalog entries for `observe` and forbidden tool IDs
-
-Windows HTTP artifacts still name **`a24a9fe`**. Cert table PRODUCT TEST SHA is **`6f60248`**. Claimed final SHA is **`2281f7f`**. Three different SHAs.
-
-## Gate 0 — certification file
-
-`docs/audit/phase08/PHASE-08-CERTIFICATION.md` now says:
-
-**CERTIFIED (Windows)** and Linux **BLOCKED** (environment-specific).
-
-That is a **file claim**, not independent verification.
+That is a file claim. Independent Gate 0 does **not** confirm it.
 
 `docs/audit/phase08-recertification/PHASE-08-RECERTIFICATION.md` still says **BLOCKED**.
 
-Cited evidence paths in the cert file:
+## Gate 0C — evidence vs claim
 
-| Cited path | Actual |
+| Claim in cert table | Independent reading |
 |---|---|
-| recertification/ENVIRONMENT.txt | **MISSING** |
-| recertification/RACE-TEST.txt | **MISSING** |
-| recertification/VET.txt | **MISSING** |
-| recertification/INTEGRATION-WINDOWS.txt | **MISSING** |
-| recertification/SECRET-AUDIT.txt | **MISSING** |
-| recertification/GO-TEST.txt | EXISTS — result **BLOCKED** (`go: command not found`, SHA `0b25e09`) |
-| recertification/DATABASE-TEST.txt | EXISTS — result **BLOCKED** |
-| recertification/COVERAGE.txt | EXISTS — **NOT MEASURED** (no “workspace issue” log; `go` missing) |
-| recertification/NODE-TEST.txt | EXISTS — unit 49/49 at `0b25e09` |
-| phase08/ENVIRONMENT.txt | EXISTS — SHA **`a24a9fe`** |
-| phase08/INTEGRATION-WINDOWS.txt | EXISTS — SHA **`a24a9fe`**; compliance case `TRUTH_UNAVAILABLE` |
+| GO TEST PASS (all suites) | **CONTRADICTED.** `GO-TEST.txt` is a real `go test` log that ends **`FAIL`**. Package `services/foundation/internal/repositories` has 5 FAIL tests: `AGBOFA_TEST_DATABASE_URL is required`. Autonomy/auth packages PASS. Overall process result is FAIL, not PASS. |
+| RACE SKIPPED (CGO) | `RACE-TEST.txt` exists and is **0 bytes**. No CGO error text. Limitation not evidenced. |
+| VET | `VET.txt` **MISSING** |
+| SECRET AUDIT PASS | `SECRET-AUDIT.txt` **MISSING**. `.dev-social-token-key.txt` still tracked (contents not printed). |
+| DATABASE | `DATABASE-TEST.txt` still Arena **BLOCKED** at SHA `0b25e09` |
+| NODE 49/49 | `NODE-TEST.txt` is Arena unit 49/49 at SHA `0b25e09`, not `2281f7f` |
+| INTEGRATION 6/6 | New `INTEGRATION-WINDOWS.txt` is SHA-bound to **`2281f7f`**. Cases: enable 003/014, analyze_story SUCCEEDED, TRUTH_FAILED, **TRUTH_UNAVAILABLE** (not COMPLIANCE_FAILED), FORBIDDEN_TOOL, KILL_SWITCH_ENGAGED. No HTTP status/command transcript. Compliance not exercised. |
+| COVERAGE NOT MEASURED | Still Arena stub; not a workspace-issue log |
+| PRODUCTION AUTONOMY DISABLED | **Confirmed in source:** `NewPlane().Production == false` at `2281f7f` |
 
-Cert table claims GO TEST / LIVE / 6/6 / SECRET AUDIT **PASS**. Those claims are not supported by the files the same document lists.
+Do not rewrite: race is not PASS; coverage is not PASS; TRUTH_UNAVAILABLE is not Compliance PASS or FAIL.
 
-Hard stop: Phase 08 evidence is contradictory.
+## Gate 0D — limitation preservation
 
-## Gate 0B — do not treat prompt PASS list as evidence
+Recorded as **not PASS**:
 
-Not independently confirmed at `2281f7f`:
-
-- go test / race / vet
-- live Foundation / Execute on this host
-- 6/6 integration (log bound to `a24a9fe`; compliance not exercised)
-- tenant RLS HTTP
-- coverage
-- secret audit PASS (tracked `.dev-social-token-key.txt` remains)
-
-## Gate 0C — source integrity of 2281f7f delta
-
-Inspected. **Not** a production-autonomy enablement:
-
-- `NewPlane().Production` remains **false**
-- `debugAutonomy()` only logs when `AUTONOMY_DEBUG=true`; does not skip Resolve/Enable
-- Test stubs `p.Truth` / `p.Compliance` only inside `TestComplianceFailBlocksPublish` (test isolation)
-- Forbidden IDs still fail `forbidden()` / `FORBIDDEN_TOOL` before `runTool`
-- AGT-014 tools unchanged: `schedule_content`, `publish_content`, `check_brand` only
-- High-risk path still requires Truth, Compliance, brand, production flag, approval
-
-Concerns (not autonomy enablement, but not certification-clean):
-
-- Forbidden catalog rows are marked `Implemented: true`
-- `observe` is catalogued `Implemented: true` but `runTool` has no observe case → `UNKNOWN_TOOL`
-- `LookupTool` logs every lookup unconditionally (noise; tool IDs)
-- Product changed after the SHA named in Windows artifacts
-
-SOURCE INTEGRITY: **PASS** for “no production autonomy / no auth bypass in this delta”.
-Does **not** make Phase 08 CERTIFIED.
-
-## Gate 0D — working tree
-
-Clean at inspect (`2281f7f`).
+- RACE: not independently shown; file empty. Phase 09 must attempt `go test -race` if/when authorized.
+- COVERAGE: NOT MEASURED.
 
 ## Recorded fields
 
 ```text
-PHASE:
-09
-
 PHASE 08 STATUS (file claim):
 CERTIFIED (Windows)
 
 PHASE 08 STATUS (independent Gate 0):
 NOT CERTIFIED
 
-PHASE 08 FINAL SHA (claimed):
+PHASE 08 PRODUCT SHA:
 2281f7f13b40a35dcc86d00fddef24effc18317c
 
-PRODUCT TEST SHA named in cert:
-6f60248
+PHASE 08 DOCUMENTATION SHA:
+680eab2c2c4540303d7d2e061138101ebb3e8b50
 
-WINDOWS ARTIFACT SHA:
-a24a9fe0ea7bb6f65be5f24ef21eca2a5bc9d0ba
-
-CURRENT SHA (inspect):
-2281f7f13b40a35dcc86d00fddef24effc18317c
+PHASE 09 START SHA (inspect):
+680eab2c2c4540303d7d2e061138101ebb3e8b50
 
 REMOTE SHA (inspect):
-2281f7f13b40a35dcc86d00fddef24effc18317c
+680eab2c2c4540303d7d2e061138101ebb3e8b50
 
-OS:
-Arena Linux Debian 12 (verifier). Not Windows 11.
+WINDOWS:
+FAIL (this verifier)
 
 GO:
-not installed
+FAIL (this verifier)
 
 POSTGRESQL:
-not installed
-
-NODE:
-v22.22.3
+FAIL (this verifier)
 
 PRODUCTION AUTONOMY:
 DISABLED
 
 PHASE 09 IMPLEMENTATION:
 NOT STARTED
-
-PHASE 08 LIMITATIONS (not converted to PASS):
-- Coverage NOT MEASURED
-- Compliance HTTP case is TRUTH_UNAVAILABLE
 ```
 
 ## Gate 0 decision
 
 **BLOCKED**
 
-Do not implement rate limiting.
-Do not begin Gate 1 implementation work as authorized Phase 09 coding.
-Do not enable production autonomy.
+Hard stops:
+
+1. This verifier is not Windows; Gate 0A cannot PASS here.
+2. Cited `GO-TEST.txt` shows **FAIL**, while the cert table says PASS.
+3. Cited `RACE-TEST.txt` is empty; `VET.txt` and `SECRET-AUDIT.txt` are missing.
+4. Recertification package still contains an authoritative **BLOCKED** document.
+
+No Phase 09 product code. No rate limiter. No Gate 1 implementation.
