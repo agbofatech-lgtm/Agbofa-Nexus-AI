@@ -1,0 +1,5 @@
+timestamp: 2026-08-22T08:42:54Z
+sha: bc744a118cca3f041eb9067e0b0facd12233ac18
+command: git ls-files ; inspect templates; do not print values
+result: tracked historical file .dev-social-token-key.txt exists (Phase 03 leakage already documented). Recertification added no secrets. PEMs not committed.
+classification: pre-existing tracked secret-adjacent file — do not print

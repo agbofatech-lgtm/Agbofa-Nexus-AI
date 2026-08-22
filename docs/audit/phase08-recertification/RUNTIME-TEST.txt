@@ -1,0 +1,5 @@
+timestamp: 2026-08-22T08:42:54Z
+sha: bc744a118cca3f041eb9067e0b0facd12233ac18
+command: go run ./services/foundation/cmd/server && curl POST /v1/autonomy/execute
+result: BLOCKED — no Go, no PostgreSQL, Foundation not started
+limitation: not mocked; not marked PASS

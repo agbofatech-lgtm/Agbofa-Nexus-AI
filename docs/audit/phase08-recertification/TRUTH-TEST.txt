@@ -1,0 +1,6 @@
+timestamp: 2026-08-22T08:42:54Z
+sha: bc744a118cca3f041eb9067e0b0facd12233ac18
+command: node --experimental-strip-types --test apps/web/lib/autonomy-control/truth.test.ts
+level: UNIT
+result: included in 49-pass Node suite
+live Truth HTTP: BLOCKED

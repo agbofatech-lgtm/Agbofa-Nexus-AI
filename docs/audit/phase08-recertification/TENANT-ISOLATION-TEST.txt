@@ -1,0 +1,5 @@
+timestamp: 2026-08-22T08:42:54Z
+sha: bc744a118cca3f041eb9067e0b0facd12233ac18
+command: two-tenant HTTP + RLS
+result: BLOCKED — no Postgres / no live server
+unit: Node plane cross-tenant denials exist (not a substitute for RLS)

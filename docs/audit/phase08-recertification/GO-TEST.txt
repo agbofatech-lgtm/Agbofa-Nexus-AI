@@ -1,0 +1,7 @@
+timestamp: 2026-08-22T08:42:54Z
+sha: bc744a118cca3f041eb9067e0b0facd12233ac18
+branch: arena/01a01a0f-agbofa-nexus-ai
+command: go test ./...
+environment: Arena Linux
+result: BLOCKED
+limitation: go: command not found
