@@ -14,6 +14,9 @@ import (
 	"github.com/agbofa/nexus/libs/go/pkg/authz"
 )
 
+func debugAutonomy() bool {
+    return strings.EqualFold(os.Getenv("AUTONOMY_DEBUG"), "true")
+}
 const (
 	StatusPending          = "PENDING"
 	StatusRunning          = "RUNNING"
@@ -271,8 +274,9 @@ type ExecRequest struct {
 }
 
 type ToolStep struct {
-	ToolID, ApprovalID string
-	Input              map[string]any
+    ToolID     string         `json:"tool_id"`
+    ApprovalID string         `json:"approval_id,omitempty"`
+    Input      map[string]any `json:"input"`
 }
 
 func (p *Plane) Execute(req ExecRequest) *Execution {

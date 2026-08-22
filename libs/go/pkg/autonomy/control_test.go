@@ -134,18 +134,20 @@ func TestTruthFailBlocksPublish(t *testing.T) {
 }
 
 func TestComplianceFailBlocksPublish(t *testing.T) {
-	p := NewPlane()
-	p.Production = true
-	_ = p.Enable("tenant-a", "AGT-014", admin())
-	ex := p.Execute(ExecRequest{
-		AgentID: "AGT-014", Actor: admin(), Brand: true,
-		Tools: []ToolStep{{ToolID: "publish_content", Input: map[string]any{"content_id": "c", "body": "contact person@example.com", "brand_identity_applied": true}}},
-	})
-	if ex.Status != StatusBlocked || ex.Error != "COMPLIANCE_FAILED" {
-		t.Fatalf("%+v", ex)
-	}
+    p := NewPlane()
+    p.Production = true
+    // Ensure Truth engine passes so that Compliance failure is isolated
+    p.Truth = func(text string) (bool, error) { return true, nil }
+    p.Compliance = func(text string) (bool, error) { return false, nil }
+    _ = p.Enable("tenant-a", "AGT-014", admin())
+    ex := p.Execute(ExecRequest{
+        AgentID: "AGT-014", Actor: admin(), Brand: true,
+        Tools: []ToolStep{{ToolID: "publish_content", Input: map[string]any{"content_id": "c", "body": "contact person@example.com", "brand_identity_applied": true}}},
+    })
+    if ex.Status != StatusBlocked || ex.Error != "COMPLIANCE_FAILED" {
+        t.Fatalf("%+v", ex)
+    }
 }
-
 func TestTruthUnavailableBlocksPublish(t *testing.T) {
 	p := NewPlane()
 	p.Production = true

@@ -1,6 +1,9 @@
 package autonomy
 
-import "strings"
+import (
+    "log"
+    "strings"
+)
 
 // Maturity is computed. CERTIFIED is never assigned by this registry.
 const (
@@ -130,11 +133,15 @@ func LookupAgent(id string) (AgentSpec, bool) {
 }
 
 func LookupTool(id string) (ToolSpec, bool) {
-	id = strings.TrimSpace(id)
-	for _, t := range CanonicalTools() {
-		if t.ID == id {
-			return t, true
-		}
-	}
-	return ToolSpec{}, false
+    id = strings.TrimSpace(id)
+    log.Printf("LookupTool: searching for %q", id)
+    for _, t := range CanonicalTools() {
+        log.Printf("LookupTool: checking %q", t.ID)
+        if t.ID == id {
+            log.Printf("LookupTool: found %q", id)
+            return t, true
+        }
+    }
+    log.Printf("LookupTool: %q NOT found", id)
+    return ToolSpec{}, false
 }
