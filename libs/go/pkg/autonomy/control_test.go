@@ -169,6 +169,57 @@ func TestBypassTruthToolDenied(t *testing.T) {
 	}
 }
 
+func TestEnableThenResolveSamePlane(t *testing.T) {
+	p := NewPlane()
+	if err := p.Enable("tenant-a", "AGT-014", admin()); err != nil {
+		t.Fatal(err)
+	}
+	if _, m, err := p.Resolve("AGT-014", admin()); err != nil || m != MaturityExecutable {
+		t.Fatalf("expected executable after enable: %s %v", m, err)
+	}
+	ex := p.Execute(ExecRequest{AgentID: "AGT-014", Actor: admin()})
+	if ex.Error == "DISABLED_AGENT" {
+		t.Fatalf("must not be DISABLED_AGENT after Enable on same plane: %+v", ex)
+	}
+}
+
+func TestEnableAgentIDMustCanonicalize(t *testing.T) {
+	p := NewPlane()
+	if err := p.Enable("tenant-a", " agt-014 ", admin()); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := p.Resolve("AGT-014", admin()); err != nil {
+		t.Fatalf("Resolve after Enable with unnormalized agent id: %v", err)
+	}
+}
+
+func TestEnableDoesNotLeakAcrossTenants(t *testing.T) {
+	p := NewPlane()
+	if err := p.Enable("tenant-a", "AGT-014", admin()); err != nil {
+		t.Fatal(err)
+	}
+	other := admin()
+	other.TenantID = "tenant-b"
+	if _, _, err := p.Resolve("AGT-014", other); err == nil || err.Error() != "DISABLED_AGENT" {
+		t.Fatalf("expected DISABLED_AGENT for other tenant, got %v", err)
+	}
+}
+
+func TestAnalyzeStoryOnPublisherIsUnauthorizedNotDisabled(t *testing.T) {
+	p := NewPlane()
+	_ = p.Enable("tenant-a", "AGT-014", admin())
+	ex := p.Execute(ExecRequest{
+		AgentID: "AGT-014", Actor: admin(),
+		Tools: []ToolStep{{ToolID: "analyze_story", Input: map[string]any{"tenant_id": "tenant-a", "text": "x"}}},
+	})
+	if ex.Error == "DISABLED_AGENT" {
+		t.Fatal("Resolve should succeed after Enable")
+	}
+	if ex.Error != "UNAUTHORIZED_TOOL" {
+		t.Fatalf("AGT-014 must not receive analyze_story: %+v", ex)
+	}
+}
+
 func TestCrossTenantGetDenied(t *testing.T) {
 	p := NewPlane()
 	_ = p.Enable("tenant-a", "AGT-026", admin())

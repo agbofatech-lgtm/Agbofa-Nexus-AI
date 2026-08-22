@@ -22,5 +22,15 @@ func AllowPlaneTestAuth(env config.Environment, planeTestAuth bool, token string
 }
 
 func TestAuthPrincipal() (subject, tenant string, roles []string) {
-	return "test-actor", "tenant-a", []string{"TENANT_ADMIN"}
+	return TestAuthPrincipalFor("")
+}
+
+// TestAuthPrincipalFor binds the test bearer to an explicit tenant.
+// Empty tenant keeps the default fixture tenant-a. This does not skip Enable().
+func TestAuthPrincipalFor(tenant string) (subject, tenantOut string, roles []string) {
+	tenant = strings.TrimSpace(tenant)
+	if tenant == "" {
+		tenant = "tenant-a"
+	}
+	return "test-actor", tenant, []string{"TENANT_ADMIN"}
 }

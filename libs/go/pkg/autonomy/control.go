@@ -5,6 +5,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"log"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -113,11 +115,22 @@ func fp(action, target string) string {
 	return hex.EncodeToString(sum[:16])
 }
 
+func (p *Plane) Identity() string {
+	return fmt.Sprintf("%p", p)
+}
+
+func tenantKey(tenant string) string {
+	return strings.TrimSpace(tenant)
+}
+
 func (p *Plane) Enable(tenant, agent string, actor authz.Principal) error {
-	if actor.TenantID != tenant || !CanMutateControl(actor) {
+	tenant = tenantKey(tenant)
+	actorTenant := tenantKey(actor.TenantID)
+	if actorTenant == "" || actorTenant != tenant || !CanMutateControl(actor) {
 		return fmt.Errorf("UNAUTHORIZED_AGENT")
 	}
-	if _, ok := LookupAgent(agent); !ok {
+	spec, ok := LookupAgent(agent)
+	if !ok {
 		return fmt.Errorf("INVALID_AGENT")
 	}
 	p.mu.Lock()
@@ -125,7 +138,10 @@ func (p *Plane) Enable(tenant, agent string, actor authz.Principal) error {
 	if p.enabled[tenant] == nil {
 		p.enabled[tenant] = map[string]bool{}
 	}
-	p.enabled[tenant][agent] = true
+	p.enabled[tenant][spec.ID] = true
+	if debugAutonomy() {
+		log.Printf("ENABLE plane=%s tenant=%q agent=%q stored=%q enabled=true", p.Identity(), tenant, agent, spec.ID)
+	}
 	return nil
 }
 
@@ -144,7 +160,7 @@ func (p *Plane) SetKill(tenant string, actor authz.Principal, engaged bool) erro
 }
 
 func (p *Plane) Resolve(agentID string, actor authz.Principal) (AgentSpec, string, error) {
-	if actor.SubjectID == "" || actor.TenantID == "" {
+	if actor.SubjectID == "" || tenantKey(actor.TenantID) == "" {
 		return AgentSpec{}, "", fmt.Errorf("DENIED")
 	}
 	spec, ok := LookupAgent(agentID)
@@ -154,9 +170,14 @@ func (p *Plane) Resolve(agentID string, actor authz.Principal) (AgentSpec, strin
 	if spec.Implementation != MaturityImplemented {
 		return spec, MaturityDeclared, fmt.Errorf("INVALID_AGENT")
 	}
+	tenant := tenantKey(actor.TenantID)
 	p.mu.Lock()
-	on := p.enabled[actor.TenantID][agentID]
+	on := p.enabled[tenant][spec.ID]
 	p.mu.Unlock()
+	if debugAutonomy() {
+		log.Printf("RESOLVE plane=%s tenant=%q agent_in=%q agent_key=%q implemented=%v enabled=%v maturity=%s",
+			p.Identity(), tenant, agentID, spec.ID, spec.Implementation == MaturityImplemented, on, spec.Implementation)
+	}
 	if !on {
 		return spec, MaturityImplemented, fmt.Errorf("DISABLED_AGENT")
 	}

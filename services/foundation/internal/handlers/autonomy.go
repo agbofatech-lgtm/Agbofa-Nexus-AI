@@ -457,8 +457,16 @@ func (h AutonomyHTTP) EnableAgent(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusForbidden, err.Error())
 		return
 	}
-	_ = h.Store.Audit(r.Context(), p.TenantID, p.SubjectID, "ENABLE_AGENT", req.AgentID, "OK", "tenant enable only; not certification", r.Header.Get("X-Correlation-ID"))
-	writeJSON(w, http.StatusOK, map[string]any{"agent_id": req.AgentID, "enabled": true, "certified": false, "production_autonomy": false})
+	spec, _ := autonomy.LookupAgent(req.AgentID)
+	_ = h.Store.Audit(r.Context(), p.TenantID, p.SubjectID, "ENABLE_AGENT", spec.ID, "OK", "tenant enable only; not certification", r.Header.Get("X-Correlation-ID"))
+	writeJSON(w, http.StatusOK, map[string]any{
+		"agent_id":            spec.ID,
+		"tenant_id":           p.TenantID,
+		"plane":               h.Plane.Identity(),
+		"enabled":             true,
+		"certified":           false,
+		"production_autonomy": false,
+	})
 }
 
 func (h AutonomyHTTP) Execute(w http.ResponseWriter, r *http.Request) {
@@ -492,6 +500,8 @@ func (h AutonomyHTTP) Execute(w http.ResponseWriter, r *http.Request) {
 	_ = h.Store.Audit(r.Context(), p.TenantID, p.SubjectID, "EXECUTE_AGENT", req.AgentID, ex.Status, ex.Error, r.Header.Get("X-Correlation-ID"))
 	writeJSON(w, http.StatusOK, map[string]any{
 		"execution":           ex,
+		"principal_tenant":    p.TenantID,
+		"plane":               h.Plane.Identity(),
 		"production_autonomy": false,
 		"provider_called":     false,
 		"execution_reality":   "CONTROLLED",

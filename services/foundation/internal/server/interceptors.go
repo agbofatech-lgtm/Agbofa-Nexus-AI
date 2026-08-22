@@ -75,7 +75,7 @@ func authenticate(verifier *auth.Verifier, public map[string]struct{}, env confi
 					writeError(w, http.StatusUnauthorized, "unauthenticated")
 					return
 				}
-				sub, tenant, roles := autonomy.TestAuthPrincipal()
+				sub, tenant, roles := autonomy.TestAuthPrincipalFor(r.Header.Get("X-Agbofa-Test-Tenant"))
 				ctx := authz.WithPrincipal(r.Context(), authz.Principal{SubjectID: sub, TenantID: tenant, Roles: roles})
 				ctx = database.WithTenant(ctx, tenant)
 				next.ServeHTTP(w, r.WithContext(ctx))
