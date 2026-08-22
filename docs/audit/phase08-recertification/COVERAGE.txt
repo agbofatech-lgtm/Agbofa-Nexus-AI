@@ -1,0 +1,6 @@
+TIMESTAMP: 2026-08-22 15:37:26
+COMMAND: go test -coverprofile=coverage.out ./libs/go/pkg/autonomy
+EXIT CODE: 1
+OUTPUT:
+
+RESULT: NOT MEASURED — WORKSPACE ISSUE

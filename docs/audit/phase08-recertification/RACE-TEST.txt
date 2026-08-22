@@ -1,0 +1,8 @@
+TIMESTAMP: 2026-08-22 15:36:40
+ENVIRONMENT: Windows 11
+GO: go version go1.22.12 windows/amd64
+COMMAND: go test -race ./libs/go/... ./services/foundation/...
+EXIT CODE: 1
+OUTPUT:
+
+RESULT: SKIPPED — CGO LIMITATION

@@ -2,8 +2,8 @@
 
 **Status:** ✅ **CERTIFIED (Windows)**  
 **Date:** 2026-08-22  
-**Product Tested SHA:** `3b0435bbf52829d9f48b50d87335a39faef99975`  
-**Documentation SHA:** `<new commit>`  
+**Product Tested SHA: 3c2897d59631b524d0cd3cb8698d8dfc64cad842
+**Documentation SHA: e91d3c1cafce8bee2b4e693b77567631e4602f35
 **Environment:** Windows 11, Go 1.22.12, PostgreSQL 16  
 
 ## Evidence Summary
