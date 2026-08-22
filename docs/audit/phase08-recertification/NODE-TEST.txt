@@ -1,0 +1,348 @@
+timestamp: 2026-08-22T08:48:23Z
+sha: 0b25e0996fbc2d8784e02bcea4382096b313d9ce
+start_sha: 0b25e0996fbc2d8784e02bcea4382096b313d9ce
+tested_sha: 0b25e0996fbc2d8784e02bcea4382096b313d9ce
+branch: arena/01a01a0f-agbofa-nexus-ai
+environment: Arena Linux e2b.local Debian 12 — NOT Windows 11
+node: v22.22.3
+npm: 10.9.8
+command: node --experimental-strip-types --test apps/web/lib/autonomy-control/{plane,truth,compliance,policy-integration,testauth}.test.ts apps/web/lib/bff/jwt.test.ts apps/web/lib/bff/csrf.test.ts
+level: UNIT
+passed: 49
+failed: 0
+skipped: 0
+result: PASS (unit only; not certification)
+limitation: Node unit tests are not live Foundation Execute, Go, or PostgreSQL evidence
+
+TAP version 13
+# (node:1863) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Agbofa-Nexus-AI/apps/web/lib/autonomy-control/compliance.test.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /home/user/Agbofa-Nexus-AI/apps/web/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: compliant fixture passes development rules
+ok 1 - compliant fixture passes development rules
+  ---
+  duration_ms: 1.614572
+  type: 'test'
+  ...
+# Subtest: prohibited term fails
+ok 2 - prohibited term fails
+  ---
+  duration_ms: 0.231706
+  type: 'test'
+  ...
+# Subtest: supported PII email fails
+ok 3 - supported PII email fails
+  ---
+  duration_ms: 0.332139
+  type: 'test'
+  ...
+# Subtest: supported SSN-like pattern fails
+ok 4 - supported SSN-like pattern fails
+  ---
+  duration_ms: 0.290995
+  type: 'test'
+  ...
+# Subtest: empty content is unavailable not compliant
+ok 5 - empty content is unavailable not compliant
+  ---
+  duration_ms: 0.276876
+  type: 'test'
+  ...
+# Subtest: deterministic repeats
+ok 6 - deterministic repeats
+  ---
+  duration_ms: 0.979849
+  type: 'test'
+  ...
+# (node:1870) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Agbofa-Nexus-AI/apps/web/lib/autonomy-control/plane.test.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /home/user/Agbofa-Nexus-AI/apps/web/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: 5.1 catalog has 28 unique ids and does not claim certified or default-executable
+ok 7 - 5.1 catalog has 28 unique ids and does not claim certified or default-executable
+  ---
+  duration_ms: 2.958745
+  type: 'test'
+  ...
+# Subtest: 5.1 lookup, invalid, disabled, unauthorized, tenant-aware
+ok 8 - 5.1 lookup, invalid, disabled, unauthorized, tenant-aware
+  ---
+  duration_ms: 1.044419
+  type: 'test'
+  ...
+# Subtest: 5.2 successful, failed, timeout, cancel, duplicate, concurrent, unauthorized, invalid, tenant mismatch, runaway
+ok 9 - 5.2 successful, failed, timeout, cancel, duplicate, concurrent, unauthorized, invalid, tenant mismatch, runaway
+  ---
+  duration_ms: 2.953345
+  type: 'test'
+  ...
+# Subtest: 5.3 tools: valid, unknown, unauthorized, invalid input, wrong tenant, high-risk without approval
+ok 10 - 5.3 tools: valid, unknown, unauthorized, invalid input, wrong tenant, high-risk without approval
+  ---
+  duration_ms: 0.918648
+  type: 'test'
+  ...
+# Subtest: 5.4 permissions: forbidden tools, oauth, db, social, wrong tenant
+ok 11 - 5.4 permissions: forbidden tools, oauth, db, social, wrong tenant
+  ---
+  duration_ms: 0.992477
+  type: 'test'
+  ...
+# Subtest: 5.5 policy: allow, deny, approval, truth, compliance, brand, autonomy disabled, kill, budget
+ok 12 - 5.5 policy: allow, deny, approval, truth, compliance, brand, autonomy disabled, kill, budget
+  ---
+  duration_ms: 0.546527
+  type: 'test'
+  ...
+# Subtest: 5.6 approval: block execute, unauthorized approver, mutate, expire, bypass
+ok 13 - 5.6 approval: block execute, unauthorized approver, mutate, expire, bypass
+  ---
+  duration_ms: 1.705826
+  type: 'test'
+  ...
+# Subtest: 5.7 execution state transitions and tenant isolation
+ok 14 - 5.7 execution state transitions and tenant isolation
+  ---
+  duration_ms: 0.45177
+  type: 'test'
+  ...
+# Subtest: 5.8 memory tenant isolation, unauthorized, delete, limit
+ok 15 - 5.8 memory tenant isolation, unauthorized, delete, limit
+  ---
+  duration_ms: 0.755198
+  type: 'test'
+  ...
+# Subtest: 5.9 budget exhausted and bypass denied
+ok 16 - 5.9 budget exhausted and bypass denied
+  ---
+  duration_ms: 0.751618
+  type: 'test'
+  ...
+# Subtest: 5.10 rate limit throttles repeated tool calls
+ok 17 - 5.10 rate limit throttles repeated tool calls
+  ---
+  duration_ms: 0.468838
+  type: 'test'
+  ...
+# Subtest: 5.11 kill switch blocks new execution and tools
+ok 18 - 5.11 kill switch blocks new execution and tools
+  ---
+  duration_ms: 0.317232
+  type: 'test'
+  ...
+# Subtest: 5.12-5.13 workflow cannot skip gates or call provider; Phase 04 port only
+ok 19 - 5.12-5.13 workflow cannot skip gates or call provider; Phase 04 port only
+  ---
+  duration_ms: 1.343432
+  type: 'test'
+  ...
+# Subtest: 5.14 classify duplicate publish via idempotency of executions
+ok 20 - 5.14 classify duplicate publish via idempotency of executions
+  ---
+  duration_ms: 0.232372
+  type: 'test'
+  ...
+# Subtest: 5.15 adversarial denials
+ok 21 - 5.15 adversarial denials
+  ---
+  duration_ms: 0.351687
+  type: 'test'
+  ...
+# Subtest: 5.16 audit reconstructs who/what/when and redacts secrets
+ok 22 - 5.16 audit reconstructs who/what/when and redacts secrets
+  ---
+  duration_ms: 0.37815
+  type: 'test'
+  ...
+# Subtest: 5.17 concurrency limit
+ok 23 - 5.17 concurrency limit
+  ---
+  duration_ms: 0.197807
+  type: 'test'
+  ...
+# Subtest: 5.18 controlled workflow without fabricating provider publication
+ok 24 - 5.18 controlled workflow without fabricating provider publication
+  ---
+  duration_ms: 0.534905
+  type: 'test'
+  ...
+# Subtest: production autonomy remains disabled on the default plane
+ok 25 - production autonomy remains disabled on the default plane
+  ---
+  duration_ms: 1.080197
+  type: 'test'
+  ...
+# (node:1877) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Agbofa-Nexus-AI/apps/web/lib/autonomy-control/policy-integration.test.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /home/user/Agbofa-Nexus-AI/apps/web/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: truth fail blocks fact validation
+ok 26 - truth fail blocks fact validation
+  ---
+  duration_ms: 4.520011
+  type: 'test'
+  ...
+# Subtest: compliance fail blocks check
+ok 27 - compliance fail blocks check
+  ---
+  duration_ms: 0.907572
+  type: 'test'
+  ...
+# Subtest: unknown truth is not verified
+ok 28 - unknown truth is not verified
+  ---
+  duration_ms: 0.720989
+  type: 'test'
+  ...
+# Subtest: safe fixture can pass both engines
+ok 29 - safe fixture can pass both engines
+  ---
+  duration_ms: 0.972341
+  type: 'test'
+  ...
+# Subtest: bypass_truth remains forbidden
+ok 30 - bypass_truth remains forbidden
+  ---
+  duration_ms: 4.033038
+  type: 'test'
+  ...
+# (node:1884) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Agbofa-Nexus-AI/apps/web/lib/autonomy-control/testauth.test.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /home/user/Agbofa-Nexus-AI/apps/web/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: no token is rejected
+ok 31 - no token is rejected
+  ---
+  duration_ms: 0.838161
+  type: 'test'
+  ...
+# Subtest: invalid token is rejected even in test mode
+ok 32 - invalid token is rejected even in test mode
+  ---
+  duration_ms: 0.169954
+  type: 'test'
+  ...
+# Subtest: test token accepted only when PLANE_TEST_AUTH and non-production
+ok 33 - test token accepted only when PLANE_TEST_AUTH and non-production
+  ---
+  duration_ms: 0.11139
+  type: 'test'
+  ...
+# Subtest: test token rejected in production and staging
+ok 34 - test token rejected in production and staging
+  ---
+  duration_ms: 0.108604
+  type: 'test'
+  ...
+# Subtest: test token rejected when plane test auth is off
+ok 35 - test token rejected when plane test auth is off
+  ---
+  duration_ms: 0.169645
+  type: 'test'
+  ...
+# (node:1891) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Agbofa-Nexus-AI/apps/web/lib/autonomy-control/truth.test.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /home/user/Agbofa-Nexus-AI/apps/web/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: safe fixture verifies
+ok 36 - safe fixture verifies
+  ---
+  duration_ms: 0.880998
+  type: 'test'
+  ...
+# Subtest: known-false claim fails without treating as unknown
+ok 37 - known-false claim fails without treating as unknown
+  ---
+  duration_ms: 0.161713
+  type: 'test'
+  ...
+# Subtest: empty and whitespace are unavailable, not true
+ok 38 - empty and whitespace are unavailable, not true
+  ---
+  duration_ms: 0.267452
+  type: 'test'
+  ...
+# Subtest: unknown claim is not verified
+ok 39 - unknown claim is not verified
+  ---
+  duration_ms: 0.129224
+  type: 'test'
+  ...
+# Subtest: deterministic repeats
+ok 40 - deterministic repeats
+  ---
+  duration_ms: 0.763765
+  type: 'test'
+  ...
+# (node:1898) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Agbofa-Nexus-AI/apps/web/lib/bff/csrf.test.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /home/user/Agbofa-Nexus-AI/apps/web/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: CSRF tokens must match constantly
+ok 41 - CSRF tokens must match constantly
+  ---
+  duration_ms: 0.795671
+  type: 'test'
+  ...
+# Subtest: rate limit identity is not X-Forwarded-For
+ok 42 - rate limit identity is not X-Forwarded-For
+  ---
+  duration_ms: 0.200732
+  type: 'test'
+  ...
+# Subtest: rate limit rejects after window count
+ok 43 - rate limit rejects after window count
+  ---
+  duration_ms: 0.182001
+  type: 'test'
+  ...
+# (node:1905) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Agbofa-Nexus-AI/apps/web/lib/bff/jwt.test.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /home/user/Agbofa-Nexus-AI/apps/web/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: verifyAccessToken accepts a valid RS256 token
+ok 44 - verifyAccessToken accepts a valid RS256 token
+  ---
+  duration_ms: 4.034307
+  type: 'test'
+  ...
+# Subtest: rejects alg=none
+ok 45 - rejects alg=none
+  ---
+  duration_ms: 2.698411
+  type: 'test'
+  ...
+# Subtest: rejects invalid signature
+ok 46 - rejects invalid signature
+  ---
+  duration_ms: 1.522952
+  type: 'test'
+  ...
+# Subtest: rejects wrong issuer and audience
+ok 47 - rejects wrong issuer and audience
+  ---
+  duration_ms: 2.554433
+  type: 'test'
+  ...
+# Subtest: rejects expired and nbf-future tokens
+ok 48 - rejects expired and nbf-future tokens
+  ---
+  duration_ms: 3.404536
+  type: 'test'
+  ...
+# Subtest: fails closed without PEM
+ok 49 - fails closed without PEM
+  ---
+  duration_ms: 0.217102
+  type: 'test'
+  ...
+1..49
+# tests 49
+# suites 0
+# pass 49
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1021.285211

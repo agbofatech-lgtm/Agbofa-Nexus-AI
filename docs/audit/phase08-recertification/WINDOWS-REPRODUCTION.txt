@@ -1,0 +1,10 @@
+timestamp: 2026-08-22T08:48:23Z
+sha: 0b25e0996fbc2d8784e02bcea4382096b313d9ce
+branch: arena/01a01a0f-agbofa-nexus-ai
+command: uname -a ; cat /etc/os-release ; go version ; psql --version
+environment: Arena Linux e2b.local, Debian GNU/Linux 12 (bookworm), kernel 6.1.158+ x86_64
+required: Windows 11 + Go 1.22 + PostgreSQL 16
+actual: NOT Windows 11; go: command not found; psql: command not found
+result: FAIL / BLOCKED
+limitation: this Arena session cannot reproduce the Windows development runtime
+passwords: not recorded

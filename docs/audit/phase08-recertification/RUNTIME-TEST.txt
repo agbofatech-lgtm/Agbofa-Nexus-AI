@@ -1,0 +1,14 @@
+timestamp: 2026-08-22T08:48:23Z
+sha: 0b25e0996fbc2d8784e02bcea4382096b313d9ce
+branch: arena/01a01a0f-agbofa-nexus-ai
+environment: Arena Linux e2b.local — no Go, no PostgreSQL, no Docker
+command: go run ./cmd/server (services/foundation) ; live POST /v1/autonomy/execute
+actual: Foundation not started
+result: BLOCKED
+limitation: not mocked; unit tests not substituted for live Execute
+startup: NOT RUN
+service availability: NOT VERIFIED
+database connectivity: NOT VERIFIED
+request handling: NOT VERIFIED
+shutdown: NOT VERIFIED
+VALID REQUEST / AUTH / AUTHZ / TENANT / POLICY / TRUTH / COMPLIANCE / BRAND / EXECUTION / RESULT / AUDIT: NOT VERIFIED LIVE

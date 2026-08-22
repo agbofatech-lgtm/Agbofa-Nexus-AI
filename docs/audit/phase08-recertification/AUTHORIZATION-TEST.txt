@@ -1,0 +1,9 @@
+timestamp: 2026-08-22T08:48:23Z
+sha: 0b25e0996fbc2d8784e02bcea4382096b313d9ce
+branch: arena/01a01a0f-agbofa-nexus-ai
+environment: Arena Linux e2b.local
+command: live unauthenticated / invalid token / expired token / unauthorized role / authorized role HTTP
+actual: Foundation not started
+result: BLOCKED
+unit: jwt.test.ts + testauth.test.ts PASS in NODE-TEST.txt (49/49)
+limitation: client-side/unit JWT tests are not runtime authorization proof

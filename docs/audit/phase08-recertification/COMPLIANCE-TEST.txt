@@ -1,0 +1,10 @@
+timestamp: 2026-08-22T08:48:23Z
+sha: 0b25e0996fbc2d8784e02bcea4382096b313d9ce
+branch: arena/01a01a0f-agbofa-nexus-ai
+environment: Arena Linux e2b.local
+command: node --experimental-strip-types --test apps/web/lib/autonomy-control/compliance.test.ts
+level: UNIT
+result: included in NODE-TEST.txt — 49 pass / 0 fail overall
+unit_cases: fixture compliant; prohibited term fails; email/SSN fail; empty unavailable (not COMPLIANT)
+live Compliance HTTP via Foundation Execute: BLOCKED
+limitation: development policy engine unit tests are not live bypass-proof

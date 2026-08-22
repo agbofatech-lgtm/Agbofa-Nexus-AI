@@ -1,0 +1,24 @@
+timestamp: 2026-08-22T08:48:23Z
+sha: 0b25e0996fbc2d8784e02bcea4382096b313d9ce
+branch: arena/01a01a0f-agbofa-nexus-ai
+environment: Arena Linux e2b.local
+command: git ls-files --stage .dev-social-token-key.txt ; stat (size only) ; classify without printing
+result: BLOCKED for certification-level secret clearance
+
+findings:
+- tracked path: .dev-social-token-key.txt
+- git mode/blob: 100644 9fa041cf7dac69746444b4199c4af8916d365d9b
+- size: 68 bytes (1 line)
+- introduced: d84c6da (Phase 03)
+- PEM header: no
+- PRIVATE KEY marker: no
+- hex/base64-only: no
+- printable-ASCII-only: no
+- PEMs: not committed in this recertification
+- this session added no secrets
+
+classification: pre-existing tracked secret-adjacent artifact (likely a real development social-token key material). Not a harmless empty fixture. Contents NOT printed.
+
+limitation: a live secret remaining in git history/tree blocks CERTIFIED. Rotate out-of-band on the Windows host; do not paste into Arena chat.
+unit JWT/CSRF: PASS in NODE-TEST.txt (not live authorization proof)
+live JWT/RLS/tool-permission HTTP: BLOCKED
