@@ -7,9 +7,9 @@ See `docs/audit/phase08-recertification/` for full evidence.
 | Field | Value |
 |---|---|
 | START SHA | `0b25e0996fbc2d8784e02bcea4382096b313d9ce` |
-| PRODUCT TEST SHA | `2281f7f13b40a35dcc86d00fddef24effc18317c` |
-| FINAL DOCUMENTATION SHA | `30a980201016dbc24d6e250c3a831dc2763b5a29` |
-| REMOTE SHA | `30a980201016dbc24d6e250c3a831dc2763b5a29` |
+| PRODUCT TEST SHA | `3b0435bbf52829d9f48b50d87335a39faef99975` |
+| FINAL DOCUMENTATION SHA | `<new commit>` |
+| REMOTE SHA | `<new commit>` |
 | ENVIRONMENT | Windows 11, Go 1.22.12, PostgreSQL 16 |
 | GO TEST | PASS (full suite on modules; race skipped – CGO limitation) |
 | RACE | SKIPPED (CGO not available; captured in `RACE-TEST.txt`) |
