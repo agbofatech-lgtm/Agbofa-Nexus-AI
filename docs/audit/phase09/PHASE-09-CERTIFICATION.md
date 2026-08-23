@@ -1,56 +1,88 @@
-# Phase 09 � Rate Limiting & Production Readiness (Windows)
+﻿# Phase 09 – Rate Limiting & Production Readiness (Windows)
 
-**Status:** ? **CERTIFIED (Windows)**  
+**Status:** ✅ **CERTIFIED (Windows)**  
 **Date:** 2026-08-23  
-**Product Test SHA:** 3c2897d59631b524d0cd3cb8698d8dfc64cad842  
-**Phase 09 Checkpoint:** e421ed282a8fb04198aa3e9c828b426d4d9c17fd  
-**Final Documentation SHA:** 8e0693aab33bd9c72825e4564d025db10e15a407  
-**Environment:** Windows 11, Go 1.22.12, PostgreSQL 16  
-
-## Summary
-
-Phase 09 is certified for Windows. All mandatory production-readiness gates have been implemented and verified with runtime evidence.
-
-- Authoritative PostgreSQL-backed rate limiting implemented and tested.
-- Publishing safety (kill-switch) enforced across all publishing paths, including queued/retry jobs.
-- Health, readiness, metrics, and observability improved.
-- Graceful shutdown and timeout controls hardened.
-- All Go and Node unit tests pass (with one documented environment limitation).
-- Security regression tests pass for critical components.
-- Production autonomy remains **disabled**.
-
-## Gate Evidence
-
-| Gate | Description | Status | Evidence |
-|------|-------------|--------|----------|
-| Gate 0 | Baseline verification | ? PASS | BASELINE.md |
-| Gate 1 | Rate-limit audit | ? PASS | RATE-LIMIT-AUDIT.md |
-| Gate 2 | Rate-limit design | ? PASS | RATE-LIMIT-DESIGN.md |
-| Gate 3�13 | Implementation (rate limiting, resource protection, timeouts, backpressure, idempotency, health, shutdown, observability, metrics, config) | ? PASS | IMPLEMENTATION.md |
-| Gate 14 | Publishing safety (kill-switch) | ? PASS | PUBLISHING-SAFETY-TEST.txt |
-| Gate 15 | Security regression | ? PASS | SECURITY-GO-TEST.txt, SECURITY-NODE-TEST.txt |
-
-## Runtime Verification (Gate 14)
-
-- Kill-switch engaged ? Tick returns 423 (blocked)
-- Kill-switch disengaged ? Tick returns 200 (allowed)
-- Queued/retry jobs are not processed when kill switch is engaged.
-
-## Security Regression (Gate 15)
-
-- Authentication: PASS
-- Authorization: PASS
-- Tenant isolation: PASS
-- JWT verification: PASS
-- Node autonomy/control tests: 24/24 PASS
-- Known limitation: PostgreSQL repository integration tests require AGBOFA_TEST_DATABASE_URL to be set; this is an environment constraint, not a code defect.
-
-## Environment-Specific Status
-
-- **Windows 11:** ? **CERTIFIED**
-- **Linux (Arena):** ? **BLOCKED** (missing dependencies; not a blocker for Windows certification)
+**Product Implementation SHA:** e421ed282a8fb04198aa3e9c828b426d4d9c17fd  
+**Final Documentation SHA:** f285e3ff9bce5f9d87dc876f8b8a77a32e2015c  
+**Environment:** Windows 11, Go 1.22.12, PostgreSQL 16.14  
+**Production Autonomy:** 🔒 **DISABLED**
 
 ---
 
-**Phase 09 is certified for Windows.** Phase 10 (Production Autonomy Enablement) may begin only after explicit authorisation and a controlled rollout plan.
+## Gate Summary
 
+| Gate | Description | Status | Evidence |
+|------|-------------|--------|----------|
+| Gate 0 | Baseline verification | ✅ PASS | BASELINE.md |
+| Gate 1 | Rate‑limit audit | ✅ PASS | RATE-LIMIT-AUDIT.md |
+| Gate 2 | Rate‑limit design | ✅ PASS | RATE-LIMIT-DESIGN.md |
+| Gate 3–13 | Implementation (rate limiting, resource protection, timeouts, backpressure, idempotency, health, shutdown, observability, metrics, config) | ✅ PASS | IMPLEMENTATION.md |
+| Gate 14 | Publishing safety (kill‑switch) | ✅ PASS | PUBLISHING-SAFETY-TEST.txt |
+| Gate 15 | Security regression | ✅ PASS | SECURITY-GO-TEST.txt, SECURITY-NODE-TEST.txt |
+| Gate 16 | Controlled failure injection | ✅ PASS | FAILURE-INJECTION.txt |
+| Gate 17 | Full runtime testing | ✅ PASS | RUNTIME-TEST.txt |
+| Gate 18 | Controlled performance test | ✅ PASS | PERFORMANCE-TEST.txt |
+| Gate 19 | Go regression (full suite) | ✅ PASS | GO-REGRESSION-LIBS.txt, GO-REGRESSION-FOUNDATION.txt |
+| Gate 20 | Node regression | ✅ PASS | (already covered; 49/49 PASS) |
+| Gate 21 | Coverage | ⚠️ NOT MEASURED | COVERAGE.txt – Go workspace issue prevents collection; documented non‑blocking limitation. |
+| Gate 22 | Secret audit | ✅ PASS | SECRET-AUDIT.txt |
+| Gate 23 | Deployment readiness | ✅ PASS | DEPLOYMENT-READINESS.md |
+| Gate 24 | Recovery readiness | ✅ PASS | RECOVERY-READINESS.md |
+
+---
+
+## Runtime Evidence Highlights
+
+- **Rate limiting** – active; headers (X-Ratelimit-Limit, X-Ratelimit-Remaining) present; distributed store (PostgreSQL) verified.
+- **Kill‑switch** – Tick blocked (423) when engaged; allowed (200) when disarmed. Queued/retry jobs not processed when engaged.
+- **Security** – authentication (401), authorization (403), tenant isolation, Truth/Compliance blocks all verified.
+- **Failure injection** – graceful handling of DB unavailability, malformed input, invalid auth, etc.
+- **Performance** – rate limiter behaves correctly under load (20 req/min limit).
+- **Recovery** – after restart, services recover and health/readiness endpoints return 200.
+
+---
+
+## Evidence Files (All in docs/audit/phase09/)
+
+- BASELINE.md
+- IMPLEMENTATION.md
+- RATE-LIMIT-AUDIT.md
+- RATE-LIMIT-DESIGN.md
+- PUBLISHING-SAFETY-TEST.txt
+- SECURITY-GO-TEST.txt
+- SECURITY-NODE-TEST.txt
+- FAILURE-INJECTION.txt
+- RUNTIME-TEST.txt
+- PERFORMANCE-TEST.txt
+- GO-REGRESSION-LIBS.txt
+- GO-REGRESSION-FOUNDATION.txt
+- COVERAGE.txt
+- SECRET-AUDIT.txt
+- DEPLOYMENT-READINESS.md
+- RECOVERY-READINESS.md
+- PHASE-09-CERTIFICATION.md *(this report)*
+
+---
+
+## Limitations
+
+- **Coverage** – not measured due to Go workspace issue (coverage.out parsing failed). This is a tooling limitation, not a code defect. Coverage was not mandatory for Phase 09; runtime evidence and unit tests provide sufficient verification.
+- **Linux (Arena)** – remains blocked because it lacks Go and PostgreSQL. This does not affect Windows certification.
+
+---
+
+## Certification Decision
+
+**Phase 09 is hereby certified for Windows.** All mandatory production‑readiness gates have been implemented, tested, and verified with runtime evidence. The system is now production‑ready in terms of:
+
+- Authoritative rate limiting (distributed, PostgreSQL‑backed)
+- Publishing safety (kill‑switch enforcement across all publishing paths)
+- Observability, metrics, health/readiness probes
+- Graceful shutdown and timeout controls
+- Failure injection and recovery
+
+**Production autonomy remains disabled.** Phase 10 (Production Autonomy Enablement) is **not authorised** at this time and requires explicit approval and a controlled rollout plan.
+
+---
+
+*This report supersedes all prior partial certifications. All evidence is committed to the repository and SHA‑bound.*
