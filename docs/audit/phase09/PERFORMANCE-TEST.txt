@@ -1,0 +1,27 @@
+﻿=== Gate 18 – Controlled Performance Test ===
+Timestamp: 2026-08-23 06:16:11
+Git SHA: a3038618ba5c7bb56fca77ad9376cf53748d14c4
+Environment: Windows 11, Go 1.22, PostgreSQL 16
+
+Test: Send 7 requests to /v1/autonomy/execute (rate limit = 20/min)
+
+Results:
+
+Request Status Headers                                                                                                                             
+------- ------ -------                                                                                                                             
+      1    200 {[X-Correlation-Id, cbb1690571774c1c], [X-Ratelimit-Limit, 20], [X-Ratelimit-Remaining, 19], [X-Ratelimit-Reset, 2026-08-23T06:16...
+      2    200 {[X-Correlation-Id, 8585bf254ac1ddd7], [X-Ratelimit-Limit, 20], [X-Ratelimit-Remaining, 18], [X-Ratelimit-Reset, 2026-08-23T06:16...
+      3    200 {[X-Correlation-Id, 38dac4391aa1aa3f], [X-Ratelimit-Limit, 20], [X-Ratelimit-Remaining, 17], [X-Ratelimit-Reset, 2026-08-23T06:16...
+      4    200 {[X-Correlation-Id, 8e184fd34f26e571], [X-Ratelimit-Limit, 20], [X-Ratelimit-Remaining, 16], [X-Ratelimit-Reset, 2026-08-23T06:16...
+      5    200 {[X-Correlation-Id, 19ea9dae3e824cfb], [X-Ratelimit-Limit, 20], [X-Ratelimit-Remaining, 15], [X-Ratelimit-Reset, 2026-08-23T06:16...
+      6    200 {[X-Correlation-Id, cef817f62771a7cf], [X-Ratelimit-Limit, 20], [X-Ratelimit-Remaining, 14], [X-Ratelimit-Reset, 2026-08-23T06:16...
+      7    200 {[X-Correlation-Id, d1e57ee659659613], [X-Ratelimit-Limit, 20], [X-Ratelimit-Remaining, 13], [X-Ratelimit-Reset, 2026-08-23T06:16...
+
+
+
+
+Rate-limit headers present: YES
+X-Ratelimit-Limit: 20
+X-Ratelimit-Remaining decremented: 18 ... etc.
+
+Result: PASS

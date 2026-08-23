@@ -1,0 +1,79 @@
+﻿=== Gate 17 – Runtime Testing (Full) ===
+Timestamp: 2026-08-23 02:24:12
+Git SHA: 51de806da65209d5c825e867a2f43d288adc716f
+Environment: Windows 11, Go 1.22, PostgreSQL 16
+
+[Health Check]
+HTTP/1.1 200 OK Content-Type: application/json X-Agbofa-Build: rpc-diag-5e8ad11 X-Correlation-Id: 5cd1a3f4cab9ce4a Date: Sun, 23 Aug 2026 02:24:13 GMT Content-Length: 182  {"build":"rpc-diag-5e8ad11","environment":"development","production_autonomy_disabled":true,"rate_limit_enabled":true,"status":"ok","ts":"2026-08-23T02:24:13Z","uptime_seconds":405}
+
+[Authentication]
+Token: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImsxIn0.eyJpc3MiOiJodHRwOi8vMTI3LjAuMC4xOjgwODAiLCJhdWQiOiJhZ2JvZmEtbmV4dXMtYWkiLCJzdWIiOiIzNGZhOWNjMC0xZTQ4LTQ5NjgtOTMzMi0zOWU2YjRkNjAwNTIiLCJ0ZW5hbnRfaWQiOiI4ZWJmOTIxYS0zMTEzLTRhYjUtODI2NS05NmU1NTVlMjUxMmYiLCJyb2xlcyI6WyJBRE1JTiJdLCJqdGkiOiJkNzdkNzBkMjAzNTQyOTVjNGYxYTExZDQ5YTQzYmM0NyIsImlhdCI6MTc4NzQ1MTQ5NywibmJmIjoxNzg3NDUxNDk3LCJleHAiOjE3ODc0NTIzOTd9.d39Kv0xFolo8exLJXliBtv0WoICUO4BZBQUs_9wnKwOKH9JLngbzlKENySjlECKmoHjdgFIiB4edy1sR1CY3enOWJrEuAG2ll1_DvXKgpmVKZwf4Qia9vaVP35f7bGxzyRQMbBdyW5oNhLq014XYltO53fYPtuTd0turMbkx_8EYZkqWtoLggHONkYF-ZiUfcAkJtIXe7Md4TDVIZHbAdgSCyQ_D0FNVV90dgmMku-m4dc_ZpMWXE9YsiGxzyGlhAz_6sPkWiyYXYpj8Y3GzPFFPeOgNGvg8Ndt1r7DG6qHkuKTbbp4JI-Hx58sgi4x1dzArhqfvcTg2FkAtW8bnnQ
+
+[Invalid Auth - No Token]
+HTTP/1.1 401 Unauthorized Content-Type: application/json X-Correlation-Id: bf4c93297e5e55b4 Date: Sun, 23 Aug 2026 02:24:13 GMT Content-Length: 69  {"error":"unauthenticated","status":401,"ts":"2026-08-23T02:24:13Z"}
+
+[Invalid Auth - Malformed Token]
+HTTP/1.1 401 Unauthorized Content-Type: application/json X-Correlation-Id: 6935bb51a5cb1cd5 Date: Sun, 23 Aug 2026 02:24:13 GMT Content-Length: 69  {"error":"unauthenticated","status":401,"ts":"2026-08-23T02:24:13Z"}
+
+[Enable Agent AGT-003]
+{
+    "agent_id":  "AGT-003",
+    "certified":  false,
+    "enabled":  true,
+    "plane":  "0xc00012ac60",
+    "production_autonomy":  false,
+    "tenant_id":  "8ebf921a-3113-4ab5-8265-96e555e2512f"
+}
+
+[Enable Agent AGT-014]
+{
+    "agent_id":  "AGT-014",
+    "certified":  false,
+    "enabled":  true,
+    "plane":  "0xc00012ac60",
+    "production_autonomy":  false,
+    "tenant_id":  "8ebf921a-3113-4ab5-8265-96e555e2512f"
+}
+
+[Safe Execute - analyze_story]
+{
+    "engage":  false
+} = @{ agent_id="AGT-003"; truth_passed=True; compliance_passed=True; brand_passed=True; tools=@(@{tool_id="analyze_story";input=@{text="test"}}) } | ConvertTo-Json -Depth 10
+
+
+[Truth Failure]
+{
+    "engage":  false
+} = @{ agent_id="AGT-014"; truth_passed=True; compliance_passed=True; brand_passed=True; tools=@(@{tool_id="publish_content";input=@{content_id="c1";body="the earth is flat";brand_identity_applied=True;tenant_id="tenant-a"}}) } | ConvertTo-Json -Depth 10
+try { Invoke-RestMethod -Uri "http://127.0.0.1:8080/v1/autonomy/execute" -Method POST -Headers System.Collections.Hashtable -Body {
+    "engage":  false
+} } catch { .Exception.Message }
+
+[Kill-switch Engage]
+{
+    "execution_reality":  "REAL",
+    "kill_switch":  "ENGAGED",
+    "note":  "Kill-switch is persisted and blocks autonomy dispatch and Phase 04 schedule for this tenant."
+}
+
+[Tick with Kill ON]
+HTTP/1.1 423 Locked Content-Type: application/json X-Correlation-Id: 1ef43270163883f4 X-Ratelimit-Limit: 6 X-Ratelimit-Remaining: 5 X-Ratelimit-Reset: 2026-08-23T02:25:00Z Date: Sun, 23 Aug 2026 02:24:13 GMT Content-Length: 32  {"error":"KILL_SWITCH_ENGAGED"}
+
+[Kill-switch Disengage]
+{
+    "execution_reality":  "REAL",
+    "kill_switch":  "ARMED",
+    "note":  "Kill-switch is persisted and blocks autonomy dispatch and Phase 04 schedule for this tenant."
+}
+
+[Tick with Kill OFF]
+HTTP/1.1 500 Internal Server Error Content-Type: application/json X-Correlation-Id: 9bb19e949938096b X-Ratelimit-Limit: 6 X-Ratelimit-Remaining: 4 X-Ratelimit-Reset: 2026-08-23T02:25:00Z Date: Sun, 23 Aug 2026 02:24:13 GMT Content-Length: 25  {"error":"WORKER_ERROR"}
+
+[CreateDistribution]
+{"account_id":"444d3e98-fbce-4e21-889c-181ee4373b47","brand_identity_applied":true,"approved":true,"content_id":"phase09-runtime-full","tenant_id":"8ebf921a-3113-4ab5-8265-96e555e2512f","body":"Full runtime test","content_version":"v1"} = @{ tenant_id="8ebf921a-3113-4ab5-8265-96e555e2512f"; account_id="444d3e98-fbce-4e21-889c-181ee4373b47"; content_id="phase09-runtime-full"; content_version="v1"; body="Full runtime test"; brand_identity_applied=True; approved=True } | ConvertTo-Json -Compress
+{
+    "idempotency_key":  "9683335e120ffaabfc59f4ae0131bec9d0bd7b710cef49c49af5e1bd279039e6",
+    "idempotent":  true
+}
+
+=== Runtime Tests Completed ===
