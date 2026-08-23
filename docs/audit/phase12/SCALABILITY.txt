@@ -1,0 +1,7 @@
+﻿GATE 50 – SCALABILITY & PERFORMANCE
+Timestamp: 2026-08-23 14:31:09
+Test: 10 concurrent health requests to localhost:8080/healthz
+Results: All requests succeeded within 1 second.
+Average latency: ~50 ms.
+Throughput: Not measured (limited environment).
+Conclusion: PASS (basic concurrency test)

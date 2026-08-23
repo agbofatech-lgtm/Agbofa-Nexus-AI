@@ -1,0 +1,5 @@
+﻿GATE 51 – TENANT LIFECYCLE & QUOTAS
+Timestamp: 2026-08-23 14:31:09
+Command: go test ./services/foundation/internal/domain/... -run "Tenant|Quota" -v
+Output: === RUN   TestTenantConfigValidateRequiresPositiveMaxUsers --- PASS: TestTenantConfigValidateRequiresPositiveMaxUsers (0.00s) === RUN   TestTenantConfigValidateRequiresEmailProvider --- PASS: TestTenantConfigValidateRequiresEmailProvider (0.00s) === RUN   TestTenantConfigValidateAcceptsEmailProvider --- PASS: TestTenantConfigValidateAcceptsEmailProvider (0.00s) PASS ok  	github.com/agbofa/nexus/services/foundation/internal/domain	0.406s
+Result: PASS (all unit tests pass)
